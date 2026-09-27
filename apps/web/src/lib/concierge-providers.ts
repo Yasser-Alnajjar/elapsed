@@ -10,6 +10,12 @@ export interface ConciergeProviderCopy {
   exportButton: string;
   recordNoun: string;
   historyNoun: string;
+  /** What the export window is measured against, e.g. "Issues updated". */
+  scopeRecords: string;
+  /** Where status history comes from, e.g. "Jira changelog". */
+  historySource: string;
+  /** Files in the exported ZIP, in archive order. */
+  archiveFiles: { name: string; description: string }[];
 }
 
 export const CONCIERGE_PROVIDER_COPY: Record<ConciergeSourceProvider, ConciergeProviderCopy> = {
@@ -22,6 +28,13 @@ export const CONCIERGE_PROVIDER_COPY: Record<ConciergeSourceProvider, ConciergeP
     exportButton: "Export Jira Concierge Data",
     recordNoun: "Jira issues",
     historyNoun: "changelog entries",
+    scopeRecords: "Issues updated",
+    historySource: "Jira changelog",
+    archiveFiles: [
+      { name: "jira-issues.csv", description: "One row per issue" },
+      { name: "jira-changelog.csv", description: "Status transitions per issue" },
+      { name: "metadata.json", description: "Export window, counts and JQL" },
+    ],
   },
   zendesk: {
     label: "Zendesk",
@@ -32,5 +45,12 @@ export const CONCIERGE_PROVIDER_COPY: Record<ConciergeSourceProvider, ConciergeP
     exportButton: "Export Zendesk Concierge Data",
     recordNoun: "Zendesk tickets",
     historyNoun: "status changes",
+    scopeRecords: "Tickets updated",
+    historySource: "Ticket audits",
+    archiveFiles: [
+      { name: "zendesk-tickets.csv", description: "One row per ticket" },
+      { name: "zendesk-audits.csv", description: "Status changes per ticket" },
+      { name: "metadata.json", description: "Export window, counts and Jira links" },
+    ],
   },
 };
