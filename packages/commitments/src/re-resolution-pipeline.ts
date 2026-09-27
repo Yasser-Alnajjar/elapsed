@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@sla/db";
+import { createLogger, type Logger } from "@sla/logger";
 import {
   computeDeadline,
   matchPolicyVersion,
@@ -105,9 +106,18 @@ export interface CommitmentReResolutionResult {
 export async function runCommitmentReResolutionPipeline(
   prisma: PrismaClient,
   organizationId: string,
-  options: { asOf?: string } = {},
+  // `logger` (roadmap 7.4): defaults to a bare logger carrying only
+  // organizationId/stage so every caller keeps working, but `cycle.ts`
+  // passes one already `.child()`-ed with cycle/integration context so
+  // these warnings come out with the same fields as everything else in
+  // the cycle they ran in.
+  options: { asOf?: string; logger?: Logger } = {},
 ): Promise<CommitmentReResolutionResult> {
   const asOf = options.asOf ?? new Date().toISOString();
+  const logger = (options.logger ?? createLogger()).child({
+    organizationId,
+    stage: "commitment_re_resolution",
+  });
 
   const result: CommitmentReResolutionResult = {
     casesConsidered: 0,
@@ -233,9 +243,10 @@ export async function runCommitmentReResolutionPipeline(
     try {
       const matched = matchPolicyVersion(toCaseAttributes(caseRow), activePolicyVersions);
       if (!matched) {
-        console.warn(
-          `commitment re-resolution: case ${caseRow.id} has ${caseRow.commitments.length} active commitment(s) but no active SLAPolicyVersion matches its current attributes — leaving them unchanged`,
-        );
+        logger.warn("re_resolution_no_matching_policy", {
+          caseId: caseRow.id,
+          activeCommitmentCount: caseRow.commitments.length,
+        });
         result.casesWithNoMatchingPolicy += 1;
         continue;
       }
@@ -273,9 +284,12 @@ export async function runCommitmentReResolutionPipeline(
         if (!changed) continue;
 
         if (!hasTarget) {
-          console.warn(
-            `commitment re-resolution: commitment ${commitment.id} (case ${caseRow.id}, kind ${commitment.kind}) would move to policy version ${matched.id}, which has no target for "${commitment.kind}" — leaving it on its current policy/target`,
-          );
+          logger.warn("re_resolution_missing_target", {
+            caseId: caseRow.id,
+            commitmentId: commitment.id,
+            kind: commitment.kind,
+            matchedPolicyVersionId: matched.id,
+          });
           result.commitmentsMissingTarget += 1;
           continue;
         }

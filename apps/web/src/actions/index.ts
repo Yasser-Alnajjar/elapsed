@@ -12,6 +12,7 @@ import { AtRiskActions } from "./at-risk";
 import { InvitationsActions } from "./invitations";
 import { MembersActions } from "./members";
 import { OrganizationActions } from "./organization";
+import { OperatorActions } from "./operator";
 
 /**
  * Server-only data layer, imported exclusively by `ssr/` (async server)
@@ -33,4 +34,5 @@ export const Actions = {
   Invitations: InvitationsActions,
   Members: MembersActions,
   Organization: OrganizationActions,
+  Operator: OperatorActions,
 };

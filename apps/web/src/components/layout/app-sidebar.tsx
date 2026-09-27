@@ -37,15 +37,19 @@ import {
 } from "@/components/ui/sidebar";
 
 import { BrandMark } from "../shared/brand-mark";
-import { isNavItemActive, NAV_ITEMS, type NavItem } from "./nav-items";
+import { buildNavItems, isNavItemActive, type NavItem } from "./nav-items";
 
 export function AppSidebar({
   autoSyncSeconds,
+  isPlatformOperator = false,
 }: {
   /** The worker's active poll interval, for the footer's real sync cadence — never a fabricated version number. */
   autoSyncSeconds?: number;
+  /** Adds the operator-only `/operator` link (roadmap 7.5) — see `buildNavItems`. */
+  isPlatformOperator?: boolean;
 }) {
   const pathname = usePathname();
+  const navItems = buildNavItems(isPlatformOperator);
 
   return (
     <Sidebar side="left" collapsible="icon">
@@ -59,7 +63,7 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 if (item.items?.length) {
                   return (
                     <NavGroupItem

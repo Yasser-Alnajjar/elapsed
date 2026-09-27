@@ -6,6 +6,7 @@ import {
   recordWorkerNextRun,
   WORKER_ADVISORY_LOCK_KEY,
 } from "@sla/db";
+import { createLogger } from "@sla/logger";
 import { loadWorkerConfig } from "./config";
 import { runCycle, type CycleKind } from "./cycle";
 import { startHealthServer, type WorkerHealthServer } from "./health-server";
@@ -17,6 +18,7 @@ import { startStalledCycleWatchdog } from "./watchdog";
 // no-op until this runs, so it must run before `main()`'s own await points.
 initSentry();
 
+const logger = createLogger();
 const prisma = getPrismaClient();
 const config = loadWorkerConfig();
 let healthServer: WorkerHealthServer | null = null;
@@ -69,28 +71,30 @@ function scheduleNext(kind: CycleKind): void {
 
 async function tick(kind: CycleKind): Promise<void> {
   if (inFlight) {
-    console.log(JSON.stringify({ event: "cycle_skipped", kind, reason: "another cycle in flight" }));
+    logger.info("cycle_skipped", { kind, reason: "another cycle in flight" });
     scheduleNext(kind);
     return;
   }
 
   inFlight = true;
   const startedAt = Date.now();
+  // Ties every structured log line this cycle produces — including ones
+  // emitted per-organization/per-integration deep in `cycle.ts` — to one
+  // run (roadmap 7.4).
+  const cycleId = `${kind}:${startedAt}`;
   try {
-    const result = await runCycle(prisma, config, kind);
+    const result = await runCycle(prisma, config, kind, cycleId);
     await recordWorkerCycleOutcome(prisma, kind, result.failures.length);
-    console.log(JSON.stringify({ event: "cycle_finished", durationMs: Date.now() - startedAt, ...result }));
+    logger.info("cycle_finished", { cycleId, durationMs: Date.now() - startedAt, ...result });
   } catch (error) {
     await recordWorkerCycleOutcome(prisma, kind, null);
     captureException(error, { kind, stage: "cycle" });
-    console.error(
-      JSON.stringify({
-        event: "cycle_failed",
-        kind,
-        durationMs: Date.now() - startedAt,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    logger.error("cycle_failed", {
+      kind,
+      cycleId,
+      durationMs: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error),
+    });
   } finally {
     inFlight = false;
   }
@@ -100,16 +104,13 @@ async function tick(kind: CycleKind): Promise<void> {
 
 async function main(): Promise<void> {
   const settings = await getOrCreateWorkerSettings(prisma);
-  console.log(
-    JSON.stringify({
-      event: "worker_started",
-      activePollMs: settings.activePollIntervalMs,
-      reconciliationMs: settings.reconciliationIntervalMs,
-      appUrlConfigured: config.appUrl !== null,
-      healthPort: config.healthPort,
-      opsAlertConfigured: config.opsAlert !== null,
-    }),
-  );
+  logger.info("worker_started", {
+    activePollMs: settings.activePollIntervalMs,
+    reconciliationMs: settings.reconciliationIntervalMs,
+    appUrlConfigured: config.appUrl !== null,
+    healthPort: config.healthPort,
+    opsAlertConfigured: config.opsAlert !== null,
+  });
 
   // Leadership before the health server so the server can always ask for
   // the current role; the health server itself still starts immediately, so
@@ -146,7 +147,7 @@ function startCycles(): void {
 void main();
 
 async function shutdown(signal: string, exitCode = 0): Promise<void> {
-  console.log(JSON.stringify({ event: "worker_stopping", signal }));
+  logger.info("worker_stopping", { signal });
   shuttingDown = true;
   for (const kind of Object.keys(timers) as CycleKind[]) {
     if (timers[kind]) clearTimeout(timers[kind]);
@@ -169,14 +170,12 @@ process.on("SIGTERM", () => void shutdown("SIGTERM"));
 // supervisor restart it" choice already made in this file's shutdown path.
 process.on("uncaughtException", (error) => {
   captureException(error, { stage: "uncaughtException" });
-  console.error(JSON.stringify({ event: "uncaught_exception", error: error.message }));
+  logger.error("uncaught_exception", { error: error.message });
   void shutdown("uncaughtException", 1);
 });
 
 process.on("unhandledRejection", (reason) => {
   captureException(reason, { stage: "unhandledRejection" });
-  console.error(
-    JSON.stringify({ event: "unhandled_rejection", error: reason instanceof Error ? reason.message : String(reason) }),
-  );
+  logger.error("unhandled_rejection", { error: reason instanceof Error ? reason.message : String(reason) });
   void shutdown("unhandledRejection", 1);
 });

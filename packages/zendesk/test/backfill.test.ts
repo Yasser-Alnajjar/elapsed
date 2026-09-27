@@ -98,7 +98,10 @@ describe("runZendeskBackfill", () => {
 
     expect(result.ticketsFetched).toBe(2);
     expect(result.ticketAuditsFetched).toBe(1);
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("ticket 1"));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("\"event\":\"backfill_ticket_audits_not_found\""),
+    );
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("\"ticketId\":1"));
   });
 
   it("soft-deletes the Case for a ticket the incremental export reports as deleted, without fetching its audits", async () => {

@@ -34,6 +34,7 @@ import {
   runLinearCorrelation,
   runLinearNormalization,
 } from "@sla/linear";
+import { createLogger } from "@sla/logger";
 import { runNotificationPipeline } from "@sla/notifications";
 import {
   runZendeskBackfill,
@@ -109,7 +110,13 @@ export async function runCycle(
   prisma: PrismaClient,
   config: WorkerConfig,
   kind: CycleKind,
+  // Minted once per tick by `index.ts` (roadmap 7.4) — the one value that
+  // ties every structured log line from this run together, including ones
+  // emitted deep in a pipeline (`.child()`'d loggers below), regardless of
+  // which organization or stage they came from.
+  cycleId: string = `${kind}:${Date.now()}`,
 ): Promise<CycleResult> {
+  const cycleLogger = createLogger({ cycleId, kind });
   const result: CycleResult = {
     kind,
     organizationsProcessed: 0,
@@ -140,6 +147,7 @@ export async function runCycle(
 
   for (const organization of organizations) {
     result.organizationsProcessed += 1;
+    const orgLogger = cycleLogger.child({ organizationId: organization.id });
 
     const orderedIntegrations = [...organization.integrations].sort(
       (a, b) => (PROVIDER_CYCLE_PRIORITY[a.provider] ?? 0) - (PROVIDER_CYCLE_PRIORITY[b.provider] ?? 0),
@@ -168,7 +176,7 @@ export async function runCycle(
           await runZendeskBackfill(prisma, integration.id, {
             ...zendeskConfig,
             redirectUri: `${config.appUrl}/api/integrations/zendesk/callback`,
-          });
+          }, { logger: orgLogger.child({ integrationId: integration.id, provider: "zendesk" }) });
         } else if (integration.provider === "jira") {
           if (!config.appUrl) throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
           const jiraConfig = await getIntegrationConfig(prisma, organization.id, "jira");
@@ -368,7 +376,7 @@ export async function runCycle(
       // policy-driving Case attribute change (priority, customer, tier) must
       // already be re-resolved by the time that pipeline runs.
       try {
-        const reResolution = await runCommitmentReResolutionPipeline(prisma, organization.id, { asOf });
+        const reResolution = await runCommitmentReResolutionPipeline(prisma, organization.id, { asOf, logger: orgLogger });
         result.commitmentsReResolved += reResolution.commitmentsUpdated;
       } catch (error) {
         result.failures.push({

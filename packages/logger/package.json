@@ -1,5 +1,5 @@
 {
-  "name": "@sla/commitments",
+  "name": "@sla/logger",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,11 +9,6 @@
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc --noEmit",
     "test": "vitest run"
-  },
-  "dependencies": {
-    "@sla/core": "workspace:*",
-    "@sla/db": "workspace:*",
-    "@sla/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

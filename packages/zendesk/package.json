@@ -14,7 +14,8 @@
     "@sla/commitments": "workspace:*",
     "@sla/core": "workspace:*",
     "@sla/db": "workspace:*",
-    "@sla/http-retry": "workspace:*"
+    "@sla/http-retry": "workspace:*",
+    "@sla/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

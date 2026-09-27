@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
+import { getServerSession } from "next-auth";
 
 import {
   SidebarInset,
@@ -8,6 +9,8 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Actions } from "@/actions";
+import { authOptions } from "@/lib/auth";
+import { isPlatformOperator } from "@/lib/authz";
 import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
 import { AlertsPopover } from "@/components/layout/alerts-popover";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -29,11 +32,12 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // avatar are user-editable from the Profile page (@modules/settings/profile)
   // and must show up here immediately via `router.refresh()`, not just after
   // the next sign-in.
-  const [user, integrations, worker, atRisk] = await Promise.all([
+  const [user, integrations, worker, atRisk, session] = await Promise.all([
     Actions.Profile.getData(),
     Actions.Integrations.getData(),
     Actions.WorkerSettings.getData(),
     Actions.AtRisk.getData(),
+    getServerSession(authOptions),
   ]);
 
   const alerts = atRisk
@@ -58,6 +62,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     <SidebarProvider defaultOpen={false}>
       <AppSidebar
         autoSyncSeconds={Math.round(worker.activePollIntervalMs / 1000)}
+        isPlatformOperator={isPlatformOperator(session)}
       />
       <SidebarInset>
         <header className="border-border bg-surface-container-lowest/95 sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl">

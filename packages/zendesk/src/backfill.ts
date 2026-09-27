@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@sla/db";
+import { createLogger, type Logger } from "@sla/logger";
 import { ZendeskApiError, ZendeskClient } from "./client";
 import type { ZendeskOAuthConfig } from "./oauth";
 import {
@@ -46,10 +47,19 @@ export async function runZendeskBackfill(
   prisma: PrismaClient,
   integrationId: string,
   config: ZendeskOAuthConfig,
-  options: { sinceDays?: number } = {},
+  // `logger` (roadmap 7.4): see `runCommitmentReResolutionPipeline`'s same
+  // parameter — `cycle.ts` passes one already carrying cycle/organization
+  // context, callers that don't (tests, other entry points) get a bare one.
+  options: { sinceDays?: number; logger?: Logger } = {},
 ): Promise<BackfillResult> {
   const integration = await prisma.integration.findUniqueOrThrow({
     where: { id: integrationId },
+  });
+  const logger = (options.logger ?? createLogger()).child({
+    organizationId: integration.organizationId,
+    integrationId,
+    provider: "zendesk",
+    stage: "backfill",
   });
   const cursor = ((integration.cursor as ZendeskCursor | null) ?? {}) as ZendeskCursor;
   const credentials = await loadFreshZendeskCredentials(prisma, integrationId, config);
@@ -134,7 +144,7 @@ export async function runZendeskBackfill(
         // audits — Zendesk returns 404 for that case. Skip this ticket's audits
         // rather than aborting the whole backfill run over one unreachable ticket.
         if (error instanceof ZendeskApiError && error.status === 404) {
-          console.warn(`Zendesk backfill: ticket ${ticketId} audits not found (404), marking case deleted`);
+          logger.warn("backfill_ticket_audits_not_found", { ticketId, status: 404 });
           await markCaseDeletedForTicket(prisma, integrationId, ticketId);
           return count;
         }

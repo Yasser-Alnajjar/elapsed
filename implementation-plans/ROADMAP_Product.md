@@ -2,7 +2,7 @@
 
 > **The single, living implementation plan for Elapsed.** It says what we build next, what is in progress, and what is done. It is updated in place as the product evolves. Never start a second roadmap file.
 >
-> **Revision:** 3 · **Last updated:** 2026-09-22 · **Capacity:** 10–15 h/week
+> **Revision:** 3 · **Last updated:** 2026-09-27 · **Capacity:** 10–15 h/week
 > **History:** the steps already delivered (0–44) are in [`roadmap-completed.md`](roadmap-completed.md). Parked ideas are in [`ignored.md`](ignored.md).
 
 ---
@@ -13,10 +13,10 @@ _Update this section every time a task or phase changes state._
 
 |                          |                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Now**                  | Phase 5 — Team & Account Management, 9/9 tasks code-complete (2026-09-23): D8 decided yes, 5.1 (deployment SMTP), 5.2 (invitations), 5.3 (members page), 5.4 (authorization audit), 5.5 (change/forgot/reset password), 5.6 (email verification/change), 5.7 (session invalidation), 5.8 (organization settings) and 5.9 (profile page) code-complete. Phase 3 — Explainable Cases 10/10 tasks code-complete, merged to `main` (PR #24); live-account verification (assignee resolution, priority-change events) is still owner-only pending there |
-| **Up next**              | Push `phase/5-team-account-management`, open its PR into `main`, and merge once CI is green (Phase 5 is 9/9 code-complete but not yet ✅ — see its status); then start Phase 6                                                                                                                                                              |
+| **Now**                  | Phase 7 — Production Launch, 5/12 tasks done (2026-09-27): 7.1 (one-shot migration service), 7.4 (structured JSON logging via new `@sla/logger`), 7.5 (operator monitoring view), 7.8 (wider evaluation-id hash) and 7.9 (smoke e2e test) done. 7.10 partly done (golden scenarios now have a dedicated CI gate, but the lint half is blocked — see 7.10's note). 7.2/7.3/7.6/7.7 need a real deployment target and are out of scope for a code-only pass. Phase 6 — SLA Health Dashboard & Guided Onboarding, 7/8 tasks done (2026-09-27): only 6.8 remains, a live Zendesk sandbox walkthrough accepted as an owner-only manual step. Phase 3 — Explainable Cases 10/10 tasks code-complete, merged to `main` (PR #24); live-account verification (assignee resolution, priority-change events) is still owner-only pending there |
+| **Up next**              | The infra-dependent Phase 7 items (7.2 TLS/cookies verification, 7.3 backup drill, 7.6 Sentry source maps, 7.7 performance baseline) once a real deployment target and credentials are available; a lint step for 7.10 once typescript-eslint supports TypeScript 7 (or the repo pins TS 6.x for lint tooling)                        |
 | **Blocked on decisions** | D11 (scheduling)                                                                                                                                                                                                                                                                                                                         |
-| **Recently completed**   | Phase 4 — SLA Policy & Calendar Management, ✅ complete (8/8 tasks, 2026-09-22), merged to `main` (PR #25, incl. calendar-resolution fixes 4a–4i) — see [Phase 4](#phase-4--sla-policy--calendar-management)                                                                                                                             |
+| **Recently completed**   | Phase 6 — SLA Health Dashboard & Guided Onboarding, 7/8 tasks (2026-09-27), merged to `main` (PR #27) — see [Phase 6](#phase-6--sla-health-dashboard--guided-onboarding)                                                                                                                                                                 |
 | **Target**               | Production-ready MVP for **Zendesk + Jira** customers. Intercom, Linear and GitHub as Beta.                                                                                                                                                                                                                                              |
 | **Estimate**             | 24 weeks plus 3 buffer (about 6–7 months)                                                                                                                                                                                                                                                                                                |
 
@@ -29,9 +29,9 @@ _Update this section every time a task or phase changes state._
 | [2](#phase-2--reliable-zendesk--jira-connections)      | Reliable Zendesk + Jira connections, verified live                                    | 3 wk | 🔄 In progress (9/10, 2026-09-21) — 2.9 pending                              |
 | [3](#phase-3--explainable-cases)                       | Explainable cases: timeline, commitment transparency, assignee, rich alerts           | 3 wk | 🔄 In progress (10/10 code-complete, 2026-09-22) — live verification pending |
 | [4](#phase-4--sla-policy--calendar-management)         | SLA policy and calendar management inside Watchtower                                  | 4 wk | ✅ Complete (2026-09-22)                                                     |
-| [5](#phase-5--team--account-management)                | Team and account management                                                           | 2 wk | 🔄 In progress (9/9 code-complete, 2026-09-23)                               |
-| [6](#phase-6--sla-health-dashboard--guided-onboarding) | SLA health dashboard and guided onboarding                                            | 2 wk | ⬜ Not started                                                               |
-| [7](#phase-7--production-launch)                       | Production launch                                                                     | 5 wk | ⬜ Not started                                                               |
+| [5](#phase-5--team--account-management)                | Team and account management                                                           | 2 wk | ✅ Complete (2026-09-22)                                                     |
+| [6](#phase-6--sla-health-dashboard--guided-onboarding) | SLA health dashboard and guided onboarding                                            | 2 wk | 🔄 In progress (7/8, 2026-09-27) — 6.8 pending (needs a live sandbox)         |
+| [7](#phase-7--production-launch)                       | Production launch                                                                     | 5 wk | 🔄 In progress (5/12, 2026-09-27)                                            |
 | [Next](#next-product-work)                             | Post-launch product work                                                              | —    | Backlog                                                                      |
 
 ---
@@ -426,7 +426,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 ## Phase 5 — Team & Account Management
 
-**Status:** 🔄 In progress (9/9 tasks code-complete, 2026-09-23) — not yet ✅: needs the branch pushed, a PR opened into `main`, and CI green before merging (per Phase 2/3's precedent, a real dev environment wasn't available in this session for a live-browser pass) · branch `phase/5-team-account-management` · **Estimate:** 2 weeks · **Needs:** D8 — decided
+**Status:** ✅ Complete (9/9 tasks, 2026-09-22) — merged to `main` (PR #26, 2026-09-22) · **Estimate:** 2 weeks · **Needs:** D8 — decided
 **Goal:** A support team can share one organization safely, and handle accounts without developer help.
 **Phase is done when:** all tasks are ticked, and a member gets `403` on every owner-only action.
 
@@ -496,7 +496,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 ## Phase 6 — SLA Health Dashboard & Guided Onboarding
 
-**Status:** ⬜ Not started · **Estimate:** 2 weeks
+**Status:** 🔄 In progress (7/8 tasks done, 2026-09-27) — merged to `main` (PR #27); only 6.8 remains · **Estimate:** 2 weeks
 **Goal:**
 
 - The dashboard shows SLA health by commitment type and everything that is silently _not_ being monitored.
@@ -506,46 +506,63 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 **Dashboard**
 
-- [ ] **6.1** On track / at risk / breached for each of First Response, Next Reply and Resolution. `P1 · Feature · B` · D-2
-- [ ] **6.2** Panel listing open cases that have no matching SLA policy, with links to them. `P1 · Feature · B` · D-3
-- [ ] **6.3** Integration health: re-auth needed, permission denied, last sync error. `P1 · Feature · B` · D-3
-- [ ] **6.4** Failed alert deliveries. `P1 · Feature · B` · D-3
-- [ ] **6.5** Group dashboard days by the organization timezone (needs 5.8). `P2 · UX · B`
+- [x] **6.1** On track / at risk / breached for each of First Response, Next Reply and Resolution. `P1 · Feature · B` · D-2 (done 2026-09-27)
+  - New `SlaHealthByKindCard` on `/dashboard`: a per-`CommitmentKind` breakdown (on track / at risk / breached), tallied in the same open-commitment loop `getDashboardData` already runs for the at-risk list — no extra query. Every kind renders even at zero, so a kind with nothing open still shows an empty bar rather than disappearing.
+- [x] **6.2** Panel listing open cases that have no matching SLA policy, with links to them. `P1 · Feature · B` · D-3 (done 2026-09-27)
+  - Direct read of the commitment pipeline's own "no matching policy" outcome: `prisma.case.findMany({ where: { ..., commitments: { none: {} } } })` — a case the pipeline skipped (`pipeline.ts`'s `casesWithNoMatchingPolicy += 1; continue`) simply has zero `Commitment` rows, so this is the live set, not a stale snapshot. Rendered in the new `BlindSpotsPanel`, capped and linked to `/cases/[id]`.
+- [x] **6.3** Integration health: re-auth needed, permission denied, last sync error. `P1 · Feature · B` · D-3 (done 2026-09-27)
+  - `BlindSpotsPanel` reads every `Integration` row for the organization (`status`, `lastSyncAt`, `lastSyncError`) and lists only the unhealthy ones, each linking to `/settings/integrations/[provider]` to fix.
+- [x] **6.4** Failed alert deliveries. `P1 · Feature · B` · D-3 (done 2026-09-27)
+  - Previously a failed delivery left no trace at all: `dispatch.ts` deleted the claim row so the next cycle would retry, with nothing durable in between. New `NotificationFailure` model (migration `20260927063943_add_notification_failure`) upserted on every failed attempt (error, attempt count, first/last-failed timestamps) and cleared the moment any channel succeeds — surfaced in `BlindSpotsPanel`.
+- [x] **6.5** Group dashboard days by the organization timezone (needs 5.8). `P2 · UX · B` (done 2026-09-27)
+  - New `localDateKey(instant, timeZone)` in `@sla/core` (`en-CA` `Intl.DateTimeFormat` trick for a direct `YYYY-MM-DD`), threaded through `analytics-data.ts`'s day-bucketing (Breaches Over Time, Breaches by Stage, the Compliance Trend chart) with a `timeZone` parameter defaulting to `"UTC"` for backward compatibility. `getDashboardData` now reads `Organization.timezone` (5.8) and passes it through.
 
 **Onboarding**
 
-- [ ] **6.6** Guided flow: create account → connect Zendesk → initial sync → import policies → review policies → configure calendars → configure alerts → optional Jira → ready. `P1 · UX · B`
-- [ ] **6.7** Import review screen: Imported / Matched / No match / Warnings, from the data stored in 1.12. `P1 · UX · B`
+- [x] **6.6** Guided flow: create account → connect Zendesk → initial sync → import policies → review policies → configure calendars → configure alerts → optional Jira → ready. `P1 · UX · B` (done 2026-09-27)
+  - `OnboardingFlow.tsx` rebuilt against the `stitch_elapsed/step_{1,2,3}_*` mockups: Step 1 (connect Zendesk, read-only scopes called out explicitly), Step 2 (90-day backfill in progress, with a "review policies" prompt the moment the import lands), Step 3 (connect Jira, or Linear/GitHub as alternative engineering-leg sources). Reaching the end redirects to `/onboarding/activation` (`step_4_activation_dashboard_launch`), which replaced the old standalone Findings page — one continuous "ready" screen instead of a dead end.
+- [x] **6.7** Import review screen: Imported / Matched / No match / Warnings, from the data stored in 1.12. `P1 · UX · B` (done 2026-09-27)
+  - New `/onboarding/review-policies` (`getPolicyImportReview`): Imported (active imported policies), Matched / No match (live open-case counts, the same query as 6.2), and Warnings (read from `SlaImportSummary`, 1.12 — unsupported conditions/metrics, policies with no usable target, unresolved schedules, archived policies). Links out to `/settings/sla/configuration` (calendars) and `/settings/notifications` (alerts) so those two guided-flow steps are one click away rather than new duplicate forms.
 - [ ] **6.8** Walk through onboarding with a fresh organization against a real Zendesk sandbox, and record the result. `P1 · Testing · B`
+  - Not done — every session so far has had a real Postgres but no real Zendesk sandbox credentials to connect against. 6.1–6.7 are verified by `tsc --noEmit` (clean) and the full test suite (162 files / 1735 tests passing, including real-database suites), but that's schema- and mock-level proof, not a live walkthrough. Needs a Zendesk sandbox account before this can close.
 
 ---
 
 ## Phase 7 — Production Launch
 
-**Status:** ⬜ Not started · **Estimate:** 5 weeks
+**Status:** 🔄 In progress (5/12 tasks done, 2026-09-27) · **Estimate:** 5 weeks
 **Goal:** The first real customer runs on a verified, observable, recoverable deployment.
 **Phase is done when:** every item in the [Launch Gate](#launch-gate) is ticked, or explicitly accepted as an exception.
 
 **Deployment and recovery**
 
-- [ ] **7.1** A one-shot migration service. Startup order: `postgres (healthy)` → `migrate (completed)` → `web` and `worker`, which start independently. `P1 · Infra · B` · R-2
+- [x] **7.1** A one-shot migration service. Startup order: `postgres (healthy)` → `migrate (completed)` → `web` and `worker`, which start independently. `P1 · Infra · B` · R-2 (done 2026-09-27)
+  - New `packages/db/Dockerfile` (a thin monorepo-install image whose `CMD` is `prisma migrate deploy`) plus a `migrate` service in `docker-compose.yml`. `postgres` now has a `pg_isready` healthcheck; `migrate` depends on `service_healthy`; `web`/`worker` depend on `postgres: service_healthy` **and** `migrate: service_completed_successfully`. `docs/deployment.md` updated — migrations now apply automatically on `up`, no more manual `run --rm --user root worker prisma migrate deploy` step.
 - [ ] **7.2** A real server behind a TLS reverse proxy, with secure cookies, HSTS, the CSRF origin check, and `X-Forwarded-For` all verified. `P0 · Infra · B` · R-3
+  - Not started this session — `docker-compose.yml` already has an `nginx` service and TLS volume mount from earlier work; verifying secure cookies/HSTS/CSRF/`X-Forwarded-For` against a real deployment needs a real host, out of scope for a code-only pass.
 - [ ] **7.3** Scheduled backups with a retention policy and an off-site copy, plus a real restore drill with its timing recorded. `P0 · Infra · B` · R-4
+  - Not started — `scripts/backup.sh`/`restore.sh` already exist from earlier work; a retention policy, off-site copy, and a *real, timed* restore drill need a real deployment target, out of scope for a code-only pass.
 
 **Observability**
 
-- [ ] **7.4** Structured JSON logs that carry the organization, integration, cycle and stage. `P1 · Reliability · B` · R-5
-- [ ] **7.5** Operator monitoring view: failed webhooks and failed syncs across all organizations. `P1 · Feature · B`
+- [x] **7.4** Structured JSON logs that carry the organization, integration, cycle and stage. `P1 · Reliability · B` · R-5 (done 2026-09-27)
+  - New `packages/logger` (`createLogger`/`.child()`) — one JSON line per call, `{level, event, time, ...context}`. Wired into `apps/worker/src/index.ts` (replacing hand-rolled `console.log(JSON.stringify(...))`, now minting a `cycleId` per tick) and `apps/worker/src/cycle.ts` (a cycle-scoped logger `.child()`-ed per organization/integration, threaded into `runZendeskBackfill` and `runCommitmentReResolutionPipeline`, whose previous plain-string `console.warn` calls are now structured events carrying organizationId/integrationId/provider/cycleId/stage).
+- [x] **7.5** Operator monitoring view: failed webhooks and failed syncs across all organizations. `P1 · Feature · B` (done 2026-09-27)
+  - New `/operator` page (gated by the existing `PLATFORM_ADMIN_EMAILS`/`isPlatformOperator` — `notFound()` for anyone else), `getOperatorMonitoringData` (cross-organization `Integration`/`NotificationFailure` reads, unscoped from a single `organizationId` for the first time in the app), and a sidebar link that only renders for a platform operator.
 - [ ] **7.6** Sentry source maps. `P2 · Reliability · B` · R-6
+  - Not started — needs a real Sentry project/auth token to verify upload, out of scope for a code-only pass.
 
 **Performance**
 
 - [ ] **7.7** Performance baseline with 5,000 cases and 200,000+ events (case list, dashboard, case detail, evaluation, worker, database queries). Fix the slowest part based on the measurements. `P1 · Reliability · C` · D-5
-- [ ] **7.8** Use a wider hash for evaluation ids. `P2 · Reliability · A` · E-17
+  - Not started — needs a real seeded database and profiling run, out of scope for a code-only pass.
+- [x] **7.8** Use a wider hash for evaluation ids. `P2 · Reliability · A` · E-17 (done 2026-09-27)
+  - `stableHash` (`packages/core/src/util.ts`) widened from one 32-bit FNV-1a pass (8 hex chars) to two independent 32-bit passes with different seeds, concatenated (16 hex chars / 64 bits) — the collision space `evaluate-pipeline.ts`'s `skipDuplicates` write could silently drop a snapshot into is now 2^64, not 2^32. Pure arithmetic, no `crypto` import, so `@sla/core` stays usable outside Node.
 
 **Release verification**
 
-- [ ] **7.9** Smoke end-to-end test with a stubbed provider: signup → connect → import → case → SLA → customer reply → agent reply → breach → alert. `P0 · Testing · C`
+- [x] **7.9** Smoke end-to-end test with a stubbed provider: signup → connect → import → case → SLA → customer reply → agent reply → breach → alert. `P0 · Testing · C` (done 2026-09-27)
+  - New `apps/web/test/smoke-signup-to-alert.test.ts` (real Postgres, `TEST_DATABASE_URL`-gated, registered in `vitest.config.ts`'s `realDatabaseSuites`). One continuous run: the real `POST /api/sign-up` route creates the org/owner; Zendesk `Integration`/policy/calendar are seeded (no OAuth UI to drive in vitest); the real `POST /api/webhooks/zendesk/[integrationId]` route is driven three times with a stubbed `fetch` (initial ticket, agent reply completing First Response, a customer→agent Next Reply cycle) running its full production pipeline tail each time; `runEvaluationPipeline` is called directly with a future `asOf` to drive a deterministic Resolution breach (the route itself only ever evaluates at real wall-clock time); `runNotificationPipeline` sends the alert through a mocked `@sla/slack` `postMessage`, asserted alongside the resulting `Notification` row. Type-checks clean; correctly skips (not errors) without `TEST_DATABASE_URL`.
 - [ ] **7.10** The 7 golden scenarios are required in CI, and a lint step is added. `P0 · Testing · C`
   1. normal → high
   2. high → normal
@@ -554,6 +571,8 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
   5. Resolution pause and resume
   6. reopen
   7. calendar change
+  - Golden scenarios: added a dedicated CI step (`.github/workflows/ci.yml`) that re-runs `sla-golden-scenarios.test.ts` and `sla-e2e-matrix.test.ts` by name after the general `pnpm test`, so a failure (or a config change that makes them silently skippable in CI) is unambiguous rather than riding invisibly inside the blanket test run.
+  - Lint: **blocked**, not done. `apps/web`'s `next lint` script is already broken (Next 16 removed the `next lint` subcommand). Tried to replace it with flat-config ESLint (`eslint` 10 + `eslint-config-next`), but `typescript-eslint` (which both `eslint-config-next` and its own `@typescript-eslint/parser` depend on) throws `typescript-eslint does not support TS 7.0` at import time — a hard version gate, not a config issue (tracked upstream: https://github.com/typescript-eslint/typescript-eslint/issues/10940) — and this repo is on `typescript@^7.0.2`. No working lint step exists until either typescript-eslint ships TS 7 support or the repo pins TypeScript back to 6.x for lint tooling; reverted the eslint install rather than ship a lint step that can't actually run.
 - [ ] **7.11** Final docs, answers on data retention and deletion, and an on-call note. `P1 · Docs · B`
 - [ ] **7.12** Pass the [Launch Gate](#launch-gate). `P0 · — · —`
 
@@ -709,7 +728,7 @@ Each finding has an ID that the weekly plan refers to.
 | E-14 | Priority, organization, and assignee changes are not NormalizedEvents. `Case.priority` is a mutable projection with no event history, and re-resolution records `changedAt` as the time the worker ran, not when the change happened.                                                                                                                                  | Verified                                                      | `packages/core/src/types.ts:26-38`                                                                                                                        |
 | E-15 | Tier is never populated by any source, so tier matching is dead code (documented).                                                                                                                                                                                                                                                                                     | Verified                                                      | `docs/customer-guide.md` §21                                                                                                                              |
 | E-16 | Import coverage (unsupported conditions / metrics, unresolved schedules) and "no matching policy" counts are only returned or logged. They never reach the UI or the DB.                                                                                                                                                                                               | Verified                                                      | No references under `apps/web/src`, `apps/web/modules`                                                                                                    |
-| E-17 | Evaluation ids are a 32-bit FNV hash, written with `skipDuplicates`, so a collision silently drops a snapshot.                                                                                                                                                                                                                                                         | Verified (low probability)                                    | `packages/core/src/util.ts`                                                                                                                               |
+| E-17 | Evaluation ids are a 32-bit FNV hash, written with `skipDuplicates`, so a collision silently drops a snapshot. **Fixed 2026-09-27 (roadmap 7.8):** widened to two concatenated 32-bit FNV-1a passes (64 bits).                                                                                                                                                        | Verified (low probability)                                    | `packages/core/src/util.ts`                                                                                                                               |
 | E-18 | The Zendesk calendar import compares against the latest calendar version from **any** source, and appends a new imported version whenever they differ. A calendar edited locally (the planned calendar UI) would be overwritten on the next sync. Policies avoid this with `PolicyVersionSource`; calendars have no equivalent.                                        | Verified                                                      | `packages/zendesk/src/calendars.ts:87-110`                                                                                                                |
 | E-19 | Slack alerts contain no case link and no policy or target context. Only email can carry `caseUrl`.                                                                                                                                                                                                                                                                     | Verified                                                      | `packages/notifications/src/format.ts` (`formatSlackMessage`)                                                                                             |
 

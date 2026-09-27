@@ -65,6 +65,16 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Roadmap 7.10: the 7 golden scenarios already run as part of `pnpm
+      # test` above (TEST_DATABASE_URL is set for this whole job, so
+      # `describe.skipIf(!TEST_DATABASE_URL)` never skips them here) — this
+      # step re-runs just those two files by name so a failure is
+      # unambiguous in the CI log, and so an accidental change that makes
+      # them skippable in CI (e.g. TEST_DATABASE_URL going missing from this
+      # job) fails loud here instead of silently passing an empty suite.
+      - name: Golden SLA scenarios (required)
+        run: npx vitest run apps/web/test/sla-golden-scenarios.test.ts apps/web/test/sla-e2e-matrix.test.ts
+
       - name: Build packages
         run: pnpm build
 

@@ -74,26 +74,33 @@ other 12-factor deployment.
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
-This builds `apps/web/Dockerfile` and `apps/worker/Dockerfile` from the
-repo root and starts all three services.
+This builds `apps/web/Dockerfile`, `apps/worker/Dockerfile`, and
+`packages/db/Dockerfile` from the repo root, and starts every service in
+order (roadmap 7.1): `postgres` becomes healthy, then the one-shot
+`migrate` service applies every pending Prisma migration and exits 0, then
+`web` and `worker` start — both `depends_on: migrate: condition:
+service_completed_successfully`, so neither can come up against an
+unmigrated schema, and `up`'s own dependency graph blocks on that exit
+rather than needing a separate step below.
 
-## 3. Run migrations
+## 3. Migrations after an update
 
-Nothing above applies the Prisma schema — that's a deliberate one-off step,
-not something a container should do on every restart. Run it once after the
-first `up`, and again after pulling any update that adds a migration:
+The first `up` above already applies every migration that existed at that
+point — there's no separate first-run step anymore. After pulling a later
+update that adds new migrations, re-run `up` and the same `migrate`
+service applies them before `web`/`worker` restart:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+git pull
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
-`--user root` is required here: the `worker` image otherwise runs as an
-unprivileged user (see [Security notes](#security-notes)), which can't
-write into `node_modules` — something `migrate deploy` occasionally needs
-to do (state files, generated client checks). The long-running `worker`
-process itself never runs this way.
+If you only need to force the migration step on its own (rare — `up`
+already runs it), you can still invoke it directly:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
+```
 
 ## 4. Create the first account
 
@@ -107,10 +114,10 @@ bootstrap step.
 ```bash
 git pull
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-# then, only if the update added new migrations:
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker pnpm --filter @sla/db exec prisma migrate deploy
 ```
+
+Migrations run automatically as part of `up` (see above) — there is no
+separate migration command to remember on update.
 
 ## Backups
 

@@ -6,6 +6,7 @@ import {
   Building2,
   LayoutDashboard,
   ListChecks,
+  Radar,
   Settings,
   Settings2,
   Timer,
@@ -79,6 +80,20 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: "/docs", label: "Documentation", icon: Book },
 ];
+
+/**
+ * `/operator` (roadmap 7.5) only exists for `PLATFORM_ADMIN_EMAILS` — see
+ * `isPlatformOperator` in `@/lib/authz`. Kept out of `NAV_ITEMS` itself so a
+ * non-operator's sidebar never renders a link into a page that would
+ * `notFound()` on them.
+ */
+export function buildNavItems(isPlatformOperator: boolean): NavItem[] {
+  if (!isPlatformOperator) return NAV_ITEMS;
+  return [
+    ...NAV_ITEMS,
+    { href: "/operator", label: "Operator", icon: Radar, description: "Failed webhooks and syncs across every organization." },
+  ];
+}
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);

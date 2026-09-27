@@ -39,6 +39,7 @@ const realDatabaseSuites = [
   "apps/web/test/invitation-accept-race.test.ts",
   "apps/web/test/password-reset-race.test.ts",
   "apps/web/test/email-verification-race.test.ts",
+  "apps/web/test/smoke-signup-to-alert.test.ts",
 ];
 
 export default defineConfig({
