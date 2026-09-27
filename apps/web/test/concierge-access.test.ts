@@ -97,6 +97,9 @@ vi.mock("@sla/zendesk", async (importOriginal) => {
         audits: [{ id: 1, ticket_id: 7, created_at: "2026-09-02T10:00:00Z", author_id: 5, events: [{ id: 1, type: "Change", field_name: "status", previous_value: "open", value: "solved" }] }],
       };
     }
+    async fetchJiraLinksPage() {
+      return { links: [], meta: { has_more: false, after_cursor: null } };
+    }
   }
   return {
     ...actual,

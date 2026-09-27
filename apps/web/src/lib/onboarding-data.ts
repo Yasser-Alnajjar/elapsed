@@ -23,6 +23,8 @@ export async function getOnboardingStatus(
     linkedIssues,
     zendeskConfig,
     jiraConfig,
+    linearConfig,
+    githubConfig,
   ] = await Promise.all([
     prisma.integration.findUnique({
       where: { organizationId_provider: { organizationId, provider: "zendesk" } },
@@ -37,6 +39,8 @@ export async function getOnboardingStatus(
     prisma.caseLink.count({ where: { case: { organizationId }, system: "jira" } }),
     getIntegrationConfigStatus(prisma, organizationId, "zendesk"),
     getIntegrationConfigStatus(prisma, organizationId, "jira"),
+    getIntegrationConfigStatus(prisma, organizationId, "linear"),
+    getIntegrationConfigStatus(prisma, organizationId, "github"),
   ]);
 
   const zendeskCredentials = (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
@@ -57,6 +61,8 @@ export async function getOnboardingStatus(
     },
     zendeskConfig,
     jiraConfig,
+    linearConfig,
+    githubConfig,
     ticketsFetched,
     escalatedCases,
     linkedIssues,

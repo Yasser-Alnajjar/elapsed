@@ -51,7 +51,6 @@ export function IntegrationConfigGate({
 }: IntegrationConfigGateProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [configuring, setConfiguring] = useState(false);
 
   const handleSaved = () => {
     router.refresh();
@@ -60,40 +59,25 @@ export function IntegrationConfigGate({
 
   if (!config.configured) {
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-3">
         <p className={descriptionClass}>
-          Integration not configured. Configure this integration before
-          connecting.
+          Register {providerLabel}&apos;s OAuth app to enable connecting.
         </p>
         {helpUrl && (
           <a
             href={helpUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 self-start text-xs text-primary underline-offset-2 hover:underline"
+            className="self-start text-xs text-primary underline-offset-2 hover:underline"
           >
             {helpLabel ?? "Get your client ID and secret"}
           </a>
         )}
-        <div className="mt-auto pt-6">
-          {configuring ? (
-            <IntegrationConfigForm
-              provider={provider}
-              providerLabel={providerLabel}
-              onSaved={handleSaved}
-              onCancel={() => setConfiguring(false)}
-              open={configuring}
-            />
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setConfiguring(true)}
-            >
-              Configure
-            </Button>
-          )}
-        </div>
+        <IntegrationConfigForm
+          provider={provider}
+          providerLabel={providerLabel}
+          onSaved={handleSaved}
+        />
       </div>
     );
   }
@@ -110,7 +94,6 @@ export function IntegrationConfigGate({
             handleSaved();
           }}
           onCancel={() => setEditing(false)}
-          open={editing}
         />
       </div>
     );

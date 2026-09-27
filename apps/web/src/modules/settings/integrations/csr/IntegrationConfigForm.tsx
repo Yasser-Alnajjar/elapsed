@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ConfigurableIntegrationProvider } from "@/lib/types/integrations";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface IntegrationConfigFormProps {
   provider: ConfigurableIntegrationProvider;
@@ -17,7 +16,6 @@ interface IntegrationConfigFormProps {
   initialClientId?: string | null;
   onSaved: () => void;
   onCancel?: () => void;
-  open: boolean;
 }
 
 /**
@@ -32,7 +30,6 @@ export function IntegrationConfigForm({
   initialClientId,
   onSaved,
   onCancel,
-  open,
 }: IntegrationConfigFormProps) {
   const isEdit = Boolean(initialClientId);
   const [clientId, setClientId] = useState(initialClientId ?? "");
@@ -63,74 +60,59 @@ export function IntegrationConfigForm({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(state) => {
-        if (!state) {
-          onCancel?.();
-        }
-      }}
-    >
-      <DialogContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor={`${provider}-client-id`}>Client ID</Label>
-            <Input
-              id={`${provider}-client-id`}
-              value={clientId}
-              onChange={(event) => setClientId(event.target.value)}
-              placeholder={`${providerLabel} OAuth app client ID`}
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="space-y-1.5">
+        <Label htmlFor={`${provider}-client-id`}>Client ID</Label>
+        <Input
+          id={`${provider}-client-id`}
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+          placeholder={`${providerLabel} OAuth app client ID`}
+          required
+        />
+      </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor={`${provider}-client-secret`}>Client Secret</Label>
-            <Input
-              id={`${provider}-client-secret`}
-              type="password"
-              autoComplete="off"
-              value={clientSecret}
-              onChange={(event) => setClientSecret(event.target.value)}
-              placeholder={
-                isEdit
-                  ? "Leave blank to keep the current secret"
-                  : `${providerLabel} OAuth app client secret`
-              }
-              required={!isEdit}
-            />
-          </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${provider}-client-secret`}>Client Secret</Label>
+        <Input
+          id={`${provider}-client-secret`}
+          type="password"
+          autoComplete="off"
+          value={clientSecret}
+          onChange={(event) => setClientSecret(event.target.value)}
+          placeholder={
+            isEdit
+              ? "Leave blank to keep the current secret"
+              : `${providerLabel} OAuth app client secret`
+          }
+          required={!isEdit}
+        />
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving && <Loader2 className="animate-spin" />}
-              {saving
-                ? "Saving…"
-                : isEdit
-                  ? "Save changes"
-                  : "Save configuration"}
-            </Button>
-            {onCancel && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={onCancel}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={saving}>
+          {saving && <Loader2 className="animate-spin" />}
+          {saving ? "Saving…" : isEdit ? "Save changes" : "Save configuration"}
+        </Button>
+        {onCancel && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+        )}
+      </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </form>
-      </DialogContent>
-    </Dialog>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </form>
   );
 }

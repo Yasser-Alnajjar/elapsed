@@ -7,7 +7,6 @@ import { Actions } from "@/actions/client";
 import { ReauthBanner } from "@/components/shared/reauth-banner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ZendeskSyncResult } from "@/lib/types/integrations";
 
@@ -20,25 +19,41 @@ export function ZendeskConnectForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="zendesk-subdomain">Zendesk subdomain</Label>
-        <div className="flex items-center gap-2">
-          <Input
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+      <Label
+        htmlFor="zendesk-subdomain"
+        className="font-label-caps text-label-caps uppercase tracking-wider text-on-surface-variant"
+      >
+        Support domain configuration
+      </Label>
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row">
+        <div className="relative flex flex-1 items-center">
+          <input
             id="zendesk-subdomain"
             value={subdomain}
             onChange={(event) => setSubdomain(event.target.value)}
-            placeholder="acme"
+            placeholder="your-subdomain"
             pattern="[a-zA-Z0-9][a-zA-Z0-9\-]*"
             required
-            className="max-w-40"
+            className="font-mono-metric-md text-mono-metric-md w-full rounded-lg bg-surface-container-lowest px-4 py-3 pr-32 text-on-surface transition-colors placeholder:text-on-surface-variant/60 focus:bg-surface-container-high focus:outline-none"
           />
-          <span className="text-sm text-on-surface-variant">.zendesk.com</span>
+          <span className="font-code-audit text-code-audit pointer-events-none absolute right-4 text-on-surface-variant/60">
+            .zendesk.com
+          </span>
         </div>
+        <Button
+          type="submit"
+          className="gap-1.5 rounded-lg px-5 py-3 font-semibold shadow-md"
+        >
+          <span className="material-symbols-outlined text-[20px]">bolt</span>
+          Connect Zendesk
+        </Button>
       </div>
-      <Button type="submit" size="sm">
-        Connect Zendesk
-      </Button>
+      <p className="font-code-audit text-code-audit flex items-center gap-1.5 text-on-surface-variant/70">
+        <span className="material-symbols-outlined text-[14px]">info</span>
+        Standard OAuth redirect happens inside Zendesk&apos;s own
+        authorization screen.
+      </p>
     </form>
   );
 }

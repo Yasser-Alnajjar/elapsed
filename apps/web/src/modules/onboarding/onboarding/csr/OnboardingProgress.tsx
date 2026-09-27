@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertCircle, CircleDot, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
@@ -11,20 +10,113 @@ interface OnboardingProgressProps {
   error: string | null;
 }
 
-const stats = [
+interface StatCardSpec {
+  key: "ticketsFetched" | "escalatedCases" | "linkedIssues";
+  iconName: string;
+  label: string;
+  description: string;
+}
+
+const statCards: StatCardSpec[] = [
   {
     key: "ticketsFetched",
-    label: "Tickets",
+    iconName: "inventory_2",
+    label: "Tickets ingested",
+    description: "Normalized across the 90-day backfill window",
   },
   {
     key: "escalatedCases",
-    label: "Escalations",
+    iconName: "hourglass_top",
+    label: "Escalated cases",
+    description: "Cases with at least one engineering handoff",
   },
   {
     key: "linkedIssues",
-    label: "Linked issues",
+    iconName: "account_tree",
+    label: "Linked Jira issues",
+    description: "Resolved via official remote issue links",
   },
-] as const;
+];
+
+/** One line in the ingestion ledger — real, derived state only, never fabricated per-ticket detail. */
+interface LedgerEntry {
+  iconName: string;
+  tone: "primary" | "tertiary" | "secondary" | "muted";
+  text: string;
+}
+
+function buildLedger({
+  status,
+  zendeskRunning,
+  jiraRunning,
+}: Pick<OnboardingProgressProps, "status" | "zendeskRunning" | "jiraRunning">): LedgerEntry[] {
+  const entries: LedgerEntry[] = [
+    {
+      iconName: "hub",
+      tone: "primary",
+      text: "Read-only handshake established with your Zendesk instance",
+    },
+  ];
+
+  if (status.ticketsFetched > 0) {
+    entries.push({
+      iconName: "inventory_2",
+      tone: "primary",
+      text: `${status.ticketsFetched.toLocaleString()} tickets ingested and normalized so far`,
+    });
+  } else if (zendeskRunning) {
+    entries.push({
+      iconName: "sync",
+      tone: "muted",
+      text: "Fetching the 90-day ticket index…",
+    });
+  }
+
+  if (status.escalatedCases > 0) {
+    entries.push({
+      iconName: "priority_high",
+      tone: "secondary",
+      text: `${status.escalatedCases.toLocaleString()} escalated case${
+        status.escalatedCases === 1 ? "" : "s"
+      } identified with an engineering handoff`,
+    });
+  }
+
+  if (status.linkedIssues > 0) {
+    entries.push({
+      iconName: "link",
+      tone: "tertiary",
+      text: `${status.linkedIssues.toLocaleString()} Jira issue link${
+        status.linkedIssues === 1 ? "" : "s"
+      } resolved deterministically`,
+    });
+  } else if (jiraRunning) {
+    entries.push({
+      iconName: "sync",
+      tone: "muted",
+      text: "Correlating escalated cases against Jira remote links…",
+    });
+  }
+
+  if (!zendeskRunning) {
+    entries.push({
+      iconName: "task_alt",
+      tone: "tertiary",
+      text: jiraRunning
+        ? "Zendesk backfill complete — Jira is still catching up in the background"
+        : "Zendesk backfill complete",
+    });
+  }
+
+  return entries;
+}
+
+const LEDGER_TONE_CLASS: Record<LedgerEntry["tone"], string> = {
+  primary: "text-primary",
+  tertiary: "text-tertiary",
+  secondary: "text-secondary",
+  muted: "text-on-surface-variant/70",
+};
 
 export function OnboardingProgress({
   status,
@@ -32,44 +124,116 @@ export function OnboardingProgress({
   jiraRunning,
   error,
 }: OnboardingProgressProps) {
-  const message = zendeskRunning
-    ? "Pulling your last 90 days from Zendesk…"
-    : `Zendesk backfill complete${
-        jiraRunning ? " — Jira is still catching up in the background." : "."
-      }`;
+  const running = zendeskRunning || jiraRunning;
+  const ledger = buildLedger({ status, zendeskRunning, jiraRunning });
 
   return (
-    <>
-      <div className="flex items-center gap-2.5 text-sm">
-        {zendeskRunning ? (
-          <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-        ) : (
-          <CircleDot className="size-4 shrink-0 text-success" />
-        )}
-
-        <p className="text-foreground">{message}</p>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-label-caps text-label-caps rounded bg-surface-container-high px-1.5 py-0.5 uppercase tracking-wider text-primary">
+          Stage 02 // Historical backfill
+        </span>
+        <span
+          className={`size-1.5 rounded-full bg-tertiary ${running ? "animate-ping" : ""}`}
+        />
+        <span className="font-code-audit text-code-audit text-tertiary">
+          {running ? "KERNEL_STATUS: REPLAYING_RECORDS" : "KERNEL_STATUS: SYNCED"}
+        </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {stats.map(({ key, label }) => (
+      <div className="relative flex flex-col gap-2.5 overflow-hidden rounded-lg bg-surface-container-low p-3.5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-primary/10 blur-3xl"
+        />
+
+        <div className="z-10 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={`material-symbols-outlined text-[18px] text-primary ${running ? "animate-spin" : ""}`}
+            >
+              {running ? "sync" : "dataset"}
+            </span>
+            <span className="font-mono-metric-md text-mono-metric-md text-on-surface">
+              {running
+                ? "Replaying ticket history — parsing timestamps and handoffs…"
+                : "Historical backfill complete"}
+            </span>
+          </div>
+          {!running && (
+            <span className="font-label-caps text-label-caps shrink-0 rounded bg-tertiary/10 px-1.5 py-0.5 uppercase text-tertiary">
+              Zero errors
+            </span>
+          )}
+        </div>
+
+        <div className="z-10 h-2 w-full overflow-hidden rounded-full bg-surface-container-lowest p-0.5">
+          <div
+            className={`h-full rounded-full bg-gradient-to-r from-primary via-primary-fixed-dim to-tertiary transition-all duration-300 ${
+              running ? "w-2/3 animate-pulse" : "w-full"
+            }`}
+          />
+        </div>
+
+        {/* Ingestion ledger — a terminal-styled log of real, derived state (never fabricated per-ticket entries). */}
+        <div className="z-10 flex flex-col gap-1 rounded bg-surface-container-lowest p-2.5 font-code-audit text-code-audit">
+          {ledger.map((entry, index) => (
+            <div
+              key={`${entry.text}-${index}`}
+              className="flex items-start gap-2 text-on-surface-variant/80"
+            >
+              <span
+                className={`material-symbols-outlined shrink-0 text-[14px] ${LEDGER_TONE_CLASS[entry.tone]}`}
+              >
+                {entry.iconName}
+              </span>
+              <span>{entry.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {statCards.map(({ key, iconName, label, description }) => (
           <div
             key={key}
-            className="rounded-lg border border-border bg-interactive/30 px-3 py-2.5"
+            className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface-container-lowest p-3"
           >
-            <p className="font-display text-xl font-medium tracking-tight">
-              {status[key].toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground">{label}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded bg-surface-container-high text-primary">
+                <span className="material-symbols-outlined text-[16px]">
+                  {iconName}
+                </span>
+              </div>
+              <p className="font-mono-metric-lg text-mono-metric-lg text-on-surface">
+                {status[key].toLocaleString()}
+              </p>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
+                {label}
+              </p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant/80">
+                {description}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
+      <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-3 py-2 text-on-surface-variant/70">
+        <span className="material-symbols-outlined text-[16px]">lock</span>
+        <span className="font-code-audit text-code-audit">
+          Read-only ingestion — Elapsed never writes back to Zendesk or Jira
+        </span>
+      </div>
+
       {error && (
         <Alert variant="destructive">
-          <AlertCircle />
+          <span className="material-symbols-outlined text-[18px]">error</span>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </>
+    </div>
   );
 }

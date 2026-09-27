@@ -1,526 +1,693 @@
 <!DOCTYPE html>
 
-<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-secondary":"#131e8c","primary":"#8ed5ff","surface-container-highest":"#2d3449","on-primary-container":"#004965","on-surface-variant":"#bdc8d1","outline-variant":"#3e484f","inverse-surface":"#dae2fd","on-primary":"#00354a","error":"#ffb4ab","on-secondary-fixed":"#000767","secondary-container":"#2f3aa3","tertiary-container":"#30c88f","surface-variant":"#2d3449","on-primary-fixed-variant":"#004c69","inverse-on-surface":"#283044","on-surface":"#dae2fd","on-error":"#690005","on-tertiary-fixed":"#002113","tertiary-fixed-dim":"#4edea3","surface-container-low":"#131b2e","surface-bright":"#31394d","surface-tint":"#7bd0ff","on-secondary-fixed-variant":"#2f3aa3","primary-fixed":"#c4e7ff","secondary":"#bdc2ff","secondary-fixed-dim":"#bdc2ff","surface-dim":"#0b1326","surface-container-lowest":"#060e20","on-primary-fixed":"#001e2c","outline":"#87929a","surface":"#0b1326","on-tertiary-container":"#004e34","error-container":"#93000a","primary-fixed-dim":"#7bd0ff","surface-container":"#171f33","on-background":"#dae2fd","tertiary":"#56e5a9","on-tertiary":"#003824","on-error-container":"#ffdad6","on-tertiary-fixed-variant":"#005236","surface-container-high":"#222a3d","on-secondary-container":"#a8afff","secondary-fixed":"#e0e0ff","background":"#0b1326","tertiary-fixed":"#6ffbbe","inverse-primary":"#00668a","primary-container":"#38bdf8"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter-desktop":"1.5rem","margin-desktop":"2rem","space-sm":"0.5rem","space-lg":"1.5rem","gutter":"1rem","space-md":"1rem","margin":"1rem","space-xs":"0.25rem","space-xl":"2.5rem"},"fontFamily":{"headline-sm":["Hanken Grotesk"],"headline-lg":["Hanken Grotesk"],"body-lg":["Inter"],"display-hero-mobile":["Hanken Grotesk"],"display-hero":["Hanken Grotesk"],"code-audit":["JetBrains Mono"],"mono-metric-lg":["JetBrains Mono"],"label-caps":["JetBrains Mono"],"mono-metric-md":["JetBrains Mono"],"headline-md":["Hanken Grotesk"],"body-sm":["Inter"],"body-md":["Inter"]},"fontSize":{"headline-sm":["18px",{"lineHeight":"26px","fontWeight":"500"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"display-hero-mobile":["30px",{"lineHeight":"38px","letterSpacing":"-0.01em","fontWeight":"600"}],"display-hero":["40px",{"lineHeight":"48px","letterSpacing":"-0.02em","fontWeight":"600"}],"code-audit":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-metric-lg":["24px",{"lineHeight":"28px","letterSpacing":"-0.02em","fontWeight":"500"}],"label-caps":["11px",{"lineHeight":"14px","letterSpacing":"0.08em","fontWeight":"600"}],"mono-metric-md":["14px",{"lineHeight":"18px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["22px",{"lineHeight":"30px","letterSpacing":"-0.01em","fontWeight":"500"}],"body-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container"><header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-margin-desktop flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">timer</span></div><span class="font-headline-sm text-headline-sm font-semibold tracking-tight text-on-surface">ELAPSED</span></div><div class="h-4 w-[1px] bg-outline-variant/40 mx-space-xs"></div><span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">ZERO-CONFIG ENGINE</span></div><nav class="flex items-center gap-space-sm bg-surface-container-lowest px-space-xs py-space-xs rounded-lg" data-active-classes="bg-surface-container-high text-on-surface"><a class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="step-1-connect-helpdesk" href="#"><span class="font-label-caps text-label-caps text-primary">01</span><span class="font-body-sm text-body-sm font-medium">Connect Zendesk</span></a><div class="w-3 h-[1px] bg-outline-variant/30"></div><a class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="step-2-backfill-ingestion" href="#"><span class="font-label-caps text-label-caps text-primary">02</span><span class="font-body-sm text-body-sm font-medium">Run 90d Ingestion</span></a><div class="w-3 h-[1px] bg-outline-variant/30"></div><a class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="step-3-connect-tracker" href="#"><span class="font-label-caps text-label-caps text-primary">03</span><span class="font-body-sm text-body-sm font-medium">Connect Jira</span></a></nav><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span><span class="font-label-caps text-label-caps text-on-surface-variant uppercase">LIVE TELEMETRY</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-[calc(100vh-4rem)] flex flex-col"><div class="flex flex-col w-full">
-<!-- Interactive Canvas Container -->
-<div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-<!-- Top Step Progress Navigation / Wizard Bar -->
-<div class="relative overflow-hidden rounded-xl bg-[#0b1324] shadow-xl">
-<!-- Glow ambient background -->
-<div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
-<div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
-<div class="relative p-4 md:p-6">
-<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6">
-<div class="flex items-center gap-3">
-<div class="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400">
-<span class="material-symbols-outlined text-[22px]">verified</span>
-</div>
-<div>
-<div class="flex items-center gap-2">
-<span class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">Setup Progress</span>
-<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400">Step 4 of 4</span>
-</div>
-<h2 class="text-base font-semibold text-slate-100">Zero-Config Onboarding &amp; Verification Complete</h2>
-</div>
-</div>
-<!-- Live Telemetry Badge -->
-<div class="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[#060a12]/80 backdrop-blur shadow-inner">
-<span class="relative flex h-2.5 w-2.5">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-</span>
-<span class="text-[11px] font-mono font-semibold tracking-wider text-emerald-400 uppercase">● DETERMINISTIC ENGINE ACTIVE</span>
-<span class="text-slate-600 font-mono text-xs">|</span>
-<span class="text-[11px] font-mono text-slate-400 tabular-nums">LATENCY &lt;0.8ms</span>
-</div>
-</div>
-<!-- 4-Step Indicator Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-<!-- Step 1 -->
-<div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
-<div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-<span class="material-symbols-outlined text-sm font-bold">check</span>
-</div>
-<div class="min-w-0">
-<div class="flex items-center justify-between">
-<span class="text-xs font-medium text-slate-400">01 Connect</span>
-<span class="text-[10px] font-mono text-emerald-400/90 font-medium">READY</span>
-</div>
-<div class="text-xs font-semibold text-slate-200 truncate mt-0.5">Zendesk Helpdesk</div>
-<div class="text-[11px] text-slate-400 font-mono mt-0.5">REST v2 stream open</div>
-</div>
-</div>
-<!-- Step 2 -->
-<div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
-<div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-<span class="material-symbols-outlined text-sm font-bold">check</span>
-</div>
-<div class="min-w-0">
-<div class="flex items-center justify-between">
-<span class="text-xs font-medium text-slate-400">02 Ingestion</span>
-<span class="text-[10px] font-mono text-emerald-400/90 font-medium">SYNCED</span>
-</div>
-<div class="text-xs font-semibold text-slate-200 truncate mt-0.5">90d Baseline Data</div>
-<div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">1,842 tickets verified</div>
-</div>
-</div>
-<!-- Step 3 -->
-<div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
-<div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-<span class="material-symbols-outlined text-sm font-bold">check</span>
-</div>
-<div class="min-w-0">
-<div class="flex items-center justify-between">
-<span class="text-xs font-medium text-slate-400">03 Link Tracker</span>
-<span class="text-[10px] font-mono text-emerald-400/90 font-medium">LINKED</span>
-</div>
-<div class="text-xs font-semibold text-slate-200 truncate mt-0.5">Jira Software</div>
-<div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">419 issue keys paired</div>
-</div>
-</div>
-<!-- Step 4 (Active Current) -->
-<div class="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-<div class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-<span class="material-symbols-outlined text-sm font-bold">play_arrow</span>
-</div>
-<div class="min-w-0">
-<div class="flex items-center justify-between">
-<span class="text-xs font-bold text-emerald-300">04 Live SLA</span>
-<span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 uppercase tracking-widest">DAEMON ONLINE</span>
-</div>
-<div class="text-xs font-semibold text-white truncate mt-0.5">Active Continuous Tracking</div>
-<div class="text-[11px] text-emerald-400/80 font-mono mt-0.5">Zero Data Retention</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Hero Confirmation Callout Panel -->
-<div class="rounded-xl bg-[#0b1324] shadow-2xl relative overflow-hidden">
-<!-- Top edge accent stripe -->
-<div class="h-1 w-full bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-500"></div>
-<div class="p-6 md:p-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
-<div class="space-y-4 max-w-3xl">
-<div class="flex flex-wrap items-center gap-3">
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-sky-500/15 text-sky-400 font-mono text-xs font-medium">
-<span class="material-symbols-outlined text-sm">lock_clock</span>
-              DETERMINISTIC VERIFICATION PASS
-            </span>
-<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#060a12] text-slate-400 font-mono text-[11px]">
-              SHA-256 KERNEL: <span class="text-sky-300 select-all font-mono">b78a994c65e28ff0...</span>
-<span class="text-emerald-400 font-semibold ml-1">100% AUDITABLE</span>
-</span>
-</div>
-<h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight">
-            Zero-Config Setup Complete — <span class="text-sky-400">Elapsed Daemon</span> Online
-          </h1>
-<p class="text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl">
-            Your customer-facing Zendesk helpdesk and engineering Jira trackers are deterministically paired. The continuous customer SLA clock is running across all active tickets with mathematical auditability and zero proprietary data storage.
-          </p>
-<!-- Metric Highlights Strip -->
-<div class="flex flex-wrap items-center gap-6 pt-2 font-mono text-xs text-slate-300">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-emerald-400 text-sm">schedule</span>
-<span>Wall-Clock Drift: <strong class="text-white tabular-nums">0.00ms</strong></span>
-</div>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-sky-400 text-sm">hub</span>
-<span>Ticket Correlation: <strong class="text-white tabular-nums">83.1% Direct</strong></span>
-</div>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-amber-400 text-sm">notifications_active</span>
-<span>P1 SLA Threshold: <strong class="text-white tabular-nums">4h 00m</strong></span>
-</div>
-</div>
-</div>
-<!-- Call to Action Buttons -->
-<div class="flex flex-col sm:flex-row xl:flex-col gap-3 shrink-0">
-<button class="group relative inline-flex items-center justify-center gap-3 px-7 py-4 rounded-lg bg-sky-400 hover:bg-sky-300 text-[#060a12] font-semibold text-sm transition-all duration-200 shadow-[0_0_25px_rgba(56,189,248,0.35)] hover:shadow-[0_0_35px_rgba(56,189,248,0.5)] active:scale-95 cursor-pointer" id="launchBtn">
-<span class="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">rocket_launch</span>
-<span>Launch Live Operations Dashboard</span>
-<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-</button>
-<button class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-lg bg-[#0e1a33] hover:bg-[#16254a] text-slate-200 hover:text-white font-medium text-xs transition-colors duration-200 shadow-sm cursor-pointer" id="downloadPdfBtn">
-<span class="material-symbols-outlined text-[18px] text-slate-400">picture_as_pdf</span>
-<span>Download 90-Day Baseline Audit Summary (PDF)</span>
-</button>
-</div>
-</div>
-</div>
-<!-- Pre-flight Synchronization & Health Check Matrix (4 Grid Cards) -->
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-slate-400 text-lg">fact_check</span>
-<h3 class="text-sm font-semibold tracking-wide uppercase text-slate-300 font-mono">Pre-flight Synchronization &amp; Health Matrix</h3>
-</div>
-<span class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          All 4 Daemons Operational
-        </span>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-<!-- Card 1: Zendesk Primary Feed -->
-<div class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2 text-slate-300">
-<span class="material-symbols-outlined text-sky-400 text-lg">support_agent</span>
-<span class="font-semibold text-xs tracking-wider font-mono uppercase">Zendesk Feed</span>
-</div>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">HEALTHY</span>
-</div>
-<div class="space-y-1">
-<div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">412 <span class="text-xs font-normal text-slate-400 font-sans">events/sec</span></div>
-<p class="text-xs text-slate-400">Historical tickets indexed deterministically</p>
-</div>
-</div>
-<div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Sync Scope:</span>
-<span class="text-slate-200 tabular-nums font-semibold">1,842 tickets verified</span>
-</div>
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Stream Protocol:</span>
-<span class="text-sky-300">REST v2 / Incremental</span>
-</div>
-</div>
-</div>
-<!-- Card 2: Jira Software Integration -->
-<div class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2 text-slate-300">
-<span class="material-symbols-outlined text-sky-400 text-lg">account_tree</span>
-<span class="font-semibold text-xs tracking-wider font-mono uppercase">Jira Tracker</span>
-</div>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">ACTIVE</span>
-</div>
-<div class="space-y-1">
-<div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">83.1% <span class="text-xs font-normal text-emerald-400 font-mono">CERTAIN</span></div>
-<p class="text-xs text-slate-400">118 direct key matches across backfill</p>
-</div>
-</div>
-<div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Transit Warning:</span>
-<span class="text-amber-400 tabular-nums font-medium">4 tickets unassigned</span>
-</div>
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Webhook Handlers:</span>
-<span class="text-sky-300">Bidirectional active</span>
-</div>
-</div>
-</div>
-<!-- Card 3: Continuous Clock Daemon -->
-<div class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2 text-slate-300">
-<span class="material-symbols-outlined text-emerald-400 text-lg">alarm_on</span>
-<span class="font-semibold text-xs tracking-wider font-mono uppercase">Clock Daemon</span>
-</div>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 uppercase">SYNCHRONIZED</span>
-</div>
-<div class="space-y-1">
-<div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">0.00 <span class="text-xs font-normal text-slate-400 font-sans">ms offset</span></div>
-<p class="text-xs text-slate-400">Continuous wall-clock UTC RFC-822 baseline</p>
-</div>
-</div>
-<div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Policies Applied:</span>
-<span class="text-slate-200">Platinum (4h), High (6h)</span>
-</div>
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Precision:</span>
-<span class="text-emerald-400">Sub-second atomic</span>
-</div>
-</div>
-</div>
-<!-- Card 4: Escalation Channels -->
-<div class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
-<div class="space-y-3">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2 text-slate-300">
-<span class="material-symbols-outlined text-sky-400 text-lg">campaign</span>
-<span class="font-semibold text-xs tracking-wider font-mono uppercase">Escalations</span>
-</div>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">DISPATCH READY</span>
-</div>
-<div class="space-y-1">
-<div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">3 <span class="text-xs font-normal text-slate-400 font-sans">routes wired</span></div>
-<p class="text-xs text-slate-400">Slack, Email SMTP &amp; PagerDuty configured</p>
-</div>
-</div>
-<div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">Slack Destination:</span>
-<span class="text-sky-300">#sla-alerts</span>
-</div>
-<div class="flex justify-between text-[11px] font-mono">
-<span class="text-slate-400">PagerDuty Bridge:</span>
-<span class="text-emerald-400 font-semibold">Armed for P1</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Active Priority Queue & Live Tracking Preview -->
-<div class="rounded-xl bg-[#0b1324] shadow-xl overflow-hidden">
-<div class="p-5 md:p-6 bg-[#0e1930] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-<div class="space-y-1">
-<div class="flex items-center gap-2">
-<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-<h3 class="text-base font-semibold text-white">Live Operations Dashboard Preview</h3>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-rose-500/20 text-rose-300 font-semibold">Immediate Attention Queue</span>
-</div>
-<p class="text-xs text-slate-400">
-            Tickets currently consuming client contract SLA runway. Notice the breakdown between Support and Engineering transit.
-          </p>
-</div>
-<div class="flex items-center gap-2 font-mono text-xs">
-<span class="text-slate-400">Total Active Runway Breaches Avoided:</span>
-<span class="px-2 py-1 rounded bg-[#060a12] text-emerald-400 font-bold tabular-nums">28 this week</span>
-</div>
-</div>
-<!-- Tickets Table View -->
-<div class="overflow-x-auto">
-<table class="w-full text-left text-xs">
-<thead>
-<tr class="bg-[#080e1c] text-slate-400 font-mono text-[11px] uppercase tracking-wider">
-<th class="py-3 px-5">Ticket / Issue Key</th>
-<th class="py-3 px-4">Customer Account</th>
-<th class="py-3 px-4">Time Segment Breakdown</th>
-<th class="py-3 px-4 text-right">Remaining Runway</th>
-<th class="py-3 px-5 text-right">Trigger Alert</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-[#14213d] font-sans">
-<!-- Row 1: Dataship Logistics (Urgent) -->
-<tr class="hover:bg-[#0d172e] transition-colors group">
-<td class="py-4 px-5">
-<div class="flex items-center gap-2">
-<span class="font-mono font-semibold text-sky-400">#ZD-9044</span>
-<span class="text-slate-500 font-mono">⇄</span>
-<span class="font-mono font-semibold text-purple-400">ENG-4188</span>
-</div>
-<div class="text-[11px] text-slate-400 mt-0.5 font-mono">P1 Critical · Tier-1 Platinum</div>
-</td>
-<td class="py-4 px-4 font-medium text-slate-200">
-                Dataship Logistics
-                <div class="text-[11px] text-slate-400 font-normal">Cross-region latency spike</div>
-</td>
-<td class="py-4 px-4 min-w-[220px]">
-<!-- Segmented Progress Bar -->
-<div class="space-y-1.5">
-<div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp: 42m</span>
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-400"></span> Eng Transit: 0m</span>
-<span class="text-rose-400 font-semibold tabular-nums">92.5% Used</span>
-</div>
-<div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
-<div class="bg-sky-400 h-full" style="width: 75%"></div>
-<div class="bg-rose-500 h-full animate-pulse" style="width: 17.5%"></div>
-<div class="bg-[#1c273c] h-full" style="width: 7.5%"></div>
-</div>
-</div>
-</td>
-<td class="py-4 px-4 text-right">
-<span class="font-mono text-sm font-bold text-rose-400 tabular-nums px-2.5 py-1 rounded bg-rose-500/10">00:17:56</span>
-<div class="text-[10px] text-rose-300 font-mono mt-1">Breach imminent</div>
-</td>
-<td class="py-4 px-5 text-right">
-<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 font-mono text-[11px] font-medium">
-<span class="material-symbols-outlined text-[13px]">warning</span>
-                  Critical Runway
-                </span>
-</td>
-</tr>
-<!-- Row 2: Acme Global Cloud -->
-<tr class="hover:bg-[#0d172e] transition-colors group">
-<td class="py-4 px-5">
-<div class="flex items-center gap-2">
-<span class="font-mono font-semibold text-sky-400">#ZD-8921</span>
-<span class="text-slate-500 font-mono">⇄</span>
-<span class="font-mono font-semibold text-purple-400">ENG-4102</span>
-</div>
-<div class="text-[11px] text-slate-400 mt-0.5 font-mono">P1 Critical · Tier-1 Platinum</div>
-</td>
-<td class="py-4 px-4 font-medium text-slate-200">
-                Acme Global Cloud
-                <div class="text-[11px] text-slate-400 font-normal">Auth token rejection in US-East</div>
-</td>
-<td class="py-4 px-4 min-w-[220px]">
-<div class="space-y-1.5">
-<div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp: 38m</span>
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-400"></span> Eng: 2h 46m</span>
-<span class="text-amber-400 font-semibold tabular-nums">85.3% Used</span>
-</div>
-<div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
-<div class="bg-sky-400 h-full" style="width: 25%"></div>
-<div class="bg-amber-400 h-full" style="width: 60%"></div>
-<div class="bg-[#1c273c] h-full" style="width: 15%"></div>
-</div>
-</div>
-</td>
-<td class="py-4 px-4 text-right">
-<span class="font-mono text-sm font-bold text-amber-400 tabular-nums px-2.5 py-1 rounded bg-amber-500/10">00:35:05</span>
-<div class="text-[10px] text-slate-400 font-mono mt-1">35 mins remain</div>
-</td>
-<td class="py-4 px-5 text-right">
-<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono text-[11px] font-medium">
-<span class="material-symbols-outlined text-[13px]">person_off</span>
-                  Unassigned in Jira
-                </span>
-</td>
-</tr>
-<!-- Row 3: CloudScale Global -->
-<tr class="hover:bg-[#0d172e] transition-colors group">
-<td class="py-4 px-5">
-<div class="flex items-center gap-2">
-<span class="font-mono font-semibold text-sky-400">#ZD-9120</span>
-<span class="text-slate-500 font-mono">⇄</span>
-<span class="font-mono font-semibold text-purple-400">ENG-4205</span>
-</div>
-<div class="text-[11px] text-slate-400 mt-0.5 font-mono">P2 High · Tier-2 Enterprise</div>
-</td>
-<td class="py-4 px-4 font-medium text-slate-200">
-                CloudScale Global
-                <div class="text-[11px] text-slate-400 font-normal">Data lake webhook retry backoff</div>
-</td>
-<td class="py-4 px-4 min-w-[220px]">
-<div class="space-y-1.5">
-<div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp: 50m</span>
-<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-purple-400"></span> Eng WIP: 4h 17m</span>
-<span class="text-sky-300 font-semibold tabular-nums">78.0% Used</span>
-</div>
-<div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
-<div class="bg-sky-400 h-full" style="width: 18%"></div>
-<div class="bg-purple-400 h-full" style="width: 60%"></div>
-<div class="bg-[#1c273c] h-full" style="width: 22%"></div>
-</div>
-</div>
-</td>
-<td class="py-4 px-4 text-right">
-<span class="font-mono text-sm font-bold text-sky-300 tabular-nums px-2.5 py-1 rounded bg-sky-500/10">00:52:15</span>
-<div class="text-[10px] text-slate-400 font-mono mt-1">52 mins remain</div>
-</td>
-<td class="py-4 px-5 text-right">
-<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-400 font-mono text-[11px] font-medium">
-<span class="material-symbols-outlined text-[13px]">autorenew</span>
-                  In Progress WIP
-                </span>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<!-- Quick Configuration Guidance Checklist & Teammate Invite Strip -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-<!-- Active Toggles (2 cols) -->
-<div class="lg:col-span-2 p-5 rounded-xl bg-[#0b1324] shadow-md flex flex-col justify-between">
-<div>
-<div class="flex items-center justify-between pb-3">
-<span class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">Automated Deterministic Rules Armed</span>
-<span class="text-xs font-mono text-emerald-400">3 of 3 Active</span>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-<div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
-<span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
-<div class="text-xs">
-<div class="font-medium text-slate-200">Continuous Wall-Clock</div>
-<div class="text-[11px] text-slate-400 mt-0.5">SLA never pauses on internal handoffs</div>
-</div>
-</div>
-<div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
-<span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
-<div class="text-xs">
-<div class="font-medium text-slate-200">Non-Attributive Labels</div>
-<div class="text-[11px] text-slate-400 mt-0.5">Neutral accountability stages</div>
-</div>
-</div>
-<div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
-<span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
-<div class="text-xs">
-<div class="font-medium text-slate-200">Deterministic Webhooks</div>
-<div class="text-[11px] text-slate-400 mt-0.5">Zero-latency sync verification</div>
-</div>
-</div>
-</div>
-</div>
-<div class="pt-4 mt-3 flex items-center justify-between text-xs text-slate-400">
-<span class="font-mono text-[11px]">Audit Mode: <span class="text-slate-200">Strict RFC-822 Compliance</span></span>
-<span class="font-mono text-[11px] text-sky-400">All rules verified by hash signature</span>
-</div>
-</div>
-<!-- Recommended Next Action (1 col) -->
-<div class="p-5 rounded-xl bg-gradient-to-br from-[#0e1f3d] to-[#0b1324] shadow-md flex flex-col justify-between">
-<div class="space-y-2">
-<div class="flex items-center gap-2 text-sky-400">
-<span class="material-symbols-outlined text-lg">group_add</span>
-<span class="font-mono text-xs font-semibold uppercase tracking-wider">Recommended Next Step</span>
-</div>
-<h4 class="text-sm font-semibold text-white">Align Engineering &amp; Support Leads</h4>
-<p class="text-xs text-slate-300 leading-relaxed">
-            Invite your Engineering &amp; Support leads so both teams share single-pane-of-glass SLA visibility and clear runway metrics.
-          </p>
-</div>
-<div class="pt-4 mt-2">
-<div class="flex gap-2">
-<input class="w-full bg-[#060a12] text-xs text-white px-3 py-2 rounded border-0 focus:outline-none focus:ring-1 focus:ring-sky-400 placeholder:text-slate-600 font-sans" placeholder="colleague@company.com" type="email"/>
-<button class="px-3 py-2 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-mono text-xs font-medium shrink-0 transition-colors cursor-pointer">
-              Invite
-            </button>
-</div>
-</div>
-</div>
-</div>
-<!-- Live Telemetry Banner Footer -->
-<div class="rounded-lg bg-[#060a12] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400 shadow-inner">
-<div class="flex items-center gap-3">
-<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-<span class="text-slate-300 font-semibold">ELAPSED KERNEL v2.14.0-PROD</span>
-<span class="text-slate-600">|</span>
-<span class="text-slate-400">READ-ONLY ENCLAVE</span>
-<span class="text-slate-600">|</span>
-<span class="text-emerald-400">100% DETERMINISTIC ZERO-MUTATION</span>
-</div>
-<div class="flex items-center gap-4 text-[11px] text-slate-400">
-<span>ENCRYPTED IN-MEMORY CLOCK</span>
-<span class="text-sky-400">NON-STORAGE COMPLIANT</span>
-</div>
-</div>
-</div>
-</div>
-<script>
-  // Simple micro-interactions for the completion launch screen
-  document.getElementById('launchBtn')?.addEventListener('click', function() {
-    this.classList.add('scale-95');
-    setTimeout(() => {
-      this.classList.remove('scale-95');
-      // Simulated routing or dispatch to live operational dashboard
-      const notice = document.createElement('div');
-      notice.className = 'fixed bottom-6 right-6 px-4 py-3 bg-emerald-500 text-slate-950 font-semibold font-mono text-xs rounded-lg shadow-2xl flex items-center gap-2 z-50 animate-bounce';
-      notice.innerHTML = '<span class="material-symbols-outlined text-sm font-bold">check_circle</span> Live Dashboard Stream Activated. Redirecting...';
-      document.body.appendChild(notice);
-      setTimeout(() => notice.remove(), 3200);
-    }, 150);
-  });
+<html class="dark" lang="en">
 
-  document.getElementById('downloadPdfBtn')?.addEventListener('click', function() {
-    const btn = this;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>Compiling SHA-256 Audit Log...</span>';
-    setTimeout(() => {
-      btn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-emerald-400">check</span><span>Audit PDF Generated!</span>';
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 2500);
-    }, 1200);
-  });
-</script></main><footer class="w-full bg-surface-container-lowest/80 py-space-md shadow-[0_-1px_8px_rgba(0,0,0,0.04)]"><div class="w-full px-margin-desktop flex items-center justify-between"><div class="flex items-center gap-space-lg"><span class="font-code-audit text-code-audit text-on-surface-variant/70">ELAPSED KERNEL v2.4.0-PROD</span><span class="font-code-audit text-code-audit text-on-surface-variant/50">ID: sess_90d_arc418</span></div><div class="flex items-center gap-space-md"><span class="font-body-sm text-body-sm text-on-surface-variant">Deterministic SLA Ingestion Engine</span><span class="font-code-audit text-code-audit text-tertiary bg-tertiary-container/10 px-space-xs py-0.5 rounded">100% AUDITABLE</span></div></div></footer></body></html>
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <meta content="web_standard" name="shell-type" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <style>
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main>:first-child {
+        margin-top: 0 !important;
+      }
+
+      main>:last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#131e8c", "primary": "#8ed5ff", "surface-container-highest": "#2d3449", "on-primary-container": "#004965", "on-surface-variant": "#bdc8d1", "outline-variant": "#3e484f", "inverse-surface": "#dae2fd", "on-primary": "#00354a", "error": "#ffb4ab", "on-secondary-fixed": "#000767", "secondary-container": "#2f3aa3", "tertiary-container": "#30c88f", "surface-variant": "#2d3449", "on-primary-fixed-variant": "#004c69", "inverse-on-surface": "#283044", "on-surface": "#dae2fd", "on-error": "#690005", "on-tertiary-fixed": "#002113", "tertiary-fixed-dim": "#4edea3", "surface-container-low": "#131b2e", "surface-bright": "#31394d", "surface-tint": "#7bd0ff", "on-secondary-fixed-variant": "#2f3aa3", "primary-fixed": "#c4e7ff", "secondary": "#bdc2ff", "secondary-fixed-dim": "#bdc2ff", "surface-dim": "#0b1326", "surface-container-lowest": "#060e20", "on-primary-fixed": "#001e2c", "outline": "#87929a", "surface": "#0b1326", "on-tertiary-container": "#004e34", "error-container": "#93000a", "primary-fixed-dim": "#7bd0ff", "surface-container": "#171f33", "on-background": "#dae2fd", "tertiary": "#56e5a9", "on-tertiary": "#003824", "on-error-container": "#ffdad6", "on-tertiary-fixed-variant": "#005236", "surface-container-high": "#222a3d", "on-secondary-container": "#a8afff", "secondary-fixed": "#e0e0ff", "background": "#0b1326", "tertiary-fixed": "#6ffbbe", "inverse-primary": "#00668a", "primary-container": "#38bdf8" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "gutter-desktop": "1.5rem", "margin-desktop": "2rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "gutter": "1rem", "space-md": "1rem", "margin": "1rem", "space-xs": "0.25rem", "space-xl": "2.5rem" }, "fontFamily": { "headline-sm": ["Hanken Grotesk"], "headline-lg": ["Hanken Grotesk"], "body-lg": ["Inter"], "display-hero-mobile": ["Hanken Grotesk"], "display-hero": ["Hanken Grotesk"], "code-audit": ["JetBrains Mono"], "mono-metric-lg": ["JetBrains Mono"], "label-caps": ["JetBrains Mono"], "mono-metric-md": ["JetBrains Mono"], "headline-md": ["Hanken Grotesk"], "body-sm": ["Inter"], "body-md": ["Inter"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "500" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "display-hero-mobile": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-hero": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "code-audit": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "mono-metric-lg": ["24px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "500" }], "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "600" }], "mono-metric-md": ["14px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script>
+</head>
+
+<body
+  class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
+  <header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+    <div class="h-16 w-full px-margin-desktop flex items-center justify-between">
+      <div class="flex items-center gap-space-md">
+        <div class="flex items-center gap-space-sm">
+          <div class="w-7 h-7 rounded bg-primary-container flex items-center justify-center"><span
+              class="material-symbols-outlined text-on-primary text-[18px]">timer</span></div><span
+            class="font-headline-sm text-headline-sm font-semibold tracking-tight text-on-surface">ELAPSED</span>
+        </div>
+        <div class="h-4 w-[1px] bg-outline-variant/40 mx-space-xs"></div><span
+          class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">ZERO-CONFIG
+          ENGINE</span>
+      </div>
+      <nav class="flex items-center gap-space-sm bg-surface-container-lowest px-space-xs py-space-xs rounded-lg"
+        data-active-classes="bg-surface-container-high text-on-surface"><a
+          class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+          data-path="step-1-connect-helpdesk" href="#"><span
+            class="font-label-caps text-label-caps text-primary">01</span><span
+            class="font-body-sm text-body-sm font-medium">Connect Zendesk</span></a>
+        <div class="w-3 h-[1px] bg-outline-variant/30"></div><a
+          class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+          data-path="step-2-backfill-ingestion" href="#"><span
+            class="font-label-caps text-label-caps text-primary">02</span><span
+            class="font-body-sm text-body-sm font-medium">Run 90d Ingestion</span></a>
+        <div class="w-3 h-[1px] bg-outline-variant/30"></div><a
+          class="flex items-center gap-space-xs px-space-md py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+          data-path="step-3-connect-tracker" href="#"><span
+            class="font-label-caps text-label-caps text-primary">03</span><span
+            class="font-body-sm text-body-sm font-medium">Connect Jira</span></a>
+      </nav>
+      <div class="flex items-center gap-space-md">
+        <div class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low"><span
+            class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span><span
+            class="font-label-caps text-label-caps text-on-surface-variant uppercase">LIVE TELEMETRY</span></div>
+        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span
+            class="material-symbols-outlined text-on-primary text-[18px]">person</span></div>
+      </div>
+    </div>
+  </header>
+  <main class="w-full pt-16 bg-surface min-h-[calc(100vh-4rem)] flex flex-col">
+    <div class="flex flex-col w-full">
+      <!-- Interactive Canvas Container -->
+      <div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <!-- Top Step Progress Navigation / Wizard Bar -->
+        <div class="relative overflow-hidden rounded-xl bg-[#0b1324] shadow-xl">
+          <!-- Glow ambient background -->
+          <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none">
+          </div>
+          <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none">
+          </div>
+          <div class="relative p-4 md:p-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400">
+                  <span class="material-symbols-outlined text-[22px]">verified</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">Setup
+                      Progress</span>
+                    <span
+                      class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400">Step
+                      4 of 4</span>
+                  </div>
+                  <h2 class="text-base font-semibold text-slate-100">Zero-Config Onboarding &amp; Verification Complete
+                  </h2>
+                </div>
+              </div>
+              <!-- Live Telemetry Badge -->
+              <div
+                class="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[#060a12]/80 backdrop-blur shadow-inner">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-[11px] font-mono font-semibold tracking-wider text-emerald-400 uppercase">●
+                  DETERMINISTIC ENGINE ACTIVE</span>
+                <span class="text-slate-600 font-mono text-xs">|</span>
+                <span class="text-[11px] font-mono text-slate-400 tabular-nums">LATENCY &lt;0.8ms</span>
+              </div>
+            </div>
+            <!-- 4-Step Indicator Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <!-- Step 1 -->
+              <div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
+                <div
+                  class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-sm font-bold">check</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400">01 Connect</span>
+                    <span class="text-[10px] font-mono text-emerald-400/90 font-medium">READY</span>
+                  </div>
+                  <div class="text-xs font-semibold text-slate-200 truncate mt-0.5">Zendesk Helpdesk</div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-0.5">REST v2 stream open</div>
+                </div>
+              </div>
+              <!-- Step 2 -->
+              <div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
+                <div
+                  class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-sm font-bold">check</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400">02 Ingestion</span>
+                    <span class="text-[10px] font-mono text-emerald-400/90 font-medium">SYNCED</span>
+                  </div>
+                  <div class="text-xs font-semibold text-slate-200 truncate mt-0.5">90d Baseline Data</div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">1,842 tickets verified</div>
+                </div>
+              </div>
+              <!-- Step 3 -->
+              <div class="flex items-start gap-3 p-3 rounded-lg bg-[#0e1930]/80">
+                <div
+                  class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <span class="material-symbols-outlined text-sm font-bold">check</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400">03 Link Tracker</span>
+                    <span class="text-[10px] font-mono text-emerald-400/90 font-medium">LINKED</span>
+                  </div>
+                  <div class="text-xs font-semibold text-slate-200 truncate mt-0.5">Jira Software</div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">419 issue keys paired</div>
+                </div>
+              </div>
+              <!-- Step 4 (Active Current) -->
+              <div
+                class="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                <div
+                  class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                  <span class="material-symbols-outlined text-sm font-bold">play_arrow</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-emerald-300">04 Live SLA</span>
+                    <span
+                      class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 uppercase tracking-widest">DAEMON
+                      ONLINE</span>
+                  </div>
+                  <div class="text-xs font-semibold text-white truncate mt-0.5">Active Continuous Tracking</div>
+                  <div class="text-[11px] text-emerald-400/80 font-mono mt-0.5">Zero Data Retention</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Hero Confirmation Callout Panel -->
+        <div class="rounded-xl bg-[#0b1324] shadow-2xl relative overflow-hidden">
+          <!-- Top edge accent stripe -->
+          <div class="h-1 w-full bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-500"></div>
+          <div class="p-6 md:p-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
+            <div class="space-y-4 max-w-3xl">
+              <div class="flex flex-wrap items-center gap-3">
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-sky-500/15 text-sky-400 font-mono text-xs font-medium">
+                  <span class="material-symbols-outlined text-sm">lock_clock</span>
+                  DETERMINISTIC VERIFICATION PASS
+                </span>
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#060a12] text-slate-400 font-mono text-[11px]">
+                  SHA-256 KERNEL: <span class="text-sky-300 select-all font-mono">b78a994c65e28ff0...</span>
+                  <span class="text-emerald-400 font-semibold ml-1">100% AUDITABLE</span>
+                </span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-white leading-tight">
+                Zero-Config Setup Complete — <span class="text-sky-400">Elapsed Daemon</span> Online
+              </h1>
+              <p class="text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl">
+                Your customer-facing Zendesk helpdesk and engineering Jira trackers are deterministically paired. The
+                continuous customer SLA clock is running across all active tickets with mathematical auditability and
+                zero proprietary data storage.
+              </p>
+              <!-- Metric Highlights Strip -->
+              <div class="flex flex-wrap items-center gap-6 pt-2 font-mono text-xs text-slate-300">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-emerald-400 text-sm">schedule</span>
+                  <span>Wall-Clock Drift: <strong class="text-white tabular-nums">0.00ms</strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sky-400 text-sm">hub</span>
+                  <span>Ticket Correlation: <strong class="text-white tabular-nums">83.1% Direct</strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-amber-400 text-sm">notifications_active</span>
+                  <span>P1 SLA Threshold: <strong class="text-white tabular-nums">4h 00m</strong></span>
+                </div>
+              </div>
+            </div>
+            <!-- Call to Action Buttons -->
+            <div class="flex flex-col sm:flex-row xl:flex-col gap-3 shrink-0">
+              <button
+                class="group relative inline-flex items-center justify-center gap-3 px-7 py-4 rounded-lg bg-sky-400 hover:bg-sky-300 text-[#060a12] font-semibold text-sm transition-all duration-200 shadow-[0_0_25px_rgba(56,189,248,0.35)] hover:shadow-[0_0_35px_rgba(56,189,248,0.5)] active:scale-95 cursor-pointer"
+                id="launchBtn">
+                <span
+                  class="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">rocket_launch</span>
+                <span>Launch Live Operations Dashboard</span>
+                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </button>
+              <button
+                class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-lg bg-[#0e1a33] hover:bg-[#16254a] text-slate-200 hover:text-white font-medium text-xs transition-colors duration-200 shadow-sm cursor-pointer"
+                id="downloadPdfBtn">
+                <span class="material-symbols-outlined text-[18px] text-slate-400">picture_as_pdf</span>
+                <span>Download 90-Day Baseline Audit Summary (PDF)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Pre-flight Synchronization & Health Check Matrix (4 Grid Cards) -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-slate-400 text-lg">fact_check</span>
+              <h3 class="text-sm font-semibold tracking-wide uppercase text-slate-300 font-mono">Pre-flight
+                Synchronization &amp; Health Matrix</h3>
+            </div>
+            <span class="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              All 4 Daemons Operational
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <!-- Card 1: Zendesk Primary Feed -->
+            <div
+              class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-slate-300">
+                    <span class="material-symbols-outlined text-sky-400 text-lg">support_agent</span>
+                    <span class="font-semibold text-xs tracking-wider font-mono uppercase">Zendesk Feed</span>
+                  </div>
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">HEALTHY</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">412 <span
+                      class="text-xs font-normal text-slate-400 font-sans">events/sec</span></div>
+                  <p class="text-xs text-slate-400">Historical tickets indexed deterministically</p>
+                </div>
+              </div>
+              <div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Sync Scope:</span>
+                  <span class="text-slate-200 tabular-nums font-semibold">1,842 tickets verified</span>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Stream Protocol:</span>
+                  <span class="text-sky-300">REST v2 / Incremental</span>
+                </div>
+              </div>
+            </div>
+            <!-- Card 2: Jira Software Integration -->
+            <div
+              class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-slate-300">
+                    <span class="material-symbols-outlined text-sky-400 text-lg">account_tree</span>
+                    <span class="font-semibold text-xs tracking-wider font-mono uppercase">Jira Tracker</span>
+                  </div>
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">ACTIVE</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">83.1% <span
+                      class="text-xs font-normal text-emerald-400 font-mono">CERTAIN</span></div>
+                  <p class="text-xs text-slate-400">118 direct key matches across backfill</p>
+                </div>
+              </div>
+              <div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Transit Warning:</span>
+                  <span class="text-amber-400 tabular-nums font-medium">4 tickets unassigned</span>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Webhook Handlers:</span>
+                  <span class="text-sky-300">Bidirectional active</span>
+                </div>
+              </div>
+            </div>
+            <!-- Card 3: Continuous Clock Daemon -->
+            <div
+              class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-slate-300">
+                    <span class="material-symbols-outlined text-emerald-400 text-lg">alarm_on</span>
+                    <span class="font-semibold text-xs tracking-wider font-mono uppercase">Clock Daemon</span>
+                  </div>
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 uppercase">SYNCHRONIZED</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">0.00 <span
+                      class="text-xs font-normal text-slate-400 font-sans">ms offset</span></div>
+                  <p class="text-xs text-slate-400">Continuous wall-clock UTC RFC-822 baseline</p>
+                </div>
+              </div>
+              <div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Policies Applied:</span>
+                  <span class="text-slate-200">Platinum (4h), High (6h)</span>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Precision:</span>
+                  <span class="text-emerald-400">Sub-second atomic</span>
+                </div>
+              </div>
+            </div>
+            <!-- Card 4: Escalation Channels -->
+            <div
+              class="p-5 rounded-xl bg-[#0b1324] flex flex-col justify-between shadow-lg relative group hover:bg-[#0d172e] transition-colors">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-slate-300">
+                    <span class="material-symbols-outlined text-sky-400 text-lg">campaign</span>
+                    <span class="font-semibold text-xs tracking-wider font-mono uppercase">Escalations</span>
+                  </div>
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 uppercase">DISPATCH
+                    READY</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">3 <span
+                      class="text-xs font-normal text-slate-400 font-sans">routes wired</span></div>
+                  <p class="text-xs text-slate-400">Slack, Email SMTP &amp; PagerDuty configured</p>
+                </div>
+              </div>
+              <div class="pt-4 mt-4 bg-[#060a12]/50 -mx-5 -mb-5 p-4 rounded-b-xl space-y-1.5">
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">Slack Destination:</span>
+                  <span class="text-sky-300">#sla-alerts</span>
+                </div>
+                <div class="flex justify-between text-[11px] font-mono">
+                  <span class="text-slate-400">PagerDuty Bridge:</span>
+                  <span class="text-emerald-400 font-semibold">Armed for P1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Active Priority Queue & Live Tracking Preview -->
+        <div class="rounded-xl bg-[#0b1324] shadow-xl overflow-hidden">
+          <div class="p-5 md:p-6 bg-[#0e1930] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <h3 class="text-base font-semibold text-white">Live Operations Dashboard Preview</h3>
+                <span
+                  class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-rose-500/20 text-rose-300 font-semibold">Immediate
+                  Attention Queue</span>
+              </div>
+              <p class="text-xs text-slate-400">
+                Tickets currently consuming client contract SLA runway. Notice the breakdown between Support and
+                Engineering transit.
+              </p>
+            </div>
+            <div class="flex items-center gap-2 font-mono text-xs">
+              <span class="text-slate-400">Total Active Runway Breaches Avoided:</span>
+              <span class="px-2 py-1 rounded bg-[#060a12] text-emerald-400 font-bold tabular-nums">28 this week</span>
+            </div>
+          </div>
+          <!-- Tickets Table View -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="bg-[#080e1c] text-slate-400 font-mono text-[11px] uppercase tracking-wider">
+                  <th class="py-3 px-5">Ticket / Issue Key</th>
+                  <th class="py-3 px-4">Customer Account</th>
+                  <th class="py-3 px-4">Time Segment Breakdown</th>
+                  <th class="py-3 px-4 text-right">Remaining Runway</th>
+                  <th class="py-3 px-5 text-right">Trigger Alert</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#14213d] font-sans">
+                <!-- Row 1: Dataship Logistics (Urgent) -->
+                <tr class="hover:bg-[#0d172e] transition-colors group">
+                  <td class="py-4 px-5">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-semibold text-sky-400">#ZD-9044</span>
+                      <span class="text-slate-500 font-mono">⇄</span>
+                      <span class="font-mono font-semibold text-purple-400">ENG-4188</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 font-mono">P1 Critical · Tier-1 Platinum</div>
+                  </td>
+                  <td class="py-4 px-4 font-medium text-slate-200">
+                    Dataship Logistics
+                    <div class="text-[11px] text-slate-400 font-normal">Cross-region latency spike</div>
+                  </td>
+                  <td class="py-4 px-4 min-w-[220px]">
+                    <!-- Segmented Progress Bar -->
+                    <div class="space-y-1.5">
+                      <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp:
+                          42m</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-400"></span> Eng
+                          Transit: 0m</span>
+                        <span class="text-rose-400 font-semibold tabular-nums">92.5% Used</span>
+                      </div>
+                      <div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
+                        <div class="bg-sky-400 h-full" style="width: 75%"></div>
+                        <div class="bg-rose-500 h-full animate-pulse" style="width: 17.5%"></div>
+                        <div class="bg-[#1c273c] h-full" style="width: 7.5%"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 text-right">
+                    <span
+                      class="font-mono text-sm font-bold text-rose-400 tabular-nums px-2.5 py-1 rounded bg-rose-500/10">00:17:56</span>
+                    <div class="text-[10px] text-rose-300 font-mono mt-1">Breach imminent</div>
+                  </td>
+                  <td class="py-4 px-5 text-right">
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 font-mono text-[11px] font-medium">
+                      <span class="material-symbols-outlined text-[13px]">warning</span>
+                      Critical Runway
+                    </span>
+                  </td>
+                </tr>
+                <!-- Row 2: Acme Global Cloud -->
+                <tr class="hover:bg-[#0d172e] transition-colors group">
+                  <td class="py-4 px-5">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-semibold text-sky-400">#ZD-8921</span>
+                      <span class="text-slate-500 font-mono">⇄</span>
+                      <span class="font-mono font-semibold text-purple-400">ENG-4102</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 font-mono">P1 Critical · Tier-1 Platinum</div>
+                  </td>
+                  <td class="py-4 px-4 font-medium text-slate-200">
+                    Acme Global Cloud
+                    <div class="text-[11px] text-slate-400 font-normal">Auth token rejection in US-East</div>
+                  </td>
+                  <td class="py-4 px-4 min-w-[220px]">
+                    <div class="space-y-1.5">
+                      <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp:
+                          38m</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-amber-400"></span> Eng: 2h
+                          46m</span>
+                        <span class="text-amber-400 font-semibold tabular-nums">85.3% Used</span>
+                      </div>
+                      <div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
+                        <div class="bg-sky-400 h-full" style="width: 25%"></div>
+                        <div class="bg-amber-400 h-full" style="width: 60%"></div>
+                        <div class="bg-[#1c273c] h-full" style="width: 15%"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 text-right">
+                    <span
+                      class="font-mono text-sm font-bold text-amber-400 tabular-nums px-2.5 py-1 rounded bg-amber-500/10">00:35:05</span>
+                    <div class="text-[10px] text-slate-400 font-mono mt-1">35 mins remain</div>
+                  </td>
+                  <td class="py-4 px-5 text-right">
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono text-[11px] font-medium">
+                      <span class="material-symbols-outlined text-[13px]">person_off</span>
+                      Unassigned in Jira
+                    </span>
+                  </td>
+                </tr>
+                <!-- Row 3: CloudScale Global -->
+                <tr class="hover:bg-[#0d172e] transition-colors group">
+                  <td class="py-4 px-5">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-semibold text-sky-400">#ZD-9120</span>
+                      <span class="text-slate-500 font-mono">⇄</span>
+                      <span class="font-mono font-semibold text-purple-400">ENG-4205</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 font-mono">P2 High · Tier-2 Enterprise</div>
+                  </td>
+                  <td class="py-4 px-4 font-medium text-slate-200">
+                    CloudScale Global
+                    <div class="text-[11px] text-slate-400 font-normal">Data lake webhook retry backoff</div>
+                  </td>
+                  <td class="py-4 px-4 min-w-[220px]">
+                    <div class="space-y-1.5">
+                      <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-sky-400"></span> Supp:
+                          50m</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-purple-400"></span> Eng
+                          WIP: 4h 17m</span>
+                        <span class="text-sky-300 font-semibold tabular-nums">78.0% Used</span>
+                      </div>
+                      <div class="w-full h-2 rounded-full bg-[#060a12] flex overflow-hidden">
+                        <div class="bg-sky-400 h-full" style="width: 18%"></div>
+                        <div class="bg-purple-400 h-full" style="width: 60%"></div>
+                        <div class="bg-[#1c273c] h-full" style="width: 22%"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 text-right">
+                    <span
+                      class="font-mono text-sm font-bold text-sky-300 tabular-nums px-2.5 py-1 rounded bg-sky-500/10">00:52:15</span>
+                    <div class="text-[10px] text-slate-400 font-mono mt-1">52 mins remain</div>
+                  </td>
+                  <td class="py-4 px-5 text-right">
+                    <span
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-400 font-mono text-[11px] font-medium">
+                      <span class="material-symbols-outlined text-[13px]">autorenew</span>
+                      In Progress WIP
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Quick Configuration Guidance Checklist & Teammate Invite Strip -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Active Toggles (2 cols) -->
+          <div class="lg:col-span-2 p-5 rounded-xl bg-[#0b1324] shadow-md flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between pb-3">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">Automated
+                  Deterministic Rules Armed</span>
+                <span class="text-xs font-mono text-emerald-400">3 of 3 Active</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
+                  <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+                  <div class="text-xs">
+                    <div class="font-medium text-slate-200">Continuous Wall-Clock</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">SLA never pauses on internal handoffs</div>
+                  </div>
+                </div>
+                <div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
+                  <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+                  <div class="text-xs">
+                    <div class="font-medium text-slate-200">Non-Attributive Labels</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Neutral accountability stages</div>
+                  </div>
+                </div>
+                <div class="p-3 rounded-lg bg-[#060a12]/60 flex items-start gap-2.5">
+                  <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+                  <div class="text-xs">
+                    <div class="font-medium text-slate-200">Deterministic Webhooks</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Zero-latency sync verification</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pt-4 mt-3 flex items-center justify-between text-xs text-slate-400">
+              <span class="font-mono text-[11px]">Audit Mode: <span class="text-slate-200">Strict RFC-822
+                  Compliance</span></span>
+              <span class="font-mono text-[11px] text-sky-400">All rules verified by hash signature</span>
+            </div>
+          </div>
+          <!-- Recommended Next Action (1 col) -->
+          <div
+            class="p-5 rounded-xl bg-gradient-to-br from-[#0e1f3d] to-[#0b1324] shadow-md flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-sky-400">
+                <span class="material-symbols-outlined text-lg">group_add</span>
+                <span class="font-mono text-xs font-semibold uppercase tracking-wider">Recommended Next Step</span>
+              </div>
+              <h4 class="text-sm font-semibold text-white">Align Engineering &amp; Support Leads</h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Invite your Engineering &amp; Support leads so both teams share single-pane-of-glass SLA visibility and
+                clear runway metrics.
+              </p>
+            </div>
+            <div class="pt-4 mt-2">
+              <div class="flex gap-2">
+                <input
+                  class="w-full bg-[#060a12] text-xs text-white px-3 py-2 rounded border-0 focus:outline-none focus:ring-1 focus:ring-sky-400 placeholder:text-slate-600 font-sans"
+                  placeholder="colleague@company.com" type="email" />
+                <button
+                  class="px-3 py-2 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-mono text-xs font-medium shrink-0 transition-colors cursor-pointer">
+                  Invite
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Live Telemetry Banner Footer -->
+        <div
+          class="rounded-lg bg-[#060a12] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-slate-400 shadow-inner">
+          <div class="flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-300 font-semibold">ELAPSED KERNEL v2.14.0-PROD</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-slate-400">READ-ONLY ENCLAVE</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-emerald-400">100% DETERMINISTIC ZERO-MUTATION</span>
+          </div>
+          <div class="flex items-center gap-4 text-[11px] text-slate-400">
+            <span>ENCRYPTED IN-MEMORY CLOCK</span>
+            <span class="text-sky-400">NON-STORAGE COMPLIANT</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Simple micro-interactions for the completion launch screen
+      document.getElementById('launchBtn')?.addEventListener('click', function () {
+        this.classList.add('scale-95');
+        setTimeout(() => {
+          this.classList.remove('scale-95');
+          // Simulated routing or dispatch to live operational dashboard
+          const notice = document.createElement('div');
+          notice.className = 'fixed bottom-6 right-6 px-4 py-3 bg-emerald-500 text-slate-950 font-semibold font-mono text-xs rounded-lg shadow-2xl flex items-center gap-2 z-50 animate-bounce';
+          notice.innerHTML = '<span class="material-symbols-outlined text-sm font-bold">check_circle</span> Live Dashboard Stream Activated. Redirecting...';
+          document.body.appendChild(notice);
+          setTimeout(() => notice.remove(), 3200);
+        }, 150);
+      });
+
+      document.getElementById('downloadPdfBtn')?.addEventListener('click', function () {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>Compiling SHA-256 Audit Log...</span>';
+        setTimeout(() => {
+          btn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-emerald-400">check</span><span>Audit PDF Generated!</span>';
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+          }, 2500);
+        }, 1200);
+      });
+    </script>
+  </main>
+  <footer class="w-full bg-surface-container-lowest/80 py-space-md shadow-[0_-1px_8px_rgba(0,0,0,0.04)]">
+    <div class="w-full px-margin-desktop flex items-center justify-between">
+      <div class="flex items-center gap-space-lg"><span
+          class="font-code-audit text-code-audit text-on-surface-variant/70">ELAPSED KERNEL v2.4.0-PROD</span><span
+          class="font-code-audit text-code-audit text-on-surface-variant/50">ID: sess_90d_arc418</span></div>
+      <div class="flex items-center gap-space-md"><span
+          class="font-body-sm text-body-sm text-on-surface-variant">Deterministic SLA Ingestion Engine</span><span
+          class="font-code-audit text-code-audit text-tertiary bg-tertiary-container/10 px-space-xs py-0.5 rounded">100%
+          AUDITABLE</span></div>
+    </div>
+  </footer>
+</body>
+
+</html>

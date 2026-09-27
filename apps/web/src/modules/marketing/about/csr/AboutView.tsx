@@ -36,7 +36,10 @@ export const AboutView = () => {
   return (
     <main className="flex-1">
       <section className="relative overflow-hidden border-b border-border/60">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-grain"
+        />
 
         <div className="relative mx-auto w-full max-w-3xl px-6 py-24 text-center sm:py-28">
           <Reveal>
@@ -48,11 +51,10 @@ export const AboutView = () => {
           <Reveal delay={0.05}>
             <p className="mt-6 text-lg leading-8 text-muted-foreground text-balance">
               A customer request rarely stays in one system. It starts as a
-              support ticket, gets escalated to engineering, waits on a
-              release, and comes back to the customer — and the SLA clock
-              keeps running the whole time. We built SLA Breach Monitoring to
-              make that whole path visible, in one place, before anything
-              breaches.
+              support ticket, gets escalated to engineering, waits on a release,
+              and comes back to the customer — and the SLA clock keeps running
+              the whole time. We built SLA Breach Monitoring to make that whole
+              path visible, in one place, before anything breaches.
             </p>
           </Reveal>
         </div>
@@ -70,14 +72,14 @@ export const AboutView = () => {
               <p>
                 Helpdesk tools know about the support side of a case.
                 Engineering trackers know about the engineering side. Neither
-                one knows about the other, so the moment a ticket gets handed
-                to engineering, its SLA effectively goes dark — tracked in a
+                one knows about the other, so the moment a ticket gets handed to
+                engineering, its SLA effectively goes dark — tracked in a
                 spreadsheet, a Slack thread, or nowhere at all.
               </p>
               <p>
-                By the time someone notices a commitment is close to
-                breaching, it&apos;s often because the customer mentioned it
-                first. We think that&apos;s backwards.
+                By the time someone notices a commitment is close to breaching,
+                it&apos;s often because the customer mentioned it first. We
+                think that&apos;s backwards.
               </p>
             </div>
           </Reveal>
@@ -85,7 +87,7 @@ export const AboutView = () => {
       </section>
 
       <section className="py-24">
-        <div className="mx-auto w-full max-w-6xl px-6">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <Reveal>
             <h2 className="text-center font-display text-2xl font-medium tracking-tight">
               What guides how we build it

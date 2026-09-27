@@ -128,7 +128,7 @@ export const HomeView = () => {
       </section>
 
       <section className="border-t border-border/60 py-10">
-        <div className="mx-auto w-full max-w-6xl px-6">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <p className="text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Reads directly from the tools you already use
           </p>
@@ -146,7 +146,7 @@ export const HomeView = () => {
       </section>
 
       <section className="border-t border-border/60 py-24">
-        <div className="mx-auto w-full max-w-6xl px-6">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-medium tracking-tight sm:text-4xl">
               Built for the moment a case starts slipping
@@ -184,7 +184,7 @@ export const HomeView = () => {
       </section>
 
       <section className="border-t border-border/60 bg-muted/30 py-24">
-        <div className="mx-auto w-full max-w-6xl px-6">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-medium tracking-tight sm:text-4xl">
               How it works

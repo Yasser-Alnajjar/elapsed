@@ -15,7 +15,8 @@ const PLANS: PricingPlan[] = [
     name: "Starter",
     price: "$49",
     cadence: "/month",
-    description: "For a single support team getting SLA visibility for the first time.",
+    description:
+      "For a single support team getting SLA visibility for the first time.",
     cta: "Get started",
     href: "/sign-up",
     highlighted: false,
@@ -31,7 +32,8 @@ const PLANS: PricingPlan[] = [
     name: "Team",
     price: "$149",
     cadence: "/month",
-    description: "For teams handing cases between support and engineering every day.",
+    description:
+      "For teams handing cases between support and engineering every day.",
     cta: "Get started",
     href: "/sign-up",
     highlighted: true,
@@ -48,7 +50,8 @@ const PLANS: PricingPlan[] = [
     name: "Enterprise",
     price: "Custom",
     cadence: "",
-    description: "For organizations with multiple teams, regions, or compliance needs.",
+    description:
+      "For organizations with multiple teams, regions, or compliance needs.",
     cta: "Talk to us",
     href: "/sign-up",
     highlighted: false,
@@ -89,7 +92,10 @@ export const PricingView = () => {
   return (
     <main className="flex-1">
       <section className="relative overflow-hidden border-b border-border/60">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-grain"
+        />
 
         <div className="relative mx-auto w-full max-w-2xl px-6 py-20 text-center sm:py-24">
           <Reveal>
@@ -108,7 +114,7 @@ export const PricingView = () => {
       </section>
 
       <section className="py-20">
-        <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 md:grid-cols-3">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 md:grid-cols-3">
           {PLANS.map((plan, i) => (
             <Reveal key={plan.name} delay={i * 0.05}>
               <Card
@@ -122,7 +128,9 @@ export const PricingView = () => {
                     <h2 className="font-display text-lg font-medium tracking-tight">
                       {plan.name}
                     </h2>
-                    {plan.highlighted && <Badge variant="primary">Most popular</Badge>}
+                    {plan.highlighted && (
+                      <Badge variant="primary">Most popular</Badge>
+                    )}
                   </div>
 
                   <div className="flex items-baseline gap-1">
@@ -130,7 +138,9 @@ export const PricingView = () => {
                       {plan.price}
                     </span>
                     {plan.cadence && (
-                      <span className="text-sm text-muted-foreground">{plan.cadence}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {plan.cadence}
+                      </span>
                     )}
                   </div>
 
@@ -142,7 +152,10 @@ export const PricingView = () => {
                 <CardContent className="flex flex-1 flex-col gap-6">
                   <ul className="flex-1 space-y-3">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2.5 text-sm">
+                      <li
+                        key={feature}
+                        className="flex items-start gap-2.5 text-sm"
+                      >
                         <Check className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                         <span>{feature}</span>
                       </li>

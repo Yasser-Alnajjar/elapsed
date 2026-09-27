@@ -72,7 +72,7 @@ export default defineConfig({
       // mappings — needed so tests under apps/web/test can import modules
       // (like proxy.ts, or a component under apps/web/modules) that use the
       // alias internally, without duplicating Next's own webpack/SWC config.
-      "@modules": fileURLToPath(new URL("./apps/web/modules", import.meta.url)),
+      "@modules": fileURLToPath(new URL("./apps/web/src/modules", import.meta.url)),
       "@": fileURLToPath(new URL("./apps/web/src", import.meta.url)),
     },
   },
