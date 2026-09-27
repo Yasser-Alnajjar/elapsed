@@ -1,5 +1,6 @@
 import type { IntegrationConfigStatus } from "./integrations";
-import type { UnmatchedCaseRow } from "./dashboard";
+import type { AtRiskRow, UnmatchedCaseRow } from "./dashboard";
+import type { FindingsData } from "./findings";
 import type { SlaPolicySummary } from "./sla-configuration";
 
 export interface ProviderOnboardingStatus {
@@ -54,4 +55,24 @@ export interface PolicyImportReview {
   warnings: PolicyImportWarnings;
   /** Null when no import has run yet (e.g. Zendesk not connected). */
   lastImportAt: string | null;
+}
+
+/**
+ * The onboarding completion screen's read model (Phase 6 "Step 4 —
+ * activation"): reached once Zendesk and Jira are both connected and the
+ * backfill is done. Built entirely from data the product already computes
+ * elsewhere (dashboard at-risk rows, integration/notification status,
+ * imported policy count) — nothing here is invented for this screen.
+ */
+export interface ActivationPageData {
+  status: OnboardingStatus;
+  /** First few open commitments by urgency, straight from the real dashboard reconstruction. */
+  atRiskPreview: AtRiskRow[];
+  /** Total open at-risk/breached commitments — may exceed `atRiskPreview.length`. */
+  atRiskTotal: number;
+  slackConnected: boolean;
+  emailConfigured: boolean;
+  importedPolicyCount: number;
+  /** What the historical backfill found — folded into this same screen instead of a separate "findings" page. */
+  findings: FindingsData;
 }

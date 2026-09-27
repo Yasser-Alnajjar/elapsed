@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
 import { ReauthBanner } from "@/components/shared/reauth-banner";
+import { Icon } from "@/components/shared/material-icon";
 import { Button } from "@/components/ui/button";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
@@ -21,19 +22,6 @@ import { useOnboardingBackfill } from "./useOnboardingBackfill";
 
 const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
 const REVIEWED_POLICIES_KEY = "onboarding:reviewedPolicies";
-
-/** A Material Symbols glyph by name, matching the Stitch mockups' iconography exactly instead of the app's usual lucide set. */
-function Icon({
-  name,
-  className = "text-[20px]",
-}: {
-  name: string;
-  className?: string;
-}) {
-  return (
-    <span className={`material-symbols-outlined ${className}`}>{name}</span>
-  );
-}
 
 interface ConnectorHeaderProps {
   iconName: string;
@@ -468,7 +456,7 @@ export function OnboardingFlow({
     }
 
     const timeout = window.setTimeout(() => {
-      router.push("/onboarding/findings");
+      router.push("/onboarding/activation");
     }, 1200);
 
     return () => window.clearTimeout(timeout);
@@ -759,8 +747,8 @@ export function OnboardingFlow({
 
                 {onboardingComplete && (
                   <Button asChild>
-                    <Link href="/onboarding/findings">
-                      Findings are ready
+                    <Link href="/onboarding/activation">
+                      Setup complete
                       <Icon name="arrow_forward" className="text-[18px]" />
                     </Link>
                   </Button>

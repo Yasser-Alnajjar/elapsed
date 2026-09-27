@@ -2,7 +2,6 @@ import "server-only";
 import { DashboardActions } from "./dashboard";
 import { CasesActions } from "./cases";
 import { OnboardingActions } from "./onboarding";
-import { FindingsActions } from "./findings";
 import { IntegrationsActions } from "./integrations";
 import { SlaConfigurationActions } from "./sla-configuration";
 import { NotificationsActions } from "./notifications";
@@ -25,7 +24,6 @@ export const Actions = {
   Dashboard: DashboardActions,
   Cases: CasesActions,
   Onboarding: OnboardingActions,
-  Findings: FindingsActions,
   Integrations: IntegrationsActions,
   SlaConfiguration: SlaConfigurationActions,
   Notifications: NotificationsActions,

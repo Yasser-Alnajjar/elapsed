@@ -4,12 +4,13 @@ const NAV_STEPS = [
   { number: "01", label: "Connect Zendesk" },
   { number: "02", label: "Run 90d Ingestion" },
   { number: "03", label: "Connect Jira" },
+  { number: "04", label: "SLA Live" },
 ] as const;
 
 export function OnboardingHeader({
   currentStep,
 }: {
-  currentStep: 1 | 2 | 3 | null;
+  currentStep: 1 | 2 | 3 | 4 | null;
 }) {
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-surface/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">

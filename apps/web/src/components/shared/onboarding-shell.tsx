@@ -12,7 +12,7 @@ export function OnboardingShell({
   title: string;
   description?: string;
   /** Highlights the matching tab in the fixed Stitch header nav (1-3), or none on the completion screen. */
-  currentStep?: 1 | 2 | 3 | null;
+  currentStep?: 1 | 2 | 3 | 4 | null;
   /** Widens the content column for steps with a multi-column layout (e.g. the Zendesk connector grid). */
   wide?: boolean;
   /** Optional element rendered alongside the title, e.g. an engine-state status chip. */
@@ -29,7 +29,7 @@ export function OnboardingShell({
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-32 left-1/2 h-[340px] w-[720px] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]"
+        className="pointer-events-none absolute -top-32 left-1/2 h-85 w-180 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]"
       />
 
       <div
@@ -48,15 +48,7 @@ export function OnboardingShell({
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {headerAside}
-            <a
-              href="/dashboard"
-              className="shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Skip to dashboard
-            </a>
-          </div>
+          <div className="flex flex-wrap items-center gap-4">{headerAside}</div>
         </div>
         {children}
       </div>
