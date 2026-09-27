@@ -555,7 +555,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 **Performance**
 
 - [ ] **7.7** Performance baseline with 5,000 cases and 200,000+ events (case list, dashboard, case detail, evaluation, worker, database queries). Fix the slowest part based on the measurements. `P1 · Reliability · C` · D-5
-  - Not started — needs a real seeded database and profiling run, out of scope for a code-only pass.
+  - Partly done — `packages/db/src/scripts/seed-perf-baseline.ts` (`pnpm db:seed:perf-baseline`) generates the dataset: an Organization with a default calendar/policy, configurable Customers/Cases (default 5,000)/RawEvent+NormalizedEvent pairs (default ~210,000) plausibly distributed across a 90-day window, plus Commitments and Evaluation history. Running it against a real database, profiling the listed surfaces, and fixing the slowest part are still not started — no real deployment target yet, out of scope for a code-only pass.
 - [x] **7.8** Use a wider hash for evaluation ids. `P2 · Reliability · A` · E-17 (done 2026-09-27)
   - `stableHash` (`packages/core/src/util.ts`) widened from one 32-bit FNV-1a pass (8 hex chars) to two independent 32-bit passes with different seeds, concatenated (16 hex chars / 64 bits) — the collision space `evaluate-pipeline.ts`'s `skipDuplicates` write could silently drop a snapshot into is now 2^64, not 2^32. Pure arithmetic, no `crypto` import, so `@sla/core` stays usable outside Node.
 

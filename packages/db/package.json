@@ -9,7 +9,8 @@
     "generate": "prisma generate",
     "validate": "prisma validate",
     "migrate:dev": "prisma migrate dev",
-    "encrypt-tokens": "dotenv -e ../../.env -- tsx src/scripts/encrypt-integration-tokens.ts"
+    "encrypt-tokens": "dotenv -e ../../.env -- tsx src/scripts/encrypt-integration-tokens.ts",
+    "seed:perf-baseline": "dotenv -e ../../.env -- tsx src/scripts/seed-perf-baseline.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

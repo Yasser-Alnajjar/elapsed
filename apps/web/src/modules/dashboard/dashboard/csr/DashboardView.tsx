@@ -28,6 +28,7 @@ import { SlaHealthByKindCard } from "./SlaHealthByKindCard";
 import { BreachesByStageChart } from "./analytics/BreachesByStageChart";
 import { BreachesOverTimeChart } from "./analytics/BreachesOverTimeChart";
 import { SlaComplianceTrendChart } from "./analytics/SlaComplianceTrendChart";
+import Link from "next/link";
 
 interface DashboardViewProps {
   data: DashboardData;
@@ -457,9 +458,9 @@ export const DashboardView = ({
           {data.atRiskOverflowCount > 0 && (
             <p className="border-border-subtle bg-surface-subtle text-muted-foreground border-t px-4 py-2.5 text-xs">
               +{data.atRiskOverflowCount} more open commitment(s) not shown —{" "}
-              <a href="/cases" className="text-primary hover:underline">
+              <Link href="/cases" className="text-primary hover:underline">
                 see full case list
-              </a>
+              </Link>
               .
             </p>
           )}
