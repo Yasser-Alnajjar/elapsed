@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Info, Loader2, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
@@ -45,12 +45,12 @@ export function ZendeskConnectForm() {
           type="submit"
           className="gap-1.5 rounded-lg px-5 py-3 font-semibold shadow-md"
         >
-          <span className="material-symbols-outlined text-[20px]">bolt</span>
+          <Zap className="size-5" />
           Connect Zendesk
         </Button>
       </div>
       <p className="font-code-audit text-code-audit flex items-center gap-1.5 text-on-surface-variant/70">
-        <span className="material-symbols-outlined text-[14px]">info</span>
+        <Info className="size-3.5 shrink-0" />
         Standard OAuth redirect happens inside Zendesk&apos;s own
         authorization screen.
       </p>

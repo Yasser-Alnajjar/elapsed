@@ -2,11 +2,29 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import {
+  AlarmClockCheck,
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  CheckCircle2,
+  Headset,
+  Hourglass,
+  ListChecks,
+  Lock,
+  LockKeyhole,
+  Megaphone,
+  Network,
+  Sparkles,
+  Ticket,
+  TrendingUp,
+  UserPlus,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
 
 import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
-import { Icon } from "@/components/shared/material-icon";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +58,7 @@ function EngineStateChip({ label, value }: { label: string; value: string }) {
         </span>
       </div>
       <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-container-high text-primary">
-        <Icon name="hub" className="text-[20px]" />
+        <Network className="size-5 shrink-0" />
       </div>
     </div>
   );
@@ -75,7 +93,7 @@ function CompletionStrip({ steps }: { steps: CompletedStep[] }) {
                   : "bg-tertiary/20 text-tertiary"
               }`}
             >
-              <Icon name="check" className="text-[14px] font-bold" />
+              <Check className="size-3.5 shrink-0" />
             </div>
             <div className="min-w-0">
               <span className="font-body-sm text-body-sm font-medium text-on-surface-variant">
@@ -116,7 +134,7 @@ function SetupProgressBar({ steps }: { steps: CompletedStep[] }) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon name="verified" className="text-[22px]" />
+              <BadgeCheck className="size-[22px] shrink-0" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -151,7 +169,7 @@ function SetupProgressBar({ steps }: { steps: CompletedStep[] }) {
 }
 
 interface HealthCardProps {
-  iconName: string;
+  icon: LucideIcon;
   label: string;
   status: string;
   statusTone: "good" | "warn";
@@ -163,7 +181,7 @@ interface HealthCardProps {
 
 /** One tile of the pre-flight health matrix — real per-channel status, no invented precision. */
 function HealthCard({
-  iconName,
+  icon: Icon,
   label,
   status,
   statusTone,
@@ -177,7 +195,7 @@ function HealthCard({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-on-surface-variant">
-            <Icon name={iconName} className="text-[18px] text-primary" />
+            <Icon className="size-[18px] text-primary shrink-0" />
             <span className="font-label-caps text-label-caps uppercase tracking-wider">
               {label}
             </span>
@@ -324,7 +342,7 @@ function InviteTeammateBox() {
     <div className="flex flex-col justify-between gap-4 rounded-xl bg-surface-container-lowest p-6 shadow-elevated">
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-primary">
-          <Icon name="group_add" className="text-[18px]" />
+          <UserPlus className="size-[18px] shrink-0" />
           <span className="font-label-caps text-label-caps uppercase tracking-wider">
             Recommended next step
           </span>
@@ -440,7 +458,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           <div className="relative flex flex-col gap-6 p-6 md:p-8 xl:flex-row xl:items-center xl:justify-between">
             <div className="max-w-2xl space-y-4">
               <span className="font-label-caps text-label-caps inline-flex items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 uppercase text-primary">
-                <Icon name="lock_clock" className="text-[16px]" />
+                <LockKeyhole className="size-4 shrink-0" />
                 Deterministic verification pass
               </span>
               <h1 className="font-headline-lg text-headline-lg leading-tight text-on-surface">
@@ -455,10 +473,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               </p>
               <div className="font-label-caps text-label-caps flex flex-wrap items-center gap-6 pt-1 text-on-surface-variant">
                 <div className="flex items-center gap-2">
-                  <Icon
-                    name="confirmation_number"
-                    className="text-[16px] text-primary"
-                  />
+                  <Ticket className="size-4 text-primary shrink-0" />
                   <span>
                     Tickets ingested:{" "}
                     <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
@@ -467,10 +482,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Icon
-                    name="account_tree"
-                    className="text-[16px] text-primary"
-                  />
+                  <Workflow className="size-4 text-primary shrink-0" />
                   <span>
                     Escalated to Jira:{" "}
                     <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
@@ -480,7 +492,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 </div>
                 {correlationRate !== null && (
                   <div className="flex items-center gap-2">
-                    <Icon name="hub" className="text-[16px] text-tertiary" />
+                    <Network className="size-4 text-tertiary shrink-0" />
                     <span>
                       Issue correlation:{" "}
                       <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
@@ -496,7 +508,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               <Button asChild size="lg">
                 <Link href="/dashboard">
                   Launch live operations dashboard
-                  <Icon name="arrow_forward" className="text-[18px]" />
+                  <ArrowRight className="size-[18px] shrink-0" />
                 </Link>
               </Button>
               <Button asChild variant="outline">
@@ -512,10 +524,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
       <Reveal>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Icon
-              name="insights"
-              className="text-[18px] text-on-surface-variant"
-            />
+            <TrendingUp className="size-[18px] text-on-surface-variant shrink-0" />
             <h3 className="font-label-caps text-label-caps uppercase tracking-wide text-on-surface-variant">
               What the 90-day backfill found
             </h3>
@@ -527,10 +536,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
       <Reveal>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Icon
-              name="fact_check"
-              className="text-[18px] text-on-surface-variant"
-            />
+            <ListChecks className="size-[18px] text-on-surface-variant shrink-0" />
             <h3 className="font-label-caps text-label-caps uppercase tracking-wide text-on-surface-variant">
               Pre-flight synchronization &amp; health matrix
             </h3>
@@ -538,7 +544,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <HealthCard
-              iconName="support_agent"
+              icon={Headset}
               label="Zendesk feed"
               status="Healthy"
               statusTone="good"
@@ -549,7 +555,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
             />
 
             <HealthCard
-              iconName="account_tree"
+              icon={Workflow}
               label="Jira tracker"
               status="Active"
               statusTone="good"
@@ -569,7 +575,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
             />
 
             <HealthCard
-              iconName="alarm_on"
+              icon={AlarmClockCheck}
               label="Clock daemon"
               status="Synchronized"
               statusTone="good"
@@ -584,7 +590,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
             />
 
             <HealthCard
-              iconName="campaign"
+              icon={Megaphone}
               label="Escalation channels"
               status={
                 slackConnected || emailConfigured ? "Configured" : "Not set up"
@@ -671,10 +677,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex items-start gap-2.5 rounded-lg bg-surface-container-low p-3">
-                <Icon
-                  name="lock_reset"
-                  className="mt-0.5 text-[18px] text-primary"
-                />
+                <Lock className="mt-0.5 size-[18px] text-primary shrink-0" />
                 <div className="text-xs">
                   <div className="font-medium text-on-surface">
                     Zero mutation
@@ -686,7 +689,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-lg bg-surface-container-low p-3">
-                <Icon name="hub" className="mt-0.5 text-[18px] text-primary" />
+                <Network className="mt-0.5 size-[18px] text-primary shrink-0" />
                 <div className="text-xs">
                   <div className="font-medium text-on-surface">
                     Deterministic correlation
@@ -698,10 +701,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-lg bg-surface-container-low p-3">
-                <Icon
-                  name="hourglass_top"
-                  className="mt-0.5 text-[18px] text-primary"
-                />
+                <Hourglass className="mt-0.5 size-[18px] text-primary shrink-0" />
                 <div className="text-xs">
                   <div className="font-medium text-on-surface">
                     Continuous SLA clock

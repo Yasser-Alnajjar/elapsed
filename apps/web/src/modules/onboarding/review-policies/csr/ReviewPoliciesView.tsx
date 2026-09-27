@@ -1,10 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import {
+  ArrowRight,
+  CircleCheckBig,
+  ScrollText,
+  TriangleAlert,
+  Unlink,
+} from "lucide-react";
 
 import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
-import { Icon } from "@/components/shared/material-icon";
 import { Button } from "@/components/ui/button";
 import {
   formatExactTimestamp,
@@ -172,7 +178,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
       <Reveal>
         <div className="space-y-4 rounded-xl bg-surface-container p-6 shadow-elevated">
           <div className="flex items-center gap-2">
-            <Icon name="policy" className="text-[18px] text-primary" />
+            <ScrollText className="size-[18px] text-primary shrink-0" />
             <h2 className="font-headline-sm text-headline-sm text-on-surface">
               Imported policies
             </h2>
@@ -221,7 +227,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
         <Reveal>
           <div className="space-y-4 rounded-xl bg-surface-container p-6 shadow-elevated">
             <div className="flex items-center gap-2">
-              <Icon name="link_off" className="text-[18px] text-warning" />
+              <Unlink className="size-[18px] text-warning shrink-0" />
               <h2 className="font-headline-sm text-headline-sm text-on-surface">
                 Open cases with no matching policy
               </h2>
@@ -260,7 +266,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
         <Reveal>
           <div className="space-y-4 rounded-xl bg-surface-container p-6 shadow-elevated">
             <div className="flex items-center gap-2">
-              <Icon name="warning" className="text-[18px] text-error" />
+              <TriangleAlert className="size-[18px] text-error shrink-0" />
               <h2 className="font-headline-sm text-headline-sm text-on-surface">
                 Import warnings
               </h2>
@@ -317,7 +323,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
       {allClear && (
         <Reveal>
           <div className="flex items-center gap-2.5 rounded-lg bg-tertiary/10 px-4 py-3 text-tertiary">
-            <Icon name="task_alt" className="text-[18px]" />
+            <CircleCheckBig className="size-[18px] shrink-0" />
             <p className="font-body-sm text-body-sm">
               Every open case matches a policy, with no import warnings.
             </p>
@@ -335,7 +341,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
         <Button asChild>
           <Link href="/onboarding?reviewed=1">
             Continue
-            <Icon name="arrow_forward" className="text-[18px]" />
+            <ArrowRight className="size-[18px] shrink-0" />
           </Link>
         </Button>
       </div>

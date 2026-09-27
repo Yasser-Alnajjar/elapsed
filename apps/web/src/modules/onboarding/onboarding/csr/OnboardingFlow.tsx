@@ -3,11 +3,30 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  CircleCheck,
+  Code,
+  Database,
+  History,
+  Hourglass,
+  KeyRound,
+  Layers,
+  ListChecks,
+  Lock,
+  MessageCircle,
+  Network,
+  Route,
+  Shield,
+  ShieldCheck,
+  Ticket,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
 
 import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
 import { ReauthBanner } from "@/components/shared/reauth-banner";
-import { Icon } from "@/components/shared/material-icon";
 import { Button } from "@/components/ui/button";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
@@ -24,7 +43,7 @@ const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
 const REVIEWED_POLICIES_KEY = "onboarding:reviewedPolicies";
 
 interface ConnectorHeaderProps {
-  iconName: string;
+  icon: LucideIcon;
   name: string;
   badge: string;
   tagline: string;
@@ -32,7 +51,7 @@ interface ConnectorHeaderProps {
 
 /** Icon + name + connector badge above a provider's connect form — ported from the mockups' connector card header. */
 function ConnectorHeader({
-  iconName,
+  icon: Icon,
   name,
   badge,
   tagline,
@@ -40,7 +59,7 @@ function ConnectorHeader({
   return (
     <div className="flex items-center gap-3">
       <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-container-highest text-primary">
-        <Icon name={iconName} />
+        <Icon className="size-5 shrink-0" />
       </div>
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
@@ -64,10 +83,7 @@ function ScopeBanner({ label, scopes }: { label: string; scopes: string[] }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-surface-container-lowest p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2 text-on-surface-variant">
-        <Icon
-          name="verified_user"
-          className="text-[18px] shrink-0 text-tertiary"
-        />
+        <ShieldCheck className="size-[18px] shrink-0 text-tertiary" />
         <span className="font-body-sm text-body-sm">{label}</span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -97,7 +113,7 @@ function EngineStateChip({ label, value }: { label: string; value: string }) {
         </span>
       </div>
       <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-container-high text-primary">
-        <Icon name="hub" className="text-[20px]" />
+        <Network className="size-5 shrink-0" />
       </div>
     </div>
   );
@@ -142,12 +158,12 @@ function StatStrip({ stats }: { stats: StatItem[] }) {
 
 /** Secondary, not-yet-available connector — the mockups' "Intercom (Beta)" card, kept static since there's nothing to wire up yet. */
 function SecondaryProviderCard({
-  iconName,
+  icon: Icon,
   name,
   badge,
   tagline,
 }: {
-  iconName: string;
+  icon: LucideIcon;
   name: string;
   badge: string;
   tagline: string;
@@ -156,7 +172,7 @@ function SecondaryProviderCard({
     <div className="flex flex-col items-start gap-4 rounded-xl bg-surface-container-low p-5 opacity-85 transition-opacity hover:opacity-100 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-highest text-on-surface-variant">
-          <Icon name={iconName} className="text-[20px]" />
+          <Icon className="size-5 shrink-0" />
         </div>
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
@@ -181,7 +197,7 @@ function SecondaryProviderCard({
 
 interface AlternativeTrackerCardProps {
   provider: "linear" | "github";
-  iconName: string;
+  icon: LucideIcon;
   name: string;
   tagline: string;
   config: OnboardingStatus["linearConfig"];
@@ -194,7 +210,7 @@ interface AlternativeTrackerCardProps {
 /** A real, working alternative engineering-leg connector (Linear/GitHub) — gated the same way as Jira/Zendesk, not a "coming soon" placeholder. */
 function AlternativeTrackerCard({
   provider,
-  iconName,
+  icon: Icon,
   name,
   tagline,
   config,
@@ -207,7 +223,7 @@ function AlternativeTrackerCard({
     <div className="flex flex-col gap-3 rounded-xl bg-surface-container p-5 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-highest text-primary">
-          <Icon name={iconName} className="text-[20px]" />
+          <Icon className="size-5 shrink-0" />
         </div>
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
@@ -251,7 +267,7 @@ function NextStepPanel() {
         <span className="font-label-caps text-label-caps uppercase tracking-wider text-primary">
           System reconciliation
         </span>
-        <Icon name="account_tree" className="text-primary" />
+        <Workflow className="size-5 text-primary shrink-0" />
       </div>
       <div className="flex flex-col gap-1.5">
         <h3 className="font-headline-sm text-headline-sm text-on-surface">
@@ -278,14 +294,11 @@ function CorrelationPanel() {
         <span className="font-label-caps text-label-caps uppercase tracking-wider text-primary">
           Continuous timeline engine
         </span>
-        <Icon name="route" className="text-primary" />
+        <Route className="size-5 text-primary shrink-0" />
       </div>
 
       <div className="flex gap-2.5 rounded-lg bg-surface-container p-3">
-        <Icon
-          name="verified_user"
-          className="text-[16px] shrink-0 text-primary"
-        />
+        <ShieldCheck className="size-4 shrink-0 text-primary" />
         <div className="flex flex-col gap-0.5">
           <span className="font-headline-sm text-[14px] leading-tight text-on-surface">
             Zero mutation guarantee
@@ -298,7 +311,7 @@ function CorrelationPanel() {
       </div>
 
       <div className="flex gap-2.5 rounded-lg bg-surface-container p-3">
-        <Icon name="hub" className="text-[16px] shrink-0 text-primary" />
+        <Network className="size-4 shrink-0 text-primary" />
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span className="font-headline-sm text-[14px] leading-tight text-on-surface">
@@ -323,7 +336,7 @@ function Soc2Badge() {
   return (
     <div className="flex items-center justify-between rounded-lg bg-surface-container-low px-3.5 py-2.5 text-on-surface-variant">
       <div className="flex items-center gap-2">
-        <Icon name="check_circle" className="text-[16px] text-tertiary" />
+        <CircleCheck className="size-4 text-tertiary shrink-0" />
         <span className="font-body-sm text-body-sm">
           SOC 2 Type II–aligned architecture
         </span>
@@ -336,7 +349,7 @@ function Soc2Badge() {
 }
 
 interface TrustItem {
-  iconName: string;
+  icon: LucideIcon;
   title: string;
   description: string;
 }
@@ -345,13 +358,13 @@ interface TrustItem {
 function TrustList({ items }: { items: TrustItem[] }) {
   return (
     <div className="flex flex-col gap-2">
-      {items.map(({ iconName, title, description }) => (
+      {items.map(({ icon: Icon, title, description }) => (
         <div
           key={title}
           className="flex gap-2.5 rounded-lg bg-surface-container-low p-3"
         >
           <div className="flex size-7 shrink-0 items-center justify-center rounded bg-surface-container-high text-primary">
-            <Icon name={iconName} className="text-[16px]" />
+            <Icon className="size-4 shrink-0" />
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="font-headline-sm text-[15px] leading-tight text-on-surface">
@@ -482,7 +495,7 @@ export function OnboardingFlow({
               <ConnectorCard>
                 <div className="flex items-start justify-between gap-3">
                   <ConnectorHeader
-                    iconName="confirmation_number"
+                    icon={Ticket}
                     name="Zendesk Support"
                     badge="Primary connector"
                     tagline="Ticket timestamps, SLA policies, and organizations"
@@ -530,7 +543,7 @@ export function OnboardingFlow({
 
             <Reveal>
               <SecondaryProviderCard
-                iconName="chat_bubble"
+                icon={MessageCircle}
                 name="Intercom Workspace"
                 badge="On the roadmap"
                 tagline="Conversation timelines and customer response deltas"
@@ -545,25 +558,25 @@ export function OnboardingFlow({
                   <span className="font-label-caps text-label-caps uppercase tracking-wider text-primary">
                     Trust & safety
                   </span>
-                  <Icon name="shield" className="text-primary" />
+                  <Shield className="size-5 text-primary shrink-0" />
                 </div>
 
                 <TrustList
                   items={[
                     {
-                      iconName: "lock_reset",
+                      icon: Lock,
                       title: "Zero write permissions",
                       description:
                         "Credentials run under a read-only OAuth scope — Elapsed can't touch your tickets.",
                     },
                     {
-                      iconName: "hourglass_top",
+                      icon: Hourglass,
                       title: "Continuous SLA clock",
                       description:
                         "Raw ticket timestamps build the uncompromised clock across support and engineering handoffs.",
                     },
                     {
-                      iconName: "history",
+                      icon: History,
                       title: "Fixed 90-day backfill",
                       description:
                         "An instant historical baseline starts as soon as you're authenticated — no waiting on new tickets.",
@@ -583,7 +596,7 @@ export function OnboardingFlow({
           <div className="mt-2 flex flex-col items-center gap-3 rounded-xl bg-surface-container-low p-5 shadow-lg sm:flex-row sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-primary">
-                <Icon name="key" />
+                <KeyRound className="size-5 shrink-0" />
               </div>
               <div className="flex flex-col">
                 <span className="font-headline-sm text-headline-sm text-on-surface">
@@ -674,10 +687,7 @@ export function OnboardingFlow({
         <Reveal>
           <div className="flex flex-col items-start gap-3 rounded-lg bg-surface-container-low p-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2.5">
-              <Icon
-                name="fact_check"
-                className="text-[18px] shrink-0 text-primary"
-              />
+              <ListChecks className="size-[18px] shrink-0 text-primary" />
               <p className={DESCRIPTION_CLASS}>
                 {reviewedPolicies
                   ? "Your SLA policies have been imported and reviewed."
@@ -699,7 +709,7 @@ export function OnboardingFlow({
             <Reveal>
               <ConnectorCard>
                 <ConnectorHeader
-                  iconName="dataset"
+                  icon={Database}
                   name="Jira Software"
                   badge="Primary connector"
                   tagline="Engineering-leg timing for escalated cases"
@@ -732,7 +742,7 @@ export function OnboardingFlow({
             <Reveal>
               <ConnectorCard>
                 <ConnectorHeader
-                  iconName="confirmation_number"
+                  icon={Ticket}
                   name="Zendesk Support"
                   badge="Connected"
                   tagline="Ingesting ticket timestamps and SLA policies"
@@ -749,7 +759,7 @@ export function OnboardingFlow({
                   <Button asChild>
                     <Link href="/onboarding/activation">
                       Setup complete
-                      <Icon name="arrow_forward" className="text-[18px]" />
+                      <ArrowRight className="size-[18px] shrink-0" />
                     </Link>
                   </Button>
                 )}
@@ -784,7 +794,7 @@ export function OnboardingFlow({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <AlternativeTrackerCard
                 provider="linear"
-                iconName="dataset_linked"
+                icon={Layers}
                 name="Linear"
                 tagline="Alternative engineering-leg source"
                 config={status.linearConfig}
@@ -796,7 +806,7 @@ export function OnboardingFlow({
 
               <AlternativeTrackerCard
                 provider="github"
-                iconName="code"
+                icon={Code}
                 name="GitHub"
                 tagline="Pull request lifecycle"
                 config={status.githubConfig}

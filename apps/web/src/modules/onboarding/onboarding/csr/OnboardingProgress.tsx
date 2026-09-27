@@ -1,5 +1,19 @@
 "use client";
 
+import {
+  Archive,
+  CircleAlert,
+  CircleCheckBig,
+  Database,
+  Hourglass,
+  Link,
+  Lock,
+  Network,
+  RefreshCw,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
@@ -12,7 +26,7 @@ interface OnboardingProgressProps {
 
 interface StatCardSpec {
   key: "ticketsFetched" | "escalatedCases" | "linkedIssues";
-  iconName: string;
+  icon: LucideIcon;
   label: string;
   description: string;
 }
@@ -20,19 +34,19 @@ interface StatCardSpec {
 const statCards: StatCardSpec[] = [
   {
     key: "ticketsFetched",
-    iconName: "inventory_2",
+    icon: Archive,
     label: "Tickets ingested",
     description: "Normalized across the 90-day backfill window",
   },
   {
     key: "escalatedCases",
-    iconName: "hourglass_top",
+    icon: Hourglass,
     label: "Escalated cases",
     description: "Cases with at least one engineering handoff",
   },
   {
     key: "linkedIssues",
-    iconName: "account_tree",
+    icon: Workflow,
     label: "Linked Jira issues",
     description: "Resolved via official remote issue links",
   },
@@ -40,7 +54,7 @@ const statCards: StatCardSpec[] = [
 
 /** One line in the ingestion ledger — real, derived state only, never fabricated per-ticket detail. */
 interface LedgerEntry {
-  iconName: string;
+  icon: LucideIcon;
   tone: "primary" | "tertiary" | "secondary" | "muted";
   text: string;
 }
@@ -52,7 +66,7 @@ function buildLedger({
 }: Pick<OnboardingProgressProps, "status" | "zendeskRunning" | "jiraRunning">): LedgerEntry[] {
   const entries: LedgerEntry[] = [
     {
-      iconName: "hub",
+      icon: Network,
       tone: "primary",
       text: "Read-only handshake established with your Zendesk instance",
     },
@@ -60,13 +74,13 @@ function buildLedger({
 
   if (status.ticketsFetched > 0) {
     entries.push({
-      iconName: "inventory_2",
+      icon: Archive,
       tone: "primary",
       text: `${status.ticketsFetched.toLocaleString()} tickets ingested and normalized so far`,
     });
   } else if (zendeskRunning) {
     entries.push({
-      iconName: "sync",
+      icon: RefreshCw,
       tone: "muted",
       text: "Fetching the 90-day ticket index…",
     });
@@ -74,7 +88,7 @@ function buildLedger({
 
   if (status.escalatedCases > 0) {
     entries.push({
-      iconName: "priority_high",
+      icon: CircleAlert,
       tone: "secondary",
       text: `${status.escalatedCases.toLocaleString()} escalated case${
         status.escalatedCases === 1 ? "" : "s"
@@ -84,7 +98,7 @@ function buildLedger({
 
   if (status.linkedIssues > 0) {
     entries.push({
-      iconName: "link",
+      icon: Link,
       tone: "tertiary",
       text: `${status.linkedIssues.toLocaleString()} Jira issue link${
         status.linkedIssues === 1 ? "" : "s"
@@ -92,7 +106,7 @@ function buildLedger({
     });
   } else if (jiraRunning) {
     entries.push({
-      iconName: "sync",
+      icon: RefreshCw,
       tone: "muted",
       text: "Correlating escalated cases against Jira remote links…",
     });
@@ -100,7 +114,7 @@ function buildLedger({
 
   if (!zendeskRunning) {
     entries.push({
-      iconName: "task_alt",
+      icon: CircleCheckBig,
       tone: "tertiary",
       text: jiraRunning
         ? "Zendesk backfill complete — Jira is still catching up in the background"
@@ -149,11 +163,11 @@ export function OnboardingProgress({
 
         <div className="z-10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span
-              className={`material-symbols-outlined text-[18px] text-primary ${running ? "animate-spin" : ""}`}
-            >
-              {running ? "sync" : "dataset"}
-            </span>
+            {running ? (
+              <RefreshCw className="size-[18px] shrink-0 animate-spin text-primary" />
+            ) : (
+              <Database className="size-[18px] shrink-0 text-primary" />
+            )}
             <span className="font-mono-metric-md text-mono-metric-md text-on-surface">
               {running
                 ? "Replaying ticket history — parsing timestamps and handoffs…"
@@ -177,33 +191,29 @@ export function OnboardingProgress({
 
         {/* Ingestion ledger — a terminal-styled log of real, derived state (never fabricated per-ticket entries). */}
         <div className="z-10 flex flex-col gap-1 rounded bg-surface-container-lowest p-2.5 font-code-audit text-code-audit">
-          {ledger.map((entry, index) => (
+          {ledger.map(({ icon: Icon, tone, text }, index) => (
             <div
-              key={`${entry.text}-${index}`}
+              key={`${text}-${index}`}
               className="flex items-start gap-2 text-on-surface-variant/80"
             >
-              <span
-                className={`material-symbols-outlined shrink-0 text-[14px] ${LEDGER_TONE_CLASS[entry.tone]}`}
-              >
-                {entry.iconName}
-              </span>
-              <span>{entry.text}</span>
+              <Icon
+                className={`mt-0.5 size-3.5 shrink-0 ${LEDGER_TONE_CLASS[tone]}`}
+              />
+              <span>{text}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {statCards.map(({ key, iconName, label, description }) => (
+        {statCards.map(({ key, icon: Icon, label, description }) => (
           <div
             key={key}
             className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface-container-lowest p-3"
           >
             <div className="flex items-center gap-2">
               <div className="flex size-7 shrink-0 items-center justify-center rounded bg-surface-container-high text-primary">
-                <span className="material-symbols-outlined text-[16px]">
-                  {iconName}
-                </span>
+                <Icon className="size-4" />
               </div>
               <p className="font-mono-metric-lg text-mono-metric-lg text-on-surface">
                 {status[key].toLocaleString()}
@@ -222,7 +232,7 @@ export function OnboardingProgress({
       </div>
 
       <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-3 py-2 text-on-surface-variant/70">
-        <span className="material-symbols-outlined text-[16px]">lock</span>
+        <Lock className="size-4 shrink-0" />
         <span className="font-code-audit text-code-audit">
           Read-only ingestion — Elapsed never writes back to Zendesk or Jira
         </span>
@@ -230,7 +240,7 @@ export function OnboardingProgress({
 
       {error && (
         <Alert variant="destructive">
-          <span className="material-symbols-outlined text-[18px]">error</span>
+          <CircleAlert className="size-[18px]" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
