@@ -32,7 +32,7 @@ export function UserMenu({ user }: { user: IUser }) {
   const displayName = user.name || user.email?.split("@")[0] || "User";
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger className="cursor-pointer">
         <Avatar size="default">
           <AvatarImage
             src={user.image ?? undefined}
@@ -77,9 +77,6 @@ export function UserMenu({ user }: { user: IUser }) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/profile">Profile</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings">Settings</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
 

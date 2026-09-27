@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Hanken_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -21,6 +21,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+/** Body copy in the onboarding flow's Stitch design (`stitch_elapsed/step_*`) is set in Inter, not Hanken Grotesk. */
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     template: `%s | Elapsed`,
@@ -37,7 +45,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${jetbrainsMono.variable}`}
+      className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>

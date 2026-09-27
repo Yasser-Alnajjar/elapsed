@@ -146,7 +146,20 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
       findMany: async () =>
         commitments.map((c) => ({ commitmentId: c.id, status: "breached", evaluatedAt: reconciledAt })),
     },
-    organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null }) },
+    organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null, timezone: "UTC" }) },
+    case: {
+      // Phase 6.2's "no matching policy" panel: every case in this fixture
+      // has a commitment, so nothing qualifies.
+      findMany: async () => [],
+    },
+    integration: {
+      // Phase 6.3: no integrations connected in this fixture.
+      findMany: async () => [],
+    },
+    notificationFailure: {
+      // Phase 6.4: no failed deliveries in this fixture.
+      findMany: async () => [],
+    },
     sLAPolicyVersion: { findMany: async ({ where }: { where: { id: { in: string[] } } }) => (inIds(where).includes(policyRow.id) ? [policyRow] : []) },
     businessCalendarVersion: {
       findMany: async ({ where }: { where: { id: { in: string[] } } }) => (inIds(where).includes(calendarRow.id) ? [calendarRow] : []),

@@ -62,6 +62,8 @@ interface FakePrismaOptions {
   existingNotifications?: { commitmentId: string; threshold: number }[];
   cases?: { id: string; externalId: string; subject?: string | null; customer: { name: string } | null }[];
   createImpl?: () => Promise<unknown>;
+  notificationFailureUpsert?: ReturnType<typeof vi.fn>;
+  notificationFailureDeleteMany?: ReturnType<typeof vi.fn>;
 }
 
 function fakePrisma(options: FakePrismaOptions = {}) {
@@ -71,6 +73,8 @@ function fakePrisma(options: FakePrismaOptions = {}) {
     existingNotifications = [],
     cases = [{ id: "case_1", externalId: "4821", subject: null, customer: { name: "Acme Co." } }],
     createImpl,
+    notificationFailureUpsert = vi.fn().mockResolvedValue({}),
+    notificationFailureDeleteMany = vi.fn().mockResolvedValue({}),
   } = options;
 
   return {
@@ -82,7 +86,14 @@ function fakePrisma(options: FakePrismaOptions = {}) {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn().mockResolvedValue({}),
     },
+    notificationFailure: {
+      upsert: notificationFailureUpsert,
+      deleteMany: notificationFailureDeleteMany,
+    },
     case: { findMany: vi.fn().mockResolvedValue(cases) },
+    // The real client runs each op array element as a query; the fake just
+    // awaits whatever promises the mocked calls above already produced.
+    $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   } as unknown as PrismaClient;
 }
 
@@ -117,7 +128,8 @@ describe("runNotificationPipeline", () => {
   });
 
   it("sends via Slack only when email is not configured", async () => {
-    const prisma = fakePrisma({ slack: { channelId: "C123", accessToken: "xoxb-1" } });
+    const notificationFailureDeleteMany = vi.fn().mockResolvedValue({});
+    const prisma = fakePrisma({ slack: { channelId: "C123", accessToken: "xoxb-1" }, notificationFailureDeleteMany });
     const result = await runNotificationPipeline(prisma, "org_1", [candidate()]);
 
     expect(postMessageMock).toHaveBeenCalledWith("xoxb-1", "C123", expect.stringContaining("#4821"));
@@ -128,6 +140,11 @@ describe("runNotificationPipeline", () => {
       select: { id: true },
     });
     expect(prisma.notification.update).toHaveBeenCalledWith({ where: { id: "ntf_1" }, data: { channel: "slack" } });
+    // Phase 6.4: a successful send clears any stale failure record for this
+    // (commitmentId, threshold) — best-effort, no row needs to exist.
+    expect(notificationFailureDeleteMany).toHaveBeenCalledWith({
+      where: { commitmentId: "cmt_1", threshold: 80 },
+    });
   });
 
   it("claims the Notification row before sending anything", async () => {
@@ -341,9 +358,11 @@ describe("runNotificationPipeline", () => {
     getEmailSettingsMock.mockResolvedValue(emailSettings);
     postMessageMock.mockRejectedValueOnce(new Error("channel_not_found"));
     sendEmailMock.mockRejectedValueOnce(new Error("connection refused"));
+    const notificationFailureUpsert = vi.fn().mockResolvedValue({});
     const prisma = fakePrisma({
       slack: { channelId: "C123", accessToken: "xoxb-1" },
       users: [{ email: "a@example.com" }],
+      notificationFailureUpsert,
     });
     const result = await runNotificationPipeline(prisma, "org_1", [candidate()]);
 
@@ -354,6 +373,20 @@ describe("runNotificationPipeline", () => {
     // The claim is released so a later cycle retries this alert.
     expect(prisma.notification.delete).toHaveBeenCalledWith({ where: { id: "ntf_1" } });
     expect(prisma.notification.update).not.toHaveBeenCalled();
+    // Phase 6.4: a durable record survives the claim's release, so the
+    // dashboard's failed-deliveries panel has something to show.
+    expect(notificationFailureUpsert).toHaveBeenCalledWith({
+      where: { commitmentId_threshold: { commitmentId: "cmt_1", threshold: 80 } },
+      create: {
+        commitmentId: "cmt_1",
+        threshold: 80,
+        error: "slack: channel_not_found; email: a@example.com: connection refused",
+      },
+      update: expect.objectContaining({
+        error: "slack: channel_not_found; email: a@example.com: connection refused",
+        attempts: { increment: 1 },
+      }),
+    });
   });
 
   it("treats a unique-constraint race on the claim as skipped, without sending", async () => {

@@ -174,13 +174,34 @@ export async function runNotificationPipeline(
     }
 
     if (delivered.length === 0) {
-      // Release the claim so a later cycle retries this alert.
-      await prisma.notification.delete({ where: { id: claim.id } });
-      result.notificationsFailed.push({ commitmentId: candidate.commitmentId, threshold: candidate.threshold, error: errors.join("; ") });
+      const errorMessageJoined = errors.join("; ");
+      // Release the claim so a later cycle retries this alert, but keep a
+      // durable record of the failure (Phase 6.4) — the claim row itself
+      // can't serve that purpose, since it's deleted precisely so the retry
+      // can happen.
+      await prisma.$transaction([
+        prisma.notification.delete({ where: { id: claim.id } }),
+        prisma.notificationFailure.upsert({
+          where: {
+            commitmentId_threshold: { commitmentId: candidate.commitmentId, threshold: candidate.threshold },
+          },
+          create: { commitmentId: candidate.commitmentId, threshold: candidate.threshold, error: errorMessageJoined },
+          update: { error: errorMessageJoined, attempts: { increment: 1 }, lastFailedAt: new Date() },
+        }),
+      ]);
+      result.notificationsFailed.push({ commitmentId: candidate.commitmentId, threshold: candidate.threshold, error: errorMessageJoined });
       continue;
     }
 
-    await prisma.notification.update({ where: { id: claim.id }, data: { channel: delivered.join(",") } });
+    // A previously-failing candidate that just succeeded: clear its failure
+    // record so the dashboard's failed-deliveries panel doesn't keep
+    // reporting an alert that went out. Best-effort — the row may not exist.
+    await prisma.$transaction([
+      prisma.notification.update({ where: { id: claim.id }, data: { channel: delivered.join(",") } }),
+      prisma.notificationFailure.deleteMany({
+        where: { commitmentId: candidate.commitmentId, threshold: candidate.threshold },
+      }),
+    ]);
     result.notificationsSent += 1;
   }
 

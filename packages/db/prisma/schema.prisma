@@ -635,6 +635,7 @@ model Commitment {
   policyVersion     SLAPolicyVersion           @relation(fields: [policyVersionId], references: [id])
   evaluations       Evaluation[]
   notifications     Notification[]
+  notificationFailures NotificationFailure[]
   policyChanges     CommitmentPolicyChange[]
 
   @@unique([caseId, kind, cycleKey])
@@ -722,6 +723,28 @@ model Notification {
 
   @@unique([commitmentId, threshold])
   @@map("notifications")
+}
+
+/// Currently-failing alert candidates (Phase 6.4): every channel `dispatch.ts`
+/// tried for this (commitmentId, threshold) errored, so no `Notification` row
+/// exists yet and the worker will retry next cycle. Kept as its own table,
+/// not a status on `Notification`, since a failed attempt leaves no
+/// `Notification` row at all (the claim is deleted so retries stay possible)
+/// — this is the only durable record that the attempt happened. Upserted on
+/// every failed attempt (`attempts` increments, `lastFailedAt`/`error`
+/// refresh) and deleted the moment any channel succeeds for that candidate.
+model NotificationFailure {
+  id            String     @id @default(cuid())
+  commitmentId  String
+  threshold     Int
+  error         String
+  attempts      Int        @default(1)
+  firstFailedAt DateTime   @default(now())
+  lastFailedAt  DateTime   @default(now())
+  commitment    Commitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@unique([commitmentId, threshold])
+  @@map("notification_failures")
 }
 
 /// The only notification channel in v1 (Phase 10). One workspace per

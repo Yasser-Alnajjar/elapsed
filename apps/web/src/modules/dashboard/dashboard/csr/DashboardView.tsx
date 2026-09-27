@@ -22,7 +22,9 @@ import type { DashboardData } from "@/lib/types/dashboard";
 import { AgingQueueList } from "./AgingQueueList";
 import { AtRiskSnapshotTable } from "./AtRiskSnapshotTable";
 import { AttributionLedgerCard } from "./AttributionLedgerCard";
+import { BlindSpotsPanel } from "./BlindSpotsPanel";
 import { KpiTile } from "./KpiTile";
+import { SlaHealthByKindCard } from "./SlaHealthByKindCard";
 import { BreachesByStageChart } from "./analytics/BreachesByStageChart";
 import { BreachesOverTimeChart } from "./analytics/BreachesOverTimeChart";
 import { SlaComplianceTrendChart } from "./analytics/SlaComplianceTrendChart";
@@ -396,6 +398,22 @@ export const DashboardView = ({
         </Reveal>
         <Reveal delay={0.21} className="lg:col-span-3">
           <BreachesByStageChart data={data.analytics.breachesByStage} />
+        </Reveal>
+      </div>
+
+      {/* SLA Health by Kind + Blind Spots (Phase 6) */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Reveal delay={0.22} className="xl:col-span-5">
+          <SlaHealthByKindCard rows={data.healthByKind} />
+        </Reveal>
+        <Reveal delay={0.23} className="xl:col-span-7">
+          <BlindSpotsPanel
+            unmatchedCases={data.unmatchedCases}
+            unmatchedOverflowCount={data.unmatchedOverflowCount}
+            integrationHealth={data.integrationHealth}
+            failedAlerts={data.failedAlerts}
+            failedAlertsOverflowCount={data.failedAlertsOverflowCount}
+          />
         </Reveal>
       </div>
 

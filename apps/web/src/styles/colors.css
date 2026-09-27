@@ -340,6 +340,69 @@
     var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ─────────────────────────────────────────────
+   * Stitch onboarding type scale
+   * Ported 1:1 from the `stitch_elapsed/step_*` design mockups' Tailwind
+   * config so the guided-setup flow matches the design exactly.
+   * ───────────────────────────────────────────── */
+
+  --font-headline-sm: var(--font-hanken-grotesk);
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 26px;
+  --text-headline-sm--font-weight: 500;
+
+  --font-headline-md: var(--font-hanken-grotesk);
+  --text-headline-md: 22px;
+  --text-headline-md--line-height: 30px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 500;
+
+  --font-headline-lg: var(--font-hanken-grotesk);
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--letter-spacing: -0.015em;
+  --text-headline-lg--font-weight: 600;
+
+  --font-display-hero: var(--font-hanken-grotesk);
+  --text-display-hero: 40px;
+  --text-display-hero--line-height: 48px;
+  --text-display-hero--letter-spacing: -0.02em;
+  --text-display-hero--font-weight: 600;
+
+  --font-body-sm: var(--font-inter);
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 18px;
+
+  --font-body-md: var(--font-inter);
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+
+  --font-body-lg: var(--font-inter);
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+
+  --font-code-audit: var(--font-jetbrains-mono);
+  --text-code-audit: 12px;
+  --text-code-audit--line-height: 16px;
+
+  --font-label-caps: var(--font-jetbrains-mono);
+  --text-label-caps: 11px;
+  --text-label-caps--line-height: 14px;
+  --text-label-caps--letter-spacing: 0.08em;
+  --text-label-caps--font-weight: 600;
+
+  --font-mono-metric-md: var(--font-jetbrains-mono);
+  --text-mono-metric-md: 14px;
+  --text-mono-metric-md--line-height: 18px;
+  --text-mono-metric-md--letter-spacing: -0.01em;
+  --text-mono-metric-md--font-weight: 500;
+
+  --font-mono-metric-lg: var(--font-jetbrains-mono);
+  --text-mono-metric-lg: 24px;
+  --text-mono-metric-lg--line-height: 28px;
+  --text-mono-metric-lg--letter-spacing: -0.02em;
+  --text-mono-metric-lg--font-weight: 500;
+
+  /* ─────────────────────────────────────────────
    * Base
    * ───────────────────────────────────────────── */
 

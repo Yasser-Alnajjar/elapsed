@@ -88,8 +88,17 @@ describe("POST /api/sign-up", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           name: "Acme",
-          users: { create: { email: VALID_INPUT.email, passwordHash: "hashed-password", role: "owner" } },
+          users: {
+            create: {
+              email: VALID_INPUT.email,
+              passwordHash: "hashed-password",
+              role: "owner",
+              name: null,
+              acceptedTermsAt: null,
+            },
+          },
         }),
+        include: { users: true },
       }),
     );
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -84,9 +84,29 @@ export function FindingsView({ data }: FindingsViewProps) {
   const hasFindings = data.totalEscalated > 0;
 
   return (
-    <OnboardingShell title="Your findings">
+    <OnboardingShell title="Your findings" currentStep={null}>
+      <Reveal>
+        <div className="flex flex-col gap-2 rounded-xl bg-surface-container p-6 shadow-elevated">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tertiary/15 text-tertiary">
+              <span className="material-symbols-outlined text-[24px]">
+                check_circle
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-headline-md text-headline-md text-on-surface">
+                Zero-config setup complete — Elapsed is online
+              </span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                Your tools are connected. Findings now show up automatically.
+              </span>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
       {hasFindings ? (
-        <Reveal>
+        <Reveal delay={0.05}>
           <Card>
             <CardContent className="space-y-5 pt-5">
               <FindingsSummary data={data} />
@@ -95,7 +115,7 @@ export function FindingsView({ data }: FindingsViewProps) {
           </Card>
         </Reveal>
       ) : (
-        <Reveal>
+        <Reveal delay={0.05}>
           <EmptyState
             icon={Sparkles}
             title="No escalations yet"
@@ -113,8 +133,10 @@ export function FindingsView({ data }: FindingsViewProps) {
 
         <Button asChild>
           <Link href="/dashboard">
-            Go to dashboard
-            <ArrowRight />
+            Launch live operations dashboard
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_forward
+            </span>
           </Link>
         </Button>
       </div>

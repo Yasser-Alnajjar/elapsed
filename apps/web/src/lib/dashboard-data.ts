@@ -23,10 +23,21 @@ import type {
   AgingEscalationRow,
   AtRiskRow,
   AttributionLedger,
+  CommitmentKindHealth,
   DashboardData,
+  FailedAlertRow,
+  IntegrationHealthRow,
   LinkedIssueRef,
   TotalEscalatedSummary,
+  UnmatchedCaseRow,
 } from "./types/dashboard";
+import type { IntegrationProvider } from "./types/integrations";
+
+const COMMITMENT_KINDS: CommitmentKind[] = ["first_response", "next_reply", "resolution"];
+// Everything shown on the "silently not being monitored" panels needs to
+// stay readable without scrolling, same rationale as AT_RISK_LIMIT/AGING_LIMIT.
+const UNMATCHED_CASES_LIMIT = 10;
+const FAILED_ALERTS_LIMIT = 10;
 
 const ISSUE_TRACKER_SYSTEMS = new Set(["jira", "linear", "github"]);
 
@@ -95,6 +106,9 @@ export async function getDashboardData(
     previousPeriodClosedRows,
     organization,
     cycleTimeAnomalies,
+    unmatchedCaseRows,
+    integrationRows,
+    failedNotificationRows,
   ] = await Promise.all([
     prisma.commitment.findMany({
       where: { case: { organizationId, deletedAt: null }, closedAt: null },
@@ -123,13 +137,34 @@ export async function getDashboardData(
     }),
     prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { name: true, engineeringLegTargetMinutes: true },
+      select: { name: true, engineeringLegTargetMinutes: true, timezone: true },
     }),
     getCycleTimeAnomalies(prisma, organizationId),
+    // Phase 6.2: open cases the commitment pipeline never matched to any
+    // policy — `commitments: { none: {} }` is the direct read of "the
+    // pipeline's `continue` on no match left this case with zero rows".
+    prisma.case.findMany({
+      where: { organizationId, deletedAt: null, closedAt: null, commitments: { none: {} } },
+      select: { id: true, externalId: true, subject: true, openedAt: true, customer: { select: { name: true } } },
+      orderBy: { openedAt: "asc" },
+    }),
+    // Phase 6.3: every integration this organization has ever connected —
+    // a provider with no row at all is onboarding's concern, not this panel's.
+    prisma.integration.findMany({
+      where: { organizationId },
+      select: { provider: true, status: true, lastSyncAt: true, lastSyncError: true },
+    }),
+    // Phase 6.4.
+    prisma.notificationFailure.findMany({
+      where: { commitment: { case: { organizationId, deletedAt: null } } },
+      include: { commitment: { include: { case: { select: { id: true, externalId: true, subject: true } } } } },
+      orderBy: { lastFailedAt: "desc" },
+    }),
   ]);
 
   const engineeringLegTargetMinutes =
     organization?.engineeringLegTargetMinutes ?? null;
+  const timezone = organization?.timezone ?? "UTC";
 
   const policyVersionIds = [
     ...new Set(openCommitmentRows.map((c) => c.policyVersionId)),
@@ -243,6 +278,11 @@ export async function getDashboardData(
   const otherOpenCommitments: AtRiskRow[] = [];
   const casesSeenForAging = new Set<string>();
   const agingInEngineering: AgingEscalationRow[] = [];
+  // Phase 6.1: on-track/at-risk/breached per kind, among open commitments —
+  // every kind starts at zero so a kind with nothing open still renders.
+  const healthByKindMap = new Map<CommitmentKind, { onTrack: number; atRisk: number; breached: number }>(
+    COMMITMENT_KINDS.map((kind) => [kind, { onTrack: 0, atRisk: 0, breached: 0 }]),
+  );
 
   for (const row of openCommitmentRows) {
     const policyVersion = policyVersionsById.get(row.policyVersionId);
@@ -295,6 +335,12 @@ export async function getDashboardData(
       evaluation.status === "breached"
     ) {
       atRisk.push(sharedRow);
+      const tally = healthByKindMap.get(row.kind);
+      if (tally) {
+        if (evaluation.status === "on_track") tally.onTrack += 1;
+        else if (evaluation.status === "at_risk") tally.atRisk += 1;
+        else tally.breached += 1;
+      }
     } else {
       otherOpenCommitments.push(sharedRow);
     }
@@ -407,7 +453,48 @@ export async function getDashboardData(
       status: row.status,
     })),
     currentPeriodClosedRows,
+    timezone,
   );
+
+  const healthByKind: CommitmentKindHealth[] = COMMITMENT_KINDS.map((kind) => ({
+    kind,
+    ...(healthByKindMap.get(kind) ?? { onTrack: 0, atRisk: 0, breached: 0 }),
+  }));
+
+  const unmatchedCases: UnmatchedCaseRow[] = unmatchedCaseRows.slice(0, UNMATCHED_CASES_LIMIT).map((row) => ({
+    caseId: row.id,
+    externalId: row.externalId,
+    subject: row.subject,
+    customerName: row.customer?.name ?? null,
+    openedAt: row.openedAt.toISOString(),
+  }));
+
+  const integrationHealth: IntegrationHealthRow[] = integrationRows.map((row) => ({
+    provider: row.provider as IntegrationProvider,
+    reauthRequired: row.status === "reauth_required",
+    permissionDenied: row.status === "permission_denied",
+    lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
+    lastSyncError: row.lastSyncError,
+  }));
+
+  const failedAlerts: FailedAlertRow[] = failedNotificationRows
+    .filter(
+      (row): row is typeof row & { commitment: NonNullable<(typeof row)["commitment"]> & { case: NonNullable<(typeof row)["commitment"]["case"]> } } =>
+        row.commitment?.case != null,
+    )
+    .slice(0, FAILED_ALERTS_LIMIT)
+    .map((row) => ({
+      commitmentId: row.commitmentId,
+      caseId: row.commitment.case.id,
+      externalId: row.commitment.case.externalId,
+      subject: row.commitment.case.subject,
+      kind: row.commitment.kind,
+      threshold: row.threshold,
+      error: row.error,
+      attempts: row.attempts,
+      firstFailedAt: row.firstFailedAt.toISOString(),
+      lastFailedAt: row.lastFailedAt.toISOString(),
+    }));
 
   return {
     asOf,
@@ -430,5 +517,11 @@ export async function getDashboardData(
     },
     cycleTimeAnomalies,
     analytics,
+    healthByKind,
+    unmatchedCases,
+    unmatchedOverflowCount: Math.max(0, unmatchedCaseRows.length - UNMATCHED_CASES_LIMIT),
+    integrationHealth,
+    failedAlerts,
+    failedAlertsOverflowCount: Math.max(0, failedNotificationRows.length - FAILED_ALERTS_LIMIT),
   };
 }

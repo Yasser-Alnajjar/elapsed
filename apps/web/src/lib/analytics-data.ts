@@ -3,6 +3,7 @@ import {
   computeBreachedAt,
   deriveLegSpans,
   legAtTime,
+  localDateKey,
   type BusinessCalendarVersion,
   type Commitment,
   type CommitmentKind,
@@ -25,11 +26,15 @@ import type {
   SlaComplianceBreakdown,
 } from "./types/dashboard";
 
-function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+// Default kept as the historical behavior (bare UTC-slice callers, and
+// every existing test) for any caller that doesn't pass a timezone.
+const DEFAULT_TIMEZONE = "UTC";
+
+function dayKey(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  return localDateKey(date, timeZone);
 }
 
-function everyDayInRange(periodStart: Date, asOfDate: Date): string[] {
+function everyDayInRange(periodStart: Date, asOfDate: Date, timeZone: string = DEFAULT_TIMEZONE): string[] {
   const days: string[] = [];
   const cursor = new Date(
     Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), periodStart.getUTCDate()),
@@ -38,25 +43,27 @@ function everyDayInRange(periodStart: Date, asOfDate: Date): string[] {
     Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()),
   );
   while (cursor.getTime() <= end.getTime()) {
-    days.push(dayKey(cursor));
+    days.push(dayKey(cursor, timeZone));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return days;
 }
 
 /**
- * Buckets breach instants by UTC day across [periodStart, asOfDate]
- * inclusive, defaulting every day in range to 0 — a quiet day is a real
- * zero on the line chart, not a gap.
+ * Buckets breach instants by calendar day (in the organization's timezone,
+ * Phase 6.5 — defaults to UTC for a caller that doesn't pass one) across
+ * [periodStart, asOfDate] inclusive, defaulting every day in range to 0 — a
+ * quiet day is a real zero on the line chart, not a gap.
  */
 export function bucketBreachesByDay(
   breachedAtDates: Date[],
   periodStart: Date,
   asOfDate: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): BreachesOverTimePoint[] {
   const counts = new Map<string, number>();
   for (const date of breachedAtDates) {
-    const key = dayKey(date);
+    const key = dayKey(date, timeZone);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -72,7 +79,7 @@ export function bucketBreachesByDay(
     Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()),
   );
   while (cursor.getTime() <= end.getTime()) {
-    const key = dayKey(cursor);
+    const key = dayKey(cursor, timeZone);
     points.push({ date: key, count: counts.get(key) ?? 0 });
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
@@ -91,16 +98,17 @@ export function bucketBreachesByDayAndLeg(
   breaches: { breachedAt: Date; leg: Leg }[],
   periodStart: Date,
   asOfDate: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): BreachesOverTimeLegPoint[] {
   const supportCounts = new Map<string, number>();
   const engineeringCounts = new Map<string, number>();
   for (const { breachedAt, leg } of breaches) {
-    const key = dayKey(breachedAt);
+    const key = dayKey(breachedAt, timeZone);
     const bucket = leg === "engineering" ? engineeringCounts : supportCounts;
     bucket.set(key, (bucket.get(key) ?? 0) + 1);
   }
 
-  return everyDayInRange(periodStart, asOfDate).map((date) => ({
+  return everyDayInRange(periodStart, asOfDate, timeZone).map((date) => ({
     date,
     supportCount: supportCounts.get(date) ?? 0,
     engineeringCount: engineeringCounts.get(date) ?? 0,
@@ -108,19 +116,59 @@ export function bucketBreachesByDayAndLeg(
 }
 
 /**
+ * The UTC instant of local 23:59:59.999 on `dateKey` ("YYYY-MM-DD") in
+ * `timeZone` — an approximation (one offset lookup near local noon, no
+ * DST-transition binary search) that's precise enough for a chart's 7-day
+ * trailing window, unlike `computeDeadline`'s exact-to-the-minute SLA
+ * arithmetic in packages/core, which this deliberately doesn't reuse.
+ */
+function endOfLocalDayUtc(dateKey: string, timeZone: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number) as [number, number, number];
+  if (timeZone === "UTC") return new Date(`${dateKey}T23:59:59.999Z`);
+  const approxNoonUtc = Date.UTC(year, month - 1, day, 12, 0, 0);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(approxNoonUtc)
+      .map((part) => [part.type, part.value] as const),
+  ) as Record<string, string>;
+  const localReadingAsUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) === 24 ? 0 : Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  const offsetMs = localReadingAsUtc - approxNoonUtc;
+  return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - offsetMs);
+}
+
+/**
  * The "SLA Compliance Trend" chart's time series (dashboard reconstruction):
  * for each day in range, the met-vs-breached rate among commitments closed
- * in the trailing 7 days ending that day. A day with nothing closed in its
- * trailing window is `null` — a real gap, never interpolated or fabricated.
+ * in the trailing 7 days ending that day, both bucketed by the
+ * organization's timezone (Phase 6.5 — defaults to UTC for a caller that
+ * doesn't pass one). A day with nothing closed in its trailing window is
+ * `null` — a real gap, never interpolated or fabricated.
  */
 export function computeComplianceTrend(
   closedRows: { status: CommitmentStatus; closedAt: Date }[],
   periodStart: Date,
   asOfDate: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): ComplianceTrendPoint[] {
   const TRAILING_WINDOW_DAYS = 7;
-  return everyDayInRange(periodStart, asOfDate).map((date) => {
-    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+  return everyDayInRange(periodStart, asOfDate, timeZone).map((date) => {
+    const dayEnd = endOfLocalDayUtc(date, timeZone);
     const windowStart = new Date(dayEnd.getTime() - TRAILING_WINDOW_DAYS * 86_400_000);
     const windowRows = closedRows.filter(
       (row) => row.closedAt > windowStart && row.closedAt <= dayEnd,
@@ -280,6 +328,7 @@ export async function getProjectAnalytics(
   asOfDate: Date,
   openCommitmentStatuses: { caseId: string; status: CommitmentStatus }[],
   closedPeriodCommitmentStatuses: { caseId: string; status: CommitmentStatus; closedAt?: Date | null }[],
+  timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<{ analytics: ProjectAnalyticsData; breachedThisPeriod: BreachedCaseRow[] }> {
   const compliance = summarizeCompliance([
     ...openCommitmentStatuses,
@@ -379,6 +428,7 @@ export async function getProjectAnalytics(
     breaches.map((b) => b.breachedAt),
     periodStart,
     asOfDate,
+    timeZone,
   );
 
   const legCounts = new Map<Leg, number>();
@@ -396,7 +446,7 @@ export async function getProjectAnalytics(
     .map(([leg, count]) => ({ leg, count }))
     .sort((a, b) => b.count - a.count);
 
-  const breachesOverTimeByLeg = bucketBreachesByDayAndLeg(breachLegs, periodStart, asOfDate);
+  const breachesOverTimeByLeg = bucketBreachesByDayAndLeg(breachLegs, periodStart, asOfDate, timeZone);
 
   const complianceTrend = computeComplianceTrend(
     closedPeriodCommitmentStatuses.filter(
@@ -405,6 +455,7 @@ export async function getProjectAnalytics(
     ),
     periodStart,
     asOfDate,
+    timeZone,
   );
 
   const breachedThisPeriod = toBreachedCaseRows(

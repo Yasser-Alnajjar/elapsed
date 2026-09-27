@@ -4,6 +4,7 @@ import type {
   EngineeringLegEvaluation,
   Leg,
 } from "@sla/core";
+import type { IntegrationProvider } from "./integrations";
 
 /**
  * A case's linked Jira/Linear issue as surfaced to a dashboard-scoped row —
@@ -152,6 +153,46 @@ export interface ProjectAnalyticsData {
   complianceTrend: ComplianceTrendPoint[];
 }
 
+/** On track / at risk / breached counts for one `CommitmentKind`, among currently-open commitments only (Phase 6.1) — closed commitments already have an outcome, not a live status worth breaking out here. */
+export interface CommitmentKindHealth {
+  kind: CommitmentKind;
+  onTrack: number;
+  atRisk: number;
+  breached: number;
+}
+
+/** An open case (not deleted, not closed) with zero commitments — the commitment pipeline found no active `SLAPolicyVersion` matching its attributes, so it is silently unmonitored (Phase 6.2). Mirrors `SlaImportSummary.casesWithNoMatchingPolicy`'s count with the actual rows behind it. */
+export interface UnmatchedCaseRow {
+  caseId: string;
+  externalId: string;
+  subject: string | null;
+  customerName: string | null;
+  openedAt: string;
+}
+
+/** One connected-or-attempted integration's health, for the dashboard's "silently not being monitored" panel (Phase 6.3). Only providers with a row at all are included — a provider never connected has nothing to show here (it's covered by onboarding, not this panel). */
+export interface IntegrationHealthRow {
+  provider: IntegrationProvider;
+  reauthRequired: boolean;
+  permissionDenied: boolean;
+  lastSyncAt: string | null;
+  lastSyncError: string | null;
+}
+
+/** An alert that every configured channel has failed to deliver at least once and is still unresolved (Phase 6.4) — see `NotificationFailure`. Retried every worker cycle until it succeeds or the underlying commitment closes. */
+export interface FailedAlertRow {
+  commitmentId: string;
+  caseId: string;
+  externalId: string;
+  subject: string | null;
+  kind: CommitmentKind;
+  threshold: number;
+  error: string;
+  attempts: number;
+  firstFailedAt: string;
+  lastFailedAt: string;
+}
+
 export interface DashboardData {
   asOf: string;
   organizationName: string | null;
@@ -173,4 +214,14 @@ export interface DashboardData {
   compliance: { current: number | null; previous: number | null };
   cycleTimeAnomalies: CycleTimeAnomalyRow[];
   analytics: ProjectAnalyticsData;
+  /** Phase 6.1: on-track/at-risk/breached counts per commitment kind, among open commitments. Always carries all three `CommitmentKind`s, even when a kind has no open commitments (all zero). */
+  healthByKind: CommitmentKindHealth[];
+  /** Phase 6.2, capped like the other lists (`unmatchedOverflowCount` reports the rest). */
+  unmatchedCases: UnmatchedCaseRow[];
+  unmatchedOverflowCount: number;
+  /** Phase 6.3. Only providers with an `Integration` row for this organization. */
+  integrationHealth: IntegrationHealthRow[];
+  /** Phase 6.4, capped like the other lists (`failedAlertsOverflowCount` reports the rest). */
+  failedAlerts: FailedAlertRow[];
+  failedAlertsOverflowCount: number;
 }
