@@ -5,7 +5,8 @@ import { analyzeExport, type Findings } from "./analyze";
 import { parseCsv } from "./csv";
 import { parseJiraExport, parseStatusOverrides } from "./jira";
 import { buildCalendar, buildPolicyVersions, parseResolutionTargets } from "./policy";
-import { buildReport, renderHtml, renderMarkdown } from "./report";
+import { buildReport, renderMarkdown } from "./report";
+import { renderHtml } from "./report-html";
 import { isValidTimeZone, parseDuration, parseTimestamp } from "./time";
 import { parseZendeskExport } from "./zendesk";
 
@@ -127,7 +128,7 @@ export function run(argv: string[], now: Date = new Date()): { output: string; f
     format === "json"
       ? JSON.stringify(findings, null, 2) + "\n"
       : format === "html"
-        ? renderHtml(buildReport(findings, reportOptions))
+        ? renderHtml(findings, reportOptions)
         : renderMarkdown(buildReport(findings, reportOptions));
 
   if (values.out) writeFileSync(values.out, output, { mode: 0o600 });

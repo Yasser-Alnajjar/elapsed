@@ -1,5 +1,6 @@
 import { ENGINEERING_LEG_WARN_AT_PERCENT } from "@sla/core";
 import { LEGS, type CaseResult, type Findings } from "./analyze";
+import type { LinkCoverage } from "./correlate";
 import { formatMinutes } from "./time";
 
 /**
@@ -22,26 +23,26 @@ export interface ReportOptions {
   zendeskSubdomain?: string;
 }
 
-const LEG_LABELS: Record<string, string> = {
+export const LEG_LABELS: Record<string, string> = {
   support: "Support",
   engineering: "Engineering",
   waiting_customer: "Waiting on customer",
   unknown: "Unknown",
 };
 
-function percent(part: number, whole: number): string {
+export function percent(part: number, whole: number): string {
   return whole === 0 ? "0%" : `${Math.round((part / whole) * 100)}%`;
 }
 
-function plural(count: number, one: string, many = `${one}s`): string {
+export function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-function verb(count: number, singular: string, pluralForm: string): string {
+export function verb(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? singular : pluralForm;
 }
 
-function day(iso: string): string {
+export function day(iso: string): string {
   return iso.slice(0, 10);
 }
 
@@ -52,13 +53,13 @@ function ticketRef(c: CaseResult, options: ReportOptions): Inline {
     : label;
 }
 
-function describeTargets(findings: Findings): string {
+export function describeTargets(findings: Findings): string {
   return findings.targets
     .map((t) => `${t.priority ?? (findings.targets.length > 1 ? "any other priority" : "every ticket")}: ${formatMinutes(t.minutes)}`)
     .join(", ");
 }
 
-function describeCalendar(findings: Findings): string {
+export function describeCalendar(findings: Findings): string {
   const { calendar } = findings;
   if (calendar.alwaysOpen) return `24/7 (calendar time), ${calendar.timezone}`;
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -70,6 +71,46 @@ function describeCalendar(findings: Findings): string {
     .join(", ");
   const holidays = calendar.holidays.length > 0 ? `; holidays ${calendar.holidays.join(", ")}` : "";
   return `${windows} (${calendar.timezone})${holidays}`;
+}
+
+/** Plain-language caveats on link coverage, shared by the Markdown and HTML reports. */
+export function coverageNoteLines(coverage: LinkCoverage): string[] {
+  const notes: string[] = [];
+  if (coverage.issuesTicketNotInExport > 0)
+    notes.push(`${plural(coverage.issuesTicketNotInExport, "issue")} ${verb(coverage.issuesTicketNotInExport, "points", "point")} at tickets that aren't in the tickets export (often outside its date range).`);
+  if (coverage.issuesUrlWithoutSubdomain > 0)
+    notes.push(`${plural(coverage.issuesUrlWithoutSubdomain, "issue")} ${verb(coverage.issuesUrlWithoutSubdomain, "links", "link")} to a Zendesk URL, but no --zendesk-subdomain was given to confirm it's this account.`);
+  if (coverage.issuesNotZendeskReference > 0)
+    notes.push(`${plural(coverage.issuesNotZendeskReference, "issue")} ${verb(coverage.issuesNotZendeskReference, "has", "have")} link values that aren't tickets on this Zendesk account.`);
+  if (coverage.ticketReferencesIssueNotInExport > 0)
+    notes.push(`${plural(coverage.ticketReferencesIssueNotInExport, "Jira reference")} on tickets ${verb(coverage.ticketReferencesIssueNotInExport, "points", "point")} at issues that aren't in the Jira export.`);
+  const noReference = coverage.jiraIssues - coverage.issuesReferencingTicket - coverage.issuesUrlWithoutSubdomain - coverage.issuesNotZendeskReference;
+  if (noReference > 0) notes.push(`${plural(noReference, "Jira issue")} ${verb(noReference, "references", "reference")} no ticket at all (internal engineering work, as expected).`);
+  return notes;
+}
+
+/** The "how this was calculated" caveats, shared by the Markdown and HTML reports. */
+export function methodNoteLines(findings: Findings): string[] {
+  const quality = findings.dataQuality;
+  const notes: string[] = [
+    `Resolution targets: ${describeTargets(findings)}. Business hours: ${describeCalendar(findings)}.`,
+    `The clock pauses while a ticket is pending on the customer. Targets and hours were given for this analysis; exports don't include SLA policies.`,
+    "Escalation time starts when the linked Jira issue was created. Exports don't record when the link was made.",
+  ];
+  if (findings.ticketsWithoutTarget > 0)
+    notes.push(`${plural(findings.ticketsWithoutTarget, "ticket")} had a priority with no target and ${verb(findings.ticketsWithoutTarget, "wasn't", "weren't")} evaluated.`);
+  if (quality.closedTicketsWithoutHistory.length > 0)
+    notes.push(`${plural(quality.closedTicketsWithoutHistory.length, "solved ticket")} had no status history in the audits export and ${verb(quality.closedTicketsWithoutHistory.length, "wasn't", "weren't")} evaluated.`);
+  if (quality.issuesWithoutChangelog.length > 0)
+    notes.push(`${plural(quality.issuesWithoutChangelog.length, "linked issue")} had no changelog rows, so only their current status is known: ${quality.issuesWithoutChangelog.slice(0, 10).join(", ")}.`);
+  if (quality.casesWithLegWarnings > 0)
+    notes.push(`${plural(quality.casesWithLegWarnings, "ticket")} had ambiguous ownership handoffs, counted as Unknown.`);
+  const assumed = quality.assumedJiraStatuses.filter((s) => s.source === "stock default");
+  if (assumed.length > 0)
+    notes.push(`Jira statuses mapped by name (confirm with the customer): ${assumed.map((s) => `${s.name} → ${s.category}`).join(", ")}.`);
+  if (quality.unknownJiraStatuses.length > 0)
+    notes.push(`Jira statuses with no known category, rows dropped (pass --jira-status): ${quality.unknownJiraStatuses.map((s) => `${s.name} (${s.rows})`).join(", ")}.`);
+  return notes;
 }
 
 export function buildReport(findings: Findings, options: ReportOptions = {}): Block[] {
@@ -127,18 +168,8 @@ export function buildReport(findings: Findings, options: ReportOptions = {}): Bl
       " Unlinked issues are never assigned to a ticket by guesswork, so they don't count toward any number here.",
     ],
   });
-  const coverageNotes: Inline[][] = [];
-  if (coverage.issuesTicketNotInExport > 0)
-    coverageNotes.push([`${plural(coverage.issuesTicketNotInExport, "issue")} ${verb(coverage.issuesTicketNotInExport, "points", "point")} at tickets that aren't in the tickets export (often outside its date range).`]);
-  if (coverage.issuesUrlWithoutSubdomain > 0)
-    coverageNotes.push([`${plural(coverage.issuesUrlWithoutSubdomain, "issue")} ${verb(coverage.issuesUrlWithoutSubdomain, "links", "link")} to a Zendesk URL, but no --zendesk-subdomain was given to confirm it's this account.`]);
-  if (coverage.issuesNotZendeskReference > 0)
-    coverageNotes.push([`${plural(coverage.issuesNotZendeskReference, "issue")} ${verb(coverage.issuesNotZendeskReference, "has", "have")} link values that aren't tickets on this Zendesk account.`]);
-  if (coverage.ticketReferencesIssueNotInExport > 0)
-    coverageNotes.push([`${plural(coverage.ticketReferencesIssueNotInExport, "Jira reference")} on tickets ${verb(coverage.ticketReferencesIssueNotInExport, "points", "point")} at issues that aren't in the Jira export.`]);
-  const noReference = coverage.jiraIssues - coverage.issuesReferencingTicket - coverage.issuesUrlWithoutSubdomain - coverage.issuesNotZendeskReference;
-  if (noReference > 0) coverageNotes.push([`${plural(noReference, "Jira issue")} ${verb(noReference, "references", "reference")} no ticket at all (internal engineering work, as expected).`]);
-  if (coverageNotes.length > 0) blocks.push({ kind: "list", items: coverageNotes });
+  const coverageNotes = coverageNoteLines(coverage);
+  if (coverageNotes.length > 0) blocks.push({ kind: "list", items: coverageNotes.map((line) => [line]) });
 
   if (escalated.cases > 0) {
     blocks.push({ kind: "heading", text: "Where escalated tickets spent their time" });
@@ -261,25 +292,7 @@ export function buildReport(findings: Findings, options: ReportOptions = {}): Bl
 
   blocks.push({ kind: "heading", text: "How this was calculated" });
   const quality = findings.dataQuality;
-  const method: Inline[][] = [
-    [`Resolution targets: ${describeTargets(findings)}. Business hours: ${describeCalendar(findings)}.`],
-    [`The clock pauses while a ticket is pending on the customer. Targets and hours were given for this analysis; exports don't include SLA policies.`],
-    ["Escalation time starts when the linked Jira issue was created. Exports don't record when the link was made."],
-  ];
-  if (findings.ticketsWithoutTarget > 0)
-    method.push([`${plural(findings.ticketsWithoutTarget, "ticket")} had a priority with no target and ${verb(findings.ticketsWithoutTarget, "wasn't", "weren't")} evaluated.`]);
-  if (quality.closedTicketsWithoutHistory.length > 0)
-    method.push([`${plural(quality.closedTicketsWithoutHistory.length, "solved ticket")} had no status history in the audits export and ${verb(quality.closedTicketsWithoutHistory.length, "wasn't", "weren't")} evaluated.`]);
-  if (quality.issuesWithoutChangelog.length > 0)
-    method.push([`${plural(quality.issuesWithoutChangelog.length, "linked issue")} had no changelog rows, so only their current status is known: ${quality.issuesWithoutChangelog.slice(0, 10).join(", ")}.`]);
-  if (quality.casesWithLegWarnings > 0)
-    method.push([`${plural(quality.casesWithLegWarnings, "ticket")} had ambiguous ownership handoffs, counted as Unknown.`]);
-  const assumed = quality.assumedJiraStatuses.filter((s) => s.source === "stock default");
-  if (assumed.length > 0)
-    method.push([`Jira statuses mapped by name (confirm with the customer): ${assumed.map((s) => `${s.name} → ${s.category}`).join(", ")}.`]);
-  if (quality.unknownJiraStatuses.length > 0)
-    method.push([`Jira statuses with no known category, rows dropped (pass --jira-status): ${quality.unknownJiraStatuses.map((s) => `${s.name} (${s.rows})`).join(", ")}.`]);
-  blocks.push({ kind: "list", items: method });
+  blocks.push({ kind: "list", items: methodNoteLines(findings).map((line) => [line]) });
 
   blocks.push({
     kind: "table",
@@ -340,77 +353,4 @@ export function renderMarkdown(blocks: Block[]): string {
     }
   }
   return out.join("\n\n") + "\n";
-}
-
-function htmlEscape(text: string): string {
-  return text.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
-}
-
-function htmlInline(parts: Inline[]): string {
-  return parts
-    .map((part) => {
-      if (typeof part === "string") return htmlEscape(part);
-      if ("strong" in part) return `<strong>${htmlEscape(part.strong)}</strong>`;
-      return `<a href="${htmlEscape(part.href)}">${htmlEscape(part.link)}</a>`;
-    })
-    .join("");
-}
-
-const STYLES = `
-:root { --bg: #fff; --fg: #1a1a1a; --muted: #666; --line: #e5e5e5; --accent: #b45309; }
-@media (prefers-color-scheme: dark) { :root { --bg: #141414; --fg: #eee; --muted: #a0a0a0; --line: #333; --accent: #f59e0b; } }
-body { background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, sans-serif; margin: 0; }
-main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
-h1 { font-size: 26px; margin: 0 0 4px; }
-h2 { font-size: 17px; margin: 28px 0 8px; padding-top: 16px; border-top: 1px solid var(--line); }
-p { margin: 8px 0; }
-p.muted { color: var(--muted); font-size: 13px; }
-strong { color: var(--accent); }
-ul { padding-left: 20px; margin: 8px 0; }
-li { margin: 4px 0; }
-.table { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 8px 0; }
-th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 500; }
-a { color: inherit; }
-@media print { body { font-size: 12px; } main { padding: 0; } h2 { break-after: avoid; } }
-`;
-
-export function renderHtml(blocks: Block[]): string {
-  const title = blocks.find((b) => b.kind === "title");
-  const body = blocks
-    .map((block) => {
-      switch (block.kind) {
-        case "title":
-          return `<h1>${htmlEscape(block.text)}</h1>`;
-        case "heading":
-          return `<h2>${htmlEscape(block.text)}</h2>`;
-        case "paragraph":
-          return `<p>${htmlInline(block.parts)}</p>`;
-        case "muted":
-          return `<p class="muted">${htmlEscape(block.text)}</p>`;
-        case "list":
-          return `<ul>${block.items.map((item) => `<li>${htmlInline(item)}</li>`).join("")}</ul>`;
-        case "table":
-          return `<div class="table"><table><thead><tr>${block.header.map((h) => `<th>${htmlEscape(h)}</th>`).join("")}</tr></thead><tbody>${block.rows
-            .map((row) => `<tr>${row.map((cell) => `<td>${htmlInline([cell])}</td>`).join("")}</tr>`)
-            .join("")}</tbody></table></div>`;
-      }
-    })
-    .join("\n");
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${htmlEscape(title?.kind === "title" ? title.text : "Escalation findings")}</title>
-<style>${STYLES}</style>
-</head>
-<body>
-<main>
-${body}
-</main>
-</body>
-</html>
-`;
 }

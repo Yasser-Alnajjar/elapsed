@@ -207,6 +207,11 @@ describe("cli output", () => {
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).toContain("Escalation findings: &#60;Acme &#38; Co&#62;");
     expect(html).not.toContain("<Acme");
+    // Self-contained: the report carries customer data, so it loads nothing remote.
+    expect(html).not.toMatch(/https?:\/\/(?!acme\.zendesk\.com)[^"' )]*\.(?:js|css)|<script src|<link /);
+    for (const section of ["Link coverage", "Who held the ticket when the target passed", "How this was calculated", "Data sources"]) {
+      expect(html).toContain(section);
+    }
     expect(statSync(out).mode & 0o777).toBe(0o600);
   });
 
