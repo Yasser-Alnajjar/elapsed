@@ -1,5 +1,6 @@
 import {
   ZendeskApiError,
+  parseJiraLinkRecord,
   type ZendeskAudit,
   type ZendeskClient,
   type ZendeskTicket,
@@ -30,7 +31,7 @@ const INCREMENTAL_EXPORT_PAGE_SIZE = 1000;
 
 export type ZendeskExportClient = Pick<
   ZendeskClient,
-  "fetchTicketsPage" | "fetchTicketsNextPage" | "fetchOrganizationsPage" | "fetchOrganizationsNextPage" | "fetchTicketAuditsPage"
+  "fetchTicketsPage" | "fetchTicketsNextPage" | "fetchOrganizationsPage" | "fetchOrganizationsNextPage" | "fetchTicketAuditsPage" | "fetchJiraLinksPage"
 >;
 
 export interface ZendeskTicketExport {
@@ -42,6 +43,10 @@ export interface CollectedZendeskExport {
   startTime: number;
   tickets: ZendeskTicketExport[];
   organizationNames: Map<number, string>;
+  /** Official Zendesk↔Jira links (`/api/v2/jira/links`), ticket id → Jira issue keys. The authoritative signal Concierge correlates on. */
+  jiraKeysByTicketId: Map<string, string[]>;
+  /** The registry couldn't be read (Zendesk's Jira integration isn't installed, or access was denied), so links are unknown rather than absent. */
+  jiraLinksUnavailable: boolean;
   /** Listed by the ticket export, but their audits were gone (404) by the time they were fetched. */
   skippedTicketIds: number[];
 }
@@ -76,7 +81,43 @@ export async function collectZendeskExport(
     else tickets.push({ ticket, audits });
   }
 
-  return { startTime, tickets, organizationNames: await fetchOrganizationNames(client), skippedTicketIds };
+  const { jiraKeysByTicketId, unavailable } = await fetchJiraKeysByTicketId(client);
+  return {
+    startTime,
+    tickets,
+    organizationNames: await fetchOrganizationNames(client),
+    jiraKeysByTicketId,
+    jiraLinksUnavailable: unavailable,
+    skippedTicketIds,
+  };
+}
+
+/** Walks the cursor-paginated registry the way `runZendeskBackfill` does. */
+async function fetchJiraKeysByTicketId(
+  client: ZendeskExportClient,
+): Promise<{ jiraKeysByTicketId: Map<string, string[]>; unavailable: boolean }> {
+  const jiraKeysByTicketId = new Map<string, string[]>();
+  let afterCursor: string | undefined;
+  try {
+    for (;;) {
+      const page = await client.fetchJiraLinksPage(afterCursor);
+      for (const link of page.links) {
+        const parsed = parseJiraLinkRecord(link);
+        if (!parsed) continue;
+        const keys = jiraKeysByTicketId.get(parsed.ticketId) ?? [];
+        if (!keys.includes(parsed.issueKey)) keys.push(parsed.issueKey);
+        jiraKeysByTicketId.set(parsed.ticketId, keys);
+      }
+      if (!page.meta?.has_more || !page.meta.after_cursor) break;
+      afterCursor = page.meta.after_cursor;
+    }
+  } catch (error) {
+    if (error instanceof ZendeskApiError && (error.status === 403 || error.status === 404)) {
+      return { jiraKeysByTicketId: new Map(), unavailable: true };
+    }
+    throw error;
+  }
+  return { jiraKeysByTicketId, unavailable: false };
 }
 
 async function fetchAllAudits(client: ZendeskExportClient, ticketId: number): Promise<ZendeskAudit[] | null> {
@@ -111,7 +152,7 @@ async function fetchOrganizationNames(client: ZendeskExportClient): Promise<Map<
 
 export function ticketsToCsv(collected: CollectedZendeskExport): string {
   return buildCsv(
-    ["Id", "Subject", "Status", "Priority", "Created at", "Updated at", "Organization", "Organization ID", "Requester ID", "Via", "External ID"],
+    ["Id", "Subject", "Status", "Priority", "Created at", "Updated at", "Organization", "Organization ID", "Requester ID", "Via", "External ID", "Jira issue keys"],
     collected.tickets.map(({ ticket }) => [
       ticket.id,
       ticket.subject ?? "",
@@ -124,6 +165,7 @@ export function ticketsToCsv(collected: CollectedZendeskExport): string {
       ticket.requester_id ?? "",
       ticket.via?.channel ?? "",
       ticket.external_id ?? "",
+      (collected.jiraKeysByTicketId.get(String(ticket.id)) ?? []).join(" "),
     ]),
   );
 }
@@ -193,6 +235,8 @@ export function buildZendeskConciergeExport(
     sinceDays: context.sinceDays,
     ticketCount: collected.tickets.length,
     statusChangeCount: rows.length,
+    jiraLinkCount: [...collected.jiraKeysByTicketId.values()].reduce((sum, keys) => sum + keys.length, 0),
+    jiraLinksUnavailable: collected.jiraLinksUnavailable,
     skippedTicketIds: collected.skippedTicketIds,
     files: [ZENDESK_TICKETS_FILE, ZENDESK_AUDITS_FILE, ZENDESK_METADATA_FILE],
   };

@@ -78,10 +78,6 @@ export const DashboardView = ({
     router.refresh();
     setTimeout(() => setRefreshing(false), 1000);
   };
-  console.log({
-    data: data.analytics.complianceTrend,
-    currentCompliance: data.compliance.current,
-  });
 
   return (
     <div className="mx-auto flex w-full max-w-430 flex-col gap-6">

@@ -39,7 +39,7 @@ function statusAudit(id: number, ticketId: number, createdAt: string, from: stri
  * ticket 5's audits are gone (404).
  */
 function fakeClient() {
-  const calls = { ticketPages: [] as string[], audits: [] as [number, string | undefined][], orgPages: [] as string[] };
+  const calls = { ticketPages: [] as string[], audits: [] as [number, string | undefined][], orgPages: [] as string[], jiraPages: [] as string[] };
   const filler = Array.from({ length: 996 }, () => ticket(1, { subject: "stale copy" }));
   const audits: Record<number, ZendeskAudit[][]> = {
     1: [[
@@ -74,6 +74,12 @@ function fakeClient() {
     fetchOrganizationsNextPage: async () => {
       throw new Error("unexpected");
     },
+    fetchJiraLinksPage: async (afterCursor) => {
+      calls.jiraPages.push(afterCursor ?? "first");
+      return afterCursor
+        ? { links: [{ id: 3, ticket_id: "3", issue_key: "ENG-9" }, { id: 4, ticket_id: "oops", issue_key: "ENG-1" }], meta: { has_more: false } }
+        : { links: [{ id: 1, ticket_id: "1", issue_key: "ENG-1" }, { id: 2, ticket_id: "1", issue_key: "ENG-2" }], meta: { has_more: true, after_cursor: "c1" } };
+    },
     fetchTicketAuditsPage: async (ticketId, nextPageUrl) => {
       calls.audits.push([ticketId, nextPageUrl]);
       if (ticketId === 5) throw new ZendeskApiError(404, "https://acme.zendesk.com/api/v2/tickets/5/audits.json");
@@ -99,6 +105,24 @@ describe("collectZendeskExport", () => {
     // The later copy of a ticket in the stream wins.
     expect(collected.tickets[0]!.ticket.subject).toBe('Refund "urgent", please\nsecond line');
     expect(calls.orgPages).toEqual(["start:0"]);
+  });
+
+  it("reads the official Jira links across cursor pages, skipping malformed rows", async () => {
+    const { client, calls } = fakeClient();
+    const collected = await collectZendeskExport(client, { sinceDays: 90, now: NOW });
+    expect(calls.jiraPages).toEqual(["first", "c1"]);
+    expect([...collected.jiraKeysByTicketId]).toEqual([["1", ["ENG-1", "ENG-2"]], ["3", ["ENG-9"]]]);
+    expect(collected.jiraLinksUnavailable).toBe(false);
+  });
+
+  it("treats a denied or missing registry as unknown links, not a failed export", async () => {
+    const { client } = fakeClient();
+    client.fetchJiraLinksPage = async () => {
+      throw new ZendeskApiError(404, "https://acme.zendesk.com/api/v2/jira/links");
+    };
+    const collected = await collectZendeskExport(client, { sinceDays: 90, now: NOW });
+    expect(collected.jiraLinksUnavailable).toBe(true);
+    expect(collected.jiraKeysByTicketId.size).toBe(0);
   });
 
   it("starts the incremental export at the window start", () => {
@@ -131,8 +155,9 @@ describe("export files", () => {
 
     const tickets = parseCsv(files.ticketsCsv);
     expect(tickets.rows[0]).toEqual([
-      "1", 'Refund "urgent", please\nsecond line', "open", "high", "2026-09-01T10:00:00Z", "2026-09-03T10:00:00Z", "Acme, Inc.", "900", "42", "email", "",
+      "1", 'Refund "urgent", please\nsecond line', "open", "high", "2026-09-01T10:00:00Z", "2026-09-03T10:00:00Z", "Acme, Inc.", "900", "42", "email", "", "ENG-1 ENG-2",
     ]);
+    expect(parseZendeskExport(tickets, parseCsv(files.auditsCsv), "UTC").cases.get("1")!.jiraKeys).toEqual(["ENG-1", "ENG-2"]);
     expect(files.ticketsCsv).toContain('"Refund ""urgent"", please\nsecond line"');
     expect(files.ticketsCsv).toContain('"Acme, Inc."');
 
@@ -154,6 +179,8 @@ describe("export files", () => {
       ticketCount: 3,
       statusChangeCount: 4,
       skippedTicketIds: [5],
+      jiraLinkCount: 3,
+      jiraLinksUnavailable: false,
     });
   });
 });

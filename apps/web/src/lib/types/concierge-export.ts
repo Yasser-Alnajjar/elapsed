@@ -82,6 +82,8 @@ export interface ZendeskConciergeExportMetadata extends ConciergeExportMetadataB
   startTime: number;
   ticketCount: number;
   statusChangeCount: number;
+  jiraLinkCount: number;
+  jiraLinksUnavailable: boolean;
   skippedTicketIds: number[];
 }
 

@@ -5,7 +5,6 @@ import { CaseListView } from "../csr/list-view";
 export const CaseList = async () => {
   const data = await Actions.Cases.getList();
   const worker = await Actions.WorkerSettings.getData();
-  console.log(data);
 
   return (
     <>
