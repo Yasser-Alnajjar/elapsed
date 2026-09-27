@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { organizationName, email, password } = parsed.data;
+  const { organizationName, email, password, fullName, acceptedTerms } =
+    parsed.data;
   const prisma = getPrismaClient();
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -37,7 +38,15 @@ export async function POST(request: Request) {
       name: organizationName,
       // Sign-up creates the owner directly; every invitation accepted
       // (roadmap 5.2) creates a `member` on an existing organization instead.
-      users: { create: { email, passwordHash, role: "owner" } },
+      users: {
+        create: {
+          email,
+          passwordHash,
+          role: "owner",
+          name: fullName || null,
+          acceptedTermsAt: acceptedTerms ? new Date() : null,
+        },
+      },
     },
     include: { users: true },
   });

@@ -1,6 +1,107 @@
+import * as React from "react";
 import type { ReactNode } from "react";
-import { BrandMark } from "@/components/shared/brand-mark";
+import { Shield } from "lucide-react";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { cn } from "@/lib/utils";
+import { ThemeToggle } from "../ui/theme-toggle";
 
+/*
+ * Auth surface matching the Stitch "elapsed_*" screens: a dark canvas, a
+ * shared top bar + footer, and per-screen cards built from the pieces below.
+ * Palette (hex) comes straight from the design's tailwind config.
+ */
+
+/** 10px mono, uppercase micro-label. */
+export const authLabelClass =
+  "font-mono text-[10px] font-semibold uppercase leading-3 tracking-[0.06em]";
+
+/** Base for every text field: canvas fill, sky focus ring. */
+export const authInputBase =
+  "w-full text-foreground placeholder:text-foreground-subtle transition-all focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Inline link inside a card. */
+export const authLinkClass =
+  "font-medium text-primary transition-colors hover:text-primary-fixed-dim";
+
+/** Solid sky primary action. */
+export const authButtonClass =
+  "group flex w-full items-center justify-center gap-2 rounded-[2px] bg-sky-500 text-sm font-semibold tracking-wide text-surface-container-lowest transition-all duration-200 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60";
+
+export const AuthInput = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<"input">
+>(({ className, ...props }, ref) => (
+  <input ref={ref} className={cn(authInputBase, className)} {...props} />
+));
+AuthInput.displayName = "AuthInput";
+
+/** Inline validation message under a field. */
+export function AuthFieldError({
+  id,
+  message,
+}: {
+  id: string;
+  message?: string;
+}) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-error">
+      {message}
+    </p>
+  );
+}
+
+function AuthHeader() {
+  return (
+    <header className="relative z-10 w-full border-b border-border bg-background/60 backdrop-blur-xl">
+      <div className="flex h-14 w-full items-center justify-between px-6">
+        <div className="flex items-center gap-2">
+          <BrandLogo className="size-6" />
+          <span className="font-mono text-base font-bold uppercase leading-6 tracking-tight text-foreground">
+            ELAPSED
+          </span>
+          <span className={cn(authLabelClass, "text-foreground-subtle")}>
+            |
+          </span>
+          <span className={cn(authLabelClass, "text-primary")}>LIVE SLA</span>
+        </div>
+        <ThemeToggle />
+      </div>
+    </header>
+  );
+}
+
+/** Full-page frame: backdrop, top bar, centred content, footer. */
+export function AuthPage({
+  children,
+  mainClassName,
+}: {
+  children: ReactNode;
+  mainClassName?: string;
+}) {
+  return (
+    <div className="relative flex min-h-screen flex-col justify-between bg-surface-container-lowest font-inter text-foreground selection:bg-sky-500 selection:text-primary-foreground">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_50%_0%,color-mix(in_oklch,var(--color-primary)_8%,transparent),transparent_55%),radial-gradient(circle_at_50%_100%,color-mix(in_oklch,var(--color-background)_80%,transparent),transparent_70%)]"
+      />
+      <AuthHeader />
+      <main
+        className={cn(
+          "relative z-10 flex w-full flex-1 items-center justify-center px-4 py-8 md:px-6",
+          mainClassName,
+        )}
+      >
+        {children}
+      </main>
+    </div>
+  );
+}
+
+/**
+ * Simple centred card (the sign-in card chrome) for the auth screens that have
+ * no dedicated design: verify-email and accept-invite.
+ */
 export function AuthShell({
   title,
   description,
@@ -13,32 +114,55 @@ export function AuthShell({
   footer: ReactNode;
 }) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-grain"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-144 w-xl -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/10 blur-[120px]"
-      />
-      <div className="relative w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <BrandMark className="text-2xl" logoClassName="size-12" />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-7 shadow-elevated">
-          <div className="mb-6 space-y-1.5">
-            <h1 className="font-display text-2xl font-medium tracking-tight">
+    <AuthPage>
+      <div className="relative z-10 w-full max-w-115 rounded-lg bg-linear-to-b from-primary/30 via-border-strong to-border p-px shadow-[0_24px_50px_-12px_rgba(6,10,18,0.95)]">
+        <div className="flex flex-col gap-4 rounded-[calc(0.5rem-1px)] bg-background p-6">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <h1 className="text-[28px] font-bold leading-9 tracking-[-0.015em] text-foreground">
               {title}
             </h1>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="max-w-85 text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
           </div>
           {children}
-        </div>
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          {footer}
+          {footer && (
+            <div className="border-t border-border/80 pt-3 text-center text-xs text-muted-foreground">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
-    </main>
+    </AuthPage>
+  );
+}
+
+const alertTones = {
+  danger: "border-error/40 bg-error/10 text-rose-300",
+  warning: "border-warning/40 bg-warning/10 text-orange-300",
+  success: "border-success/40 bg-success/10 text-success",
+} as const;
+
+/** Inline status banner in the design's mono/dark treatment. */
+export function AuthAlert({
+  tone,
+  icon,
+  children,
+}: {
+  tone: keyof typeof alertTones;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role={tone === "success" ? "status" : "alert"}
+      className={cn(
+        "flex items-start gap-2 rounded-[2px] border px-3 py-2 text-xs leading-4 [&_svg]:mt-px [&_svg]:size-3.5 [&_svg]:shrink-0",
+        alertTones[tone],
+      )}
+    >
+      {icon}
+      <div>{children}</div>
+    </div>
   );
 }

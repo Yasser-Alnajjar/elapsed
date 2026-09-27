@@ -78,6 +78,10 @@ model User {
   sessionVersion Int          @default(0)
   name           String?
   image          String?
+  /// Set at sign-up when the user checks the terms/privacy-policy checkbox.
+  /// Null for users created before this field existed or via invitation
+  /// (roadmap 5.2), which has no terms checkbox of its own.
+  acceptedTermsAt DateTime?
   /// `owner` is whoever created the organization (roadmap: Worker/Monitoring
   /// settings) — the only role distinction v1 needs. Sign-up creates the
   /// owner; every invitation accepted (Phase 5 task 5.2) creates a `member`

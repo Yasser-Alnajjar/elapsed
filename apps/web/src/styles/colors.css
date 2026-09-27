@@ -418,6 +418,8 @@
   --color-interactive: var(--interactive);
 
   --color-surface-subtle: var(--surface-subtle);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
   --color-surface-active: var(--surface-active);
 
   --color-surface-bright: var(--surface-bright);
@@ -439,6 +441,7 @@
 
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
+  --color-foreground-subtle: var(--foreground-subtle);
 
   /* ─────────────────────────────────────────────
    * Outline

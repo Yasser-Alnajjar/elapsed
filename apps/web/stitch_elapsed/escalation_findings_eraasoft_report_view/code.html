@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Escalation Findings Audit Report — EraaSoft — Elapsed Metrology</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#0b1324",
+            "canvas": "#060a12",
+            "surface-raised": "#111c34",
+            "surface-container": "#171f33",
+            "surface-container-high": "#222a3d",
+            "surface-hover": "#1c2a47",
+            "border": "#1c273c",
+            "border-strong": "#2d3c59",
+            "primary": "#89ceff",
+            "primary-container": "#0ea5e9",
+            "secondary": "#7bd0ff",
+            "text-primary": "#f8fafc",
+            "text-muted": "#94a3b8",
+            "text-subtle": "#64748b",
+            "status-danger": "#f43f5e",
+            "status-warning": "#f59e0b",
+            "status-success": "#10b981"
+          },
+          fontFamily: {
+            "headline-lg": ["Hanken Grotesk", "Inter", "sans-serif"],
+            "headline-md": ["Hanken Grotesk", "Inter", "sans-serif"],
+            "title-mono": ["JetBrains Mono", "monospace"],
+            "label-mono-xs": ["JetBrains Mono", "monospace"],
+            "label-mono-sm": ["JetBrains Mono", "monospace"],
+            "code-sm": ["JetBrains Mono", "monospace"],
+            "body-sm": ["Inter", "sans-serif"],
+            "body-md": ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #060a12;
+      }
+    }
+    @media print {
+      body {
+        background-color: #0b1324 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-canvas font-body-md text-slate-200 antialiased selection:bg-sky-500/30 selection:text-sky-200 min-h-screen py-6 sm:py-10 px-3 sm:px-6 lg:px-8">
+<!-- STANDALONE AUDIT REPORT CONTAINER -->
+<main class="w-full max-w-[1400px] mx-auto bg-surface border border-border rounded-xl shadow-2xl overflow-hidden">
+<!-- AUDIT REPORT MASTHEAD & UTILITY BAR -->
+<header class="w-full border-b border-border bg-[#0d162c] px-5 sm:px-8 py-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<!-- Logo / Engine Brand & Verifier Tag -->
+<div class="flex items-center gap-3.5">
+<img alt="Elapsed metrology logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida/AEtjO1X7bsoQbZxoktQ6pg7OVUylAFps6_wh2RPR70GmWfEb2uqjKJ9U4ZLc2qgZUW0Q0PR7fcnnoQ9pjYq7xL8PkEvQWf8n6EwHkAr0KNWNVOLk-rfG7LRKrzykPRnyvTAFj4f7D6Mm_xMrfHm7fqrk4X0fuGnH9l_3nNq2yj0-LIdeCGYL-2XbFMTW2e6t1Cr2cG_BVQT7ksCnpixmwGdBEmXNBq_Gl5j-vV6lAuOjqf3rrOoLunZW3MbSr5E"/>
+<div class="h-6 w-px bg-border"></div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-title-mono text-[14px] font-bold text-text-primary tracking-tight">ELAPSED</span>
+<span class="px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 font-label-mono-xs text-[9px] text-primary uppercase font-semibold tracking-wider">Audit Verified</span>
+</div>
+<span class="font-label-mono-xs text-[10px] text-text-subtle uppercase tracking-wider">Deterministic SLA Metrology &amp; Correlation</span>
+</div>
+</div>
+<!-- Breadcrumb / Report ID Identifier -->
+<div class="hidden lg:flex items-center gap-2 font-code-sm text-[11px] text-text-subtle border border-border/80 bg-surface px-3 py-1.5 rounded-md">
+<span class="text-text-muted">REPORT ID:</span>
+<span class="font-mono text-primary font-medium tracking-tight">RPT-20260927-ERAA</span>
+<span class="text-border-strong">//</span>
+<span class="text-slate-300 font-mono">ERASOFT ESCALATION AUDIT</span>
+</div>
+<!-- Report Action Controls (PDF, Print, Raw JSON, Share) -->
+<div class="flex items-center gap-2 no-print">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-raised hover:bg-surface-hover border border-border hover:border-border-strong text-text-primary font-body-sm text-[13px] transition-all shadow-sm" onclick="window.print()" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">print</span>
+<span>Print / PDF</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-raised hover:bg-surface-hover border border-border hover:border-border-strong text-text-primary font-body-sm text-[13px] transition-all shadow-sm" onclick="navigator.clipboard.writeText(window.location.href)" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">data_object</span>
+<span>Raw JSON Package</span>
+</button>
+<button class="flex items-center justify-center w-8 h-8 rounded-md bg-surface-raised hover:bg-surface-hover border border-border hover:border-border-strong text-text-muted hover:text-text-primary transition-all shadow-sm" onclick="navigator.clipboard.writeText(window.location.href)" title="Copy report link" type="button">
+<span class="material-symbols-outlined text-[16px]">share</span>
+</button>
+</div>
+</div>
+</header>
+<!-- REPORT BODY CONTAINER -->
+<div class="p-5 sm:p-8 space-y-6">
+<!-- TOP REPORT METADATA & TITLE BLOCK -->
+<section class="flex flex-col gap-3 pb-6 border-b border-border">
+<div class="flex flex-wrap items-center gap-2 font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider">
+<span>Reports</span>
+<span class="text-slate-600">/</span>
+<span>Escalation Analysis</span>
+<span class="text-slate-600">/</span>
+<span class="text-slate-200">EraaSoft</span>
+<span class="text-slate-600">•</span>
+<span class="text-primary font-code-sm">REPORT ID: RPT-20260927-ERAA</span>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<h1 class="font-headline-lg text-2xl sm:text-3xl text-text-primary tracking-tight font-bold">
+            Escalation Findings
+          </h1>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-raised border border-border text-slate-200">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-mono-sm text-label-mono-sm font-semibold tracking-wide uppercase">EraaSoft</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-sky-500/10 border border-sky-500/30 text-primary">
+<span class="material-symbols-outlined text-[14px]">insights</span>
+<span class="font-label-mono-xs text-label-mono-xs font-semibold uppercase tracking-wider">Escalation Analysis</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container border border-border text-text-muted">
+<span class="material-symbols-outlined text-[14px] text-status-success">sync_saved_locally</span>
+<span class="font-code-sm text-[11px]">Zendesk + Jira Deterministic Replay</span>
+</div>
+</div>
+<!-- Evaluation Scope Attributes -->
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-code-sm text-code-sm text-text-muted pt-1">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-text-subtle">date_range</span>
+            Tickets opened <span class="text-text-primary font-mono font-medium">Sep 19–Sep 26, 2026</span>
+</span>
+<span class="text-border-strong hidden sm:inline">•</span>
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-text-subtle">schedule</span>
+            Evaluated <span class="text-text-primary font-mono font-medium">Sep 27, 2026</span>
+</span>
+<span class="text-border-strong hidden sm:inline">•</span>
+<span class="text-text-subtle">Target Mode: <span class="text-primary font-mono font-medium">24/7 Africa/Cairo</span></span>
+</div>
+</section>
+<!-- EXECUTIVE SUMMARY CARDS (4 KPI TILES) -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1: Escalated tickets -->
+<div class="flex flex-col justify-between p-4 rounded-lg bg-surface-raised border border-border hover:border-border-strong transition-all shadow-sm">
+<div class="flex items-center justify-between text-text-muted pb-2">
+<span class="font-label-mono-xs text-label-mono-xs uppercase tracking-wider text-text-subtle">Escalated Tickets</span>
+<span class="material-symbols-outlined text-[18px] text-primary">forward_to_inbox</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-title-mono text-[32px] leading-tight font-bold text-text-primary tabular-nums">9</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">to Jira</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-border/60 font-code-sm text-code-sm text-text-muted">
+<span>9 of 34 exported tickets</span>
+<span class="font-mono text-text-subtle text-[11px]">26.5% rate</span>
+</div>
+</div>
+<!-- Card 2: Resolution breaches -->
+<div class="flex flex-col justify-between p-4 rounded-lg bg-surface-raised border border-status-danger/40 hover:border-status-danger/80 transition-all shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 w-1.5 h-full bg-status-danger"></div>
+<div class="flex items-center justify-between text-text-muted pb-2">
+<span class="font-label-mono-xs text-label-mono-xs uppercase tracking-wider text-status-danger font-semibold">Resolution Breaches</span>
+<span class="material-symbols-outlined text-[18px] text-status-danger">warning</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-title-mono text-[32px] leading-tight font-bold text-status-danger tabular-nums">3</span>
+<span class="px-1.5 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-label-mono-xs uppercase tracking-wider">Breached</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-border/60 font-code-sm text-code-sm text-text-muted">
+<span>Exceeded resolution target</span>
+<span class="font-mono text-status-danger font-semibold text-[11px]">33% escalated</span>
+</div>
+</div>
+<!-- Card 3: Support-only breaches -->
+<div class="flex flex-col justify-between p-4 rounded-lg bg-surface-raised border border-border hover:border-border-strong transition-all shadow-sm">
+<div class="flex items-center justify-between text-text-muted pb-2">
+<span class="font-label-mono-xs text-label-mono-xs uppercase tracking-wider text-text-subtle">Support-Only Breaches</span>
+<span class="material-symbols-outlined text-[18px] text-status-warning">support_agent</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-title-mono text-[32px] leading-tight font-bold text-text-primary tabular-nums">24%</span>
+<span class="font-code-sm text-code-sm text-text-muted font-normal">breach rate</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-border/60 font-code-sm text-code-sm text-text-muted">
+<span>25 tickets stayed in support</span>
+<span class="font-mono text-text-subtle text-[11px]">6 breached</span>
+</div>
+</div>
+<!-- Card 4: Engineering time -->
+<div class="flex flex-col justify-between p-4 rounded-lg bg-surface-raised border border-border hover:border-border-strong transition-all shadow-sm">
+<div class="flex items-center justify-between text-text-muted pb-2">
+<span class="font-label-mono-xs text-label-mono-xs uppercase tracking-wider text-text-subtle">Avg. Engineering Time</span>
+<span class="material-symbols-outlined text-[18px] text-primary">terminal</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-title-mono text-[32px] leading-tight font-bold text-primary tabular-nums">1h 31m</span>
+<span class="font-code-sm text-code-sm text-text-subtle">/ ticket</span>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-border/60 font-code-sm text-code-sm text-text-muted">
+<span>Per escalated ticket</span>
+<span class="font-mono text-text-subtle text-[11px]">13h 38m total</span>
+</div>
+</div>
+</section>
+<!-- ROW 2: LINK COVERAGE & WHERE TICKETS SPENT THEIR TIME -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+<!-- LINK COVERAGE SECTION (4 Columns) -->
+<div class="lg:col-span-4 flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex items-center justify-between pb-3 border-b border-border mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-status-success">link</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Link Coverage</h2>
+</div>
+<span class="px-2 py-0.5 rounded bg-status-success/10 border border-status-success/30 font-label-mono-xs text-label-mono-xs text-status-success uppercase font-semibold flex items-center gap-1">
+<span>●</span> 9 Linked
+            </span>
+</div>
+<div class="flex items-center gap-4 my-2">
+<div class="flex flex-col">
+<span class="font-title-mono text-[42px] leading-none font-bold text-status-success tabular-nums">100%</span>
+<span class="font-label-mono-xs text-[10px] text-text-subtle uppercase tracking-wider mt-1">Deterministically Resolved</span>
+</div>
+<div class="h-10 w-px bg-border"></div>
+<div class="flex flex-col text-body-sm text-text-muted leading-snug">
+<span><strong class="text-text-primary font-mono">9 of 9</strong> Jira issues</span>
+<span>with Zendesk ticket references</span>
+</div>
+</div>
+<p class="font-body-sm text-text-muted mt-2 leading-relaxed">
+            9 of 9 Jira issues that reference a Zendesk ticket are linked deterministically. Only Jira issues containing an explicit Zendesk ticket reference are included in correlation accounting.
+          </p>
+<!-- Informational Sub-card: 1 Jira issue excluded -->
+<div class="mt-4 pt-3 border-t border-border/50">
+<div class="p-3 rounded bg-surface border border-border flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-text-primary font-code-sm text-code-sm font-medium">
+<span class="material-symbols-outlined text-[15px] text-text-subtle">info</span>
+<span>1 Jira issue references no ticket</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high border border-border-strong font-label-mono-xs text-[9px] text-text-subtle uppercase tracking-wider">
+                  Excluded (No Ticket Ref)
+                </span>
+</div>
+<p class="font-body-sm text-[12px] text-text-muted leading-tight">
+                Internal engineering work — excluded from ticket correlation. This reflects internal backlog scope rather than an unlinked or dropped support incident.
+              </p>
+</div>
+</div>
+</div>
+<!-- WHERE ESCALATED TICKETS SPENT THEIR TIME (8 Columns) -->
+<div class="lg:col-span-8 flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-border mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">timelapse</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Where Escalated Tickets Spent Their Time</h2>
+</div>
+<span class="font-code-sm text-[11px] text-text-subtle">Scope: Creation → Last solve or evaluation</span>
+</div>
+<p class="font-body-sm text-text-muted mb-4 leading-relaxed">
+            Wall-clock time from ticket creation to its last solve, or the evaluation date if still open. Shows distribution across functional handoff legs.
+          </p>
+<!-- Visual Distribution Stacked Horizontal Bar -->
+<div class="flex flex-col gap-2 mb-4">
+<div class="w-full h-4 rounded overflow-hidden flex bg-surface border border-border p-0.5">
+<div class="h-full bg-primary rounded-l-sm" style="width: 15%" title="Support Leg: 15%"></div>
+<div class="h-full bg-primary-container mx-0.5" style="width: 83%" title="Engineering Leg: 83%"></div>
+<div class="h-full bg-text-subtle rounded-r-sm" style="width: 2%" title="Waiting on Customer: 2%"></div>
+</div>
+<div class="flex flex-wrap items-center justify-between font-label-mono-xs text-label-mono-xs text-text-muted px-1">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>
+<span>Support Leg: <strong class="text-text-primary font-mono">15%</strong> (2h 31m)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-primary-container"></span>
+<span>Engineering Leg: <strong class="text-text-primary font-mono">83%</strong> (13h 38m)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-sm bg-text-subtle"></span>
+<span>Waiting on Customer: <strong class="text-text-primary font-mono">2%</strong> (22m)</span>
+</div>
+</div>
+</div>
+<!-- Dense Breakdown Data Table -->
+<div class="overflow-x-auto rounded border border-border mt-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">Owner / Stage Leg</th>
+<th class="py-2.5 px-3 font-semibold text-right">Total Duration</th>
+<th class="py-2.5 px-3 font-semibold text-right">Avg per Ticket</th>
+<th class="py-2.5 px-3 font-semibold">Share of Total</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<!-- Support Leg -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-medium text-text-primary flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>Support</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">2h 31m</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-muted">17m</td>
+<td class="py-2.5 px-3 w-44">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 15%"></div>
+</div>
+<span class="font-mono text-[11px] tabular-nums text-text-primary">15%</span>
+</div>
+</td>
+</tr>
+<!-- Engineering Leg -->
+<tr class="bg-surface-hover/30 border-l-2 border-l-primary hover:bg-surface-hover transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-medium text-text-primary flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-semibold text-primary">Engineering</span>
+<span class="px-1.5 py-0.5 rounded bg-primary/20 text-primary font-label-mono-xs text-[9px] uppercase tracking-wider">Dominant Leg</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-primary font-bold">13h 38m</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary font-semibold">1h 31m</td>
+<td class="py-2.5 px-3 w-44">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface rounded-full overflow-hidden">
+<div class="bg-primary-container h-full" style="width: 83%"></div>
+</div>
+<span class="font-mono text-[11px] tabular-nums text-primary font-bold">83%</span>
+</div>
+</td>
+</tr>
+<!-- Waiting on customer -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-medium text-text-primary flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-text-subtle"></span>
+<span>Waiting on customer</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">22m</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-muted">2m</td>
+<td class="py-2.5 px-3 w-44">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface rounded-full overflow-hidden">
+<div class="bg-text-subtle h-full" style="width: 2%"></div>
+</div>
+<span class="font-mono text-[11px] tabular-nums text-text-muted">2%</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- ROW 3: WHO HELD TICKET AT BREACH & ZENDESK TIMER COMPARISON -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+<!-- WHO HELD THE TICKET WHEN THE TARGET PASSED (6 cols) -->
+<div class="lg:col-span-6 flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex items-center justify-between pb-3 border-b border-border mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-status-warning">person_pin_circle</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Who Held the Ticket When the Target Passed</h2>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Target Transition</span>
+</div>
+<p class="font-body-sm text-text-muted mb-4">
+            Ownership at the exact moment the resolution target was exceeded. Evaluated against deterministic event logs.
+          </p>
+<div class="overflow-x-auto rounded border border-border mt-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">Owner at Breach</th>
+<th class="py-2.5 px-3 font-semibold text-right">Tickets</th>
+<th class="py-2.5 px-3 font-semibold text-right">% of Total Breaches</th>
+<th class="py-2.5 px-3 font-semibold text-right">State Badge</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-medium text-text-primary">Support</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary text-[15px] font-bold">7</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-warning font-semibold">78%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary font-label-mono-xs text-[10px] uppercase">
+                      Support Leg Active
+                    </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-medium text-text-primary">Engineering</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary text-[15px] font-bold">2</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-danger font-semibold">22%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase">
+                      Engineering Leg Active
+                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- ZENDESK TIMER COMPARISON (UNAVAILABLE STATE) (6 cols) -->
+<div class="lg:col-span-6 flex flex-col p-5 rounded-lg bg-surface-raised border border-border justify-between">
+<div>
+<div class="flex items-center justify-between pb-3 border-b border-border mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-text-muted">compare_arrows</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Where Zendesk’s Own Timer Disagrees</h2>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface border border-border text-text-subtle font-label-mono-xs text-[10px] uppercase">
+                Comparison Inactive
+              </span>
+</div>
+<div class="p-4 rounded bg-surface border border-border/80 flex items-start gap-3 my-2">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center flex-shrink-0 text-text-subtle border border-border">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-title-mono text-[14px] font-medium text-text-primary">Comparison unavailable</span>
+<p class="font-body-sm text-text-muted leading-relaxed">
+                  The tickets export does not contain a resolution-breach field, so this comparison was not run.
+                </p>
+</div>
+</div>
+</div>
+<div class="p-3 rounded bg-surface-container/60 border border-border flex items-center justify-between gap-3 mt-3">
+<div class="flex items-center gap-2 text-body-sm text-text-muted">
+<span class="material-symbols-outlined text-[16px] text-primary flex-shrink-0">lightbulb</span>
+<span>Add Zendesk’s resolution-breach field to the export to enable this comparison.</span>
+</div>
+<button class="px-2 py-1 rounded bg-surface-hover text-text-primary font-label-mono-xs text-[10px] uppercase border border-border hover:border-primary/40 transition-colors flex-shrink-0" type="button">
+              View Docs
+            </button>
+</div>
+</div>
+</section>
+<!-- ROW 4: ESCALATIONS AGING IN ENGINEERING & LARGEST ESCALATED BREACHES -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+<!-- ESCALATIONS AGING IN ENGINEERING (5 cols) -->
+<div class="lg:col-span-5 flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border mb-3 gap-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-status-warning">hourglass_top</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Escalations Aging in Engineering</h2>
+</div>
+<span class="font-label-mono-xs text-status-warning font-mono">1 Ticket Open</span>
+</div>
+<p class="font-body-sm text-text-muted mb-3">
+            1 open escalation is currently with engineering. Longest first.
+          </p>
+<div class="overflow-x-auto rounded border border-border mt-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">Ticket</th>
+<th class="py-2.5 px-3 font-semibold">Account</th>
+<th class="py-2.5 px-3 font-semibold">Jira</th>
+<th class="py-2.5 px-3 font-semibold text-right">In Eng.</th>
+<th class="py-2.5 px-3 font-semibold text-center">Resolution</th>
+<th class="py-2.5 px-3 font-semibold text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3">
+<span class="font-mono text-primary font-semibold">#49</span>
+</td>
+<td class="py-2.5 px-3 font-body-sm text-text-primary truncate max-w-[100px]" title="SLA-DMEO">
+                    SLA-DMEO
+                  </td>
+<td class="py-2.5 px-3">
+<span class="px-1.5 py-0.5 rounded bg-surface border border-border font-mono text-[11px] text-text-primary inline-flex items-center gap-0.5">
+<span>SCRUM-14</span>
+<span class="material-symbols-outlined text-[10px] text-text-subtle">open_in_new</span>
+</span>
+</td>
+<td class="py-2.5 px-3 text-right font-mono tabular-nums text-status-warning font-semibold">
+                    10h 25m
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase font-semibold">
+<span>✕</span> Breached
+                    </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-flex items-center gap-1.5 text-status-success font-code-sm text-[11px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse"></span>
+                      Active Open
+                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- LARGEST ESCALATED BREACHES (7 cols) -->
+<div class="lg:col-span-7 flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex items-center justify-between pb-3 border-b border-border mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-status-danger">report</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Largest Escalated Breaches</h2>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Ranked by Deviation</span>
+</div>
+<p class="font-body-sm text-text-muted mb-3">
+            Chronological breaches sorted by total wall-clock duration exceeded past deterministic target.
+          </p>
+<div class="overflow-x-auto rounded border border-border mt-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">Ticket</th>
+<th class="py-2.5 px-3 font-semibold">Account</th>
+<th class="py-2.5 px-3 font-semibold">Jira Reference</th>
+<th class="py-2.5 px-3 font-semibold text-right">Over Target By</th>
+<th class="py-2.5 px-3 font-semibold text-right">Owner at Breach</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<!-- Row 1: #49 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3">
+<span class="font-mono text-primary font-semibold">#49</span>
+</td>
+<td class="py-2.5 px-3 font-body-sm text-text-primary">SLA-DMEO</td>
+<td class="py-2.5 px-3">
+<span class="px-1.5 py-0.5 rounded bg-surface border border-border font-mono text-[11px] text-text-primary inline-flex items-center gap-0.5">
+<span>SCRUM-14</span>
+<span class="material-symbols-outlined text-[10px] text-text-subtle">open_in_new</span>
+</span>
+</td>
+<td class="py-2.5 px-3 text-right font-mono tabular-nums text-status-danger font-bold text-[14px]">
+                    +9h 26m
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase">
+                      Engineering
+                    </span>
+</td>
+</tr>
+<!-- Row 2: #45 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3">
+<span class="font-mono text-primary font-semibold">#45</span>
+</td>
+<td class="py-2.5 px-3 font-body-sm text-text-primary">Phase 4 Native Test</td>
+<td class="py-2.5 px-3">
+<span class="px-1.5 py-0.5 rounded bg-surface border border-border font-mono text-[11px] text-text-primary inline-flex items-center gap-0.5">
+<span>SCRUM-9</span>
+<span class="material-symbols-outlined text-[10px] text-text-subtle">open_in_new</span>
+</span>
+</td>
+<td class="py-2.5 px-3 text-right font-mono tabular-nums text-status-warning font-semibold text-[13px]">
+                    +2h 34m
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary font-label-mono-xs text-[10px] uppercase">
+                      Support
+                    </span>
+</td>
+</tr>
+<!-- Row 3: #28 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3">
+<span class="font-mono text-primary font-semibold">#28</span>
+</td>
+<td class="py-2.5 px-3 font-body-sm text-text-subtle font-mono">—</td>
+<td class="py-2.5 px-3">
+<span class="px-1.5 py-0.5 rounded bg-surface border border-border font-mono text-[11px] text-text-primary inline-flex items-center gap-0.5">
+<span>SCRUM-8</span>
+<span class="material-symbols-outlined text-[10px] text-text-subtle">open_in_new</span>
+</span>
+</td>
+<td class="py-2.5 px-3 text-right font-mono tabular-nums text-text-primary font-semibold text-[13px]">
+                    +2m
+                  </td>
+<td class="py-2.5 px-3 text-right">
+<span class="px-2 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase">
+                      Engineering
+                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- ROW 5: TOP AFFECTED ACCOUNTS -->
+<section class="flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex items-center justify-between pb-3 border-b border-border mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">domain</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Top Affected Accounts</h2>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Account Concentration Breakdown</span>
+</div>
+<div class="overflow-x-auto rounded border border-border">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">Account</th>
+<th class="py-2.5 px-3 font-semibold text-right">Escalations</th>
+<th class="py-2.5 px-3 font-semibold text-right">Exceeded Target</th>
+<th class="py-2.5 px-3 font-semibold text-right">Breach Frequency</th>
+<th class="py-2.5 px-3 font-semibold text-center">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-semibold text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">apartment</span>
+<span>SLA-DMEO</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">7</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-warning font-semibold">1</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">14.3%</td>
+<td class="py-2.5 px-3 text-center">
+<span class="px-2 py-0.5 rounded bg-status-warning/10 border border-status-warning/30 text-status-warning font-label-mono-xs text-[10px] uppercase">
+                    1 Breach
+                  </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm font-semibold text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-subtle">apartment</span>
+<span>Phase 4 Native Test</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">1</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-danger font-semibold">1</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-danger font-bold">100.0%</td>
+<td class="py-2.5 px-3 text-center">
+<span class="px-2 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase">
+                    1 Breach
+                  </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-body-sm text-text-muted flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-subtle">help_outline</span>
+<span class="italic">Unknown account</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">1</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-danger font-semibold">1</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-status-danger font-bold">100.0%</td>
+<td class="py-2.5 px-3 text-center">
+<span class="px-2 py-0.5 rounded bg-status-danger/10 border border-status-danger/30 text-status-danger font-label-mono-xs text-[10px] uppercase">
+                    1 Breach
+                  </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- SECTION: CALCULATION METHODOLOGY (AUDIT SPECIFICATION PANEL) -->
+<section class="flex flex-col rounded-lg bg-surface-raised border border-border overflow-hidden">
+<button class="w-full flex items-center justify-between p-4 bg-surface-raised hover:bg-surface-hover text-left transition-colors" id="methodology-toggle" type="button">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">architecture</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">How This Was Calculated</h2>
+<span class="px-2 py-0.5 rounded bg-surface border border-border text-text-subtle font-label-mono-xs text-[10px] uppercase ml-2">
+              Methodology &amp; Constraints
+            </span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-text-muted transition-transform duration-200" id="methodology-arrow">expand_more</span>
+</button>
+<div class="p-5 border-t border-border bg-surface flex flex-col gap-5" id="methodology-content">
+<!-- Deterministic Target Matrix -->
+<div class="flex flex-col gap-2">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider">Deterministic Target Matrix</span>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+<div class="p-3 rounded bg-surface-raised border border-border flex flex-col">
+<span class="font-label-mono-xs text-[10px] text-status-danger uppercase font-semibold">Urgent</span>
+<span class="font-mono text-[18px] font-bold text-text-primary tabular-nums mt-0.5">20m</span>
+</div>
+<div class="p-3 rounded bg-surface-raised border border-border flex flex-col">
+<span class="font-label-mono-xs text-[10px] text-status-warning uppercase font-semibold">High</span>
+<span class="font-mono text-[18px] font-bold text-text-primary tabular-nums mt-0.5">40m</span>
+</div>
+<div class="p-3 rounded bg-surface-raised border border-border flex flex-col">
+<span class="font-label-mono-xs text-[10px] text-primary uppercase font-semibold">Normal</span>
+<span class="font-mono text-[18px] font-bold text-text-primary tabular-nums mt-0.5">1h</span>
+</div>
+<div class="p-3 rounded bg-surface-raised border border-border flex flex-col">
+<span class="font-label-mono-xs text-[10px] text-text-muted uppercase font-semibold">Low</span>
+<span class="font-mono text-[18px] font-bold text-text-primary tabular-nums mt-0.5">2h</span>
+</div>
+</div>
+</div>
+<!-- Time Accounting Rules -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm text-text-muted">
+<div class="flex flex-col gap-2.5">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-status-success mt-0.5 flex-shrink-0">check_circle</span>
+<p><strong>Business Hours &amp; Calendar:</strong> Operating schedule is configured as <span class="text-text-primary font-mono font-medium">24/7</span> on the <span class="text-text-primary font-mono font-medium">Africa/Cairo</span> zone.</p>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary mt-0.5 flex-shrink-0">pause_circle</span>
+<p><strong>Customer Hold Policy:</strong> The clock pauses deterministically while a ticket is in a state pending on the customer.</p>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-subtle mt-0.5 flex-shrink-0">help</span>
+<p>Targets and business hours were provided for this analysis; export manifests do not include native SLA policies.</p>
+</div>
+</div>
+<div class="flex flex-col gap-2.5">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary mt-0.5 flex-shrink-0">timer</span>
+<p><strong>Escalation Timing:</strong> Escalation time starts at the exact millisecond when the linked Jira issue was created.</p>
+</div>
+<div class="flex items-start gap-2 text-status-warning">
+<span class="material-symbols-outlined text-[16px] text-status-warning mt-0.5 flex-shrink-0">warning</span>
+<p class="text-text-muted"><strong class="text-status-warning">Important limitation:</strong> System exports do not record when the Zendesk–Jira link was created; creation timestamp of the Jira issue serves as the deterministic ingress baseline.</p>
+</div>
+</div>
+</div>
+<!-- Jira changelog limitation notice banner -->
+<div class="p-3 rounded bg-surface-container border border-border/80 flex items-start gap-3">
+<span class="material-symbols-outlined text-[18px] text-text-subtle mt-0.5 flex-shrink-0">history_toggle_off</span>
+<div class="flex flex-col gap-1 text-body-sm">
+<span class="font-medium text-text-primary">Jira Changelog Limitation Notice</span>
+<p class="text-text-muted leading-tight">
+                3 linked issues have no changelog rows, so only their current status is known. Affected issues:
+                <span class="font-mono text-primary font-medium">SCRUM-11</span> ·
+                <span class="font-mono text-primary font-medium">SCRUM-13</span> ·
+                <span class="font-mono text-primary font-medium">SCRUM-14</span>.
+                <span class="text-text-subtle">(Informational note — current status used for timeline state resolution).</span>
+</p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION: DATA SOURCES (COMPACT BOTTOM TABLE) -->
+<section class="flex flex-col p-5 rounded-lg bg-surface-raised border border-border">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border mb-3 gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-text-subtle">database</span>
+<h2 class="font-title-mono text-[15px] font-semibold text-text-primary">Data Sources</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-status-success/10 border border-status-success/30 font-label-mono-xs text-[10px] text-status-success font-semibold flex items-center gap-1">
+<span>✓</span> All rows processed (140 / 140)
+            </span>
+<span class="hidden md:inline font-code-sm text-[10px] text-text-subtle font-mono">
+              SHA-256: 0x9f4a...2bc8
+            </span>
+</div>
+</div>
+<div class="overflow-x-auto rounded border border-border">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-label-mono-xs text-label-mono-xs text-text-subtle uppercase tracking-wider border-b border-border">
+<th class="py-2.5 px-3 font-semibold">File / Stream</th>
+<th class="py-2.5 px-3 font-semibold text-right">Rows Processed</th>
+<th class="py-2.5 px-3 font-semibold text-right">Used in Correlation</th>
+<th class="py-2.5 px-3 font-semibold text-right">Dropped Rows</th>
+<th class="py-2.5 px-3 font-semibold text-right">Ingress Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border/60 font-code-sm text-code-sm">
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-medium text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-text-subtle">description</span>
+<span>Zendesk tickets</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">34</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">34</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-subtle">0</td>
+<td class="py-2.5 px-3 font-mono text-right text-status-success text-[11px]">100% Ingested</td>
+</tr>
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-medium text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-text-subtle">description</span>
+<span>Zendesk audits</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">85</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">85</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-subtle">0</td>
+<td class="py-2.5 px-3 font-mono text-right text-status-success text-[11px]">100% Ingested</td>
+</tr>
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-medium text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-text-subtle">description</span>
+<span>Jira issues</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">10</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">10</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-subtle">0</td>
+<td class="py-2.5 px-3 font-mono text-right text-status-success text-[11px]">100% Ingested</td>
+</tr>
+<tr class="hover:bg-surface-hover/50 transition-colors">
+<td class="py-2.5 px-3 font-medium text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-text-subtle">description</span>
+<span>Jira changelog</span>
+</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">11</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-primary">11</td>
+<td class="py-2.5 px-3 font-mono text-right tabular-nums text-text-subtle">0</td>
+<td class="py-2.5 px-3 font-mono text-right text-status-success text-[11px]">100% Ingested</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- REPORT AUDIT FOOTER -->
+<footer class="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between text-text-subtle font-code-sm text-[11px] gap-2">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+<span>Deterministic Metrology Ledger Verified · Daemon ID: dmn_42a8b</span>
+</div>
+<div class="text-right font-mono">
+          Generated via Elapsed Metrology Engine v2.14.0
+        </div>
+</footer>
+</div>
+</main>
+<!-- INTERACTIVE ACCORDION SCRIPT -->
+<script>
+    (function initMethodologyToggle() {
+      const toggleBtn = document.getElementById('methodology-toggle');
+      const content = document.getElementById('methodology-content');
+      const arrow = document.getElementById('methodology-arrow');
+
+      if (!toggleBtn || !content || !arrow) return;
+
+      toggleBtn.addEventListener('click', function() {
+        const isHidden = content.classList.contains('hidden');
+        if (isHidden) {
+          content.classList.remove('hidden');
+          arrow.style.transform = 'rotate(0deg)';
+        } else {
+          content.classList.add('hidden');
+          arrow.style.transform = 'rotate(-90deg)';
+        }
+      });
+    })();
+  </script>
+</body></html>

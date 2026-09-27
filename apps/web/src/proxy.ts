@@ -10,11 +10,12 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
  * Pages anyone can reach with no session: the docs site, the two auth
  * screens, the invitation-accept page (its token, not a session, is
  * the credential — roadmap 5.2), the forgot/reset-password pages (same
- * token-is-the-credential shape — roadmap 5.5), and the verify-email page
+ * token-is-the-credential shape — roadmap 5.5), the verify-email page
  * (roadmap 5.6, same shape again — opened from an email client that may
- * not share a browser with any signed-in session). Everything else under
- * the app (dashboard, cases, settings, onboarding, and their API routes)
- * requires a signed-in user.
+ * not share a browser with any signed-in session), and the terms/privacy
+ * pages (legal pages, linked from the site footer and sign-up flow).
+ * Everything else under the app (dashboard, cases, settings, onboarding,
+ * and their API routes) requires a signed-in user.
  */
 const PUBLIC_PAGE_PATHS = [
   "/",
@@ -25,6 +26,8 @@ const PUBLIC_PAGE_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/terms",
+  "/privacy",
 ];
 const AUTH_PAGE_PATHS = ["/sign-in", "/sign-up"];
 
