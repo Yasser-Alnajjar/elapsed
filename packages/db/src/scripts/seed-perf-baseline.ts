@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
-import { CommitmentKind, CommitmentStatus, IntegrationProvider } from "../../generated/prisma/client";
+import {
+  CommitmentKind,
+  CommitmentStatus,
+  IntegrationProvider,
+} from "../../generated/prisma/client";
 
 /**
  * Generates a large, shape-realistic dataset for roadmap task 7.7 (Performance
@@ -22,10 +26,11 @@ import { CommitmentKind, CommitmentStatus, IntegrationProvider } from "../../gen
  * users/cases with it), and every generated Case gets a `perf-` prefixed
  * `externalId` so it can never collide with the organization's real cases.
  *
- * This only produces volume and referential shape for profiling case list /
- * dashboard / case detail / evaluation / worker / database queries — it does
- * not run the real SLA engine, so `Commitment`/`Evaluation` rows are
- * plausible but not reproducible the way `packages/core` would derive them.
+ * The seed is intentionally deterministic at the scenario level: it keeps the
+ * large-volume/performance purpose of this file while distributing cases across
+ * known SLA scenarios with coherent event lifecycles. Commitment/Evaluation rows
+ * are still seed fixtures (the real SLA engine is not invoked), but every generated
+ * case has a predictable scenario that can be queried and verified in the UI.
  * Run via `pnpm db:seed:perf-baseline -- --cases=5000 --events-per-case=40`.
  */
 
@@ -60,32 +65,79 @@ export interface SeedPerfBaselineResult {
   commitments: number;
   evaluations: number;
   durationMs: number;
+  scenarioCounts: Record<PerfScenario, number>;
 }
 
-const PRIORITIES = ["low", "normal", "high", "urgent"];
-const TIERS = ["free", "standard", "enterprise"];
-const CHANNELS = ["email", "web", "chat", "api"];
-const TAG_POOL = ["billing", "bug", "onboarding", "feature_request", "outage", "vip", "renewal"];
-const EVENT_TYPES = ["ticket_created", "agent_reply", "customer_reply", "status_changed", "ticket_closed"];
+const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+const TIERS = ["free", "standard", "enterprise"] as const;
+const CHANNELS = ["email", "web", "chat", "api"] as const;
+const TAG_POOL = [
+  "billing",
+  "bug",
+  "onboarding",
+  "feature_request",
+  "outage",
+  "vip",
+  "renewal",
+] as const;
 
-function pick<T>(pool: T[]): T {
-  return pool[Math.floor(Math.random() * pool.length)]!;
+type PerfScenario =
+  | "on_track"
+  | "at_risk"
+  | "first_response_breached"
+  | "resolution_breached"
+  | "both_breached"
+  | "met"
+  | "open_aging"
+  | "edge_mixed";
+
+const SCENARIOS: ReadonlyArray<{ name: PerfScenario; weight: number }> = [
+  { name: "on_track", weight: 20 },
+  { name: "at_risk", weight: 15 },
+  { name: "first_response_breached", weight: 15 },
+  { name: "resolution_breached", weight: 15 },
+  { name: "both_breached", weight: 10 },
+  { name: "met", weight: 10 },
+  { name: "open_aging", weight: 10 },
+  { name: "edge_mixed", weight: 5 },
+];
+
+const EVENT_TYPES = [
+  "ticket_created",
+  "customer_reply",
+  "agent_reply",
+  "status_changed",
+  "ticket_escalated",
+  "internal_note",
+  "ticket_closed",
+] as const;
+
+function scenarioForIndex(index: number, total: number): PerfScenario {
+  const position = index % total;
+  const target = (position / total) * 100;
+  let cursor = 0;
+  for (const scenario of SCENARIOS) {
+    cursor += scenario.weight;
+    if (target < cursor) return scenario.name;
+  }
+  return "edge_mixed";
 }
 
-function pickSome<T>(pool: T[], max: number): T[] {
-  const count = Math.floor(Math.random() * (max + 1));
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+function deterministicPick<T>(pool: readonly T[], index: number): T {
+  return pool[index % pool.length]!;
 }
 
-function randomInt(min: number, max: number): number {
-  return min + Math.floor(Math.random() * (max - min + 1));
+function deterministicTags(index: number): string[] {
+  const first = TAG_POOL[index % TAG_POOL.length]!;
+  const second = TAG_POOL[(index * 3 + 1) % TAG_POOL.length]!;
+  return first === second ? [first] : [first, second];
 }
 
 /** Splits `items` into chunks of at most `size`, preserving order. */
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size)
+    chunks.push(items.slice(i, i + size));
   return chunks;
 }
 
@@ -99,7 +151,9 @@ async function insertBatched<T>(
   const batches = chunk(rows, batchSize);
   for (let i = 0; i < batches.length; i++) {
     await insert(batches[i]!);
-    onProgress?.(`${label}: ${Math.min((i + 1) * batchSize, rows.length)}/${rows.length}`);
+    onProgress?.(
+      `${label}: ${Math.min((i + 1) * batchSize, rows.length)}/${rows.length}`,
+    );
   }
 }
 
@@ -109,15 +163,20 @@ export async function seedPerfBaseline(
 ): Promise<SeedPerfBaselineResult> {
   const caseCount = options.cases ?? 5000;
   const eventsPerCase = options.eventsPerCase ?? 42; // 5,000 * 42 = 210,000, clears the 200,000+ target with headroom
-  const customerCount = options.customers ?? Math.max(50, Math.round(caseCount / 10));
+  const customerCount =
+    options.customers ?? Math.max(50, Math.round(caseCount / 10));
   const evaluationsPerCommitment = options.evaluationsPerCommitment ?? 3;
   const batchSize = options.batchSize ?? 2000;
   const onProgress = options.onProgress;
   const startedAt = Date.now();
 
-  const targetingExisting = Boolean(options.userEmail || options.organizationId);
+  const targetingExisting = Boolean(
+    options.userEmail || options.organizationId,
+  );
   if (options.reset && targetingExisting) {
-    throw new Error("--reset cannot be combined with --user-email/--organization-id — it would delete a real organization.");
+    throw new Error(
+      "--reset cannot be combined with --user-email/--organization-id — it would delete a real organization.",
+    );
   }
 
   let organization: { id: string };
@@ -126,24 +185,41 @@ export async function seedPerfBaseline(
       where: { email: options.userEmail },
       select: { organizationId: true },
     });
-    if (!user) throw new Error(`No user found with email "${options.userEmail}"`);
+    if (!user)
+      throw new Error(`No user found with email "${options.userEmail}"`);
     organization = { id: user.organizationId };
-    onProgress?.(`Seeding into existing organization ${organization.id} (owner of ${options.userEmail})`);
+    onProgress?.(
+      `Seeding into existing organization ${organization.id} (owner of ${options.userEmail})`,
+    );
   } else if (options.organizationId) {
-    const existing = await prisma.organization.findUnique({ where: { id: options.organizationId }, select: { id: true } });
-    if (!existing) throw new Error(`No organization found with id "${options.organizationId}"`);
+    const existing = await prisma.organization.findUnique({
+      where: { id: options.organizationId },
+      select: { id: true },
+    });
+    if (!existing)
+      throw new Error(
+        `No organization found with id "${options.organizationId}"`,
+      );
     organization = existing;
     onProgress?.(`Seeding into existing organization ${organization.id}`);
   } else {
-    const orgName = options.orgName ?? `Perf Baseline ${new Date().toISOString()}`;
+    const orgName =
+      options.orgName ?? `Perf Baseline ${new Date().toISOString()}`;
     if (options.reset) {
-      const existing = await prisma.organization.findFirst({ where: { name: orgName }, select: { id: true } });
+      const existing = await prisma.organization.findFirst({
+        where: { name: orgName },
+        select: { id: true },
+      });
       if (existing) {
-        onProgress?.(`Deleting existing organization "${orgName}" (${existing.id})`);
+        onProgress?.(
+          `Deleting existing organization "${orgName}" (${existing.id})`,
+        );
         await prisma.organization.delete({ where: { id: existing.id } });
       }
     }
-    organization = await prisma.organization.create({ data: { name: orgName } });
+    organization = await prisma.organization.create({
+      data: { name: orgName },
+    });
   }
 
   let calendarVersion = await prisma.businessCalendarVersion.findFirst({
@@ -152,7 +228,10 @@ export async function seedPerfBaseline(
   });
   if (!calendarVersion) {
     const calendar = await prisma.businessCalendar.create({
-      data: { organizationId: organization.id, name: "Always Open (perf baseline)" },
+      data: {
+        organizationId: organization.id,
+        name: "Always Open (perf baseline)",
+      },
     });
     calendarVersion = await prisma.businessCalendarVersion.create({
       data: {
@@ -173,7 +252,11 @@ export async function seedPerfBaseline(
   });
   if (!policyVersion) {
     const policy = await prisma.sLAPolicy.create({
-      data: { organizationId: organization.id, name: "Default (perf baseline)", source: "native" },
+      data: {
+        organizationId: organization.id,
+        name: "Default (perf baseline)",
+        source: "native",
+      },
     });
     policyVersion = await prisma.sLAPolicyVersion.create({
       data: {
@@ -194,11 +277,17 @@ export async function seedPerfBaseline(
   }
 
   let integration = await prisma.integration.findFirst({
-    where: { organizationId: organization.id, provider: IntegrationProvider.zendesk },
+    where: {
+      organizationId: organization.id,
+      provider: IntegrationProvider.zendesk,
+    },
   });
   if (!integration) {
     integration = await prisma.integration.create({
-      data: { organizationId: organization.id, provider: IntegrationProvider.zendesk },
+      data: {
+        organizationId: organization.id,
+        provider: IntegrationProvider.zendesk,
+      },
     });
   }
 
@@ -213,7 +302,7 @@ export async function seedPerfBaseline(
     organizationId: organization.id,
     name: `Customer ${i + 1} (perf ${runId})`,
     zendeskOrgId: `zendesk-org-${runId}-${i + 1}`,
-    tier: pick(TIERS),
+    tier: TIERS[i % TIERS.length]!,
   }));
   await insertBatched(
     "customers",
@@ -225,34 +314,84 @@ export async function seedPerfBaseline(
   const customerIds = customerRows.map((c) => c.id);
 
   // --- Cases -----------------------------------------------------------------
+  // Scenario assignment is deterministic and proportional to SCENARIOS above.
+  // This keeps 5k/100k performance runs useful while guaranteeing known buckets.
   const now = Date.now();
   const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
   interface CaseRow {
     id: string;
+    index: number;
+    scenario: PerfScenario;
     openedAt: Date;
+    firstResponseAt: Date | null;
     closedAt: Date | null;
   }
   const caseRows: CaseRow[] = [];
   const caseInserts: Prisma.CaseCreateManyInput[] = [];
+
   for (let i = 0; i < caseCount; i++) {
     const id = crypto.randomUUID();
-    const openedAt = new Date(now - Math.floor(Math.random() * ninetyDaysMs));
-    const isClosed = Math.random() < 0.6;
-    const closedAt = isClosed
-      ? new Date(openedAt.getTime() + randomInt(10 * 60_000, 5 * 24 * 60 * 60_000))
-      : null;
-    caseRows.push({ id, openedAt, closedAt });
+    const scenario = scenarioForIndex(i, 100);
+    const baseAgeMs = Math.floor(((i % 1000) / 1000) * ninetyDaysMs);
+    const responseMinutes =
+      scenario === "first_response_breached" || scenario === "both_breached"
+        ? 90
+        : scenario === "at_risk"
+          ? 50
+          : scenario === "met"
+            ? 30
+            : scenario === "edge_mixed" && i % 2 === 0
+              ? 61
+              : 20;
+
+    const resolutionMinutes =
+      scenario === "resolution_breached" || scenario === "both_breached"
+        ? 600
+        : scenario === "met"
+          ? 240
+          : scenario === "at_risk" || scenario === "open_aging"
+            ? 390
+            : scenario === "edge_mixed"
+              ? 480 + (i % 2) * 30
+              : 180;
+
+    const isOpen =
+      scenario === "on_track" ||
+      scenario === "at_risk" ||
+      scenario === "open_aging" ||
+      (scenario === "edge_mixed" && i % 2 === 0);
+    const minimumAgeMs = Math.max(
+      60 * 60_000,
+      responseMinutes * 60_000 + 60 * 60_000,
+      isOpen ? 0 : (resolutionMinutes + 60) * 60_000,
+    );
+    const openedAt = new Date(now - Math.max(baseAgeMs, minimumAgeMs));
+    const firstResponseAt = new Date(
+      openedAt.getTime() + responseMinutes * 60_000,
+    );
+    const closedAt = isOpen
+      ? null
+      : new Date(openedAt.getTime() + resolutionMinutes * 60_000);
+
+    caseRows.push({
+      id,
+      index: i,
+      scenario,
+      openedAt,
+      firstResponseAt,
+      closedAt,
+    });
     caseInserts.push({
       id,
       organizationId: organization.id,
-      customerId: pick(customerIds),
-      externalId: `perf-${runId}-${i}`,
+      customerId: customerIds[i % customerIds.length]!,
+      externalId: `perf-${runId}-${String(i + 1).padStart(6, "0")}`,
       system: IntegrationProvider.zendesk,
-      subject: `Case ${i + 1}`,
-      priority: pick(PRIORITIES),
-      tier: pick(TIERS),
-      channel: pick(CHANNELS),
-      tags: pickSome(TAG_POOL, 3),
+      subject: `[${scenario}] Case ${i + 1}`,
+      priority: deterministicPick(PRIORITIES, i),
+      tier: deterministicPick(TIERS, Math.floor(i / 2)),
+      channel: deterministicPick(CHANNELS, i),
+      tags: deterministicTags(i),
       openedAt,
       closedAt,
     });
@@ -266,48 +405,125 @@ export async function seedPerfBaseline(
   );
 
   // --- Raw + normalized events -------------------------------------------
-  // One RawEvent backs one NormalizedEvent here (simplest 1:1 shape) — real
-  // ingestion sometimes derives several NormalizedEvents from one RawEvent,
-  // but that distinction doesn't matter for a volume/shape profiling seed.
+  // Events follow a coherent lifecycle per scenario instead of random event types.
+  // Extra filler events are deterministic and occur between lifecycle milestones.
   let rawEventTotal = 0;
   let normalizedEventTotal = 0;
-  for (const caseBatch of chunk(caseRows, Math.max(1, Math.floor(batchSize / eventsPerCase)))) {
+  for (const caseBatch of chunk(
+    caseRows,
+    Math.max(1, Math.floor(batchSize / Math.max(eventsPerCase, 1))),
+  )) {
     const rawEventInserts: Prisma.RawEventCreateManyInput[] = [];
     const normalizedEventInserts: Prisma.NormalizedEventCreateManyInput[] = [];
+
     for (const c of caseBatch) {
-      const count = randomInt(Math.max(1, eventsPerCase - 10), eventsPerCase + 10);
-      const spanMs = (c.closedAt ?? new Date()).getTime() - c.openedAt.getTime();
-      for (let seq = 0; seq < count; seq++) {
+      const count = Math.max(5, eventsPerCase);
+      const spanEnd = c.closedAt?.getTime() ?? now;
+      const spanMs = Math.max(spanEnd - c.openedAt.getTime(), 5 * 60_000);
+      const lifecycle: Array<{ type: string; at: Date; actor: string }> = [
+        { type: "ticket_created", at: c.openedAt, actor: "customer" },
+        {
+          type: "customer_reply",
+          at: new Date(
+            c.openedAt.getTime() + Math.min(5 * 60_000, spanMs / 10),
+          ),
+          actor: "customer",
+        },
+      ];
+
+      if (
+        c.scenario === "first_response_breached" ||
+        c.scenario === "both_breached"
+      ) {
+        lifecycle.push({
+          type: "ticket_escalated",
+          at: new Date(c.openedAt.getTime() + 45 * 60_000),
+          actor: "system",
+        });
+      }
+      lifecycle.push({
+        type: "agent_reply",
+        at: c.firstResponseAt!,
+        actor: "agent",
+      });
+
+      if (
+        c.scenario === "resolution_breached" ||
+        c.scenario === "both_breached" ||
+        c.scenario === "edge_mixed"
+      ) {
+        lifecycle.push({
+          type: "ticket_escalated",
+          at: new Date(c.firstResponseAt!.getTime() + 90 * 60_000),
+          actor: "agent",
+        });
+        lifecycle.push({
+          type: "internal_note",
+          at: new Date(c.firstResponseAt!.getTime() + 120 * 60_000),
+          actor: "agent",
+        });
+      }
+
+      if (c.closedAt) {
+        lifecycle.push({
+          type: "ticket_closed",
+          at: c.closedAt,
+          actor: "agent",
+        });
+      }
+
+      lifecycle.sort((a, b) => a.at.getTime() - b.at.getTime());
+      const eventCount = Math.max(count, lifecycle.length);
+      for (let seq = 0; seq < eventCount; seq++) {
+        const lifecycleEvent = lifecycle[seq];
+        const occurredAt =
+          lifecycleEvent?.at ??
+          new Date(
+            c.openedAt.getTime() + Math.floor((spanMs * seq) / eventCount),
+          );
+        const type =
+          lifecycleEvent?.type ??
+          (seq % 3 === 0
+            ? "status_changed"
+            : seq % 3 === 1
+              ? "customer_reply"
+              : "internal_note");
+        const actor =
+          lifecycleEvent?.actor ?? (seq % 2 === 0 ? "agent" : "customer");
         const rawEventId = crypto.randomUUID();
-        const occurredAt = new Date(c.openedAt.getTime() + Math.floor((spanMs * seq) / count));
         rawEventInserts.push({
           id: rawEventId,
           integrationId: integration.id,
           providerEventId: `${c.id}-${seq}`,
           sourceHash: crypto.randomUUID(),
-          payload: { caseId: c.id, seq },
+          payload: { caseId: c.id, seq, scenario: c.scenario, type },
           fetchedAt: occurredAt,
         });
         normalizedEventInserts.push({
           id: crypto.randomUUID(),
           caseId: c.id,
           sourceRawEventId: rawEventId,
-          type: pick(EVENT_TYPES),
+          type,
           occurredAt,
-          actor: seq % 2 === 0 ? "agent" : "customer",
+          actor,
           system: IntegrationProvider.zendesk,
           sourceSequence: seq,
         });
       }
     }
+
     await prisma.rawEvent.createMany({ data: rawEventInserts });
     await prisma.normalizedEvent.createMany({ data: normalizedEventInserts });
     rawEventTotal += rawEventInserts.length;
     normalizedEventTotal += normalizedEventInserts.length;
-    onProgress?.(`events: ${normalizedEventTotal} normalized (${rawEventTotal} raw)`);
+    onProgress?.(
+      `events: ${normalizedEventTotal} normalized (${rawEventTotal} raw)`,
+    );
   }
 
   // --- Commitments (first_response + resolution per case) -----------------
+  // Targets are fixed at 60m / 480m. Statuses are scenario-driven so the
+  // dashboard has stable buckets instead of random distributions.
   interface CommitmentRow {
     id: string;
     caseId: string;
@@ -321,18 +537,32 @@ export async function seedPerfBaseline(
     closedAt: Date | null;
   }
   const commitmentInserts: CommitmentRow[] = [];
+
   for (const c of caseRows) {
-    for (const [kind, targetMinutes] of [
-      [CommitmentKind.first_response, 60],
-      [CommitmentKind.resolution, 480],
+    const firstResponseStatus =
+      c.scenario === "first_response_breached" || c.scenario === "both_breached"
+        ? CommitmentStatus.breached
+        : c.scenario === "at_risk"
+          ? CommitmentStatus.at_risk
+          : CommitmentStatus.met;
+    const resolutionStatus =
+      c.scenario === "resolution_breached" || c.scenario === "both_breached"
+        ? CommitmentStatus.breached
+        : c.scenario === "at_risk" || c.scenario === "open_aging"
+          ? CommitmentStatus.at_risk
+          : c.scenario === "on_track"
+            ? CommitmentStatus.on_track
+            : CommitmentStatus.met;
+
+    for (const [kind, targetMinutes, status] of [
+      [CommitmentKind.first_response, 60, firstResponseStatus],
+      [CommitmentKind.resolution, 480, resolutionStatus],
     ] as const) {
       const dueAt = new Date(c.openedAt.getTime() + targetMinutes * 60_000);
-      let status: CommitmentStatus;
-      if (c.closedAt) {
-        status = dueAt.getTime() < c.closedAt.getTime() ? CommitmentStatus.breached : CommitmentStatus.met;
-      } else {
-        status = dueAt.getTime() < now ? CommitmentStatus.breached : Math.random() < 0.15 ? CommitmentStatus.at_risk : CommitmentStatus.on_track;
-      }
+      const closedAt =
+        status === CommitmentStatus.met || status === CommitmentStatus.breached
+          ? c.closedAt
+          : null;
       commitmentInserts.push({
         id: crypto.randomUUID(),
         caseId: c.id,
@@ -343,7 +573,7 @@ export async function seedPerfBaseline(
         targetMinutes,
         dueAt,
         status,
-        closedAt: status === "met" || status === "breached" ? c.closedAt : null,
+        closedAt,
       });
     }
   }
@@ -355,26 +585,53 @@ export async function seedPerfBaseline(
     onProgress,
   );
 
-  // --- Evaluations (a short history per commitment) ------------------------
+  // --- Evaluations (stable history per commitment) ------------------------
   const evaluationInserts: Prisma.EvaluationCreateManyInput[] = [];
   for (const commitment of commitmentInserts) {
-    const snapshots = Math.max(1, evaluationsPerCommitment + randomInt(-1, 1));
+    const snapshots = Math.max(1, evaluationsPerCommitment);
+    const finalStatus = commitment.status;
     for (let s = 0; s < snapshots; s++) {
+      const progress = (s + 1) / snapshots;
       const evaluatedAt = new Date(
-        commitment.startedAt.getTime() + Math.floor(((commitment.dueAt.getTime() - commitment.startedAt.getTime()) * (s + 1)) / (snapshots + 1)),
+        commitment.startedAt.getTime() +
+          Math.floor(
+            (Math.min(commitment.dueAt.getTime(), now) -
+              commitment.startedAt.getTime()) *
+              progress,
+          ),
       );
-      const elapsedSeconds = Math.max(0, Math.floor((evaluatedAt.getTime() - commitment.startedAt.getTime()) / 1000));
       const targetSeconds = commitment.targetMinutes * 60;
-      const remainingSeconds = targetSeconds - elapsedSeconds;
+      let elapsedSeconds: number;
+      let status: CommitmentStatus;
+      let breachedBySeconds: number | null = null;
+
+      if (finalStatus === CommitmentStatus.breached) {
+        elapsedSeconds = Math.floor(targetSeconds * (1.1 + progress * 0.9));
+        status = CommitmentStatus.breached;
+        breachedBySeconds = Math.max(1, elapsedSeconds - targetSeconds);
+      } else if (finalStatus === CommitmentStatus.at_risk) {
+        elapsedSeconds = Math.floor(targetSeconds * (0.72 + progress * 0.08));
+        status = CommitmentStatus.at_risk;
+      } else if (finalStatus === CommitmentStatus.on_track) {
+        elapsedSeconds = Math.floor(targetSeconds * (0.35 + progress * 0.25));
+        status = CommitmentStatus.on_track;
+      } else {
+        elapsedSeconds = Math.floor(targetSeconds * (0.25 + progress * 0.45));
+        status = CommitmentStatus.met;
+      }
+
       evaluationInserts.push({
         id: crypto.randomUUID(),
         commitmentId: commitment.id,
         evaluatedAt,
         elapsedSeconds,
-        remainingSeconds,
-        status: remainingSeconds < 0 ? CommitmentStatus.breached : remainingSeconds < targetSeconds * 0.2 ? CommitmentStatus.at_risk : CommitmentStatus.on_track,
-        breachedBySeconds: remainingSeconds < 0 ? -remainingSeconds : null,
-        inputs: { seed: true },
+        remainingSeconds: targetSeconds - elapsedSeconds,
+        status,
+        breachedBySeconds,
+        inputs: {
+          seed: true,
+          scenario: caseRows.find((c) => c.id === commitment.caseId)?.scenario,
+        },
       });
     }
   }
@@ -386,6 +643,13 @@ export async function seedPerfBaseline(
     onProgress,
   );
 
+  const scenarioCounts = Object.fromEntries(
+    SCENARIOS.map(({ name }) => [
+      name,
+      caseRows.filter((c) => c.scenario === name).length,
+    ]),
+  ) as Record<PerfScenario, number>;
+
   return {
     organizationId: organization.id,
     customers: customerRows.length,
@@ -395,6 +659,7 @@ export async function seedPerfBaseline(
     commitments: commitmentInserts.length,
     evaluations: evaluationInserts.length,
     durationMs: Date.now() - startedAt,
+    scenarioCounts,
   };
 }
 
@@ -435,11 +700,15 @@ function parseArgs(argv: string[]): SeedPerfBaselineOptions {
   return options;
 }
 
-const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const isMain =
+  process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
   const { getPrismaClient } = await import("../index");
   const options = parseArgs(process.argv.slice(2));
-  seedPerfBaseline(getPrismaClient(), { ...options, onProgress: (message) => console.log(message) })
+  seedPerfBaseline(getPrismaClient(), {
+    ...options,
+    onProgress: (message) => console.log(message),
+  })
     .then((result) => {
       console.log("Seed complete:", result);
       process.exit(0);
