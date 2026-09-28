@@ -7,7 +7,8 @@
     "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
     "start": "dotenv -e ../../.env -- tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "perf:baseline": "dotenv -e ../../.env -- tsx scripts/perf-baseline-cycle.ts"
   },
   "dependencies": {
     "@sentry/node": "^10.74.0",

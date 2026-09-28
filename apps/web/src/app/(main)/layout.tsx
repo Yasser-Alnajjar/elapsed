@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { getServerSession } from "next-auth";
 
+import { withPerfScope } from "@sla/db";
 import {
   SidebarInset,
   SidebarProvider,
@@ -32,13 +33,17 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // avatar are user-editable from the Profile page (@modules/settings/profile)
   // and must show up here immediately via `router.refresh()`, not just after
   // the next sign-in.
-  const [user, integrations, worker, atRisk, session] = await Promise.all([
-    Actions.Profile.getData(),
-    Actions.Integrations.getData(),
-    Actions.WorkerSettings.getData(),
-    Actions.AtRisk.getData(),
-    getServerSession(authOptions),
-  ]);
+  const [user, integrations, worker, atRisk, session] = await withPerfScope(
+    "layout",
+    () =>
+      Promise.all([
+        Actions.Profile.getData(),
+        Actions.Integrations.getData(),
+        Actions.WorkerSettings.getData(),
+        Actions.AtRisk.getData(),
+        getServerSession(authOptions),
+      ]),
+  );
 
   const alerts = atRisk
     .filter((r) => r.status === "at_risk" || r.status === "breached")

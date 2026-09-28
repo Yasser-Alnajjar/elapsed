@@ -1,5 +1,5 @@
 import "server-only";
-import type { PrismaClient } from "@sla/db";
+import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -20,17 +20,28 @@ import type { CaseListData, CaseListRow } from "./types/cases";
 // Precedence for picking one representative status out of a case's several
 // commitments — worst-first, so a single breached commitment surfaces even
 // if another commitment on the same case has already been met.
-const STATUS_PRECEDENCE: CommitmentStatus[] = ["breached", "at_risk", "on_track", "met", "cancelled"];
+const STATUS_PRECEDENCE: CommitmentStatus[] = [
+  "breached",
+  "at_risk",
+  "on_track",
+  "met",
+  "cancelled",
+];
 
 function worstStatus(statuses: CommitmentStatus[]): CommitmentStatus | null {
   if (statuses.length === 0) return null;
-  return STATUS_PRECEDENCE.find((status) => statuses.includes(status)) ?? statuses[0] ?? null;
+  return (
+    STATUS_PRECEDENCE.find((status) => statuses.includes(status)) ??
+    statuses[0] ??
+    null
+  );
 }
 
 /** Picks one live row per case — worst-first (same precedence as `worstStatus`), so a case with several open commitments (e.g. First Response + Resolution) surfaces its most urgent one. */
 function worstLiveRow(rows: AtRiskRowData[]): AtRiskRowData | undefined {
   return [...rows].sort(
-    (a, b) => STATUS_PRECEDENCE.indexOf(a.status) - STATUS_PRECEDENCE.indexOf(b.status),
+    (a, b) =>
+      STATUS_PRECEDENCE.indexOf(a.status) - STATUS_PRECEDENCE.indexOf(b.status),
   )[0];
 }
 
@@ -44,7 +55,21 @@ function worstLiveRow(rows: AtRiskRowData[]): AtRiskRowData | undefined {
  * (the same org-wide pass `/at-risk` already does) rather than re-running
  * `evaluateCommitment` a second time here.
  */
-export async function getCaseListData(prisma: PrismaClient, organizationId: string): Promise<CaseListData> {
+export async function getCaseListData(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<CaseListData> {
+  return withPerfScope(
+    "case_list",
+    () => getCaseListDataInner(prisma, organizationId),
+    { organizationId },
+  );
+}
+
+async function getCaseListDataInner(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<CaseListData> {
   const [rows, liveRows] = await Promise.all([
     prisma.case.findMany({
       where: { organizationId, deletedAt: null },
@@ -61,8 +86,16 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
         // `links` (see case-detail-data.ts) — a link whose `unlinkedAt` is
         // set must not present a case as currently correlated.
         caseLinks: {
-          where: { unlinkedAt: null, system: { in: ["jira", "linear", "github"] } },
-          select: { system: true, externalId: true, confidence: true, evidence: true },
+          where: {
+            unlinkedAt: null,
+            system: { in: ["jira", "linear", "github"] },
+          },
+          select: {
+            system: true,
+            externalId: true,
+            confidence: true,
+            evidence: true,
+          },
           take: 1,
         },
       },
@@ -85,7 +118,9 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
     .map((row) => row.id);
   const settledEventRows =
     settledCaseIds.length > 0
-      ? await prisma.normalizedEvent.findMany({ where: { caseId: { in: settledCaseIds } } })
+      ? await prisma.normalizedEvent.findMany({
+          where: { caseId: { in: settledCaseIds } },
+        })
       : [];
   // Settled elapsed is evaluated (not read from the last persisted
   // `Evaluation`, which can be stale) — same approach as case-detail-data.
@@ -102,7 +137,10 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
     list.push(c);
     settledRowsByCaseId.set(c.caseId, list);
   }
-  const settledEventsByCaseId = new Map<string, ReturnType<typeof toNormalizedEventDomain>[]>();
+  const settledEventsByCaseId = new Map<
+    string,
+    ReturnType<typeof toNormalizedEventDomain>[]
+  >();
   for (const eventRow of settledEventRows) {
     const list = settledEventsByCaseId.get(eventRow.caseId) ?? [];
     list.push(toNormalizedEventDomain(eventRow));
@@ -117,7 +155,8 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
     const settledRows = settledRowsByCaseId.get(row.id) ?? [];
     if (!live && settledRows.length > 0) {
       const worst = worstStatus(settledRows.map((c) => c.status));
-      const commitment = settledRows.find((c) => c.status === worst) ?? settledRows[0]!;
+      const commitment =
+        settledRows.find((c) => c.status === worst) ?? settledRows[0]!;
       const asOf = (row.closedAt ?? new Date()).toISOString();
       const events = settledEventsByCaseId.get(row.id) ?? [];
       const policy: SLAPolicyVersion = {
@@ -125,8 +164,12 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
         policyId: commitment.policyVersion.policyId,
         version: commitment.policyVersion.version,
         match: commitment.policyVersion.match as SLAPolicyMatch,
-        targets: commitment.policyVersion.targets as { kind: CommitmentKind; minutes: number }[],
-        pauseOnStates: commitment.policyVersion.pauseOnStates as NormalizedState[],
+        targets: commitment.policyVersion.targets as {
+          kind: CommitmentKind;
+          minutes: number;
+        }[],
+        pauseOnStates: commitment.policyVersion
+          .pauseOnStates as NormalizedState[],
         calendarVersionId: commitment.policyVersion.calendarVersionId,
         warnAtPercent: commitment.policyVersion.warnAtPercent,
         effectiveFrom: commitment.policyVersion.effectiveFrom.toISOString(),
@@ -146,7 +189,11 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
         calendar,
         commitment.closedAt?.toISOString() ?? asOf,
       );
-      const { spans } = deriveLegSpans(events, { caseOpenedAt: row.openedAt.toISOString() });
+      perfCount("evaluateCommitment");
+      const { spans } = deriveLegSpans(events, {
+        caseOpenedAt: row.openedAt.toISOString(),
+      });
+      perfCount("deriveLegSpans");
       settledCommitment = {
         kind: commitment.kind,
         status: commitment.status,
@@ -175,7 +222,9 @@ export async function getCaseListData(prisma: PrismaClient, organizationId: stri
             system: link.system as "jira" | "linear" | "github",
             externalId: link.externalId,
             confidence: link.confidence as "certain" | "probable",
-            statusName: (link.evidence as { statusName?: string } | null)?.statusName ?? null,
+            statusName:
+              (link.evidence as { statusName?: string } | null)?.statusName ??
+              null,
           }
         : null,
       liveCommitment: live

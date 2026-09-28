@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, type PrismaClient } from "@sla/db";
 import {
   computeBreachedAt,
   deriveLegSpans,
@@ -34,13 +34,25 @@ function dayKey(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
   return localDateKey(date, timeZone);
 }
 
-function everyDayInRange(periodStart: Date, asOfDate: Date, timeZone: string = DEFAULT_TIMEZONE): string[] {
+function everyDayInRange(
+  periodStart: Date,
+  asOfDate: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string[] {
   const days: string[] = [];
   const cursor = new Date(
-    Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), periodStart.getUTCDate()),
+    Date.UTC(
+      periodStart.getUTCFullYear(),
+      periodStart.getUTCMonth(),
+      periodStart.getUTCDate(),
+    ),
   );
   const end = new Date(
-    Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()),
+    Date.UTC(
+      asOfDate.getUTCFullYear(),
+      asOfDate.getUTCMonth(),
+      asOfDate.getUTCDate(),
+    ),
   );
   while (cursor.getTime() <= end.getTime()) {
     days.push(dayKey(cursor, timeZone));
@@ -76,7 +88,11 @@ export function bucketBreachesByDay(
     ),
   );
   const end = new Date(
-    Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()),
+    Date.UTC(
+      asOfDate.getUTCFullYear(),
+      asOfDate.getUTCMonth(),
+      asOfDate.getUTCDate(),
+    ),
   );
   while (cursor.getTime() <= end.getTime()) {
     const key = dayKey(cursor, timeZone);
@@ -123,7 +139,11 @@ export function bucketBreachesByDayAndLeg(
  * arithmetic in packages/core, which this deliberately doesn't reuse.
  */
 function endOfLocalDayUtc(dateKey: string, timeZone: string): Date {
-  const [year, month, day] = dateKey.split("-").map(Number) as [number, number, number];
+  const [year, month, day] = dateKey.split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
   if (timeZone === "UTC") return new Date(`${dateKey}T23:59:59.999Z`);
   const approxNoonUtc = Date.UTC(year, month - 1, day, 12, 0, 0);
   const parts = Object.fromEntries(
@@ -169,11 +189,15 @@ export function computeComplianceTrend(
   const TRAILING_WINDOW_DAYS = 7;
   return everyDayInRange(periodStart, asOfDate, timeZone).map((date) => {
     const dayEnd = endOfLocalDayUtc(date, timeZone);
-    const windowStart = new Date(dayEnd.getTime() - TRAILING_WINDOW_DAYS * 86_400_000);
+    const windowStart = new Date(
+      dayEnd.getTime() - TRAILING_WINDOW_DAYS * 86_400_000,
+    );
     const windowRows = closedRows.filter(
       (row) => row.closedAt > windowStart && row.closedAt <= dayEnd,
     );
-    const relevant = windowRows.filter((r) => r.status === "met" || r.status === "breached");
+    const relevant = windowRows.filter(
+      (r) => r.status === "met" || r.status === "breached",
+    );
     if (relevant.length === 0) return { date, compliancePercent: null };
     const met = relevant.filter((r) => r.status === "met").length;
     return {
@@ -234,7 +258,9 @@ export function findBreachesInPeriod(
       breachedAt,
     });
   }
-  return breaches.sort((a, b) => a.breachedAt.getTime() - b.breachedAt.getTime());
+  return breaches.sort(
+    (a, b) => a.breachedAt.getTime() - b.breachedAt.getTime(),
+  );
 }
 
 /**
@@ -327,9 +353,16 @@ export async function getProjectAnalytics(
   periodStart: Date,
   asOfDate: Date,
   openCommitmentStatuses: { caseId: string; status: CommitmentStatus }[],
-  closedPeriodCommitmentStatuses: { caseId: string; status: CommitmentStatus; closedAt?: Date | null }[],
+  closedPeriodCommitmentStatuses: {
+    caseId: string;
+    status: CommitmentStatus;
+    closedAt?: Date | null;
+  }[],
   timeZone: string = DEFAULT_TIMEZONE,
-): Promise<{ analytics: ProjectAnalyticsData; breachedThisPeriod: BreachedCaseRow[] }> {
+): Promise<{
+  analytics: ProjectAnalyticsData;
+  breachedThisPeriod: BreachedCaseRow[];
+}> {
   const compliance = summarizeCompliance([
     ...openCommitmentStatuses,
     ...closedPeriodCommitmentStatuses,
@@ -360,16 +393,26 @@ export async function getProjectAnalytics(
     },
   });
 
-  const policyVersionIds = [...new Set(commitmentRows.map((c) => c.policyVersionId))];
-  const calendarVersionIds = [...new Set(commitmentRows.map((c) => c.calendarVersionId))];
+  const policyVersionIds = [
+    ...new Set(commitmentRows.map((c) => c.policyVersionId)),
+  ];
+  const calendarVersionIds = [
+    ...new Set(commitmentRows.map((c) => c.calendarVersionId)),
+  ];
   const candidateCaseIds = [...new Set(commitmentRows.map((c) => c.caseId))];
 
   const [policyVersionRows, calendarVersionRows, eventRows] =
     commitmentRows.length > 0
       ? await Promise.all([
-          prisma.sLAPolicyVersion.findMany({ where: { id: { in: policyVersionIds } } }),
-          prisma.businessCalendarVersion.findMany({ where: { id: { in: calendarVersionIds } } }),
-          prisma.normalizedEvent.findMany({ where: { caseId: { in: candidateCaseIds } } }),
+          prisma.sLAPolicyVersion.findMany({
+            where: { id: { in: policyVersionIds } },
+          }),
+          prisma.businessCalendarVersion.findMany({
+            where: { id: { in: calendarVersionIds } },
+          }),
+          prisma.normalizedEvent.findMany({
+            where: { caseId: { in: candidateCaseIds } },
+          }),
         ])
       : [[], [], []];
 
@@ -437,6 +480,7 @@ export async function getProjectAnalytics(
     const { spans } = deriveLegSpans(eventsByCaseId.get(breach.caseId) ?? [], {
       caseOpenedAt: breach.caseOpenedAt.toISOString(),
     });
+    perfCount("deriveLegSpans");
     const leg = legAtTime(spans, breach.breachedAt.toISOString());
     legCounts.set(leg, (legCounts.get(leg) ?? 0) + 1);
     breachLegs.push({ breachedAt: breach.breachedAt, leg });
@@ -446,11 +490,18 @@ export async function getProjectAnalytics(
     .map(([leg, count]) => ({ leg, count }))
     .sort((a, b) => b.count - a.count);
 
-  const breachesOverTimeByLeg = bucketBreachesByDayAndLeg(breachLegs, periodStart, asOfDate, timeZone);
+  const breachesOverTimeByLeg = bucketBreachesByDayAndLeg(
+    breachLegs,
+    periodStart,
+    asOfDate,
+    timeZone,
+  );
 
   const complianceTrend = computeComplianceTrend(
     closedPeriodCommitmentStatuses.filter(
-      (row): row is { caseId: string; status: CommitmentStatus; closedAt: Date } =>
+      (
+        row,
+      ): row is { caseId: string; status: CommitmentStatus; closedAt: Date } =>
         row.closedAt != null,
     ),
     periodStart,
@@ -473,7 +524,13 @@ export async function getProjectAnalytics(
   );
 
   return {
-    analytics: { compliance, breachesOverTime, breachesOverTimeByLeg, breachesByStage, complianceTrend },
+    analytics: {
+      compliance,
+      breachesOverTime,
+      breachesOverTimeByLeg,
+      breachesByStage,
+      complianceTrend,
+    },
     breachedThisPeriod,
   };
 }

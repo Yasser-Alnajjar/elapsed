@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
+import { withPerfMetrics } from "./perf-metrics";
 export * from "../generated/prisma/client";
 export { deriveEncryptionKey, aesGcmEncrypt, aesGcmDecrypt } from "./crypto";
 export {
@@ -59,11 +60,15 @@ export type {
   WorkerStatus,
 } from "./worker-settings";
 
-export { WORKER_ADVISORY_LOCK_KEY, connectAdvisoryLockConnection } from "./advisory-lock";
+export {
+  WORKER_ADVISORY_LOCK_KEY,
+  connectAdvisoryLockConnection,
+} from "./advisory-lock";
 export type { AdvisoryLockConnection } from "./advisory-lock";
 export { withOrganizationSlaLock } from "./organization-lock";
 export { recordSlaImportSummary } from "./sla-import-summary";
 export type { SlaImportSummaryInput } from "./sla-import-summary";
+export { isPerfMetricsEnabled, perfCount, withPerfScope } from "./perf-metrics";
 
 export { generateSecureToken, hashToken } from "./secure-token";
 export {
@@ -105,7 +110,10 @@ export {
   PasswordResetTokenExpiredError,
   PasswordResetTokenUsedError,
 } from "./password-reset";
-export type { RequestPasswordResetResult, ResetPasswordResult } from "./password-reset";
+export type {
+  RequestPasswordResetResult,
+  ResetPasswordResult,
+} from "./password-reset";
 
 export {
   EMAIL_VERIFICATION_TTL_MS,
@@ -126,6 +134,7 @@ let prisma: PrismaClient | undefined;
 
 /** Lazily-created singleton so apps/web and apps/worker share one connection pool per process. */
 export function getPrismaClient(): PrismaClient {
-  if (!prisma) prisma = new PrismaClient({ adapter });
+  if (!prisma)
+    prisma = withPerfMetrics(new PrismaClient({ adapter })) as PrismaClient;
   return prisma;
 }

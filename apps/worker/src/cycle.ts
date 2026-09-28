@@ -6,7 +6,13 @@ import {
   type EvaluationPipelineResult,
   type EvaluationScope,
 } from "@sla/commitments";
-import { getIntegrationConfig, recordSlaImportSummary, withOrganizationSlaLock, type PrismaClient } from "@sla/db";
+import {
+  getIntegrationConfig,
+  recordSlaImportSummary,
+  withOrganizationSlaLock,
+  withPerfScope,
+  type PrismaClient,
+} from "@sla/db";
 import {
   GithubPermissionDeniedError,
   GithubReauthRequiredError,
@@ -150,7 +156,9 @@ export async function runCycle(
     const orgLogger = cycleLogger.child({ organizationId: organization.id });
 
     const orderedIntegrations = [...organization.integrations].sort(
-      (a, b) => (PROVIDER_CYCLE_PRIORITY[a.provider] ?? 0) - (PROVIDER_CYCLE_PRIORITY[b.provider] ?? 0),
+      (a, b) =>
+        (PROVIDER_CYCLE_PRIORITY[a.provider] ?? 0) -
+        (PROVIDER_CYCLE_PRIORITY[b.provider] ?? 0),
     );
 
     // Phase 1: ingest only (network-bound, idempotent RawEvent upserts) —
@@ -159,7 +167,11 @@ export async function runCycle(
     // organization wait on it.
     const ingestOutcomes = new Map<
       string,
-      { syncError: string | null; reauthRequired: boolean; permissionDenied: boolean }
+      {
+        syncError: string | null;
+        reauthRequired: boolean;
+        permissionDenied: boolean;
+      }
     >();
 
     for (const integration of orderedIntegrations) {
@@ -170,17 +182,39 @@ export async function runCycle(
 
       try {
         if (integration.provider === "zendesk") {
-          if (!config.appUrl) throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
-          const zendeskConfig = await getIntegrationConfig(prisma, organization.id, "zendesk");
-          if (!zendeskConfig) throw new Error("Zendesk is not configured for this organization");
-          await runZendeskBackfill(prisma, integration.id, {
-            ...zendeskConfig,
-            redirectUri: `${config.appUrl}/api/integrations/zendesk/callback`,
-          }, { logger: orgLogger.child({ integrationId: integration.id, provider: "zendesk" }) });
+          if (!config.appUrl)
+            throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
+          const zendeskConfig = await getIntegrationConfig(
+            prisma,
+            organization.id,
+            "zendesk",
+          );
+          if (!zendeskConfig)
+            throw new Error("Zendesk is not configured for this organization");
+          await runZendeskBackfill(
+            prisma,
+            integration.id,
+            {
+              ...zendeskConfig,
+              redirectUri: `${config.appUrl}/api/integrations/zendesk/callback`,
+            },
+            {
+              logger: orgLogger.child({
+                integrationId: integration.id,
+                provider: "zendesk",
+              }),
+            },
+          );
         } else if (integration.provider === "jira") {
-          if (!config.appUrl) throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
-          const jiraConfig = await getIntegrationConfig(prisma, organization.id, "jira");
-          if (!jiraConfig) throw new Error("Jira is not configured for this organization");
+          if (!config.appUrl)
+            throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
+          const jiraConfig = await getIntegrationConfig(
+            prisma,
+            organization.id,
+            "jira",
+          );
+          if (!jiraConfig)
+            throw new Error("Jira is not configured for this organization");
           await runJiraBackfill(prisma, integration.id, {
             ...jiraConfig,
             redirectUri: `${config.appUrl}/api/integrations/jira/callback`,
@@ -199,8 +233,13 @@ export async function runCycle(
           // Unlike Linear/Intercom, GitHub needs its App's client id/secret
           // here: GitHub App user tokens expire and are refreshed like
           // Jira's (roadmap step 38).
-          const githubConfig = await getIntegrationConfig(prisma, organization.id, "github");
-          if (!githubConfig) throw new Error("GitHub is not configured for this organization");
+          const githubConfig = await getIntegrationConfig(
+            prisma,
+            organization.id,
+            "github",
+          );
+          if (!githubConfig)
+            throw new Error("GitHub is not configured for this organization");
           await runGithubBackfill(prisma, integration.id, githubConfig);
         }
       } catch (error) {
@@ -227,14 +266,21 @@ export async function runCycle(
             : error instanceof Error
               ? error.message
               : String(error);
-        result.failures.push({ organizationId: organization.id, stage: `ingest:${integration.provider}`, error: syncError });
+        result.failures.push({
+          organizationId: organization.id,
+          stage: `ingest:${integration.provider}`,
+          error: syncError,
+        });
         // Reauth is an expected, already-surfaced state (the settings page's
         // ReauthBanner) — not a bug — so it's excluded here to keep Sentry
         // for actual failures worth investigating, not routine reauth churn.
         // Permission loss is reported once, on the transition into
         // `permission_denied`: the operator should hear about it, but not
         // again on every cycle until the customer fixes it.
-        if (!reauthRequired && !(permissionDenied && integration.status === "permission_denied")) {
+        if (
+          !reauthRequired &&
+          !(permissionDenied && integration.status === "permission_denied")
+        ) {
           captureException(error, {
             organizationId: organization.id,
             integrationId: integration.id,
@@ -245,7 +291,11 @@ export async function runCycle(
         }
       }
 
-      ingestOutcomes.set(integration.id, { syncError, reauthRequired, permissionDenied });
+      ingestOutcomes.set(integration.id, {
+        syncError,
+        reauthRequired,
+        permissionDenied,
+      });
     }
 
     // Phase 2: correlation, normalization and the commitment/cycle/
@@ -258,88 +308,106 @@ export async function runCycle(
     let slaPolicyImportResult: SlaPolicyImportResult | null = null;
 
     await withOrganizationSlaLock(prisma, organization.id, async () => {
-      for (const integration of orderedIntegrations) {
-        const ingestOutcome = ingestOutcomes.get(integration.id)!;
-        let normalizeError: string | null = null;
+      await withPerfScope(
+        "worker_normalize",
+        async () => {
+          for (const integration of orderedIntegrations) {
+            const ingestOutcome = ingestOutcomes.get(integration.id)!;
+            let normalizeError: string | null = null;
 
-        try {
-          if (integration.provider === "zendesk") {
-            await runZendeskNormalization(prisma, integration.id);
-            // Independent of Jira's own correlation below: the official
-            // Zendesk↔Jira link signal still establishes the relationship
-            // even when a Jira remote link is stale or Jira isn't connected
-            // at all. Must run after normalization, which is what creates
-            // the Cases this looks up by ticket id.
-            await runZendeskJiraLinkCorrelation(prisma, integration.id);
-            await runZendeskBusinessCalendarImport(prisma, integration.id);
-            slaPolicyImportResult = await runZendeskSlaPolicyImport(prisma, integration.id);
-          } else if (integration.provider === "jira") {
-            await runJiraCorrelation(prisma, integration.id);
-            await runJiraNormalization(prisma, integration.id);
-          } else if (integration.provider === "linear") {
-            await runLinearCorrelation(prisma, integration.id);
-            await runLinearNormalization(prisma, integration.id);
-          } else if (integration.provider === "intercom") {
-            // No correlation step: Intercom is a ticket source that creates
-            // its own Cases, not an engineering-leg source that links onto
-            // one.
-            await runIntercomNormalization(prisma, integration.id);
-          } else {
-            // Correlation links transitively through this org's existing
-            // Jira/Linear CaseLinks (roadmap step 23) rather than any direct
-            // Zendesk knowledge.
-            await runGithubCorrelation(prisma, integration.id);
-            await runGithubNormalization(prisma, integration.id);
+            try {
+              if (integration.provider === "zendesk") {
+                await runZendeskNormalization(prisma, integration.id);
+                // Independent of Jira's own correlation below: the official
+                // Zendesk↔Jira link signal still establishes the relationship
+                // even when a Jira remote link is stale or Jira isn't connected
+                // at all. Must run after normalization, which is what creates
+                // the Cases this looks up by ticket id.
+                await runZendeskJiraLinkCorrelation(prisma, integration.id);
+                await runZendeskBusinessCalendarImport(prisma, integration.id);
+                slaPolicyImportResult = await runZendeskSlaPolicyImport(
+                  prisma,
+                  integration.id,
+                );
+              } else if (integration.provider === "jira") {
+                await runJiraCorrelation(prisma, integration.id);
+                await runJiraNormalization(prisma, integration.id);
+              } else if (integration.provider === "linear") {
+                await runLinearCorrelation(prisma, integration.id);
+                await runLinearNormalization(prisma, integration.id);
+              } else if (integration.provider === "intercom") {
+                // No correlation step: Intercom is a ticket source that creates
+                // its own Cases, not an engineering-leg source that links onto
+                // one.
+                await runIntercomNormalization(prisma, integration.id);
+              } else {
+                // Correlation links transitively through this org's existing
+                // Jira/Linear CaseLinks (roadmap step 23) rather than any direct
+                // Zendesk knowledge.
+                await runGithubCorrelation(prisma, integration.id);
+                await runGithubNormalization(prisma, integration.id);
+              }
+            } catch (error) {
+              normalizeError =
+                error instanceof Error ? error.message : String(error);
+              result.failures.push({
+                organizationId: organization.id,
+                stage: `normalize:${integration.provider}`,
+                error: normalizeError,
+              });
+              captureException(error, {
+                organizationId: organization.id,
+                integrationId: integration.id,
+                provider: integration.provider,
+                kind,
+                stage: "normalize",
+              });
+            }
+
+            // Every attempted cycle (success or failure, in either phase)
+            // updates sync health, so the settings page reflects real state
+            // instead of only stdout logs. Ingest's error takes priority when
+            // both phases failed — it's the more actionable diagnostic.
+            const syncError = ingestOutcome.syncError ?? normalizeError;
+            await prisma.integration.update({
+              where: { id: integration.id },
+              data: {
+                lastSyncAt: new Date(),
+                lastSyncError: syncError,
+                ...(ingestOutcome.reauthRequired
+                  ? { status: "reauth_required" as const }
+                  : {}),
+              },
+            });
+
+            // `permission_denied` transitions (roadmap step 32) are compare-and-set
+            // on the current status, so a disconnect or reconnect that landed
+            // mid-cycle is never overwritten: only `connected` becomes
+            // `permission_denied`, and only `permission_denied` clears back to
+            // `connected`. Unlike reauth (cleared only by the OAuth callback), that
+            // happens on the first clean sync — restoring the user's access
+            // provider-side needs no action in this app.
+            const permissionTransition = ingestOutcome.permissionDenied
+              ? { from: "connected" as const, to: "permission_denied" as const }
+              : syncError === null && integration.status === "permission_denied"
+                ? {
+                    from: "permission_denied" as const,
+                    to: "connected" as const,
+                  }
+                : null;
+            if (permissionTransition) {
+              await prisma.integration.updateMany({
+                where: {
+                  id: integration.id,
+                  status: permissionTransition.from,
+                },
+                data: { status: permissionTransition.to },
+              });
+            }
           }
-        } catch (error) {
-          normalizeError = error instanceof Error ? error.message : String(error);
-          result.failures.push({
-            organizationId: organization.id,
-            stage: `normalize:${integration.provider}`,
-            error: normalizeError,
-          });
-          captureException(error, {
-            organizationId: organization.id,
-            integrationId: integration.id,
-            provider: integration.provider,
-            kind,
-            stage: "normalize",
-          });
-        }
-
-        // Every attempted cycle (success or failure, in either phase)
-        // updates sync health, so the settings page reflects real state
-        // instead of only stdout logs. Ingest's error takes priority when
-        // both phases failed — it's the more actionable diagnostic.
-        const syncError = ingestOutcome.syncError ?? normalizeError;
-        await prisma.integration.update({
-          where: { id: integration.id },
-          data: {
-            lastSyncAt: new Date(),
-            lastSyncError: syncError,
-            ...(ingestOutcome.reauthRequired ? { status: "reauth_required" as const } : {}),
-          },
-        });
-
-        // `permission_denied` transitions (roadmap step 32) are compare-and-set
-        // on the current status, so a disconnect or reconnect that landed
-        // mid-cycle is never overwritten: only `connected` becomes
-        // `permission_denied`, and only `permission_denied` clears back to
-        // `connected`. Unlike reauth (cleared only by the OAuth callback), that
-        // happens on the first clean sync — restoring the user's access
-        // provider-side needs no action in this app.
-        const permissionTransition = ingestOutcome.permissionDenied
-          ? { from: "connected" as const, to: "permission_denied" as const }
-          : syncError === null && integration.status === "permission_denied"
-            ? { from: "permission_denied" as const, to: "connected" as const }
-            : null;
-        if (permissionTransition) {
-          await prisma.integration.updateMany({
-            where: { id: integration.id, status: permissionTransition.from },
-            data: { status: permissionTransition.to },
-          });
-        }
-      }
+        },
+        { organizationId: organization.id, kind },
+      );
 
       // Evaluation runs even when ingestion failed: time keeps passing, so a
       // commitment can cross a warn threshold or breach on already-stored events.
@@ -348,99 +416,180 @@ export async function runCycle(
       // "now" instead of each independently calling `new Date()`.
       const asOf = new Date().toISOString();
 
-      try {
-        const commitments = await runCommitmentPipeline(prisma, organization.id);
-        result.commitmentsCreated += commitments.commitmentsCreated;
+      await withPerfScope(
+        "worker_commitment",
+        async () => {
+          try {
+            const commitments = await runCommitmentPipeline(
+              prisma,
+              organization.id,
+            );
+            result.commitmentsCreated += commitments.commitmentsCreated;
 
-        if (slaPolicyImportResult) {
-          await recordSlaImportSummary(prisma, organization.id, {
-            unsupportedConditions: slaPolicyImportResult.unsupportedConditions,
-            unsupportedMetrics: slaPolicyImportResult.unsupportedMetrics,
-            policiesWithNoUsableTargets: slaPolicyImportResult.policiesWithNoUsableTargets,
-            policiesWithUnresolvedSchedule: slaPolicyImportResult.policiesWithUnresolvedSchedule,
-            policiesArchived: slaPolicyImportResult.policiesArchived,
-            casesWithNoMatchingPolicy: commitments.casesWithNoMatchingPolicy,
-          });
-        }
-      } catch (error) {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: "commitments",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        captureException(error, { organizationId: organization.id, kind, stage: "commitments" });
-      }
+            if (slaPolicyImportResult) {
+              await recordSlaImportSummary(prisma, organization.id, {
+                unsupportedConditions:
+                  slaPolicyImportResult.unsupportedConditions,
+                unsupportedMetrics: slaPolicyImportResult.unsupportedMetrics,
+                policiesWithNoUsableTargets:
+                  slaPolicyImportResult.policiesWithNoUsableTargets,
+                policiesWithUnresolvedSchedule:
+                  slaPolicyImportResult.policiesWithUnresolvedSchedule,
+                policiesArchived: slaPolicyImportResult.policiesArchived,
+                casesWithNoMatchingPolicy:
+                  commitments.casesWithNoMatchingPolicy,
+              });
+            }
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "commitments",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "commitments",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
 
       // Before Next Reply cycle derivation: a future cycle reads its anchor
       // commitment's *current* policy version fresh from the DB, so a
       // policy-driving Case attribute change (priority, customer, tier) must
       // already be re-resolved by the time that pipeline runs.
-      try {
-        const reResolution = await runCommitmentReResolutionPipeline(prisma, organization.id, { asOf, logger: orgLogger });
-        result.commitmentsReResolved += reResolution.commitmentsUpdated;
-      } catch (error) {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: "commitment_re_resolution",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        captureException(error, { organizationId: organization.id, kind, stage: "commitment_re_resolution" });
-      }
+      await withPerfScope(
+        "worker_re_resolution",
+        async () => {
+          try {
+            const reResolution = await runCommitmentReResolutionPipeline(
+              prisma,
+              organization.id,
+              {
+                asOf,
+                logger: orgLogger,
+              },
+            );
+            result.commitmentsReResolved += reResolution.commitmentsUpdated;
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "commitment_re_resolution",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "commitment_re_resolution",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
 
-      try {
-        const cycles = await runNextReplyCyclePipeline(prisma, organization.id, { asOf });
-        result.cyclesCreated += cycles.cyclesCreated;
-        result.cyclesCancelled += cycles.cyclesCancelled;
-        result.cyclesRestored += cycles.cyclesRestored;
-      } catch (error) {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: "next_reply_cycles",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        captureException(error, { organizationId: organization.id, kind, stage: "next_reply_cycles" });
-      }
+      await withPerfScope(
+        "worker_next_reply",
+        async () => {
+          try {
+            const cycles = await runNextReplyCyclePipeline(
+              prisma,
+              organization.id,
+              { asOf },
+            );
+            result.cyclesCreated += cycles.cyclesCreated;
+            result.cyclesCancelled += cycles.cyclesCancelled;
+            result.cyclesRestored += cycles.cyclesRestored;
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "next_reply_cycles",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "next_reply_cycles",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
 
-      let notificationCandidates: EvaluationPipelineResult["notificationCandidates"] = [];
-      try {
-        const evaluations = await runEvaluationPipeline(prisma, organization.id, { asOf, scope: SCOPE_BY_KIND[kind] });
-        result.commitmentsConsidered += evaluations.commitmentsConsidered;
-        result.evaluationsCreated += evaluations.evaluationsCreated;
-        result.commitmentsFinalized += evaluations.commitmentsFinalized;
-        notificationCandidates = evaluations.notificationCandidates;
-      } catch (error) {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: "evaluation",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        captureException(error, { organizationId: organization.id, kind, stage: "evaluation" });
-      }
+      let notificationCandidates: EvaluationPipelineResult["notificationCandidates"] =
+        [];
+      await withPerfScope(
+        "worker_evaluate",
+        async () => {
+          try {
+            const evaluations = await runEvaluationPipeline(
+              prisma,
+              organization.id,
+              {
+                asOf,
+                scope: SCOPE_BY_KIND[kind],
+              },
+            );
+            result.commitmentsConsidered += evaluations.commitmentsConsidered;
+            result.evaluationsCreated += evaluations.evaluationsCreated;
+            result.commitmentsFinalized += evaluations.commitmentsFinalized;
+            notificationCandidates = evaluations.notificationCandidates;
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "evaluation",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "evaluation",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
 
       // Runs even for organizations with no Slack workspace connected and no
       // SMTP configured — runNotificationPipeline no-ops cheaply in that case.
       // A commitment that fails to notify never blocks another organization's
       // cycle.
-      try {
-        const notifications = await runNotificationPipeline(prisma, organization.id, notificationCandidates, {
-          appUrl: config.appUrl,
-        });
-        result.notificationsSent += notifications.notificationsSent;
-        for (const failed of notifications.notificationsFailed) {
-          result.failures.push({
-            organizationId: organization.id,
-            stage: "notifications",
-            error: `commitment ${failed.commitmentId} threshold ${failed.threshold}: ${failed.error}`,
-          });
-        }
-      } catch (error) {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: "notifications",
-          error: error instanceof Error ? error.message : String(error),
-        });
-        captureException(error, { organizationId: organization.id, kind, stage: "notifications" });
-      }
+      await withPerfScope(
+        "worker_notify",
+        async () => {
+          try {
+            const notifications = await runNotificationPipeline(
+              prisma,
+              organization.id,
+              notificationCandidates,
+              {
+                appUrl: config.appUrl,
+              },
+            );
+            result.notificationsSent += notifications.notificationsSent;
+            for (const failed of notifications.notificationsFailed) {
+              result.failures.push({
+                organizationId: organization.id,
+                stage: "notifications",
+                error: `commitment ${failed.commitmentId} threshold ${failed.threshold}: ${failed.error}`,
+              });
+            }
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "notifications",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "notifications",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
     });
   }
 

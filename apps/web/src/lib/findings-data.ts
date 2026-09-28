@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -38,7 +38,9 @@ export async function getFindingsData(
   asOfDate: Date = new Date(),
 ): Promise<FindingsData> {
   const asOf = asOfDate.toISOString();
-  const periodStart = new Date(asOfDate.getTime() - FINDINGS_PERIOD_DAYS * 86_400_000);
+  const periodStart = new Date(
+    asOfDate.getTime() - FINDINGS_PERIOD_DAYS * 86_400_000,
+  );
 
   const escalatedCases = await prisma.case.findMany({
     where: {
@@ -51,22 +53,46 @@ export async function getFindingsData(
   });
 
   if (escalatedCases.length === 0) {
-    return { periodDays: FINDINGS_PERIOD_DAYS, totalEscalated: 0, exceededTarget: 0, avgEngineeringMinutes: null, topAccounts: [] };
+    return {
+      periodDays: FINDINGS_PERIOD_DAYS,
+      totalEscalated: 0,
+      exceededTarget: 0,
+      avgEngineeringMinutes: null,
+      topAccounts: [],
+    };
   }
 
   const caseIds = escalatedCases.map((c) => c.id);
-  const policyVersionIds = [...new Set(escalatedCases.flatMap((c) => c.commitments.map((m) => m.policyVersionId)))];
-  const calendarVersionIds = [...new Set(escalatedCases.flatMap((c) => c.commitments.map((m) => m.calendarVersionId)))];
+  const policyVersionIds = [
+    ...new Set(
+      escalatedCases.flatMap((c) =>
+        c.commitments.map((m) => m.policyVersionId),
+      ),
+    ),
+  ];
+  const calendarVersionIds = [
+    ...new Set(
+      escalatedCases.flatMap((c) =>
+        c.commitments.map((m) => m.calendarVersionId),
+      ),
+    ),
+  ];
 
-  const [eventRows, policyVersionRows, calendarVersionRows] = await Promise.all([
-    prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } }),
-    policyVersionIds.length > 0
-      ? prisma.sLAPolicyVersion.findMany({ where: { id: { in: policyVersionIds } } })
-      : Promise.resolve([]),
-    calendarVersionIds.length > 0
-      ? prisma.businessCalendarVersion.findMany({ where: { id: { in: calendarVersionIds } } })
-      : Promise.resolve([]),
-  ]);
+  const [eventRows, policyVersionRows, calendarVersionRows] = await Promise.all(
+    [
+      prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } }),
+      policyVersionIds.length > 0
+        ? prisma.sLAPolicyVersion.findMany({
+            where: { id: { in: policyVersionIds } },
+          })
+        : Promise.resolve([]),
+      calendarVersionIds.length > 0
+        ? prisma.businessCalendarVersion.findMany({
+            where: { id: { in: calendarVersionIds } },
+          })
+        : Promise.resolve([]),
+    ],
+  );
 
   const policyVersionsById = new Map<string, SLAPolicyVersion>(
     policyVersionRows.map((row) => [
@@ -114,7 +140,11 @@ export async function getFindingsData(
   for (const caseRow of escalatedCases) {
     const accountKey = caseRow.customerId ?? caseRow.id;
     const accountName = caseRow.customer?.name ?? "Unknown account";
-    const account = accountsByKey.get(accountKey) ?? { customerName: accountName, escalatedCases: 0, breachedCases: 0 };
+    const account = accountsByKey.get(accountKey) ?? {
+      customerName: accountName,
+      escalatedCases: 0,
+      breachedCases: 0,
+    };
     account.escalatedCases += 1;
 
     const events = eventsByCaseId.get(caseRow.id) ?? [];
@@ -124,7 +154,14 @@ export async function getFindingsData(
       const policyVersion = policyVersionsById.get(resolution.policyVersionId);
       const calendar = calendarsById.get(resolution.calendarVersionId);
       if (policyVersion && calendar) {
-        const evaluation = evaluateCommitment(toCommitmentDomain(resolution), events, policyVersion, calendar, asOf);
+        const evaluation = evaluateCommitment(
+          toCommitmentDomain(resolution),
+          events,
+          policyVersion,
+          calendar,
+          asOf,
+        );
+        perfCount("evaluateCommitment");
         if (evaluation.status === "breached") {
           exceededTarget += 1;
           account.breachedCases += 1;
@@ -132,23 +169,41 @@ export async function getFindingsData(
       }
     }
 
-    const { spans } = deriveLegSpans(events, { caseOpenedAt: caseRow.openedAt.toISOString() });
+    const { spans } = deriveLegSpans(events, {
+      caseOpenedAt: caseRow.openedAt.toISOString(),
+    });
+    perfCount("deriveLegSpans");
     const endBound = caseRow.closedAt?.toISOString() ?? asOf;
     const engineeringMinutes = spans
       .filter((s) => s.leg === "engineering")
-      .reduce((sum, s) => sum + (new Date(s.endedAt ?? endBound).getTime() - new Date(s.startedAt).getTime()) / 60_000, 0);
-    if (engineeringMinutes > 0) engineeringMinutesByCaseId.push(engineeringMinutes);
+      .reduce(
+        (sum, s) =>
+          sum +
+          (new Date(s.endedAt ?? endBound).getTime() -
+            new Date(s.startedAt).getTime()) /
+            60_000,
+        0,
+      );
+    if (engineeringMinutes > 0)
+      engineeringMinutesByCaseId.push(engineeringMinutes);
 
     accountsByKey.set(accountKey, account);
   }
 
   const avgEngineeringMinutes =
     engineeringMinutesByCaseId.length > 0
-      ? Math.round(engineeringMinutesByCaseId.reduce((a, b) => a + b, 0) / engineeringMinutesByCaseId.length)
+      ? Math.round(
+          engineeringMinutesByCaseId.reduce((a, b) => a + b, 0) /
+            engineeringMinutesByCaseId.length,
+        )
       : null;
 
   const topAccounts = [...accountsByKey.values()]
-    .sort((a, b) => b.breachedCases - a.breachedCases || b.escalatedCases - a.escalatedCases)
+    .sort(
+      (a, b) =>
+        b.breachedCases - a.breachedCases ||
+        b.escalatedCases - a.escalatedCases,
+    )
     .slice(0, TOP_ACCOUNTS_LIMIT);
 
   return {

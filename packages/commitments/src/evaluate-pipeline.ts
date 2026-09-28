@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import { perfCount, type Prisma, type PrismaClient } from "@sla/db";
 import {
   evaluateCommitment,
   type BusinessCalendarVersion,
@@ -128,7 +128,10 @@ export function shouldPersistEvaluation(
  * Trade-off: a breach alert whose every channel failed in the cycle that
  * finalized the commitment is no longer retried by the hourly sweep.
  */
-export function canRaiseAlert(alreadyFinalized: boolean, terminal: boolean): boolean {
+export function canRaiseAlert(
+  alreadyFinalized: boolean,
+  terminal: boolean,
+): boolean {
   return !(alreadyFinalized && terminal);
 }
 
@@ -273,7 +276,9 @@ export async function runEvaluationPipeline(
       // — their cycle no longer exists — but otherwise re-checks every
       // commitment, finalized or not; "active" narrows to the shared
       // ACTIVE_COMMITMENT_WHERE definition.
-      ...(scope === "active" ? ACTIVE_COMMITMENT_WHERE : { status: { not: "cancelled" } }),
+      ...(scope === "active"
+        ? ACTIVE_COMMITMENT_WHERE
+        : { status: { not: "cancelled" } }),
     },
   });
   result.commitmentsConsidered = commitmentRows.length;
@@ -302,7 +307,11 @@ export async function runEvaluationPipeline(
     }),
     prisma.normalizedEvent.findMany({
       where: { caseId: { in: caseIds } },
-      orderBy: [{ caseId: "asc" }, { occurredAt: "asc" }, { sourceSequence: "asc" }],
+      orderBy: [
+        { caseId: "asc" },
+        { occurredAt: "asc" },
+        { sourceSequence: "asc" },
+      ],
     }),
     prisma.evaluation.findMany({
       where: { commitmentId: { in: commitmentRows.map((c) => c.id) } },
@@ -390,6 +399,7 @@ export async function runEvaluationPipeline(
         calendarVersion,
         asOf,
       );
+      perfCount("evaluateCommitment");
 
       const terminal = isTerminalStatus(
         evaluation.status,
@@ -397,7 +407,10 @@ export async function runEvaluationPipeline(
       );
       const finalized = row.closedAt !== null;
 
-      if (evaluation.warnThresholdCrossed !== undefined && canRaiseAlert(finalized, terminal)) {
+      if (
+        evaluation.warnThresholdCrossed !== undefined &&
+        canRaiseAlert(finalized, terminal)
+      ) {
         result.notificationCandidates.push({
           commitmentId: row.id,
           caseId: row.caseId,
@@ -406,10 +419,12 @@ export async function runEvaluationPipeline(
           threshold: evaluation.warnThresholdCrossed,
           remainingMinutes: evaluation.remainingMinutes,
           breachedByMinutes: evaluation.breachedByMinutes,
-          policyName: policyNameByVersionId.get(row.policyVersionId) ?? "Unknown policy",
+          policyName:
+            policyNameByVersionId.get(row.policyVersionId) ?? "Unknown policy",
           targetMinutes: row.targetMinutes,
           startedAt: row.startedAt.toISOString(),
-          breachedAt: evaluation.status === "breached" ? evaluation.effectiveDueAt : null,
+          breachedAt:
+            evaluation.status === "breached" ? evaluation.effectiveDueAt : null,
         });
       }
 
@@ -469,7 +484,11 @@ export async function runEvaluationPipeline(
   // against.
   for (const update of commitmentUpdates) {
     await prisma.commitment.updateMany({
-      where: { id: update.id, policyVersionId: update.policyVersionId, status: { not: "cancelled" } },
+      where: {
+        id: update.id,
+        policyVersionId: update.policyVersionId,
+        status: { not: "cancelled" },
+      },
       data: {
         status: update.status,
         closedAt: update.closedAt ? new Date(update.closedAt) : null,

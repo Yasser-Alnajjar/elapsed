@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -42,6 +42,20 @@ export async function getAtRiskData(
   prisma: PrismaClient,
   organizationId: string,
   asOfDate: Date = new Date(),
+): Promise<AtRiskRowData[]> {
+  return withPerfScope(
+    "at_risk",
+    () => getAtRiskDataInner(prisma, organizationId, asOfDate),
+    {
+      organizationId,
+    },
+  );
+}
+
+async function getAtRiskDataInner(
+  prisma: PrismaClient,
+  organizationId: string,
+  asOfDate: Date,
 ): Promise<AtRiskRowData[]> {
   const asOf = asOfDate.toISOString();
 
@@ -194,6 +208,7 @@ export async function getAtRiskData(
     const { spans } = deriveLegSpans(eventsByCaseId.get(caseId) ?? [], {
       caseOpenedAt: caseOpenedAt.toISOString(),
     });
+    perfCount("deriveLegSpans");
 
     legSpansByCaseId.set(caseId, spans);
 
@@ -220,6 +235,7 @@ export async function getAtRiskData(
       calendar,
       asOf,
     );
+    perfCount("evaluateCommitment");
 
     if (
       evaluation.status !== "on_track" &&

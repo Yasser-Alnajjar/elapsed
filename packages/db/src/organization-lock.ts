@@ -1,5 +1,9 @@
 import pg from "pg";
+import { createLogger } from "@sla/logger";
 import type { PrismaClient } from "../generated/prisma/client";
+import { isPerfMetricsEnabled } from "./perf-metrics";
+
+const lockLogger = createLogger({ scope: "organization_lock" });
 
 // Generous on purpose: a caller queued behind another's projection waits on
 // this lock, and only the lock (no rows) is held meanwhile.
@@ -41,6 +45,8 @@ export async function withOrganizationSlaLock<T>(
 ): Promise<T> {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL! });
   await client.connect();
+  const trackMetrics = isPerfMetricsEnabled();
+  const acquireStartedAt = trackMetrics ? performance.now() : 0;
   try {
     await client.query("BEGIN");
     // Postgres applies `lock_timeout` to an advisory-lock wait like any
@@ -48,11 +54,20 @@ export async function withOrganizationSlaLock<T>(
     // past this, rather than relying on a JS-side timer that can't actually
     // cancel a query already in flight on the wire.
     await client.query(`SET LOCAL lock_timeout = '${LOCK_WAIT_TIMEOUT_MS}ms'`);
-    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-      `sla-processing:${organizationId}`,
-    ]);
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      [`sla-processing:${organizationId}`],
+    );
+    const holdStartedAt = trackMetrics ? performance.now() : 0;
     const result = await work();
     await client.query("COMMIT");
+    if (trackMetrics) {
+      lockLogger.info("organization_lock_duration", {
+        organizationId,
+        waitMs: Math.round(holdStartedAt - acquireStartedAt),
+        holdMs: Math.round(performance.now() - holdStartedAt),
+      });
+    }
     return result;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

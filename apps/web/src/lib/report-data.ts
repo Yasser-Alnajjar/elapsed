@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, type PrismaClient } from "@sla/db";
 import {
   evaluateCommitment,
   type BusinessCalendarVersion,
@@ -13,7 +13,11 @@ import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 import type { ZendeskCredentials } from "@sla/zendesk";
 import type { JiraCredentials } from "@sla/jira";
 import { buildCsv } from "./csv";
-import { formatCommitmentKind, formatCommitmentStatus, formatMinutes } from "./format";
+import {
+  formatCommitmentKind,
+  formatCommitmentStatus,
+  formatMinutes,
+} from "./format";
 
 export interface ComplianceReportRow {
   customerName: string;
@@ -48,36 +52,66 @@ export async function getComplianceReportRows(
 ): Promise<ComplianceReportRow[]> {
   const asOf = asOfDate.toISOString();
 
-  const [commitmentRows, zendeskIntegration, jiraIntegration] = await Promise.all([
-    prisma.commitment.findMany({
-      where: { case: { organizationId, deletedAt: null } },
-      include: { case: { include: { customer: true, caseLinks: true } } },
-    }),
-    prisma.integration.findUnique({ where: { organizationId_provider: { organizationId, provider: "zendesk" } } }),
-    prisma.integration.findUnique({ where: { organizationId_provider: { organizationId, provider: "jira" } } }),
-  ]);
+  const [commitmentRows, zendeskIntegration, jiraIntegration] =
+    await Promise.all([
+      prisma.commitment.findMany({
+        where: { case: { organizationId, deletedAt: null } },
+        include: { case: { include: { customer: true, caseLinks: true } } },
+      }),
+      prisma.integration.findUnique({
+        where: {
+          organizationId_provider: { organizationId, provider: "zendesk" },
+        },
+      }),
+      prisma.integration.findUnique({
+        where: {
+          organizationId_provider: { organizationId, provider: "jira" },
+        },
+      }),
+    ]);
 
-  const zendeskCredentials = (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
-  const jiraCredentials = (jiraIntegration?.credentials as JiraCredentials | null) ?? null;
+  const zendeskCredentials =
+    (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
+  const jiraCredentials =
+    (jiraIntegration?.credentials as JiraCredentials | null) ?? null;
 
   const openCommitmentRows = commitmentRows.filter((c) => c.closedAt === null);
-  const closedCommitmentRows = commitmentRows.filter((c) => c.closedAt !== null);
+  const closedCommitmentRows = commitmentRows.filter(
+    (c) => c.closedAt !== null,
+  );
 
-  const policyVersionIds = [...new Set(openCommitmentRows.map((c) => c.policyVersionId))];
-  const calendarVersionIds = [...new Set(openCommitmentRows.map((c) => c.calendarVersionId))];
+  const policyVersionIds = [
+    ...new Set(openCommitmentRows.map((c) => c.policyVersionId)),
+  ];
+  const calendarVersionIds = [
+    ...new Set(openCommitmentRows.map((c) => c.calendarVersionId)),
+  ];
   const caseIds = [...new Set(openCommitmentRows.map((c) => c.caseId))];
 
-  const [policyVersionRows, calendarVersionRows, eventRows, latestEvaluationRows] = await Promise.all([
+  const [
+    policyVersionRows,
+    calendarVersionRows,
+    eventRows,
+    latestEvaluationRows,
+  ] = await Promise.all([
     policyVersionIds.length > 0
-      ? prisma.sLAPolicyVersion.findMany({ where: { id: { in: policyVersionIds } } })
+      ? prisma.sLAPolicyVersion.findMany({
+          where: { id: { in: policyVersionIds } },
+        })
       : Promise.resolve([]),
     calendarVersionIds.length > 0
-      ? prisma.businessCalendarVersion.findMany({ where: { id: { in: calendarVersionIds } } })
+      ? prisma.businessCalendarVersion.findMany({
+          where: { id: { in: calendarVersionIds } },
+        })
       : Promise.resolve([]),
-    caseIds.length > 0 ? prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } }) : Promise.resolve([]),
+    caseIds.length > 0
+      ? prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } })
+      : Promise.resolve([]),
     closedCommitmentRows.length > 0
       ? prisma.evaluation.findMany({
-          where: { commitmentId: { in: closedCommitmentRows.map((c) => c.id) } },
+          where: {
+            commitmentId: { in: closedCommitmentRows.map((c) => c.id) },
+          },
           orderBy: { evaluatedAt: "desc" },
         })
       : Promise.resolve([]),
@@ -114,7 +148,10 @@ export async function getComplianceReportRows(
     ]),
   );
 
-  const eventsByCaseId = new Map<string, ReturnType<typeof toNormalizedEventDomain>[]>();
+  const eventsByCaseId = new Map<
+    string,
+    ReturnType<typeof toNormalizedEventDomain>[]
+  >();
   for (const row of eventRows) {
     const domainEvent = toNormalizedEventDomain(row);
     const existing = eventsByCaseId.get(row.caseId);
@@ -123,7 +160,10 @@ export async function getComplianceReportRows(
   }
 
   // First (i.e. latest, since sorted desc) evaluation per commitment.
-  const latestEvaluationByCommitmentId = new Map<string, (typeof latestEvaluationRows)[number]>();
+  const latestEvaluationByCommitmentId = new Map<
+    string,
+    (typeof latestEvaluationRows)[number]
+  >();
   for (const evaluation of latestEvaluationRows) {
     if (!latestEvaluationByCommitmentId.has(evaluation.commitmentId)) {
       latestEvaluationByCommitmentId.set(evaluation.commitmentId, evaluation);
@@ -131,9 +171,15 @@ export async function getComplianceReportRows(
   }
 
   function toRow(row: (typeof commitmentRows)[number]): ComplianceReportRow {
-    const jiraIssueKeys = row.case.caseLinks.filter((l) => l.system === "jira").map((l) => l.externalId);
-    const linearIssueKeys = row.case.caseLinks.filter((l) => l.system === "linear").map((l) => l.externalId);
-    const githubPullRequestKeys = row.case.caseLinks.filter((l) => l.system === "github").map((l) => l.externalId);
+    const jiraIssueKeys = row.case.caseLinks
+      .filter((l) => l.system === "jira")
+      .map((l) => l.externalId);
+    const linearIssueKeys = row.case.caseLinks
+      .filter((l) => l.system === "linear")
+      .map((l) => l.externalId);
+    const githubPullRequestKeys = row.case.caseLinks
+      .filter((l) => l.system === "github")
+      .map((l) => l.externalId);
     // Gated on row.case.system (roadmap step 22), not just "is Zendesk
     // connected" — see case-detail-data.ts for why. Intercom-sourced rows
     // get no outbound link here (same gap @sla/linear already has).
@@ -161,19 +207,35 @@ export async function getComplianceReportRows(
       return {
         ...base,
         status: evaluation?.status ?? row.status,
-        elapsedWorkingMinutes: evaluation ? evaluation.elapsedSeconds / 60 : null,
+        elapsedWorkingMinutes: evaluation
+          ? evaluation.elapsedSeconds / 60
+          : null,
         breachedByMinutes:
-          evaluation?.breachedBySeconds != null ? evaluation.breachedBySeconds / 60 : null,
+          evaluation?.breachedBySeconds != null
+            ? evaluation.breachedBySeconds / 60
+            : null,
       };
     }
 
     const policyVersion = policyVersionsById.get(row.policyVersionId);
     const calendar = calendarsById.get(row.calendarVersionId);
     if (!policyVersion || !calendar) {
-      return { ...base, status: row.status, elapsedWorkingMinutes: null, breachedByMinutes: null };
+      return {
+        ...base,
+        status: row.status,
+        elapsedWorkingMinutes: null,
+        breachedByMinutes: null,
+      };
     }
     const events = eventsByCaseId.get(row.caseId) ?? [];
-    const evaluation = evaluateCommitment(toCommitmentDomain(row), events, policyVersion, calendar, asOf);
+    const evaluation = evaluateCommitment(
+      toCommitmentDomain(row),
+      events,
+      policyVersion,
+      calendar,
+      asOf,
+    );
+    perfCount("evaluateCommitment");
     return {
       ...base,
       status: evaluation.status,
@@ -217,8 +279,12 @@ export function complianceReportToCsv(rows: ComplianceReportRow[]): string {
       formatCommitmentKind(row.kind),
       formatCommitmentStatus(row.status),
       formatMinutes(row.targetMinutes),
-      row.elapsedWorkingMinutes !== null ? formatMinutes(row.elapsedWorkingMinutes) : "",
-      row.breachedByMinutes !== null ? formatMinutes(row.breachedByMinutes) : "",
+      row.elapsedWorkingMinutes !== null
+        ? formatMinutes(row.elapsedWorkingMinutes)
+        : "",
+      row.breachedByMinutes !== null
+        ? formatMinutes(row.breachedByMinutes)
+        : "",
       row.openedAt,
       row.dueAt,
       row.closedAt,

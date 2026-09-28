@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -33,7 +33,11 @@ import type {
 } from "./types/dashboard";
 import type { IntegrationProvider } from "./types/integrations";
 
-const COMMITMENT_KINDS: CommitmentKind[] = ["first_response", "next_reply", "resolution"];
+const COMMITMENT_KINDS: CommitmentKind[] = [
+  "first_response",
+  "next_reply",
+  "resolution",
+];
 // Everything shown on the "silently not being monitored" panels needs to
 // stay readable without scrolling, same rationale as AT_RISK_LIMIT/AGING_LIMIT.
 const UNMATCHED_CASES_LIMIT = 10;
@@ -43,7 +47,12 @@ const ISSUE_TRACKER_SYSTEMS = new Set(["jira", "linear", "github"]);
 
 /** Picks one active link to show per case — `certain` over `probable` when a case somehow carries both. */
 function preferredLink(
-  links: { system: string; externalId: string; confidence: string; method: string }[],
+  links: {
+    system: string;
+    externalId: string;
+    confidence: string;
+    method: string;
+  }[],
 ): LinkedIssueRef | null {
   const trackerLinks = links.filter((l) => ISSUE_TRACKER_SYSTEMS.has(l.system));
   if (trackerLinks.length === 0) return null;
@@ -93,6 +102,20 @@ export async function getDashboardData(
   prisma: PrismaClient,
   organizationId: string,
   asOfDate: Date = new Date(),
+): Promise<DashboardData> {
+  return withPerfScope(
+    "dashboard",
+    () => getDashboardDataInner(prisma, organizationId, asOfDate),
+    {
+      organizationId,
+    },
+  );
+}
+
+async function getDashboardDataInner(
+  prisma: PrismaClient,
+  organizationId: string,
+  asOfDate: Date,
 ): Promise<DashboardData> {
   const asOf = asOfDate.toISOString();
   const periodStart = new Date(asOfDate.getTime() - PERIOD_DAYS * 86_400_000);
@@ -144,20 +167,42 @@ export async function getDashboardData(
     // policy — `commitments: { none: {} }` is the direct read of "the
     // pipeline's `continue` on no match left this case with zero rows".
     prisma.case.findMany({
-      where: { organizationId, deletedAt: null, closedAt: null, commitments: { none: {} } },
-      select: { id: true, externalId: true, subject: true, openedAt: true, customer: { select: { name: true } } },
+      where: {
+        organizationId,
+        deletedAt: null,
+        closedAt: null,
+        commitments: { none: {} },
+      },
+      select: {
+        id: true,
+        externalId: true,
+        subject: true,
+        openedAt: true,
+        customer: { select: { name: true } },
+      },
       orderBy: { openedAt: "asc" },
     }),
     // Phase 6.3: every integration this organization has ever connected —
     // a provider with no row at all is onboarding's concern, not this panel's.
     prisma.integration.findMany({
       where: { organizationId },
-      select: { provider: true, status: true, lastSyncAt: true, lastSyncError: true },
+      select: {
+        provider: true,
+        status: true,
+        lastSyncAt: true,
+        lastSyncError: true,
+      },
     }),
     // Phase 6.4.
     prisma.notificationFailure.findMany({
       where: { commitment: { case: { organizationId, deletedAt: null } } },
-      include: { commitment: { include: { case: { select: { id: true, externalId: true, subject: true } } } } },
+      include: {
+        commitment: {
+          include: {
+            case: { select: { id: true, externalId: true, subject: true } },
+          },
+        },
+      },
       orderBy: { lastFailedAt: "desc" },
     }),
   ]);
@@ -194,7 +239,9 @@ export async function getDashboardData(
           })
         : Promise.resolve([]),
       periodCaseIds.length > 0
-        ? prisma.normalizedEvent.findMany({ where: { caseId: { in: periodCaseIds } } })
+        ? prisma.normalizedEvent.findMany({
+            where: { caseId: { in: periodCaseIds } },
+          })
         : Promise.resolve([]),
       periodCaseIds.length > 0
         ? prisma.caseLink.findMany({
@@ -261,6 +308,7 @@ export async function getDashboardData(
     const { spans } = deriveLegSpans(eventsByCaseId.get(caseId) ?? [], {
       caseOpenedAt: caseOpenedAt.toISOString(),
     });
+    perfCount("deriveLegSpans");
     legSpansByCaseId.set(caseId, spans);
     return spans;
   };
@@ -270,7 +318,10 @@ export async function getDashboardData(
   );
   const closedCaseOpenedAtById = new Map<string, Date>(
     currentPeriodClosedRows
-      .filter((c): c is typeof c & { case: { openedAt: Date } } => c.case?.openedAt != null)
+      .filter(
+        (c): c is typeof c & { case: { openedAt: Date } } =>
+          c.case?.openedAt != null,
+      )
       .map((c) => [c.caseId, c.case.openedAt]),
   );
 
@@ -280,8 +331,14 @@ export async function getDashboardData(
   const agingInEngineering: AgingEscalationRow[] = [];
   // Phase 6.1: on-track/at-risk/breached per kind, among open commitments —
   // every kind starts at zero so a kind with nothing open still renders.
-  const healthByKindMap = new Map<CommitmentKind, { onTrack: number; atRisk: number; breached: number }>(
-    COMMITMENT_KINDS.map((kind) => [kind, { onTrack: 0, atRisk: 0, breached: 0 }]),
+  const healthByKindMap = new Map<
+    CommitmentKind,
+    { onTrack: number; atRisk: number; breached: number }
+  >(
+    COMMITMENT_KINDS.map((kind) => [
+      kind,
+      { onTrack: 0, atRisk: 0, breached: 0 },
+    ]),
   );
 
   for (const row of openCommitmentRows) {
@@ -297,6 +354,7 @@ export async function getDashboardData(
       calendar,
       asOf,
     );
+    perfCount("evaluateCommitment");
     const spans = legSpansFor(row.caseId, row.case.openedAt);
     const currentSpan = spans[spans.length - 1];
     const currentLeg: Leg = currentSpan?.leg ?? "unknown";
@@ -383,12 +441,15 @@ export async function getDashboardData(
   // meaning without one, so the banner must say "not configured", not "0".
   const engineeringOverTargetCount =
     engineeringLegTargetMinutes !== null
-      ? agingInEngineering.filter((r) => r.legTarget?.status === "breached").length
+      ? agingInEngineering.filter((r) => r.legTarget?.status === "breached")
+          .length
       : null;
   const avgQueueWaitMinutes =
     agingInEngineering.length > 0
-      ? agingInEngineering.reduce((sum, r) => sum + (r.queueWaitMinutes ?? 0), 0) /
-        agingInEngineering.length
+      ? agingInEngineering.reduce(
+          (sum, r) => sum + (r.queueWaitMinutes ?? 0),
+          0,
+        ) / agingInEngineering.length
       : null;
 
   // "Breached (closed) in the prior 30-day period" — the same closed+status
@@ -412,12 +473,17 @@ export async function getDashboardData(
   let engineeringLegMinutesTotal = 0;
   let waitingCustomerLegMinutesTotal = 0;
   for (const caseId of periodCaseIds) {
-    const caseOpenedAt = openCaseOpenedAtById.get(caseId) ?? closedCaseOpenedAtById.get(caseId);
+    const caseOpenedAt =
+      openCaseOpenedAtById.get(caseId) ?? closedCaseOpenedAtById.get(caseId);
     if (!caseOpenedAt) continue;
     const spans = legSpansFor(caseId, caseOpenedAt);
     supportLegMinutesTotal += sumLegMinutes(spans, "support", asOf);
     engineeringLegMinutesTotal += sumLegMinutes(spans, "engineering", asOf);
-    waitingCustomerLegMinutesTotal += sumLegMinutes(spans, "waiting_customer", asOf);
+    waitingCustomerLegMinutesTotal += sumLegMinutes(
+      spans,
+      "waiting_customer",
+      asOf,
+    );
     if (spans.some((s) => s.leg === "engineering")) {
       totalEscalatedCount += 1;
       if (linkedIssueFor(caseId)?.confidence === "certain") {
@@ -432,11 +498,15 @@ export async function getDashboardData(
   };
   const attributionLedger: AttributionLedger = {
     supportLegHours: Math.round((supportLegMinutesTotal / 60) * 10) / 10,
-    engineeringLegHours: Math.round((engineeringLegMinutesTotal / 60) * 10) / 10,
-    waitingCustomerLegHours: Math.round((waitingCustomerLegMinutesTotal / 60) * 10) / 10,
+    engineeringLegHours:
+      Math.round((engineeringLegMinutesTotal / 60) * 10) / 10,
+    waitingCustomerLegHours:
+      Math.round((waitingCustomerLegMinutesTotal / 60) * 10) / 10,
     linkingPrecisionPercent:
       totalEscalatedCount > 0
-        ? Math.round((totalEscalatedLinkedCertain / totalEscalatedCount) * 1000) / 10
+        ? Math.round(
+            (totalEscalatedLinkedCertain / totalEscalatedCount) * 1000,
+          ) / 10
         : null,
     directMatches: totalEscalatedLinkedCertain,
     unlinkedOrStandalone: totalEscalatedCount - totalEscalatedLinkedCertain,
@@ -461,26 +531,35 @@ export async function getDashboardData(
     ...(healthByKindMap.get(kind) ?? { onTrack: 0, atRisk: 0, breached: 0 }),
   }));
 
-  const unmatchedCases: UnmatchedCaseRow[] = unmatchedCaseRows.slice(0, UNMATCHED_CASES_LIMIT).map((row) => ({
-    caseId: row.id,
-    externalId: row.externalId,
-    subject: row.subject,
-    customerName: row.customer?.name ?? null,
-    openedAt: row.openedAt.toISOString(),
-  }));
+  const unmatchedCases: UnmatchedCaseRow[] = unmatchedCaseRows
+    .slice(0, UNMATCHED_CASES_LIMIT)
+    .map((row) => ({
+      caseId: row.id,
+      externalId: row.externalId,
+      subject: row.subject,
+      customerName: row.customer?.name ?? null,
+      openedAt: row.openedAt.toISOString(),
+    }));
 
-  const integrationHealth: IntegrationHealthRow[] = integrationRows.map((row) => ({
-    provider: row.provider as IntegrationProvider,
-    reauthRequired: row.status === "reauth_required",
-    permissionDenied: row.status === "permission_denied",
-    lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
-    lastSyncError: row.lastSyncError,
-  }));
+  const integrationHealth: IntegrationHealthRow[] = integrationRows.map(
+    (row) => ({
+      provider: row.provider as IntegrationProvider,
+      reauthRequired: row.status === "reauth_required",
+      permissionDenied: row.status === "permission_denied",
+      lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
+      lastSyncError: row.lastSyncError,
+    }),
+  );
 
   const failedAlerts: FailedAlertRow[] = failedNotificationRows
     .filter(
-      (row): row is typeof row & { commitment: NonNullable<(typeof row)["commitment"]> & { case: NonNullable<(typeof row)["commitment"]["case"]> } } =>
-        row.commitment?.case != null,
+      (
+        row,
+      ): row is typeof row & {
+        commitment: NonNullable<(typeof row)["commitment"]> & {
+          case: NonNullable<(typeof row)["commitment"]["case"]>;
+        };
+      } => row.commitment?.case != null,
     )
     .slice(0, FAILED_ALERTS_LIMIT)
     .map((row) => ({
@@ -519,9 +598,15 @@ export async function getDashboardData(
     analytics,
     healthByKind,
     unmatchedCases,
-    unmatchedOverflowCount: Math.max(0, unmatchedCaseRows.length - UNMATCHED_CASES_LIMIT),
+    unmatchedOverflowCount: Math.max(
+      0,
+      unmatchedCaseRows.length - UNMATCHED_CASES_LIMIT,
+    ),
     integrationHealth,
     failedAlerts,
-    failedAlertsOverflowCount: Math.max(0, failedNotificationRows.length - FAILED_ALERTS_LIMIT),
+    failedAlertsOverflowCount: Math.max(
+      0,
+      failedNotificationRows.length - FAILED_ALERTS_LIMIT,
+    ),
   };
 }

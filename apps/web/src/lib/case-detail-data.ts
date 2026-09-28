@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
 import {
   BREACH_NOTIFICATION_THRESHOLD,
   sortNormalizedEvents,
@@ -102,6 +102,19 @@ export async function getCaseDetailData(
   caseId: string,
   asOfDate: Date = new Date(),
 ): Promise<CaseDetailData | null> {
+  return withPerfScope(
+    "case_detail",
+    () => getCaseDetailDataInner(prisma, organizationId, caseId, asOfDate),
+    { organizationId, caseId },
+  );
+}
+
+async function getCaseDetailDataInner(
+  prisma: PrismaClient,
+  organizationId: string,
+  caseId: string,
+  asOfDate: Date,
+): Promise<CaseDetailData | null> {
   const asOf = asOfDate.toISOString();
 
   const caseRow = await prisma.case.findFirst({
@@ -110,32 +123,37 @@ export async function getCaseDetailData(
   });
   if (!caseRow) return null;
 
-  const [eventRows, zendeskIntegration, jiraIntegration, intercomIntegration, organization] =
-    await Promise.all([
-      prisma.normalizedEvent.findMany({
-        where: { caseId },
-        orderBy: [{ occurredAt: "asc" }, { sourceSequence: "asc" }],
-      }),
-      prisma.integration.findUnique({
-        where: {
-          organizationId_provider: { organizationId, provider: "zendesk" },
-        },
-      }),
-      prisma.integration.findUnique({
-        where: {
-          organizationId_provider: { organizationId, provider: "jira" },
-        },
-      }),
-      prisma.integration.findUnique({
-        where: {
-          organizationId_provider: { organizationId, provider: "intercom" },
-        },
-      }),
-      prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { engineeringLegTargetMinutes: true },
-      }),
-    ]);
+  const [
+    eventRows,
+    zendeskIntegration,
+    jiraIntegration,
+    intercomIntegration,
+    organization,
+  ] = await Promise.all([
+    prisma.normalizedEvent.findMany({
+      where: { caseId },
+      orderBy: [{ occurredAt: "asc" }, { sourceSequence: "asc" }],
+    }),
+    prisma.integration.findUnique({
+      where: {
+        organizationId_provider: { organizationId, provider: "zendesk" },
+      },
+    }),
+    prisma.integration.findUnique({
+      where: {
+        organizationId_provider: { organizationId, provider: "jira" },
+      },
+    }),
+    prisma.integration.findUnique({
+      where: {
+        organizationId_provider: { organizationId, provider: "intercom" },
+      },
+    }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { engineeringLegTargetMinutes: true },
+    }),
+  ]);
 
   const policyVersionIds = [
     ...new Set(caseRow.commitments.map((c) => c.policyVersionId)),
@@ -148,46 +166,59 @@ export async function getCaseDetailData(
     caseRow.commitments.map((c) => [c.id, c.kind]),
   );
 
-  const [policyVersionRows, calendarVersionRows, policyChangeRows, notificationRows] =
-    await Promise.all([
-      policyVersionIds.length > 0
-        ? prisma.sLAPolicyVersion.findMany({
-            where: { id: { in: policyVersionIds } },
-            include: { policy: { select: { name: true } } },
-          })
-        : Promise.resolve([]),
-      calendarVersionIds.length > 0
-        ? prisma.businessCalendarVersion.findMany({
-            where: { id: { in: calendarVersionIds } },
-          })
-        : Promise.resolve([]),
-      // 3.4's target-change history — every Active-Commitment Re-Resolution
-      // that changed one of this case's commitments in place. `in: []` is a
-      // safe no-op query (a case with no commitments yet), not worth a
-      // separate empty-array branch.
-      prisma.commitmentPolicyChange.findMany({
-        where: { commitmentId: { in: commitmentIds } },
-        orderBy: { changedAt: "asc" },
-      }),
-      // 3.3's "at-risk threshold crossed" markers — the exact instant each
-      // warn threshold was first detected, already persisted for alerting
-      // (Phase 13.7). The breach threshold (100) is excluded: 3.3 shows that
-      // as its own "breached" marker, from the live evaluation's
-      // `effectiveDueAt`, not from this table.
-      prisma.notification.findMany({
-        where: { commitmentId: { in: commitmentIds }, threshold: { not: BREACH_NOTIFICATION_THRESHOLD } },
-        orderBy: { sentAt: "asc" },
-      }),
-    ]);
+  const [
+    policyVersionRows,
+    calendarVersionRows,
+    policyChangeRows,
+    notificationRows,
+  ] = await Promise.all([
+    policyVersionIds.length > 0
+      ? prisma.sLAPolicyVersion.findMany({
+          where: { id: { in: policyVersionIds } },
+          include: { policy: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
+    calendarVersionIds.length > 0
+      ? prisma.businessCalendarVersion.findMany({
+          where: { id: { in: calendarVersionIds } },
+        })
+      : Promise.resolve([]),
+    // 3.4's target-change history — every Active-Commitment Re-Resolution
+    // that changed one of this case's commitments in place. `in: []` is a
+    // safe no-op query (a case with no commitments yet), not worth a
+    // separate empty-array branch.
+    prisma.commitmentPolicyChange.findMany({
+      where: { commitmentId: { in: commitmentIds } },
+      orderBy: { changedAt: "asc" },
+    }),
+    // 3.3's "at-risk threshold crossed" markers — the exact instant each
+    // warn threshold was first detected, already persisted for alerting
+    // (Phase 13.7). The breach threshold (100) is excluded: 3.3 shows that
+    // as its own "breached" marker, from the live evaluation's
+    // `effectiveDueAt`, not from this table.
+    prisma.notification.findMany({
+      where: {
+        commitmentId: { in: commitmentIds },
+        threshold: { not: BREACH_NOTIFICATION_THRESHOLD },
+      },
+      orderBy: { sentAt: "asc" },
+    }),
+  ]);
 
-  const policyChangesByCommitmentId = new Map<string, typeof policyChangeRows>();
+  const policyChangesByCommitmentId = new Map<
+    string,
+    typeof policyChangeRows
+  >();
   for (const row of policyChangeRows) {
     const list = policyChangesByCommitmentId.get(row.commitmentId);
     if (list) list.push(row);
     else policyChangesByCommitmentId.set(row.commitmentId, [row]);
   }
 
-  const notificationsByCommitmentId = new Map<string, typeof notificationRows>();
+  const notificationsByCommitmentId = new Map<
+    string,
+    typeof notificationRows
+  >();
   for (const row of notificationRows) {
     const list = notificationsByCommitmentId.get(row.commitmentId);
     if (list) list.push(row);
@@ -272,6 +303,7 @@ export async function getCaseDetailData(
         calendar,
         isCancelled ? (row.closedAt?.toISOString() ?? asOf) : asOf,
       );
+      perfCount("evaluateCommitment");
 
       return {
         id: row.id,
@@ -283,7 +315,9 @@ export async function getCaseDetailData(
         closedAt: row.closedAt?.toISOString() ?? null,
         elapsedSeconds: evaluation.elapsedSeconds,
         remainingSeconds: evaluation.remainingSeconds,
-        breachedBySeconds: isCancelled ? null : (evaluation.breachedBySeconds ?? null),
+        breachedBySeconds: isCancelled
+          ? null
+          : (evaluation.breachedBySeconds ?? null),
         clockState: isCancelled ? "stopped" : evaluation.clock.state,
         pausedSince: isCancelled ? null : evaluation.clock.pausedSince,
         effectiveDueAt: isCancelled ? null : evaluation.effectiveDueAt,
@@ -327,7 +361,9 @@ export async function getCaseDetailData(
           !isCancelled && evaluation.clock.state === "stopped"
             ? (evaluation.inputs.lastEvent?.occurredAt ?? null)
             : null,
-        targetChangeHistory: (policyChangesByCommitmentId.get(row.id) ?? []).map((change) => ({
+        targetChangeHistory: (
+          policyChangesByCommitmentId.get(row.id) ?? []
+        ).map((change) => ({
           changedAt: change.changedAt.toISOString(),
           previousTargetMinutes: change.previousTargetMinutes,
           newTargetMinutes: change.newTargetMinutes,
@@ -337,7 +373,9 @@ export async function getCaseDetailData(
     })
     .filter((c): c is CommitmentDetail => c !== null)
     .sort((a, b) => {
-      const kindOrder = COMMITMENT_KIND_DISPLAY_ORDER[a.kind] - COMMITMENT_KIND_DISPLAY_ORDER[b.kind];
+      const kindOrder =
+        COMMITMENT_KIND_DISPLAY_ORDER[a.kind] -
+        COMMITMENT_KIND_DISPLAY_ORDER[b.kind];
       if (kindOrder !== 0) return kindOrder;
       // Only next_reply ever has more than one commitment per case — its
       // cycles order chronologically by their own anchor (startedAt), never
@@ -350,6 +388,7 @@ export async function getCaseDetailData(
   const { spans } = deriveLegSpans(domainEvents, {
     caseOpenedAt: caseRow.openedAt.toISOString(),
   });
+  perfCount("deriveLegSpans");
   const legSpans = spans.map((s) => ({ ...s, endedAt: s.endedAt ?? endBound }));
   const currentLeg: Leg = legSpans[legSpans.length - 1]?.leg ?? "unknown";
 
@@ -397,9 +436,14 @@ export async function getCaseDetailData(
   // Both the pauses and their complement cover the same window — the
   // timeline's own span, from the case's open to its end bound — so a linked
   // issue's events from before the case can't shade time before it opened.
-  const shadingWindow = { start: caseRow.openedAt.toISOString(), end: endBound };
+  const shadingWindow = {
+    start: caseRow.openedAt.toISOString(),
+    end: endBound,
+  };
   const { pausedIntervals } = computeElapsedWorkingMinutes(
-    shadingCommitment ? eventsForPauseFold(shadingCommitment.kind, domainEvents) : domainEvents,
+    shadingCommitment
+      ? eventsForPauseFold(shadingCommitment.kind, domainEvents)
+      : domainEvents,
     pauseOnStates,
     pauseCalendar,
     shadingWindow,
@@ -416,7 +460,8 @@ export async function getCaseDetailData(
     (jiraIntegration?.credentials as JiraCredentials | null) ?? null;
 
   const intercomWorkspaceId =
-    (intercomIntegration?.credentials as IntercomCredentials | null)?.workspaceId ?? null;
+    (intercomIntegration?.credentials as IntercomCredentials | null)
+      ?.workspaceId ?? null;
 
   // Gated on caseRow.system (roadmap step 22), not just "is Zendesk
   // connected": an org with both ticket sources connected would otherwise
@@ -443,7 +488,11 @@ export async function getCaseDetailData(
   // `issue_linked`/`issue_unlinked` events, not through this list.
   const links: CaseLinkDetail[] = caseRow.caseLinks
     .filter(
-      (link): link is typeof link & { system: "jira" | "zendesk" | "linear" | "github" } =>
+      (
+        link,
+      ): link is typeof link & {
+        system: "jira" | "zendesk" | "linear" | "github";
+      } =>
         link.unlinkedAt === null &&
         (link.system === "jira" ||
           link.system === "zendesk" ||
@@ -485,106 +534,109 @@ export async function getCaseDetailData(
   // and the notifications already persisted for alerting. One "started"
   // marker per commitment always; the rest only when that lifecycle instant
   // actually happened.
-  const syntheticTimelineEntries: TimelineEventDetail[] = commitments.flatMap((c) => {
-    const entries: TimelineEventDetail[] = [
-      {
-        id: `lifecycle:${c.id}:started`,
-        occurredAt: c.startedAt,
-        actor: "system",
-        system: caseRow.system,
-        type: "commitment_started",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-      },
-    ];
+  const syntheticTimelineEntries: TimelineEventDetail[] = commitments.flatMap(
+    (c) => {
+      const entries: TimelineEventDetail[] = [
+        {
+          id: `lifecycle:${c.id}:started`,
+          occurredAt: c.startedAt,
+          actor: "system",
+          system: caseRow.system,
+          type: "commitment_started",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+        },
+      ];
 
-    for (const change of c.targetChangeHistory) {
-      entries.push({
-        id: `policy_change:${c.id}:${change.changedAt}`,
-        occurredAt: change.changedAt,
-        actor: "system",
-        system: caseRow.system,
-        type: "policy_changed",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-        previousTargetMinutes: change.previousTargetMinutes,
-        newTargetMinutes: change.newTargetMinutes,
-        reason: change.reason,
-      });
-    }
+      for (const change of c.targetChangeHistory) {
+        entries.push({
+          id: `policy_change:${c.id}:${change.changedAt}`,
+          occurredAt: change.changedAt,
+          actor: "system",
+          system: caseRow.system,
+          type: "policy_changed",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+          previousTargetMinutes: change.previousTargetMinutes,
+          newTargetMinutes: change.newTargetMinutes,
+          reason: change.reason,
+        });
+      }
 
-    for (const notification of notificationsByCommitmentId.get(c.id) ?? []) {
-      entries.push({
-        id: `notification:${notification.id}`,
-        occurredAt: notification.sentAt.toISOString(),
-        actor: "system",
-        system: caseRow.system,
-        type: "commitment_at_risk",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-        thresholdPercent: notification.threshold,
-      });
-    }
+      for (const notification of notificationsByCommitmentId.get(c.id) ?? []) {
+        entries.push({
+          id: `notification:${notification.id}`,
+          occurredAt: notification.sentAt.toISOString(),
+          actor: "system",
+          system: caseRow.system,
+          type: "commitment_at_risk",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+          thresholdPercent: notification.threshold,
+        });
+      }
 
-    if (c.status === "breached" && c.effectiveDueAt) {
-      entries.push({
-        id: `lifecycle:${c.id}:breached`,
-        occurredAt: c.effectiveDueAt,
-        actor: "system",
-        system: caseRow.system,
-        type: "commitment_breached",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-      });
-    }
+      if (c.status === "breached" && c.effectiveDueAt) {
+        entries.push({
+          id: `lifecycle:${c.id}:breached`,
+          occurredAt: c.effectiveDueAt,
+          actor: "system",
+          system: caseRow.system,
+          type: "commitment_breached",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+        });
+      }
 
-    if (c.status === "met" && c.completionOccurredAt) {
-      entries.push({
-        id: `lifecycle:${c.id}:met`,
-        occurredAt: c.completionOccurredAt,
-        actor: "system",
-        system: caseRow.system,
-        type: "commitment_met",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-      });
-    }
+      if (c.status === "met" && c.completionOccurredAt) {
+        entries.push({
+          id: `lifecycle:${c.id}:met`,
+          occurredAt: c.completionOccurredAt,
+          actor: "system",
+          system: caseRow.system,
+          type: "commitment_met",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+        });
+      }
 
-    if (c.status === "cancelled" && c.closedAt) {
-      entries.push({
-        id: `lifecycle:${c.id}:cancelled`,
-        occurredAt: c.closedAt,
-        actor: "system",
-        system: caseRow.system,
-        type: "commitment_cancelled",
-        fromState: null,
-        toState: null,
-        commitmentKind: c.kind,
-      });
-    }
+      if (c.status === "cancelled" && c.closedAt) {
+        entries.push({
+          id: `lifecycle:${c.id}:cancelled`,
+          occurredAt: c.closedAt,
+          actor: "system",
+          system: caseRow.system,
+          type: "commitment_cancelled",
+          fromState: null,
+          toState: null,
+          commitmentKind: c.kind,
+        });
+      }
 
-    return entries;
-  });
+      return entries;
+    },
+  );
 
   const timeline: TimelineEventDetail[] = [
-    ...domainEvents.map(
-      (e): TimelineEventDetail => ({
-        id: e.id,
-        occurredAt: e.occurredAt,
-        actor: e.actor,
-        system: e.system,
-        type: e.type,
-        fromState: e.fromState,
-        toState: e.toState,
-      }),
-    ),
+    ...domainEvents.map((e): TimelineEventDetail => ({
+      id: e.id,
+      occurredAt: e.occurredAt,
+      actor: e.actor,
+      system: e.system,
+      type: e.type,
+      fromState: e.fromState,
+      toState: e.toState,
+    })),
     ...syntheticTimelineEntries,
-  ].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id));
+  ].sort(
+    (a, b) =>
+      a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id),
+  );
 
   // 3.5: the case's current ticket status, from the most recent state-bearing
   // event in the same stream the engine itself reads — nothing new stored.
@@ -592,10 +644,13 @@ export async function getCaseDetailData(
     .reverse()
     .find(
       (e) =>
-        (e.type === "state_changed" || e.type === "case_created" || e.type === "case_closed") &&
+        (e.type === "state_changed" ||
+          e.type === "case_created" ||
+          e.type === "case_closed") &&
         e.toState,
     );
-  const status = (latestStateEvent?.toState as NormalizedState | undefined) ?? null;
+  const status =
+    (latestStateEvent?.toState as NormalizedState | undefined) ?? null;
 
   return {
     asOf,
@@ -630,7 +685,10 @@ export async function getCaseDetailData(
 
 function isReplyEvent(
   event: NormalizedEvent,
-): event is NormalizedEvent & { actor: "customer" | "agent"; type: "agent_replied" | "customer_replied" } {
+): event is NormalizedEvent & {
+  actor: "customer" | "agent";
+  type: "agent_replied" | "customer_replied";
+} {
   return event.type === "agent_replied" || event.type === "customer_replied";
 }
 
@@ -660,13 +718,21 @@ async function buildConversationMessages(
   const replyEvents = domainEvents.filter(isReplyEvent);
 
   if (caseRow.system === "zendesk") {
-    return buildZendeskConversationMessages(prisma, caseRow, domainEvents, replyEvents, zendeskIntegrationId);
+    return buildZendeskConversationMessages(
+      prisma,
+      caseRow,
+      domainEvents,
+      replyEvents,
+      zendeskIntegrationId,
+    );
   }
 
   if (replyEvents.length === 0) return [];
 
   const rawEventRows = await prisma.rawEvent.findMany({
-    where: { id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] } },
+    where: {
+      id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] },
+    },
     select: { id: true, payload: true },
   });
   const payloadById = new Map(rawEventRows.map((row) => [row.id, row.payload]));
@@ -687,7 +753,10 @@ async function buildZendeskConversationMessages(
   prisma: PrismaClient,
   caseRow: { externalId: string; requesterName: string | null },
   domainEvents: NormalizedEvent[],
-  replyEvents: (NormalizedEvent & { actor: "customer" | "agent"; type: "agent_replied" | "customer_replied" })[],
+  replyEvents: (NormalizedEvent & {
+    actor: "customer" | "agent";
+    type: "agent_replied" | "customer_replied";
+  })[],
   zendeskIntegrationId: string | null,
 ): Promise<ConversationMessageDetail[]> {
   // The ticket's own requester id, so a customer message can be attributed
@@ -702,7 +771,9 @@ async function buildZendeskConversationMessages(
   // written back to RawEvent/NormalizedEvent; this is purely a display-time
   // read of data `mapTicketToRawEvent` already persisted.
   let initialMessage: ConversationMessageDetail | null = null;
-  const caseCreatedEvent = domainEvents.find((event) => event.type === "case_created");
+  const caseCreatedEvent = domainEvents.find(
+    (event) => event.type === "case_created",
+  );
 
   if (zendeskIntegrationId) {
     const ticketRow = await prisma.rawEvent.findFirst({
@@ -714,8 +785,7 @@ async function buildZendeskConversationMessages(
       select: { payload: true },
     });
     const ticketPayload = ticketRow?.payload as
-      | { requester_id?: number | null; description?: string | null }
-      | undefined;
+      { requester_id?: number | null; description?: string | null } | undefined;
     requesterId = ticketPayload?.requester_id ?? null;
 
     const description = ticketPayload?.description?.trim();
@@ -731,7 +801,12 @@ async function buildZendeskConversationMessages(
         id: `${caseCreatedEvent.id}:description`,
         occurredAt: caseCreatedEvent.occurredAt,
         actor,
-        type: actor === "agent" ? "agent_replied" : actor === "customer" ? "customer_replied" : "case_created",
+        type:
+          actor === "agent"
+            ? "agent_replied"
+            : actor === "customer"
+              ? "customer_replied"
+              : "case_created",
         authorName: actor === "customer" ? caseRow.requesterName : null,
         isRequester: actor === "customer" ? true : undefined,
         body: description,
@@ -744,7 +819,9 @@ async function buildZendeskConversationMessages(
   }
 
   const rawEventRows = await prisma.rawEvent.findMany({
-    where: { id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] } },
+    where: {
+      id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] },
+    },
     select: { id: true, payload: true },
   });
   const payloadById = new Map(rawEventRows.map((row) => [row.id, row.payload]));
@@ -771,7 +848,9 @@ async function buildZendeskConversationMessages(
     const audit = payloadById.get(rawEventId) as ZendeskAudit | undefined;
     if (!audit) continue;
     const comments = publicCommentBodiesInAudit(audit);
-    const ordered = [...group].sort((a, b) => (a.sourceSequence ?? 0) - (b.sourceSequence ?? 0));
+    const ordered = [...group].sort(
+      (a, b) => (a.sourceSequence ?? 0) - (b.sourceSequence ?? 0),
+    );
     // An audit almost always carries exactly one public comment; when it
     // carries more, both lists were built by walking that audit's events in
     // the same order, so pairing them index-wise recovers the right text
@@ -793,7 +872,10 @@ async function buildZendeskConversationMessages(
   for (const event of replyEvents) {
     const comment = bodyByEventId.get(event.id);
     if (!comment) continue;
-    const isRequester = event.actor === "customer" && comment.authorId != null && comment.authorId === requesterId;
+    const isRequester =
+      event.actor === "customer" &&
+      comment.authorId != null &&
+      comment.authorId === requesterId;
     messages.push({
       id: event.id,
       occurredAt: event.occurredAt,
@@ -809,7 +891,10 @@ async function buildZendeskConversationMessages(
 }
 
 function buildIntercomConversationMessages(
-  replyEvents: (NormalizedEvent & { actor: "customer" | "agent"; type: "agent_replied" | "customer_replied" })[],
+  replyEvents: (NormalizedEvent & {
+    actor: "customer" | "agent";
+    type: "agent_replied" | "customer_replied";
+  })[],
   payloadById: Map<string, unknown>,
 ): ConversationMessageDetail[] {
   // Explicit dedupe by source part id (3.7/C-5), on top of — not instead of —
@@ -817,7 +902,8 @@ function buildIntercomConversationMessages(
   const seenParts = new Set<string>();
   return replyEvents.flatMap((event) => {
     if (seenParts.has(event.sourceRawEventId)) return [];
-    const part = payloadById.get(event.sourceRawEventId) as IntercomConversationPart | undefined;
+    const part = payloadById.get(event.sourceRawEventId) as
+      IntercomConversationPart | undefined;
     if (!part) return [];
     const message = extractIntercomMessageBody(part);
     if (!message) return [];
