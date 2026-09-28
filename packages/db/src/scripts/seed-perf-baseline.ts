@@ -26,11 +26,10 @@ import {
  * users/cases with it), and every generated Case gets a `perf-` prefixed
  * `externalId` so it can never collide with the organization's real cases.
  *
- * The seed is intentionally deterministic at the scenario level: it keeps the
- * large-volume/performance purpose of this file while distributing cases across
- * known SLA scenarios with coherent event lifecycles. Commitment/Evaluation rows
- * are still seed fixtures (the real SLA engine is not invoked), but every generated
- * case has a predictable scenario that can be queried and verified in the UI.
+ * This only produces volume and referential shape for profiling case list /
+ * dashboard / case detail / evaluation / worker / database queries — it does
+ * not run the real SLA engine, so `Commitment`/`Evaluation` rows are
+ * plausible but not reproducible the way `packages/core` would derive them.
  * Run via `pnpm db:seed:perf-baseline -- --cases=5000 --events-per-case=40`.
  */
 
@@ -65,12 +64,11 @@ export interface SeedPerfBaselineResult {
   commitments: number;
   evaluations: number;
   durationMs: number;
-  scenarioCounts: Record<PerfScenario, number>;
 }
 
-const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
-const TIERS = ["free", "standard", "enterprise"] as const;
-const CHANNELS = ["email", "web", "chat", "api"] as const;
+const PRIORITIES = ["low", "normal", "high", "urgent"];
+const TIERS = ["free", "standard", "enterprise"];
+const CHANNELS = ["email", "web", "chat", "api"];
 const TAG_POOL = [
   "billing",
   "bug",
@@ -79,9 +77,16 @@ const TAG_POOL = [
   "outage",
   "vip",
   "renewal",
-] as const;
+];
+const EVENT_TYPES = [
+  "ticket_created",
+  "agent_reply",
+  "customer_reply",
+  "status_changed",
+  "ticket_closed",
+];
 
-type PerfScenario =
+type SeedScenario =
   | "on_track"
   | "at_risk"
   | "first_response_breached"
@@ -91,46 +96,39 @@ type PerfScenario =
   | "open_aging"
   | "edge_mixed";
 
-const SCENARIOS: ReadonlyArray<{ name: PerfScenario; weight: number }> = [
-  { name: "on_track", weight: 20 },
-  { name: "at_risk", weight: 15 },
-  { name: "first_response_breached", weight: 15 },
-  { name: "resolution_breached", weight: 15 },
-  { name: "both_breached", weight: 10 },
-  { name: "met", weight: 10 },
-  { name: "open_aging", weight: 10 },
-  { name: "edge_mixed", weight: 5 },
+const SCENARIO_WEIGHTS: Array<{ key: SeedScenario; weight: number }> = [
+  { key: "on_track", weight: 20 },
+  { key: "at_risk", weight: 15 },
+  { key: "first_response_breached", weight: 15 },
+  { key: "resolution_breached", weight: 15 },
+  { key: "both_breached", weight: 10 },
+  { key: "met", weight: 10 },
+  { key: "open_aging", weight: 10 },
+  { key: "edge_mixed", weight: 5 },
 ];
 
-const EVENT_TYPES = [
-  "ticket_created",
-  "customer_reply",
-  "agent_reply",
-  "status_changed",
-  "ticket_escalated",
-  "internal_note",
-  "ticket_closed",
-] as const;
-
-function scenarioForIndex(index: number, total: number): PerfScenario {
-  const position = index % total;
-  const target = (position / total) * 100;
+function scenarioForCase(index: number, total: number): SeedScenario {
+  const position = index / Math.max(1, total);
   let cursor = 0;
-  for (const scenario of SCENARIOS) {
-    cursor += scenario.weight;
-    if (target < cursor) return scenario.name;
+  for (const scenario of SCENARIO_WEIGHTS) {
+    cursor += scenario.weight / 100;
+    if (position < cursor) return scenario.key;
   }
   return "edge_mixed";
 }
 
-function deterministicPick<T>(pool: readonly T[], index: number): T {
-  return pool[index % pool.length]!;
+function pick<T>(pool: T[]): T {
+  return pool[Math.floor(Math.random() * pool.length)]!;
 }
 
-function deterministicTags(index: number): string[] {
-  const first = TAG_POOL[index % TAG_POOL.length]!;
-  const second = TAG_POOL[(index * 3 + 1) % TAG_POOL.length]!;
-  return first === second ? [first] : [first, second];
+function pickSome<T>(pool: T[], max: number): T[] {
+  const count = Math.floor(Math.random() * (max + 1));
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+function randomInt(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 /** Splits `items` into chunks of at most `size`, preserving order. */
@@ -302,7 +300,7 @@ export async function seedPerfBaseline(
     organizationId: organization.id,
     name: `Customer ${i + 1} (perf ${runId})`,
     zendeskOrgId: `zendesk-org-${runId}-${i + 1}`,
-    tier: TIERS[i % TIERS.length]!,
+    tier: pick(TIERS),
   }));
   await insertBatched(
     "customers",
@@ -314,84 +312,72 @@ export async function seedPerfBaseline(
   const customerIds = customerRows.map((c) => c.id);
 
   // --- Cases -----------------------------------------------------------------
-  // Scenario assignment is deterministic and proportional to SCENARIOS above.
-  // This keeps 5k/100k performance runs useful while guaranteeing known buckets.
   const now = Date.now();
   const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
   interface CaseRow {
     id: string;
-    index: number;
-    scenario: PerfScenario;
     openedAt: Date;
-    firstResponseAt: Date | null;
     closedAt: Date | null;
+    scenario: SeedScenario;
   }
   const caseRows: CaseRow[] = [];
   const caseInserts: Prisma.CaseCreateManyInput[] = [];
-
   for (let i = 0; i < caseCount; i++) {
     const id = crypto.randomUUID();
-    const scenario = scenarioForIndex(i, 100);
-    const baseAgeMs = Math.floor(((i % 1000) / 1000) * ninetyDaysMs);
-    const responseMinutes =
-      scenario === "first_response_breached" || scenario === "both_breached"
-        ? 90
-        : scenario === "at_risk"
-          ? 50
-          : scenario === "met"
-            ? 30
-            : scenario === "edge_mixed" && i % 2 === 0
-              ? 61
-              : 20;
+    const scenario = scenarioForCase(i, caseCount);
+    let openedAt = new Date(now - Math.floor(Math.random() * ninetyDaysMs));
+    let closedAt: Date | null =
+      Math.random() < 0.6
+        ? new Date(
+            openedAt.getTime() + randomInt(10 * 60_000, 5 * 24 * 60 * 60_000),
+          )
+        : null;
 
-    const resolutionMinutes =
-      scenario === "resolution_breached" || scenario === "both_breached"
-        ? 600
-        : scenario === "met"
-          ? 240
-          : scenario === "at_risk" || scenario === "open_aging"
-            ? 390
-            : scenario === "edge_mixed"
-              ? 480 + (i % 2) * 30
-              : 180;
+    switch (scenario) {
+      case "on_track":
+        openedAt = new Date(now - 30 * 60_000);
+        closedAt = null;
+        break;
+      case "at_risk":
+        openedAt = new Date(now - 7 * 60 * 60_000);
+        closedAt = null;
+        break;
+      case "first_response_breached":
+        openedAt = new Date(now - 2 * 60 * 60_000);
+        closedAt = new Date(now - 30 * 60_000);
+        break;
+      case "resolution_breached":
+        openedAt = new Date(now - 10 * 60 * 60_000);
+        closedAt = new Date(now - 60 * 60_000);
+        break;
+      case "both_breached":
+        openedAt = new Date(now - 12 * 60 * 60_000);
+        closedAt = new Date(now - 60 * 60_000);
+        break;
+      case "met":
+        openedAt = new Date(now - 4 * 60 * 60_000);
+        closedAt = new Date(now - 60 * 60_000);
+        break;
+      case "open_aging":
+        openedAt = new Date(now - 3 * 24 * 60 * 60_000);
+        closedAt = null;
+        break;
+      case "edge_mixed":
+        break;
+    }
 
-    const isOpen =
-      scenario === "on_track" ||
-      scenario === "at_risk" ||
-      scenario === "open_aging" ||
-      (scenario === "edge_mixed" && i % 2 === 0);
-    const minimumAgeMs = Math.max(
-      60 * 60_000,
-      responseMinutes * 60_000 + 60 * 60_000,
-      isOpen ? 0 : (resolutionMinutes + 60) * 60_000,
-    );
-    const openedAt = new Date(now - Math.max(baseAgeMs, minimumAgeMs));
-    const firstResponseAt = new Date(
-      openedAt.getTime() + responseMinutes * 60_000,
-    );
-    const closedAt = isOpen
-      ? null
-      : new Date(openedAt.getTime() + resolutionMinutes * 60_000);
-
-    caseRows.push({
-      id,
-      index: i,
-      scenario,
-      openedAt,
-      firstResponseAt,
-      closedAt,
-    });
+    caseRows.push({ id, openedAt, closedAt, scenario });
     caseInserts.push({
       id,
       organizationId: organization.id,
-      customerId: customerIds[i % customerIds.length]!,
-      externalId: `perf-${runId}-${String(i + 1).padStart(6, "0")}`,
+      customerId: pick(customerIds),
+      externalId: `perf-${runId}-${i}`,
       system: IntegrationProvider.zendesk,
-      subject: `[${scenario}] Case ${i + 1}`,
-      priority: deterministicPick(PRIORITIES, i),
-      tier: deterministicPick(TIERS, Math.floor(i / 2)),
-      channel: deterministicPick(CHANNELS, i),
-      tags: deterministicTags(i),
+      subject: `Case ${i + 1}`,
+      priority: pick(PRIORITIES),
+      tier: pick(TIERS),
+      channel: pick(CHANNELS),
+      tags: pickSome(TAG_POOL, 3),
       openedAt,
       closedAt,
     });
@@ -405,113 +391,49 @@ export async function seedPerfBaseline(
   );
 
   // --- Raw + normalized events -------------------------------------------
-  // Events follow a coherent lifecycle per scenario instead of random event types.
-  // Extra filler events are deterministic and occur between lifecycle milestones.
+  // One RawEvent backs one NormalizedEvent here (simplest 1:1 shape) — real
+  // ingestion sometimes derives several NormalizedEvents from one RawEvent,
+  // but that distinction doesn't matter for a volume/shape profiling seed.
   let rawEventTotal = 0;
   let normalizedEventTotal = 0;
   for (const caseBatch of chunk(
     caseRows,
-    Math.max(1, Math.floor(batchSize / Math.max(eventsPerCase, 1))),
+    Math.max(1, Math.floor(batchSize / eventsPerCase)),
   )) {
     const rawEventInserts: Prisma.RawEventCreateManyInput[] = [];
     const normalizedEventInserts: Prisma.NormalizedEventCreateManyInput[] = [];
-
     for (const c of caseBatch) {
-      const count = Math.max(5, eventsPerCase);
-      const spanEnd = c.closedAt?.getTime() ?? now;
-      const spanMs = Math.max(spanEnd - c.openedAt.getTime(), 5 * 60_000);
-      const lifecycle: Array<{ type: string; at: Date; actor: string }> = [
-        { type: "ticket_created", at: c.openedAt, actor: "customer" },
-        {
-          type: "customer_reply",
-          at: new Date(
-            c.openedAt.getTime() + Math.min(5 * 60_000, spanMs / 10),
-          ),
-          actor: "customer",
-        },
-      ];
-
-      if (
-        c.scenario === "first_response_breached" ||
-        c.scenario === "both_breached"
-      ) {
-        lifecycle.push({
-          type: "ticket_escalated",
-          at: new Date(c.openedAt.getTime() + 45 * 60_000),
-          actor: "system",
-        });
-      }
-      lifecycle.push({
-        type: "agent_reply",
-        at: c.firstResponseAt!,
-        actor: "agent",
-      });
-
-      if (
-        c.scenario === "resolution_breached" ||
-        c.scenario === "both_breached" ||
-        c.scenario === "edge_mixed"
-      ) {
-        lifecycle.push({
-          type: "ticket_escalated",
-          at: new Date(c.firstResponseAt!.getTime() + 90 * 60_000),
-          actor: "agent",
-        });
-        lifecycle.push({
-          type: "internal_note",
-          at: new Date(c.firstResponseAt!.getTime() + 120 * 60_000),
-          actor: "agent",
-        });
-      }
-
-      if (c.closedAt) {
-        lifecycle.push({
-          type: "ticket_closed",
-          at: c.closedAt,
-          actor: "agent",
-        });
-      }
-
-      lifecycle.sort((a, b) => a.at.getTime() - b.at.getTime());
-      const eventCount = Math.max(count, lifecycle.length);
-      for (let seq = 0; seq < eventCount; seq++) {
-        const lifecycleEvent = lifecycle[seq];
-        const occurredAt =
-          lifecycleEvent?.at ??
-          new Date(
-            c.openedAt.getTime() + Math.floor((spanMs * seq) / eventCount),
-          );
-        const type =
-          lifecycleEvent?.type ??
-          (seq % 3 === 0
-            ? "status_changed"
-            : seq % 3 === 1
-              ? "customer_reply"
-              : "internal_note");
-        const actor =
-          lifecycleEvent?.actor ?? (seq % 2 === 0 ? "agent" : "customer");
+      const count = randomInt(
+        Math.max(1, eventsPerCase - 10),
+        eventsPerCase + 10,
+      );
+      const spanMs =
+        (c.closedAt ?? new Date()).getTime() - c.openedAt.getTime();
+      for (let seq = 0; seq < count; seq++) {
         const rawEventId = crypto.randomUUID();
+        const occurredAt = new Date(
+          c.openedAt.getTime() + Math.floor((spanMs * seq) / count),
+        );
         rawEventInserts.push({
           id: rawEventId,
           integrationId: integration.id,
           providerEventId: `${c.id}-${seq}`,
           sourceHash: crypto.randomUUID(),
-          payload: { caseId: c.id, seq, scenario: c.scenario, type },
+          payload: { caseId: c.id, seq },
           fetchedAt: occurredAt,
         });
         normalizedEventInserts.push({
           id: crypto.randomUUID(),
           caseId: c.id,
           sourceRawEventId: rawEventId,
-          type,
+          type: pick(EVENT_TYPES),
           occurredAt,
-          actor,
+          actor: seq % 2 === 0 ? "agent" : "customer",
           system: IntegrationProvider.zendesk,
           sourceSequence: seq,
         });
       }
     }
-
     await prisma.rawEvent.createMany({ data: rawEventInserts });
     await prisma.normalizedEvent.createMany({ data: normalizedEventInserts });
     rawEventTotal += rawEventInserts.length;
@@ -522,8 +444,6 @@ export async function seedPerfBaseline(
   }
 
   // --- Commitments (first_response + resolution per case) -----------------
-  // Targets are fixed at 60m / 480m. Statuses are scenario-driven so the
-  // dashboard has stable buckets instead of random distributions.
   interface CommitmentRow {
     id: string;
     caseId: string;
@@ -537,32 +457,63 @@ export async function seedPerfBaseline(
     closedAt: Date | null;
   }
   const commitmentInserts: CommitmentRow[] = [];
-
   for (const c of caseRows) {
-    const firstResponseStatus =
-      c.scenario === "first_response_breached" || c.scenario === "both_breached"
-        ? CommitmentStatus.breached
-        : c.scenario === "at_risk"
-          ? CommitmentStatus.at_risk
-          : CommitmentStatus.met;
-    const resolutionStatus =
-      c.scenario === "resolution_breached" || c.scenario === "both_breached"
-        ? CommitmentStatus.breached
-        : c.scenario === "at_risk" || c.scenario === "open_aging"
-          ? CommitmentStatus.at_risk
-          : c.scenario === "on_track"
-            ? CommitmentStatus.on_track
-            : CommitmentStatus.met;
-
-    for (const [kind, targetMinutes, status] of [
-      [CommitmentKind.first_response, 60, firstResponseStatus],
-      [CommitmentKind.resolution, 480, resolutionStatus],
+    for (const [kind, targetMinutes] of [
+      [CommitmentKind.first_response, 60],
+      [CommitmentKind.resolution, 480],
     ] as const) {
       const dueAt = new Date(c.openedAt.getTime() + targetMinutes * 60_000);
-      const closedAt =
-        status === CommitmentStatus.met || status === CommitmentStatus.breached
-          ? c.closedAt
-          : null;
+      let status: CommitmentStatus;
+      switch (c.scenario) {
+        case "on_track":
+          status = CommitmentStatus.on_track;
+          break;
+        case "at_risk":
+          status =
+            kind === CommitmentKind.resolution
+              ? CommitmentStatus.at_risk
+              : CommitmentStatus.met;
+          break;
+        case "first_response_breached":
+          status =
+            kind === CommitmentKind.first_response
+              ? CommitmentStatus.breached
+              : CommitmentStatus.met;
+          break;
+        case "resolution_breached":
+          status =
+            kind === CommitmentKind.resolution
+              ? CommitmentStatus.breached
+              : CommitmentStatus.met;
+          break;
+        case "both_breached":
+          status = CommitmentStatus.breached;
+          break;
+        case "met":
+          status = CommitmentStatus.met;
+          break;
+        case "open_aging":
+          status =
+            kind === CommitmentKind.resolution
+              ? CommitmentStatus.at_risk
+              : CommitmentStatus.met;
+          break;
+        case "edge_mixed":
+          if (c.closedAt) {
+            status =
+              dueAt.getTime() < c.closedAt.getTime()
+                ? CommitmentStatus.breached
+                : CommitmentStatus.met;
+          } else {
+            status =
+              dueAt.getTime() < now
+                ? CommitmentStatus.breached
+                : Math.random() < 0.15
+                  ? CommitmentStatus.at_risk
+                  : CommitmentStatus.on_track;
+          }
+          break;
+      }
       commitmentInserts.push({
         id: crypto.randomUUID(),
         caseId: c.id,
@@ -573,7 +524,7 @@ export async function seedPerfBaseline(
         targetMinutes,
         dueAt,
         status,
-        closedAt,
+        closedAt: status === "met" || status === "breached" ? c.closedAt : null,
       });
     }
   }
@@ -585,53 +536,41 @@ export async function seedPerfBaseline(
     onProgress,
   );
 
-  // --- Evaluations (stable history per commitment) ------------------------
+  // --- Evaluations (a short history per commitment) ------------------------
   const evaluationInserts: Prisma.EvaluationCreateManyInput[] = [];
   for (const commitment of commitmentInserts) {
-    const snapshots = Math.max(1, evaluationsPerCommitment);
-    const finalStatus = commitment.status;
+    const snapshots = Math.max(1, evaluationsPerCommitment + randomInt(-1, 1));
     for (let s = 0; s < snapshots; s++) {
-      const progress = (s + 1) / snapshots;
       const evaluatedAt = new Date(
         commitment.startedAt.getTime() +
           Math.floor(
-            (Math.min(commitment.dueAt.getTime(), now) -
-              commitment.startedAt.getTime()) *
-              progress,
+            ((commitment.dueAt.getTime() - commitment.startedAt.getTime()) *
+              (s + 1)) /
+              (snapshots + 1),
           ),
       );
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor(
+          (evaluatedAt.getTime() - commitment.startedAt.getTime()) / 1000,
+        ),
+      );
       const targetSeconds = commitment.targetMinutes * 60;
-      let elapsedSeconds: number;
-      let status: CommitmentStatus;
-      let breachedBySeconds: number | null = null;
-
-      if (finalStatus === CommitmentStatus.breached) {
-        elapsedSeconds = Math.floor(targetSeconds * (1.1 + progress * 0.9));
-        status = CommitmentStatus.breached;
-        breachedBySeconds = Math.max(1, elapsedSeconds - targetSeconds);
-      } else if (finalStatus === CommitmentStatus.at_risk) {
-        elapsedSeconds = Math.floor(targetSeconds * (0.72 + progress * 0.08));
-        status = CommitmentStatus.at_risk;
-      } else if (finalStatus === CommitmentStatus.on_track) {
-        elapsedSeconds = Math.floor(targetSeconds * (0.35 + progress * 0.25));
-        status = CommitmentStatus.on_track;
-      } else {
-        elapsedSeconds = Math.floor(targetSeconds * (0.25 + progress * 0.45));
-        status = CommitmentStatus.met;
-      }
-
+      const remainingSeconds = targetSeconds - elapsedSeconds;
       evaluationInserts.push({
         id: crypto.randomUUID(),
         commitmentId: commitment.id,
         evaluatedAt,
         elapsedSeconds,
-        remainingSeconds: targetSeconds - elapsedSeconds,
-        status,
-        breachedBySeconds,
-        inputs: {
-          seed: true,
-          scenario: caseRows.find((c) => c.id === commitment.caseId)?.scenario,
-        },
+        remainingSeconds,
+        status:
+          remainingSeconds < 0
+            ? CommitmentStatus.breached
+            : remainingSeconds < targetSeconds * 0.2
+              ? CommitmentStatus.at_risk
+              : CommitmentStatus.on_track,
+        breachedBySeconds: remainingSeconds < 0 ? -remainingSeconds : null,
+        inputs: { seed: true },
       });
     }
   }
@@ -643,13 +582,6 @@ export async function seedPerfBaseline(
     onProgress,
   );
 
-  const scenarioCounts = Object.fromEntries(
-    SCENARIOS.map(({ name }) => [
-      name,
-      caseRows.filter((c) => c.scenario === name).length,
-    ]),
-  ) as Record<PerfScenario, number>;
-
   return {
     organizationId: organization.id,
     customers: customerRows.length,
@@ -659,7 +591,6 @@ export async function seedPerfBaseline(
     commitments: commitmentInserts.length,
     evaluations: evaluationInserts.length,
     durationMs: Date.now() - startedAt,
-    scenarioCounts,
   };
 }
 
