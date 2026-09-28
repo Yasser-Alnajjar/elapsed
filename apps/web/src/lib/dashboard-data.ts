@@ -143,10 +143,22 @@ async function getDashboardDataInner(
   const [
     // Narrow, org-wide, zero-events reads: `Commitment.status`/`dueAt` only,
     // never `evaluateCommitment` (see performance-plan.md's "Snapshot vs
-    // live" ground rule). Feeds health-by-kind, the compliance breakdown,
-    // and (rows where `status === "breached"`) the breach-analytics
-    // candidate set — see below.
-    openCommitmentRows,
+    // live" ground rule).
+    // Per-kind tallies among every open commitment — a `groupBy`, not a
+    // `findMany` + JS loop, so the row count this query moves is a handful
+    // of (kind, status) buckets, not one row per open commitment (an org's
+    // open set only grows over its lifetime, unlike the period-bounded
+    // reads below).
+    healthByKindGroups,
+    // caseId + status for every open commitment, the minimum
+    // `summarizeCompliance` (worst-status-per-case) needs — still one row
+    // per open commitment, but two narrow columns instead of the full
+    // commitment + joined case.
+    openCommitmentStatusRows,
+    // The open half of the breach-analytics candidate set: `status:
+    // "breached"` is pushed into the query instead of fetched-then-filtered
+    // — a small, bounded subset of the open set, not all of it.
+    openBreachedCommitmentRows,
     currentPeriodClosedRows,
     previousPeriodClosedRows,
     organization,
@@ -160,8 +172,21 @@ async function getDashboardDataInner(
     atRiskCandidateRows,
     atRiskOverflowTotalCount,
   ] = await Promise.all([
+    prisma.commitment.groupBy({
+      by: ["kind", "status"],
+      where: { case: { organizationId, deletedAt: null }, closedAt: null },
+      _count: { _all: true },
+    }),
     prisma.commitment.findMany({
       where: { case: { organizationId, deletedAt: null }, closedAt: null },
+      select: { caseId: true, status: true },
+    }),
+    prisma.commitment.findMany({
+      where: {
+        case: { organizationId, deletedAt: null },
+        closedAt: null,
+        status: "breached",
+      },
       select: {
         id: true,
         caseId: true,
@@ -386,7 +411,10 @@ async function getDashboardDataInner(
 
   // Phase 6.1: on-track/at-risk/breached per kind, among open commitments —
   // every kind starts at zero so a kind with nothing open still renders.
-  // Persisted `status` only, never a live re-evaluation.
+  // Persisted `status` only, never a live re-evaluation. `healthByKindGroups`
+  // is already the grouped tally (performance-plan.md Phase 2 item 2:
+  // "health-by-kind... from groupBy on persisted status"), so this just
+  // reshapes it — no per-row loop over the open set.
   const healthByKindMap = new Map<
     CommitmentKind,
     { onTrack: number; atRisk: number; breached: number }
@@ -396,12 +424,12 @@ async function getDashboardDataInner(
       { onTrack: 0, atRisk: 0, breached: 0 },
     ]),
   );
-  for (const row of openCommitmentRows) {
-    const tally = healthByKindMap.get(row.kind);
+  for (const group of healthByKindGroups) {
+    const tally = healthByKindMap.get(group.kind);
     if (!tally) continue;
-    if (row.status === "on_track") tally.onTrack += 1;
-    else if (row.status === "at_risk") tally.atRisk += 1;
-    else if (row.status === "breached") tally.breached += 1;
+    if (group.status === "on_track") tally.onTrack += group._count._all;
+    else if (group.status === "at_risk") tally.atRisk += group._count._all;
+    else if (group.status === "breached") tally.breached += group._count._all;
   }
   const healthByKind: CommitmentKindHealth[] = COMMITMENT_KINDS.map((kind) => ({
     kind,
@@ -409,18 +437,18 @@ async function getDashboardDataInner(
   }));
 
   // Breach-analytics candidates: only commitments whose *persisted* status is
-  // already "breached" — a small subset of the org, not every open +
-  // recently-closed commitment. `computeBreachedAt` (inside
-  // `getProjectAnalytics`) still needs each candidate's events/policy/
-  // calendar to find the true SLA-clock-crossing instant: neither
-  // `Evaluation.evaluatedAt` (can be stamped at import/reconciliation time,
-  // long after the real breach — see `apps/worker/src/cycle.ts`'s `asOf =
-  // new Date()`) nor `dueAt` alone (a reply-less close inside target still
-  // breaches under D5, before `dueAt`) can stand in for it.
+  // already "breached" — `openBreachedCommitmentRows` already queried just
+  // that subset (small and bounded, unlike the full open set), so no
+  // client-side filter is needed here. `getProjectAnalytics` resolves each
+  // candidate's true SLA-clock-crossing instant from persisted Evaluation
+  // history (`getPersistedBreachedAt`), falling back to `dueAt` — not a live
+  // `computeBreachedAt` re-run over every candidate's events.
   const breachCandidateRows: BreachCandidateRow[] = [
-    ...openCommitmentRows
-      .filter((row) => row.status === "breached")
-      .map((row) => ({ ...row, closedAt: null, caseOpenedAt: row.case.openedAt })),
+    ...openBreachedCommitmentRows.map((row) => ({
+      ...row,
+      closedAt: null,
+      caseOpenedAt: row.case.openedAt,
+    })),
     ...currentPeriodClosedRows
       .filter((row) => row.status === "breached")
       .map((row) => ({ ...row, caseOpenedAt: row.case.openedAt })),
@@ -544,7 +572,7 @@ async function getDashboardDataInner(
     prisma,
     periodStart,
     asOfDate,
-    openCommitmentRows.map((row) => ({ caseId: row.caseId, status: row.status })),
+    openCommitmentStatusRows,
     currentPeriodClosedRows,
     breachCandidateRows,
     timezone,

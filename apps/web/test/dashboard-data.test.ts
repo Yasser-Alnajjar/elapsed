@@ -152,7 +152,12 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
           const rows = openNonCancelled();
           return typeof take === "number" ? rows.slice(0, take) : rows;
         }
-        if (where.closedAt === null) return commitments.filter((c) => c.closedAt === null);
+        if (where.closedAt === null) {
+          const rows = commitments.filter((c) => c.closedAt === null);
+          return typeof where.status === "string"
+            ? rows.filter((c) => c.status === where.status)
+            : rows;
+        }
         const range = where.closedAt as { gte?: Date; lt?: Date; lte?: Date; not?: null };
         if (range && "not" in range) return [];
         return commitments.filter(
@@ -162,6 +167,20 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
             (!range.lt || c.closedAt < range.lt) &&
             (!range.lte || c.closedAt <= range.lte),
         );
+      },
+      groupBy: async ({}: { by: string[]; where: Record<string, unknown> }) => {
+        const buckets = new Map<string, { kind: string; status: string; count: number }>();
+        for (const row of commitments.filter((c) => c.closedAt === null)) {
+          const key = `${row.kind}:${row.status}`;
+          const existing = buckets.get(key);
+          if (existing) existing.count += 1;
+          else buckets.set(key, { kind: row.kind, status: row.status, count: 1 });
+        }
+        return [...buckets.values()].map((b) => ({
+          kind: b.kind,
+          status: b.status,
+          _count: { _all: b.count },
+        }));
       },
       count: async ({ where }: { where: Record<string, unknown> }) => {
         if (

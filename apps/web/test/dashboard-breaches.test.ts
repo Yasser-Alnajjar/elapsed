@@ -1,15 +1,19 @@
 /**
  * The dashboard's breach KPI and "breached this period" list must count the
- * same breaches the Breaches Over Time chart plots: placed by when the SLA
- * clock crossed the target (`computeBreachedAt`), not by the worker's
- * `Evaluation.evaluatedAt`. A reconciliation run that stamps every
- * historical breach "now" must not pull older breaches into the period —
- * `getDashboardData` guards against this by never reading `Evaluation` for
- * breach timing at all: it identifies breach *candidates* cheaply from
- * persisted `Commitment.status === "breached"`, then runs `computeBreachedAt`
- * (event/policy/calendar-aware) only over that small set. See
- * performance-plan.md Phase 2 item 2 for why `Evaluation.evaluatedAt`/`dueAt`
- * alone can't stand in for the true breach instant.
+ * same breaches the Breaches Over Time chart plots: placed by `breachedAt`
+ * (the earliest persisted `"breached"` Evaluation per commitment, falling
+ * back to `dueAt` — `getPersistedBreachedAt` in analytics-data.ts), not by
+ * a later reconciliation sweep's `Evaluation.evaluatedAt` pulling older
+ * breaches into the period. `getDashboardData` identifies breach
+ * *candidates* cheaply from persisted `Commitment.status === "breached"`
+ * (a bounded, `status`-filtered query, not the whole open set), then
+ * resolves each candidate's `breachedAt` with one indexed query instead of
+ * a live `computeBreachedAt` re-run. This fixture's `$queryRaw` returns no
+ * Evaluation rows, so every candidate here falls back to `dueAt` — which,
+ * for an always-open calendar with no pauses and no reply before the
+ * deadline, is the same instant `computeBreachedAt` would have found, so
+ * the expected breach dates below are unchanged. See performance-plan.md
+ * Phase 2 item 2.
  */
 import type { PrismaClient } from "@sla/db";
 import { describe, expect, it } from "vitest";
@@ -153,9 +157,15 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
           const rows = openNonCancelled();
           return typeof take === "number" ? rows.slice(0, take) : rows;
         }
-        // All open commitments (health-by-kind, compliance open-half, breach
-        // candidates open-half) — no status filter.
-        if (where.closedAt === null) return commitments.filter((c) => c.closedAt === null);
+        // Open commitments: health-by-kind and compliance's open half read
+        // every one (no status filter); the breach candidates' open half
+        // filters to `status: "breached"` in the query itself.
+        if (where.closedAt === null) {
+          const rows = commitments.filter((c) => c.closedAt === null);
+          return typeof where.status === "string"
+            ? rows.filter((c) => c.status === where.status)
+            : rows;
+        }
         const range = where.closedAt as { gte?: Date; lt?: Date; lte?: Date };
         return commitments.filter(
           (c) =>
@@ -164,6 +174,20 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
             (!range.lt || c.closedAt < range.lt) &&
             (!range.lte || c.closedAt <= range.lte),
         );
+      },
+      groupBy: async () => {
+        const buckets = new Map<string, { kind: string; status: string; count: number }>();
+        for (const row of commitments.filter((c) => c.closedAt === null)) {
+          const key = `${row.kind}:${row.status}`;
+          const existing = buckets.get(key);
+          if (existing) existing.count += 1;
+          else buckets.set(key, { kind: row.kind, status: row.status, count: 1 });
+        }
+        return [...buckets.values()].map((b) => ({
+          kind: b.kind,
+          status: b.status,
+          _count: { _all: b.count },
+        }));
       },
       count: async ({ where }: { where: Record<string, unknown> }) => {
         if (

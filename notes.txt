@@ -10,6 +10,6 @@ local     sla-breach-monitoring_postgres-data
 ** migrate cases 
 docker compose exec worker pnpm --filter @sla/db run seed:perf-baseline -- \
   --user-email=yasseralnajjar72@gmail.com \
-  --cases=100 \
-  --events-per-case=10 \
+  --cases=100000 \
+  --events-per-case=42 \
   --batch-size=2000
