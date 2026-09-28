@@ -4,13 +4,13 @@ import { getPrismaClient } from "@sla/db";
 
 import { getRequestContext } from "@/lib/request-context";
 import { getAtRiskData } from "@/lib/at-risk-data";
-import type { AtRiskRowData } from "@/lib/types/at-risk";
+import type { AtRiskPageData, AtRiskParams } from "@/lib/types/at-risk";
 
 export const AtRiskActions = {
-  async getData(): Promise<AtRiskRowData[]> {
+  async getData(params: Partial<AtRiskParams> = {}): Promise<AtRiskPageData> {
     const { organizationId } = await getRequestContext();
     const prisma = getPrismaClient();
 
-    return getAtRiskData(prisma, organizationId);
+    return getAtRiskData(prisma, organizationId, params);
   },
 };

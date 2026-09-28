@@ -57,7 +57,7 @@ export function AtRiskKpiTile({
 
       <p
         className={cn(
-          "mt-1.5 pl-2 font-mono text-2xl font-semibold tabular-nums ",
+          "mt-1.5 pl-2 font-mono text-2xl truncate  font-semibold tabular-nums ",
           toneTextClass[tone],
         )}
       >

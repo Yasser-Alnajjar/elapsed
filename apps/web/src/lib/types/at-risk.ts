@@ -44,3 +44,52 @@ export interface AtRiskRowData {
   /** This case's active Jira/Linear/GitHub correlation, or null when none exists yet. */
   linkedIssue: AtRiskLinkedIssue | null;
 }
+
+export type AtRiskSeverityFilter = "all" | "P1" | "P2" | "P3" | "P4";
+
+export interface AtRiskParams {
+  page: number;
+  pageSize: number;
+  severity: AtRiskSeverityFilter;
+  q: string;
+}
+
+export interface AtRiskCounts {
+  /**
+   * Org-wide, filter-independent — same `getCounts`-style query as
+   * `case-list-data.ts`, computed from persisted `Case.priority` only (no
+   * events, no evaluation).
+   */
+  severity: Record<AtRiskSeverityFilter, number>;
+}
+
+/** A bounded, narrow-select sample used only for the KPI tiles' "e.g. Acme #1234" detail text — never a source of row data. */
+export interface AtRiskThreatSample {
+  externalId: string;
+  customerName: string | null;
+}
+
+export interface AtRiskPageData {
+  asOf: string;
+  /** Live-evaluated rows for this page only (performance-plan.md Phase 2 item 4) — ordered by `dueAt, id`, the same order the UI advertises. */
+  rows: AtRiskRowData[];
+  page: number;
+  pageSize: number;
+  /** How many pages the active severity/search filters produce. */
+  pageCount: number;
+  /** How many commitments match the active severity/search filters — what pagination is scoped to. */
+  rowCount: number;
+  /** Org-wide count of every open, non-cancelled at-risk/breached/on-track commitment, independent of the active filters — the header's headline figure. */
+  totalCount: number;
+  /** Org-wide, filter-independent. */
+  breachedCount: number;
+  /** Org-wide, filter-independent. */
+  linkedCertainCount: number;
+  /** Org-wide count of candidates whose persisted `dueAt` is under the "Immediate Threat" threshold — a `dueAt`-based approximation of live `remainingMinutes`, the same one `liveCommitment` uses in `case-list-data.ts`. */
+  immediateThreatCount: number;
+  immediateThreatSample: AtRiskThreatSample[];
+  /** Org-wide count of candidates whose persisted `dueAt` falls in the "Elevated Risk" band. */
+  elevatedRiskCount: number;
+  elevatedRiskSample: AtRiskThreatSample[];
+  counts: AtRiskCounts;
+}

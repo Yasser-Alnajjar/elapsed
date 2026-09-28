@@ -11,68 +11,49 @@ import { useMemo } from "react";
 
 import { Reveal } from "@/components/shared/reveal";
 import { formatMinutes } from "@/lib/format";
-import type { AtRiskRowData } from "@/lib/types/at-risk";
+import type { AtRiskPageData, AtRiskThreatSample } from "@/lib/types/at-risk";
 
 import { AtRiskKpiTile } from "./AtRiskKpiTile";
 
-const IMMEDIATE_THREAT_MINUTES = 60;
-const ELEVATED_RISK_MINUTES = 150;
-
 type AtRiskKpiGridProps = {
-  data: AtRiskRowData[];
+  data: AtRiskPageData;
 };
 
-export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
-  const immediateThreat = useMemo(
-    () => data.filter((row) => row.remainingMinutes < IMMEDIATE_THREAT_MINUTES),
-    [data],
-  );
+function sampleDetail(
+  sample: AtRiskThreatSample[],
+  emptyLabel: string,
+): string {
+  return sample.length > 0
+    ? sample
+        .map((row) => `${row.customerName ?? "Unknown"} #${row.externalId}`)
+        .join(", ")
+    : emptyLabel;
+}
 
-  const elevatedRisk = useMemo(
-    () =>
-      data.filter(
-        (row) =>
-          row.remainingMinutes >= IMMEDIATE_THREAT_MINUTES &&
-          row.remainingMinutes < ELEVATED_RISK_MINUTES,
-      ),
-    [data],
-  );
+export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
+  // Locus/transit metrics need each candidate's live-derived leg — with no
+  // persisted equivalent, they can only be read off this page's already-
+  // evaluated rows, not the org-wide candidate set (performance-plan.md
+  // Phase 2 item 4: never evaluate the whole open set for a KPI tile).
+  const pageRows = data.rows;
 
   const engineeringCount = useMemo(
-    () => data.filter((row) => row.currentLeg === "engineering").length,
-    [data],
+    () => pageRows.filter((row) => row.currentLeg === "engineering").length,
+    [pageRows],
   );
 
   const avgMinutesInLeg = useMemo(
     () =>
-      data.length > 0
-        ? data.reduce((sum, row) => sum + row.minutesInCurrentLeg, 0) /
-          data.length
+      pageRows.length > 0
+        ? pageRows.reduce((sum, row) => sum + row.minutesInCurrentLeg, 0) /
+          pageRows.length
         : null,
-    [data],
+    [pageRows],
   );
 
-  const immediateThreatDetail =
-    immediateThreat.length > 0
-      ? immediateThreat
-          .slice(0, 3)
-          .map((row) => `${row.customerName ?? "Unknown"} #${row.externalId}`)
-          .join(", ")
-      : "No cases below the critical runway threshold";
-
-  const elevatedRiskDetail =
-    elevatedRisk.length > 0
-      ? elevatedRisk
-          .slice(0, 3)
-          .map((row) => `${row.customerName ?? "Unknown"} #${row.externalId}`)
-          .join(", ")
-      : "No cases currently approaching the threshold";
-
   const locusDetail =
-    data.length > 0
-      ? `${engineeringCount} of ${data.length} case${
-          data.length !== 1 ? "s" : ""
-        }`
+    pageRows.length > 0
+      ? `${engineeringCount} of ${pageRows.length} In View`
       : "No open commitments";
 
   return (
@@ -81,10 +62,13 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
         <AtRiskKpiTile
           icon={AlertTriangle}
           label="Immediate Threat (< 1h Runway)"
-          value={`${immediateThreat.length} Cases`}
-          qualifier="Critical Threshold"
-          tone={immediateThreat.length > 0 ? "destructive" : "default"}
-          detail={immediateThreatDetail}
+          value={`${data.immediateThreatCount} Cases`}
+          qualifier="Critical"
+          tone={data.immediateThreatCount > 0 ? "destructive" : "default"}
+          detail={sampleDetail(
+            data.immediateThreatSample,
+            "No cases below the critical runway threshold",
+          )}
         />
       </Reveal>
 
@@ -92,10 +76,13 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
         <AtRiskKpiTile
           icon={Clock}
           label="Elevated Risk (1h – 2.5h)"
-          value={`${elevatedRisk.length} Cases`}
+          value={`${data.elevatedRiskCount} Cases`}
           qualifier="Approaching"
-          tone={elevatedRisk.length > 0 ? "warning" : "default"}
-          detail={elevatedRiskDetail}
+          tone={data.elevatedRiskCount > 0 ? "warning" : "default"}
+          detail={sampleDetail(
+            data.elevatedRiskSample,
+            "No cases currently approaching the threshold",
+          )}
         />
       </Reveal>
 
@@ -104,8 +91,8 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
           icon={Network}
           label="Active Clock Locus"
           value={
-            data.length > 0
-              ? `${Math.round((engineeringCount / data.length) * 100)}% Eng Leg`
+            pageRows.length > 0
+              ? `${Math.round((engineeringCount / pageRows.length) * 100)}% Eng Leg`
               : "—"
           }
           qualifier={locusDetail}
@@ -121,7 +108,7 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
           value={
             avgMinutesInLeg !== null ? formatMinutes(avgMinutesInLeg) : "—"
           }
-          qualifier="+18m vs baseline"
+          qualifier="In View"
           tone="success"
           detail="Unassigned in Eng triage backlogs"
         />
