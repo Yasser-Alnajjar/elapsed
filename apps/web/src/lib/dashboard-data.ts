@@ -209,7 +209,7 @@ async function getDashboardDataInner(
       where: { id: organizationId },
       select: { name: true, timezone: true },
     }),
-    getCycleTimeAnomalies(prisma, organizationId),
+    getCycleTimeAnomalies(prisma, organizationId, asOfDate),
     // Phase 6.2: open cases the commitment pipeline never matched to any
     // policy — `commitments: { none: {} }` is the direct read of "the
     // pipeline's `continue` on no match left this case with zero rows".

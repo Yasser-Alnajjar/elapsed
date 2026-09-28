@@ -176,6 +176,11 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
       },
     },
     evaluation: { findMany: async () => [] },
+    // getCycleTimeAnomalies's terminal-evaluation lookup (Phase 2 item 3) —
+    // these fixtures never carry enough closed commitments per (customer,
+    // kind) to clear detectCycleTimeAnomaly's minimums regardless, so an
+    // empty result here is enough to keep it a no-op.
+    $queryRaw: async () => [],
     organization: { findUnique: async () => ({ timezone: "UTC" }) },
     case: { findMany: async () => [], count: async () => 0 },
     integration: { findMany: async () => [] },

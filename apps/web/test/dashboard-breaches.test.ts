@@ -115,11 +115,12 @@ type Seeded = ReturnType<typeof seedCase>;
 
 /**
  * Just enough Prisma for getDashboardData: the where/orderBy/take shapes it
- * builds are matched on their distinguishing shape. `evaluation.findMany`
- * only ever backs `getCycleTimeAnomalies` here (nothing in `getDashboardData`
- * itself reads `Evaluation` any more) and is never actually reached in this
- * fixture: `getCycleTimeAnomalies`'s own `commitment.findMany` call always
- * returns `[]` below (matched by its `closedAt: { not: null }` shape).
+ * builds are matched on their distinguishing shape. `getCycleTimeAnomalies`'s
+ * candidate query (Phase 2 item 3) shares its `closedAt: { gte, lte }` shape
+ * with the period-bound queries below, so this fixture's commitments do flow
+ * into it — but its terminal-evaluation lookup is a raw `$queryRaw`, mocked
+ * to return nothing, so `getCycleTimeAnomalies` always finds zero samples
+ * regardless (nothing in `getDashboardData` itself reads `Evaluation`).
  */
 function fakePrisma(cases: Seeded[]): PrismaClient {
   const commitments = cases.map((c) => c.commitment);
@@ -155,10 +156,7 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
         // All open commitments (health-by-kind, compliance open-half, breach
         // candidates open-half) — no status filter.
         if (where.closedAt === null) return commitments.filter((c) => c.closedAt === null);
-        const range = where.closedAt as { gte?: Date; lt?: Date; lte?: Date; not?: null };
-        // getCycleTimeAnomalies's own candidate query (`closedAt: { not: null }`)
-        // — no cases in this fixture carry a `customerId`, so it finds nothing.
-        if (range && "not" in range) return [];
+        const range = where.closedAt as { gte?: Date; lt?: Date; lte?: Date };
         return commitments.filter(
           (c) =>
             c.closedAt !== null &&
@@ -183,6 +181,9 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
       findMany: async () =>
         commitments.map((c) => ({ commitmentId: c.id, status: "breached", evaluatedAt: reconciledAt })),
     },
+    // getCycleTimeAnomalies's terminal-evaluation lookup (Phase 2 item 3) —
+    // see the fixture's doc comment above.
+    $queryRaw: async () => [],
     organization: { findUnique: async () => ({ timezone: "UTC" }) },
     case: {
       // Phase 6.2's "no matching policy" panel: every case in this fixture

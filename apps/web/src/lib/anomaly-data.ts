@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { Prisma, type PrismaClient } from "@sla/db";
 import { detectCycleTimeAnomaly, type CommitmentKind } from "@sla/core";
 import type { CycleTimeAnomalyRow } from "./types/dashboard";
 
@@ -10,30 +10,51 @@ const RECENT_WINDOW_COUNT = 5;
 // like the other dashboard lists (AT_RISK_LIMIT, AGING_LIMIT) rather than
 // growing unbounded as more customers accumulate anomalies.
 const ANOMALY_LIMIT = 5;
+// `detectCycleTimeAnomaly` needs >=12 baseline + >=5 recent samples per
+// (customer, kind) group (packages/core/src/anomaly.ts's defaults) before it
+// says anything, so the lookback has to stay wide enough for a lower-volume
+// customer to still accumulate that history — but it can't stay unbounded,
+// or this query keeps scanning more closed commitments every day the
+// organization exists (performance-plan.md Phase 2 item 3).
+const ANOMALY_LOOKBACK_DAYS = 180;
 
 interface CycleTimeSample {
   closedAt: Date;
   cycleTimeMinutes: number;
 }
 
+interface TerminalEvaluationRow {
+  commitmentId: string;
+  elapsedSeconds: number;
+}
+
 /**
  * Statistical (not AI/LLM — Phase 10's DO NOT BUILD list) anomaly detection
  * on cycle times, roadmap step 25: for each (customer, commitment kind)
- * with enough closed-commitment history, compares the last few cycle times
- * against everything before them via `detectCycleTimeAnomaly`'s median/MAD
- * check. "Cycle time" here is the terminal `Evaluation.elapsedSeconds`, in
+ * with enough closed-commitment history in the trailing
+ * `ANOMALY_LOOKBACK_DAYS`, compares the last few cycle times against
+ * everything before them via `detectCycleTimeAnomaly`'s median/MAD check.
+ * "Cycle time" here is the terminal `Evaluation.elapsedSeconds`, in
  * minutes, for a commitment — the same working-time snapshot the pipeline
- * persisted at `evaluatedAt === commitment.closedAt` when it finalized the
- * commitment (`evaluate-pipeline.ts`), not a value recomputed here.
+ * persisted at `evaluatedAt <= commitment.closedAt` when it finalized the
+ * commitment (`evaluate-pipeline.ts`), not a value recomputed here, and not
+ * a later status correction from the hourly reconciliation sweep (which
+ * keeps a finalized commitment's original `closedAt` even when a later
+ * Evaluation revises its status).
  */
 export async function getCycleTimeAnomalies(
   prisma: PrismaClient,
   organizationId: string,
+  asOfDate: Date = new Date(),
 ): Promise<CycleTimeAnomalyRow[]> {
+  const lookbackStart = new Date(
+    asOfDate.getTime() - ANOMALY_LOOKBACK_DAYS * 86_400_000,
+  );
+
   const closedCommitments = await prisma.commitment.findMany({
     where: {
       case: { organizationId, deletedAt: null, customerId: { not: null } },
-      closedAt: { not: null },
+      closedAt: { gte: lookbackStart, lte: asOfDate },
       status: { in: ["met", "breached"] },
     },
     select: {
@@ -46,22 +67,26 @@ export async function getCycleTimeAnomalies(
 
   if (closedCommitments.length === 0) return [];
 
-  const evaluationRows = await prisma.evaluation.findMany({
-    where: { commitmentId: { in: closedCommitments.map((c) => c.id) } },
-    select: {
-      commitmentId: true,
-      evaluatedAt: true,
-      elapsedSeconds: true,
-    },
-    orderBy: { evaluatedAt: "asc" },
-  });
-
-  const evaluationsByCommitmentId = new Map<string, typeof evaluationRows>();
-  for (const row of evaluationRows) {
-    const existing = evaluationsByCommitmentId.get(row.commitmentId);
-    if (existing) existing.push(row);
-    else evaluationsByCommitmentId.set(row.commitmentId, [row]);
-  }
+  // One row per commitment — its terminal evaluation — instead of every
+  // evaluation ever recorded for it (performance-plan.md Phase 2 item 3).
+  // Raw `DISTINCT ON` rather than Prisma's `distinct` (used the same way,
+  // but without this bound, for `latestEvaluationRows` in
+  // `runEvaluationPipeline`) because "closest evaluation at or before this
+  // commitment's own closedAt" is a per-row join condition, not a single
+  // scalar filter Prisma's query API can express.
+  const terminalRows = await prisma.$queryRaw<TerminalEvaluationRow[]>(
+    Prisma.sql`
+      SELECT DISTINCT ON (e."commitmentId") e."commitmentId", e."elapsedSeconds"
+      FROM "evaluations" e
+      JOIN "commitments" c ON c.id = e."commitmentId"
+      WHERE e."commitmentId" IN (${Prisma.join(closedCommitments.map((c) => c.id))})
+        AND e."evaluatedAt" <= c."closedAt"
+      ORDER BY e."commitmentId", e."evaluatedAt" DESC, e."id" DESC
+    `,
+  );
+  const elapsedSecondsByCommitmentId = new Map(
+    terminalRows.map((row) => [row.commitmentId, row.elapsedSeconds]),
+  );
 
   const samplesByGroup = new Map<
     string,
@@ -73,16 +98,13 @@ export async function getCycleTimeAnomalies(
     const closedAt = commitment.closedAt;
     if (!customer || !closedAt) continue;
 
-    const evaluations = evaluationsByCommitmentId.get(commitment.id) ?? [];
-    const terminal = evaluations
-      .filter((e) => e.evaluatedAt.getTime() <= closedAt.getTime())
-      .at(-1);
-    if (!terminal) continue;
+    const elapsedSeconds = elapsedSecondsByCommitmentId.get(commitment.id);
+    if (elapsedSeconds == null) continue;
 
     const groupKey = `${customer.id}:${commitment.kind}`;
     const sample: CycleTimeSample = {
       closedAt,
-      cycleTimeMinutes: terminal.elapsedSeconds / 60,
+      cycleTimeMinutes: elapsedSeconds / 60,
     };
     const group = samplesByGroup.get(groupKey);
     if (group) group.samples.push(sample);
