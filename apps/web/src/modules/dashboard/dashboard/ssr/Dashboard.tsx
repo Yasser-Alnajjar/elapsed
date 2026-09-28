@@ -1,7 +1,6 @@
 import { Actions } from "@/actions";
 
 import { DashboardView } from "../csr/DashboardView";
-// import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
 
 /**
  * `AppShell` is itself an async server component (it reads the session

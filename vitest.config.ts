@@ -23,6 +23,7 @@ const realDatabaseSuites = [
   "apps/web/test/next-reply-policy-import-e2e.test.ts",
   "apps/web/test/sla-policy-override-route.test.ts",
   "apps/web/test/organization-lock.test.ts",
+  "apps/web/test/live-events.test.ts",
   "apps/web/test/evaluate-pipeline-conditional-write.test.ts",
   "apps/web/test/zendesk-sla-policy-archive.test.ts",
   "apps/web/test/sla-import-summary.test.ts",

@@ -67,6 +67,12 @@ export {
 } from "./advisory-lock";
 export type { AdvisoryLockConnection } from "./advisory-lock";
 export { withOrganizationSlaLock } from "./organization-lock";
+export {
+  LIVE_DATA_CHANNEL,
+  publishLiveDataEvent,
+  subscribeToLiveData,
+} from "./live-events";
+export type { LiveDataEvent, LiveDataSubscription } from "./live-events";
 export { recordSlaImportSummary } from "./sla-import-summary";
 export type { SlaImportSummaryInput } from "./sla-import-summary";
 export { isPerfMetricsEnabled, perfCount, withPerfScope } from "./perf-metrics";

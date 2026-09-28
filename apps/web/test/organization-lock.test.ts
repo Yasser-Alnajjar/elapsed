@@ -9,8 +9,9 @@
  * database at TEST_DATABASE_URL whose name contains "test"; skipped when unset.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PrismaClient } from "@sla/db";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import pg from "pg";
+import type { LiveDataEvent, PrismaClient } from "@sla/db";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -130,4 +131,65 @@ describe.skipIf(!TEST_DATABASE_URL)("withOrganizationSlaLock (real Postgres)", (
       await smallPoolPrisma.$disconnect();
     }
   }, 20_000);
+
+  describe("live-data NOTIFY", () => {
+    // A dedicated LISTEN connection per test, mirroring how `subscribeToLiveData`
+    // itself listens — proves the notification is real Postgres pub/sub, not
+    // an in-memory shortcut, and that it only reaches listeners on commit.
+    let listener: pg.Client;
+    let received: LiveDataEvent[];
+
+    beforeEach(async () => {
+      listener = new pg.Client({ connectionString: TEST_DATABASE_URL });
+      await listener.connect();
+      received = [];
+      listener.on("notification", (message: pg.Notification) => {
+        if (message.channel !== db.LIVE_DATA_CHANNEL || !message.payload) return;
+        received.push(JSON.parse(message.payload) as LiveDataEvent);
+      });
+      await listener.query(`LISTEN ${db.LIVE_DATA_CHANNEL}`);
+    });
+
+    afterEach(async () => {
+      // Otherwise a stale connection from an earlier test — still LISTENing,
+      // never closed — would keep receiving later tests' notifications too:
+      // its handler closure shares this block's `received` binding.
+      await listener?.end();
+    });
+
+    it("notifies listeners once work() commits", async () => {
+      await db.withOrganizationSlaLock(prisma, organizationId, async () => {
+        // no-op work — the point is that the lock's own commit still fires.
+      });
+
+      // NOTIFY delivery is async relative to COMMIT; give it a beat to arrive.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(received).toEqual([{ type: "data.updated", organizationId }]);
+    });
+
+    it("does not notify when work() throws and the transaction rolls back", async () => {
+      await expect(
+        db.withOrganizationSlaLock(prisma, organizationId, async () => {
+          throw new Error("boom");
+        }),
+      ).rejects.toThrow("boom");
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(received).toEqual([]);
+    });
+
+    it("scopes the event to the organization that actually changed", async () => {
+      const otherOrganizationId = (await prisma.organization.create({ data: { name: "Notify Other Org" } })).id;
+
+      await db.withOrganizationSlaLock(prisma, otherOrganizationId, async () => {});
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(received).toEqual([
+        { type: "data.updated", organizationId: otherOrganizationId },
+      ]);
+      expect(received[0]!.organizationId).not.toBe(organizationId);
+    });
+  });
 });
