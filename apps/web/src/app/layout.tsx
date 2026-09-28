@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -8,26 +9,37 @@ import { SessionProvider } from "@/providers/session-provider";
 import { GoToTop } from "@/components/ui/go-to-top";
 import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
 
-const hankenGrotesk = Hanken_Grotesk({
-  subsets: ["latin"],
+const hankenGrotesk = localFont({
+  src: [
+    {
+      path: "../fonts/Hanken_Grotesk/HankenGrotesk-VariableFont_wght.ttf",
+      weight: "100 900",
+      style: "normal",
+    },
+    {
+      path: "../fonts/Hanken_Grotesk/HankenGrotesk-Italic-VariableFont_wght.ttf",
+      weight: "100 900",
+      style: "italic",
+    },
+  ],
   variable: "--font-hanken-grotesk",
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+const jetbrainsMono = localFont({
+  src: [
+    {
+      path: "../fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf",
+      weight: "100 800",
+      style: "normal",
+    },
+    {
+      path: "../fonts/JetBrains_Mono/JetBrainsMono-Italic-VariableFont_wght.ttf",
+      weight: "100 800",
+      style: "italic",
+    },
+  ],
   variable: "--font-jetbrains-mono",
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
-
-/** Body copy in the onboarding flow's Stitch design (`stitch_elapsed/step_*`) is set in Inter, not Hanken Grotesk. */
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -47,7 +59,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} ${inter.variable}`}
+      className={`${hankenGrotesk.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
