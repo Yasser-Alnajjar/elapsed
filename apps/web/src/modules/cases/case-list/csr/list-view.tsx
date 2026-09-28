@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
+import type { SortingState } from "@tanstack/react-table";
 
 import { Download, ListChecks, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,9 @@ import { DataTable } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Reveal } from "@/components/shared/reveal";
 
-import { formatPriorityTier } from "@/lib/format";
 import { Utils } from "@/lib/utils";
-import type { CaseListData } from "@/lib/types/cases";
+import { useQueryParams } from "@hooks";
+import type { CaseListData, CaseListSortId } from "@/lib/types/cases";
 
 import { useCaseListColumns } from "./columns";
 import {
@@ -26,147 +27,69 @@ interface CaseListViewProps {
   data: CaseListData;
 }
 
+/** Every case-list filter/sort/search resets pagination to page 1. */
+function withPageReset(patch: Record<string, string | number | undefined>) {
+  return { ...patch, page: 1 };
+}
+
 export const CaseListView = ({ data }: CaseListViewProps) => {
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [openState, setOpenState] = useState<OpenFilter>("all");
-  const [linkState, setLinkState] = useState<LinkFilter>("all");
-  const [severity, setSeverity] = useState<SeverityFilter>("all");
+  const { getQueryObject, createQueryFromObject } = useQueryParams();
+  const query = getQueryObject();
+
+  const globalFilter = String(query.q ?? "");
+  const status = (query.status as StatusFilter) ?? "all";
+  const openState = (query.openState as OpenFilter) ?? "all";
+  const linkState = (query.linkState as LinkFilter) ?? "all";
+  const severity = (query.severity as SeverityFilter) ?? "all";
+
+  const sorting: SortingState = query.sort
+    ? [{ id: String(query.sort), desc: query.dir !== "asc" }]
+    : [];
 
   const columns = useCaseListColumns();
 
-  const openCases = useMemo(
-    () => data.cases.filter((caseItem) => !caseItem.closedAt),
-    [data.cases],
-  );
+  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchDraft, setSearchDraft] = React.useState(globalFilter);
+  React.useEffect(() => setSearchDraft(globalFilter), [globalFilter]);
 
-  const breachedCases = useMemo(
-    () =>
-      data.cases.filter(
-        (caseItem) => caseItem.worstCommitmentStatus === "breached",
-      ),
-    [data.cases],
-  );
+  const setGlobalFilter = (value: string) => {
+    setSearchDraft(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      createQueryFromObject(withPageReset({ q: value || undefined }));
+    }, 300);
+  };
 
-  const atRiskCases = useMemo(
-    () =>
-      data.cases.filter(
-        (caseItem) => caseItem.worstCommitmentStatus === "at_risk",
-      ),
-    [data.cases],
-  );
+  const setStatus = (value: StatusFilter) =>
+    createQueryFromObject(withPageReset({ status: value === "all" ? undefined : value }));
+  const setOpenState = (value: OpenFilter) =>
+    createQueryFromObject(withPageReset({ openState: value === "all" ? undefined : value }));
+  const setLinkState = (value: LinkFilter) =>
+    createQueryFromObject(withPageReset({ linkState: value === "all" ? undefined : value }));
+  const setSeverity = (value: SeverityFilter) =>
+    createQueryFromObject(withPageReset({ severity: value === "all" ? undefined : value }));
 
-  const linkedCases = useMemo(
-    () => data.cases.filter((caseItem) => caseItem.primaryLink !== null),
-    [data.cases],
-  );
-
-  const linkedCertainCases = useMemo(
-    () =>
-      data.cases.filter(
-        (caseItem) => caseItem.primaryLink?.confidence === "certain",
-      ),
-    [data.cases],
-  );
-
-  const runningClockCases = useMemo(
-    () => data.cases.filter((caseItem) => caseItem.liveCommitment !== null),
-    [data.cases],
-  );
-
-  const statusCounts = useMemo(
-    () => ({
-      all: data.cases.length,
-      breached: breachedCases.length,
-      at_risk: atRiskCases.length,
-      on_track: data.cases.filter(
-        (caseItem) => caseItem.worstCommitmentStatus === "on_track",
-      ).length,
-      met: data.cases.filter(
-        (caseItem) => caseItem.worstCommitmentStatus === "met",
-      ).length,
-    }),
-    [data.cases, breachedCases.length, atRiskCases.length],
-  );
-
-  const openCounts = useMemo(
-    () => ({
-      all: data.cases.length,
-      open: openCases.length,
-      closed: data.cases.length - openCases.length,
-    }),
-    [data.cases, openCases.length],
-  );
-
-  const linkCounts = useMemo(
-    () => ({
-      all: data.cases.length,
-      linked: linkedCases.length,
-      unlinked: data.cases.length - linkedCases.length,
-    }),
-    [data.cases, linkedCases.length],
-  );
-  const severityCounts = useMemo(
-    () => ({
-      all: data.cases.length,
-      P1: data.cases.filter(
-        (caseItem) => formatPriorityTier(caseItem.priority) === "P1",
-      ).length,
-      P2: data.cases.filter(
-        (caseItem) => formatPriorityTier(caseItem.priority) === "P2",
-      ).length,
-      P3: data.cases.filter(
-        (caseItem) => formatPriorityTier(caseItem.priority) === "P3",
-      ).length,
-      P4: data.cases.filter(
-        (caseItem) => formatPriorityTier(caseItem.priority) === "P4",
-      ).length,
-    }),
-    [data.cases],
-  );
-  const filtered = useMemo(() => {
-    const search = globalFilter.trim().toLowerCase();
-
-    return data.cases.filter((caseItem) => {
-      if (search) {
-        const searchableText = JSON.stringify(caseItem).toLowerCase();
-
-        if (!searchableText.includes(search)) {
-          return false;
-        }
-      }
-
-      if (status !== "all" && caseItem.worstCommitmentStatus !== status) {
-        return false;
-      }
-
-      if (openState === "open" && caseItem.closedAt) {
-        return false;
-      }
-
-      if (openState === "closed" && !caseItem.closedAt) {
-        return false;
-      }
-
-      if (linkState === "linked" && !caseItem.primaryLink) {
-        return false;
-      }
-
-      if (linkState === "unlinked" && caseItem.primaryLink) {
-        return false;
-      }
-
-      if (
-        severity !== "all" &&
-        formatPriorityTier(caseItem.priority) !== severity
-      ) {
-        return false;
-      }
-
-      return true;
+  const handleSortingChange = (next: SortingState) => {
+    const first = next[0];
+    createQueryFromObject({
+      sort: first ? (first.id as CaseListSortId) : undefined,
+      dir: first ? (first.desc ? "desc" : "asc") : undefined,
     });
-  }, [data.cases, globalFilter, status, openState, linkState, severity]);
-  if (data.cases.length === 0) {
+  };
+
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (openState !== "all") params.set("openState", openState);
+    if (linkState !== "all") params.set("linkState", linkState);
+    if (severity !== "all") params.set("severity", severity);
+    if (globalFilter) params.set("q", globalFilter);
+    window.open(`/api/cases/export?${params.toString()}`, "_blank");
+  };
+
+  const counts = data.counts;
+
+  if (data.rowCount === 0 && !globalFilter && status === "all" && openState === "all" && linkState === "all" && severity === "all") {
     return (
       <EmptyState
         icon={ListChecks}
@@ -203,14 +126,14 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
             type="button"
             variant="surface"
             size="toolbar"
-            onClick={() => Utils.exportToCsv("all-cases.csv", data.cases)}
+            onClick={handleExport}
             className="group shrink-0 px-4 shadow-sm hover:bg-surface-bright"
           >
             <Download className="size-4.5 text-primary transition-transform group-hover:scale-110" />
             <span>Export Full CSV</span>
 
             <span className="rounded bg-surface-container-lowest px-1.5 py-0.5 font-mono text-xs text-on-surface-variant">
-              {data.cases.length} rec
+              {counts.status.all} rec
             </span>
           </Button>
         </div>
@@ -218,17 +141,17 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
 
       <Reveal delay={0.05}>
         <CaseListMetrics
-          total={data.cases.length}
-          open={openCases.length}
-          runningClock={runningClockCases.length}
-          linkedCertain={linkedCertainCases.length}
-          linked={linkedCases.length}
+          total={counts.status.all}
+          open={counts.open.open}
+          runningClock={counts.runningClock}
+          linkedCertain={counts.linkedCertain}
+          linked={counts.link.linked}
         />
       </Reveal>
 
       <Reveal delay={0.1}>
         <CaseListFilters
-          globalFilter={globalFilter}
+          globalFilter={searchDraft}
           setGlobalFilter={setGlobalFilter}
           status={status}
           setStatus={setStatus}
@@ -238,10 +161,10 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
           setLinkState={setLinkState}
           severity={severity}
           setSeverity={setSeverity}
-          statusCounts={statusCounts}
-          openCounts={openCounts}
-          linkCounts={linkCounts}
-          severityCounts={severityCounts}
+          statusCounts={counts.status}
+          openCounts={counts.open}
+          linkCounts={counts.link}
+          severityCounts={counts.severity}
         />
       </Reveal>
 
@@ -255,7 +178,12 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
             cellClassName="px-2.5 py-3 align-top first:ps-4 last:pe-4"
             rowClassName="border-0 hover:bg-surface-container-high odd:bg-surface-container-low even:bg-surface-container"
             columns={columns}
-            data={filtered}
+            data={data.cases}
+            manual
+            pageCount={data.pageCount}
+            rowCount={data.rowCount}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
             empty={
               <EmptyState
                 icon={Search}

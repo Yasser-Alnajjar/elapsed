@@ -1,21 +1,18 @@
 import "server-only";
-import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
-import {
-  deriveLegSpans,
-  evaluateCommitment,
-  sumLegMinutes,
-  type BusinessCalendarVersion,
-  type CommitmentKind,
-  type CommitmentStatus,
-  type NormalizedState,
-  type SLAPolicyMatch,
-  type SLAPolicyVersion,
-  type WeeklyWindow,
-} from "@sla/core";
-import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
-import { getAtRiskData } from "./at-risk-data";
-import type { AtRiskRowData } from "./types/at-risk";
-import type { CaseListData, CaseListRow } from "./types/cases";
+import { withPerfScope, Prisma, type PrismaClient } from "@sla/db";
+import type { CommitmentKind, CommitmentStatus } from "@sla/core";
+import { formatPriorityTier } from "./format";
+import type {
+  CaseListCounts,
+  CaseListData,
+  CaseListLinkFilter,
+  CaseListOpenFilter,
+  CaseListParams,
+  CaseListRow,
+  CaseListSeverityFilter,
+  CaseListSortId,
+  CaseListStatusFilter,
+} from "./types/cases";
 
 // Precedence for picking one representative status out of a case's several
 // commitments — worst-first, so a single breached commitment surfaces even
@@ -37,31 +34,228 @@ function worstStatus(statuses: CommitmentStatus[]): CommitmentStatus | null {
   );
 }
 
-/** Picks one live row per case — worst-first (same precedence as `worstStatus`), so a case with several open commitments (e.g. First Response + Resolution) surfaces its most urgent one. */
-function worstLiveRow(rows: AtRiskRowData[]): AtRiskRowData | undefined {
+function worstOf<T extends { status: CommitmentStatus }>(rows: T[]): T | undefined {
   return [...rows].sort(
     (a, b) =>
       STATUS_PRECEDENCE.indexOf(a.status) - STATUS_PRECEDENCE.indexOf(b.status),
   )[0];
 }
 
+const LINK_SYSTEMS: Array<"jira" | "linear" | "github"> = [
+  "jira",
+  "linear",
+  "github",
+];
+
+// Reverse of `PRIORITY_TIER_LABELS` (lib/format.ts) — the raw ticket
+// priority strings that map to each Stitch severity tier.
+const SEVERITY_RAW_PRIORITIES: Record<Exclude<CaseListSeverityFilter, "all">, string[]> =
+  {
+    P1: ["urgent"],
+    P2: ["high"],
+    P3: ["normal"],
+    P4: ["low"],
+  };
+
+// Only columns with a real, persisted, monotonic value are sortable
+// server-side. Maps a case-list column id (csr/columns.tsx) to the Prisma
+// field it sorts by. "slaTargetRunway"/"legAllocation"/"correlation" are
+// excluded: their values are either derived from live evaluation (no
+// persisted equivalent) or a to-many relation (link confidence) — see
+// performance-plan.md Phase 2 item 1.
+const SORT_COLUMNS: Record<CaseListSortId, string> = {
+  priorityDualKey: "externalId",
+  subject: "subject",
+  currentStateAssignee: "assigneeName",
+};
+
+function buildWhere(
+  organizationId: string,
+  params: Pick<
+    CaseListParams,
+    "status" | "openState" | "linkState" | "severity" | "q"
+  >,
+): Prisma.CaseWhereInput {
+  const where: Prisma.CaseWhereInput = {
+    organizationId,
+    deletedAt: null,
+  };
+
+  if (params.openState === "open") where.closedAt = null;
+  else if (params.openState === "closed") where.closedAt = { not: null };
+
+  if (params.linkState === "linked") {
+    where.caseLinks = {
+      some: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
+    };
+  } else if (params.linkState === "unlinked") {
+    where.caseLinks = {
+      none: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
+    };
+  }
+
+  // Approximates `worstCommitmentStatus`: "has a commitment at this status",
+  // not "this is the case's single worst status" (that precedence isn't a
+  // persisted column). A case with both an at_risk and a breached
+  // commitment would match both the "At Risk" and "Breached" chips — an
+  // accepted tradeoff for a chip filter, same one the plan's own
+  // filter-chip-count bullet implies by asking for a `groupBy` instead of a
+  // precedence computation.
+  if (params.status !== "all") {
+    where.commitments = { some: { status: params.status } };
+  }
+
+  if (params.severity !== "all") {
+    where.priority = { in: SEVERITY_RAW_PRIORITIES[params.severity] };
+  }
+
+  const q = params.q.trim();
+  if (q) {
+    where.OR = [
+      { subject: { contains: q, mode: "insensitive" } },
+      { externalId: { contains: q, mode: "insensitive" } },
+      { requesterName: { contains: q, mode: "insensitive" } },
+      { customer: { name: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  return where;
+}
+
+function buildOrderBy(
+  sort: CaseListParams["sort"],
+): Prisma.CaseOrderByWithRelationInput[] {
+  const column = sort ? SORT_COLUMNS[sort.id] : "openedAt";
+  const direction: Prisma.SortOrder = sort ? (sort.desc ? "desc" : "asc") : "desc";
+  return [{ [column]: direction }, { id: "asc" }];
+}
+
+async function getCounts(
+  prisma: PrismaClient,
+  organizationId: string,
+): Promise<CaseListCounts> {
+  const base = { organizationId, deletedAt: null } as const;
+  const statusValues: CommitmentStatus[] = [
+    "breached",
+    "at_risk",
+    "on_track",
+    "met",
+    "cancelled",
+  ];
+  const [
+    total,
+    statusCounts,
+    openCount,
+    closedCount,
+    linkedCount,
+    linkedCertainCount,
+    runningClockCount,
+    priorityGroups,
+  ] = await Promise.all([
+    prisma.case.count({ where: base }),
+    Promise.all(
+      statusValues.map((status) =>
+        prisma.case.count({
+          where: { ...base, commitments: { some: { status } } },
+        }),
+      ),
+    ),
+    prisma.case.count({ where: { ...base, closedAt: null } }),
+    prisma.case.count({ where: { ...base, closedAt: { not: null } } }),
+    prisma.case.count({
+      where: {
+        ...base,
+        caseLinks: { some: { unlinkedAt: null, system: { in: LINK_SYSTEMS } } },
+      },
+    }),
+    prisma.case.count({
+      where: {
+        ...base,
+        caseLinks: {
+          some: {
+            unlinkedAt: null,
+            system: { in: LINK_SYSTEMS },
+            confidence: "certain",
+          },
+        },
+      },
+    }),
+    prisma.case.count({
+      where: { ...base, commitments: { some: { closedAt: null } } },
+    }),
+    prisma.case.groupBy({
+      by: ["priority"],
+      where: base,
+      _count: true,
+    }),
+  ]);
+
+  const status: CaseListCounts["status"] = { all: total } as CaseListCounts["status"];
+  statusValues.forEach((s, i) => {
+    status[s] = statusCounts[i]!;
+  });
+
+  const severity: CaseListCounts["severity"] = {
+    all: total,
+    P1: 0,
+    P2: 0,
+    P3: 0,
+    P4: 0,
+  };
+  for (const group of priorityGroups as { priority: string | null; _count: number }[]) {
+    const tier = formatPriorityTier(group.priority) as
+      | Exclude<CaseListSeverityFilter, "all">
+      | null;
+    if (tier) severity[tier] += group._count;
+  }
+
+  return {
+    status,
+    open: { all: total, open: openCount, closed: closedCount },
+    link: { all: total, linked: linkedCount, unlinked: total - linkedCount },
+    severity,
+    runningClock: runningClockCount,
+    linkedCertain: linkedCertainCount,
+  };
+}
+
+const DEFAULT_PARAMS: CaseListParams = {
+  page: 1,
+  pageSize: 25,
+  sort: null,
+  status: "all",
+  openState: "all",
+  linkState: "all",
+  severity: "all",
+  q: "",
+};
+
 /**
- * All cases for the organization, open or closed, with every commitment
- * status — no filtering by `Case.closedAt` or `Commitment.status`. The
- * persisted `worstCommitmentStatus` badge is unconditional (covers closed
- * cases too), but `liveCommitment` — the "SLA Target & Runway"/"Leg
- * Allocation" columns' data — is only ever populated for a case with a
- * currently open commitment, by reusing `getAtRiskData`'s live evaluation
- * (the same org-wide pass `/at-risk` already does) rather than re-running
- * `evaluateCommitment` a second time here.
+ * Server-paginated, snapshot-only case list (performance-plan.md Phase 2
+ * item 1). Unlike the old implementation, this never loads events and never
+ * calls `evaluateCommitment`/`deriveLegSpans` — `liveCommitment`/
+ * `settledCommitment` are derived from persisted `Commitment` fields and the
+ * latest `Evaluation` row.
+ *
+ * Pass `params.pageSize` as `undefined` to fetch every row matching the
+ * current filters with no `skip`/`take` — used by the CSV export route,
+ * which is cheap now that the query no longer evaluates.
  */
 export async function getCaseListData(
   prisma: PrismaClient,
   organizationId: string,
+  params: Partial<CaseListParams> = {},
+  asOfDate: Date = new Date(),
 ): Promise<CaseListData> {
   return withPerfScope(
     "case_list",
-    () => getCaseListDataInner(prisma, organizationId),
+    () =>
+      getCaseListDataInner(
+        prisma,
+        organizationId,
+        { ...DEFAULT_PARAMS, ...params },
+        asOfDate,
+      ),
     { organizationId },
   );
 }
@@ -69,27 +263,37 @@ export async function getCaseListData(
 async function getCaseListDataInner(
   prisma: PrismaClient,
   organizationId: string,
+  params: CaseListParams,
+  asOfDate: Date,
 ): Promise<CaseListData> {
-  const [rows, liveRows] = await Promise.all([
+  const asOf = asOfDate.toISOString();
+  const where = buildWhere(organizationId, params);
+  const orderBy = buildOrderBy(params.sort);
+  const unbounded = !Number.isFinite(params.pageSize) || params.pageSize <= 0;
+  const skip = unbounded ? undefined : (params.page - 1) * params.pageSize;
+  const take = unbounded ? undefined : params.pageSize;
+
+  const [rows, rowCount, counts] = await Promise.all([
     prisma.case.findMany({
-      where: { organizationId, deletedAt: null },
+      where,
+      orderBy,
+      skip,
+      take,
       include: {
-        customer: true,
+        customer: { select: { name: true } },
         commitments: {
           select: {
+            id: true,
             kind: true,
             status: true,
             targetMinutes: true,
+            startedAt: true,
+            dueAt: true,
+            closedAt: true,
           },
         },
-        // Same "active relationship" filter as the case-detail page's
-        // `links` (see case-detail-data.ts) — a link whose `unlinkedAt` is
-        // set must not present a case as currently correlated.
         caseLinks: {
-          where: {
-            unlinkedAt: null,
-            system: { in: ["jira", "linear", "github"] },
-          },
+          where: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
           select: {
             system: true,
             externalId: true,
@@ -99,108 +303,65 @@ async function getCaseListDataInner(
           take: 1,
         },
       },
-      orderBy: { openedAt: "desc" },
     }),
-    getAtRiskData(prisma, organizationId),
+    prisma.case.count({ where }),
+    getCounts(prisma, organizationId),
   ]);
 
-  const liveByCaseId = new Map<string, AtRiskRowData[]>();
-  for (const liveRow of liveRows) {
-    const existing = liveByCaseId.get(liveRow.caseId);
-    if (existing) existing.push(liveRow);
-    else liveByCaseId.set(liveRow.caseId, [liveRow]);
-  }
-
-  // Settled cases (no live commitment) still show progress: leg minutes come
-  // from the case's events, so fetch them only for those cases.
-  const settledCaseIds = rows
-    .filter((row) => !liveByCaseId.has(row.id) && row.commitments.length > 0)
-    .map((row) => row.id);
-  const settledEventRows =
-    settledCaseIds.length > 0
-      ? await prisma.normalizedEvent.findMany({
-          where: { caseId: { in: settledCaseIds } },
-        })
-      : [];
-  // Settled elapsed is evaluated (not read from the last persisted
-  // `Evaluation`, which can be stale) — same approach as case-detail-data.
-  const settledCommitmentRows =
-    settledCaseIds.length > 0
-      ? await prisma.commitment.findMany({
-          where: { caseId: { in: settledCaseIds } },
-          include: { policyVersion: true, calendarVersion: true },
-        })
-      : [];
-  const settledRowsByCaseId = new Map<string, typeof settledCommitmentRows>();
-  for (const c of settledCommitmentRows) {
-    const list = settledRowsByCaseId.get(c.caseId) ?? [];
-    list.push(c);
-    settledRowsByCaseId.set(c.caseId, list);
-  }
-  const settledEventsByCaseId = new Map<
+  // Latest persisted Evaluation per closed/settled commitment on this page
+  // only — never a live re-run (report-data.ts uses the same pattern for
+  // closed commitments).
+  const closedCommitmentIds = rows.flatMap((row) =>
+    row.commitments
+      .filter((c) => c.closedAt !== null)
+      .map((c) => c.id),
+  );
+  const latestEvaluationByCommitmentId = new Map<
     string,
-    ReturnType<typeof toNormalizedEventDomain>[]
+    { elapsedSeconds: number }
   >();
-  for (const eventRow of settledEventRows) {
-    const list = settledEventsByCaseId.get(eventRow.caseId) ?? [];
-    list.push(toNormalizedEventDomain(eventRow));
-    settledEventsByCaseId.set(eventRow.caseId, list);
+  if (closedCommitmentIds.length > 0) {
+    const evaluationRows = await prisma.evaluation.findMany({
+      where: { commitmentId: { in: closedCommitmentIds } },
+      orderBy: { evaluatedAt: "desc" },
+      select: { commitmentId: true, elapsedSeconds: true },
+    });
+    for (const evaluation of evaluationRows) {
+      if (!latestEvaluationByCommitmentId.has(evaluation.commitmentId)) {
+        latestEvaluationByCommitmentId.set(evaluation.commitmentId, evaluation);
+      }
+    }
   }
 
   const cases: CaseListRow[] = rows.map((row) => {
     const link = row.caseLinks[0];
-    const live = worstLiveRow(liveByCaseId.get(row.id) ?? []);
+    const openCommitments = row.commitments.filter((c) => c.closedAt === null);
+    const openWorst = worstOf(openCommitments);
 
+    let liveCommitment: CaseListRow["liveCommitment"] = null;
     let settledCommitment: CaseListRow["settledCommitment"] = null;
-    const settledRows = settledRowsByCaseId.get(row.id) ?? [];
-    if (!live && settledRows.length > 0) {
-      const worst = worstStatus(settledRows.map((c) => c.status));
-      const commitment =
-        settledRows.find((c) => c.status === worst) ?? settledRows[0]!;
-      const asOf = (row.closedAt ?? new Date()).toISOString();
-      const events = settledEventsByCaseId.get(row.id) ?? [];
-      const policy: SLAPolicyVersion = {
-        id: commitment.policyVersion.id,
-        policyId: commitment.policyVersion.policyId,
-        version: commitment.policyVersion.version,
-        match: commitment.policyVersion.match as SLAPolicyMatch,
-        targets: commitment.policyVersion.targets as {
-          kind: CommitmentKind;
-          minutes: number;
-        }[],
-        pauseOnStates: commitment.policyVersion
-          .pauseOnStates as NormalizedState[],
-        calendarVersionId: commitment.policyVersion.calendarVersionId,
-        warnAtPercent: commitment.policyVersion.warnAtPercent,
-        effectiveFrom: commitment.policyVersion.effectiveFrom.toISOString(),
+
+    if (openWorst) {
+      liveCommitment = {
+        kind: openWorst.kind as CommitmentKind,
+        status: openWorst.status,
+        targetMinutes: openWorst.targetMinutes,
+        remainingMinutes: Math.round(
+          (openWorst.dueAt.getTime() - asOfDate.getTime()) / 60_000,
+        ),
+        elapsedSeconds: Math.max(
+          0,
+          (asOfDate.getTime() - openWorst.startedAt.getTime()) / 1000,
+        ),
       };
-      const calendar: BusinessCalendarVersion = {
-        id: commitment.calendarVersion.id,
-        version: commitment.calendarVersion.version,
-        timezone: commitment.calendarVersion.timezone,
-        weekly: commitment.calendarVersion.weekly as unknown as WeeklyWindow[],
-        holidays: commitment.calendarVersion.holidays,
-        alwaysOpen: commitment.calendarVersion.alwaysOpen,
-      };
-      const evaluation = evaluateCommitment(
-        toCommitmentDomain(commitment),
-        events,
-        policy,
-        calendar,
-        commitment.closedAt?.toISOString() ?? asOf,
-      );
-      perfCount("evaluateCommitment");
-      const { spans } = deriveLegSpans(events, {
-        caseOpenedAt: row.openedAt.toISOString(),
-      });
-      perfCount("deriveLegSpans");
+    } else if (row.commitments.length > 0) {
+      const worst = worstOf(row.commitments)!;
+      const evaluation = latestEvaluationByCommitmentId.get(worst.id);
       settledCommitment = {
-        kind: commitment.kind,
-        status: commitment.status,
-        targetMinutes: commitment.targetMinutes,
-        elapsedSeconds: evaluation.elapsedSeconds,
-        supportLegMinutes: sumLegMinutes(spans, "support", asOf),
-        engineeringLegMinutes: sumLegMinutes(spans, "engineering", asOf),
+        kind: worst.kind as CommitmentKind,
+        status: worst.status,
+        targetMinutes: worst.targetMinutes,
+        elapsedSeconds: evaluation?.elapsedSeconds ?? null,
       };
     }
 
@@ -227,20 +388,47 @@ async function getCaseListDataInner(
               null,
           }
         : null,
-      liveCommitment: live
-        ? {
-            kind: live.kind,
-            status: live.status,
-            targetMinutes: live.targetMinutes,
-            remainingMinutes: live.remainingMinutes,
-            elapsedSeconds: live.elapsedSeconds,
-            supportLegMinutes: live.supportLegMinutes,
-            engineeringLegMinutes: live.engineeringLegMinutes,
-          }
-        : null,
+      liveCommitment,
       settledCommitment,
     };
   });
 
-  return { asOf: new Date().toISOString(), cases };
+  const pageSize = unbounded ? rowCount || 1 : params.pageSize;
+
+  return {
+    asOf,
+    cases,
+    page: params.page,
+    pageSize,
+    pageCount: Math.max(1, Math.ceil(rowCount / pageSize)),
+    rowCount,
+    counts,
+  };
+}
+
+export function parseCaseListParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): CaseListParams {
+  const get = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const page = Math.max(1, Number(get("page")) || 1);
+  const pageSizeRaw = Number(get("pageSize"));
+  const pageSize = [10, 25, 50, 100].includes(pageSizeRaw) ? pageSizeRaw : 25;
+
+  const sortId = get("sort") as CaseListSortId | undefined;
+  const sort =
+    sortId && sortId in SORT_COLUMNS
+      ? { id: sortId, desc: get("dir") !== "asc" }
+      : null;
+
+  const status = (get("status") as CaseListStatusFilter) ?? "all";
+  const openState = (get("openState") as CaseListOpenFilter) ?? "all";
+  const linkState = (get("linkState") as CaseListLinkFilter) ?? "all";
+  const severity = (get("severity") as CaseListSeverityFilter) ?? "all";
+  const q = get("q") ?? "";
+
+  return { page, pageSize, sort, status, openState, linkState, severity, q };
 }

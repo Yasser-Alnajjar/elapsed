@@ -224,13 +224,14 @@ export interface CaseListRow {
     statusName: string | null;
   } | null;
   /**
-   * A live snapshot of this case's most urgent still-open commitment
-   * (lowest `remainingMinutes`, matching `worstCommitmentStatus`'s
-   * worst-first precedence), or null when the case has no open commitment
-   * right now (e.g. it's closed) — mirrors `AtRiskRowData`, scoped down to
-   * what the "SLA Target & Runway" and "Leg Allocation" columns need. Never
-   * computed for a closed case: its SLA outcome is already final in
-   * `worstCommitmentStatus`.
+   * A snapshot of this case's worst-precedence still-open commitment, or
+   * null when the case has no open commitment right now (e.g. it's closed).
+   * `remainingMinutes`/`elapsedSeconds` are derived from persisted
+   * `Commitment.dueAt`/`startedAt` (ignores pauses — the same approximation
+   * `getAlertSummary`'s layout alerts already use), not from a live
+   * `evaluateCommitment` run: the case list never loads events or evaluates.
+   * No leg-minute fields — those need per-case events, which are out of
+   * scope here (still available live on the case-detail page).
    */
   liveCommitment: {
     kind: CommitmentKind;
@@ -238,29 +239,65 @@ export interface CaseListRow {
     targetMinutes: number;
     remainingMinutes: number;
     elapsedSeconds: number;
-    supportLegMinutes: number;
-    engineeringLegMinutes: number;
   } | null;
   /**
-   * The final outcome of the case's worst commitment when there is no live
+   * The final outcome of the case's worst commitment when there is no open
    * one (closed case / settled commitments): the latest persisted
-   * `Evaluation`'s elapsed vs. target, plus leg minutes derived from the
-   * case's events up to `closedAt` (or now). Null while `liveCommitment` is
-   * set, or when the case has no commitment / evaluation.
+   * `Evaluation`'s elapsed vs. target. `elapsedSeconds` is null when no
+   * evaluation has been recorded yet. No leg-minute fields (see
+   * `liveCommitment`). Null while `liveCommitment` is set, or when the case
+   * has no commitment at all.
    */
   settledCommitment: {
     kind: CommitmentKind;
     status: CommitmentStatus;
     targetMinutes: number;
-    elapsedSeconds: number;
-    supportLegMinutes: number;
-    engineeringLegMinutes: number;
+    elapsedSeconds: number | null;
   } | null;
+}
+
+export type CaseListStatusFilter = "all" | CommitmentStatus;
+export type CaseListOpenFilter = "all" | "open" | "closed";
+export type CaseListLinkFilter = "all" | "linked" | "unlinked";
+export type CaseListSeverityFilter = "all" | "P1" | "P2" | "P3" | "P4";
+/**
+ * A sortable case-list column id (matches the `ColumnDef.id`s in
+ * `csr/columns.tsx`), not the underlying database field it maps to — see
+ * `SORT_COLUMNS` in `case-list-data.ts`. `null`/omitted means the default
+ * (`openedAt` desc).
+ */
+export type CaseListSortId = "priorityDualKey" | "subject" | "currentStateAssignee";
+
+export interface CaseListParams {
+  page: number;
+  pageSize: number;
+  sort: { id: CaseListSortId; desc: boolean } | null;
+  status: CaseListStatusFilter;
+  openState: CaseListOpenFilter;
+  linkState: CaseListLinkFilter;
+  severity: CaseListSeverityFilter;
+  q: string;
+}
+
+export interface CaseListCounts {
+  status: Record<CaseListStatusFilter, number>;
+  open: Record<CaseListOpenFilter, number>;
+  link: Record<CaseListLinkFilter, number>;
+  severity: Record<CaseListSeverityFilter, number>;
+  /** Cases with at least one still-open commitment — the "SLA clock running" metric tile. */
+  runningClock: number;
+  /** Cases whose primary link is `certain` confidence — the "linked, certain" metric tile. */
+  linkedCertain: number;
 }
 
 export interface CaseListData {
   asOf: string;
   cases: CaseListRow[];
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  rowCount: number;
+  counts: CaseListCounts;
 }
 
 export interface CaseDetailData {

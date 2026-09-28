@@ -53,6 +53,22 @@ interface DataTableProps<TData, TValue> {
   paginated?: boolean;
   prefix?: string;
   empty?: React.ReactNode;
+  /**
+   * Opt-in server-driven mode: `data` is only the current page, sorting and
+   * filtering happen server-side, and the caller (not this component) owns
+   * `sorting` state. No other consumer of `DataTable` uses this — added for
+   * the case list's server-paginated rewrite (performance-plan.md Phase 2
+   * item 1).
+   */
+  manual?: boolean;
+  /** Manual mode only: total page count, from the server's row count. */
+  pageCount?: number;
+  /** Manual mode only: total matching row count, for the pagination footer. */
+  rowCount?: number;
+  /** Manual mode only: controlled sorting state. */
+  sorting?: SortingState;
+  /** Manual mode only: called when the user clicks a sortable column header. */
+  onSortingChange?: (sorting: SortingState) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -73,8 +89,14 @@ export function DataTable<TData, TValue>({
   className,
   prefix,
   empty,
+  manual = false,
+  pageCount,
+  rowCount,
+  sorting: controlledSorting,
+  onSortingChange: onSortingChangeExternal,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [localSorting, setLocalSorting] = useState<SortingState>([]);
+  const sorting = manual ? (controlledSorting ?? []) : localSorting;
   const [columnOrder, setColumnOrder] = useState<string[]>(
     columns.map((col) => col.id || (col as any).accessorKey),
   );
@@ -119,14 +141,18 @@ export function DataTable<TData, TValue>({
     columns: processedColumns,
     onSortingChange: (updater) => {
       captureRowPositions();
-      setSorting(updater);
+      const next =
+        typeof updater === "function" ? updater(sorting) : updater;
+      if (manual) onSortingChangeExternal?.(next);
+      else setLocalSorting(next);
     },
     onGlobalFilterChange: setGlobalFilter,
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: paginated ? getPaginationRowModel() : undefined,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel:
+      paginated && !manual ? getPaginationRowModel() : undefined,
+    getSortedRowModel: manual ? undefined : getSortedRowModel(),
+    getFilteredRowModel: manual ? undefined : getFilteredRowModel(),
     onRowSelectionChange: onRowSelectionChange
       ? (updaterOrValue) => {
           // updaterOrValue can be a value or an updater function
@@ -145,7 +171,9 @@ export function DataTable<TData, TValue>({
         pageSize: next.pageSize,
       });
     },
-    manualPagination: false,
+    manualPagination: manual,
+    manualSorting: manual,
+    pageCount: manual ? pageCount : undefined,
     autoResetPageIndex: false,
     globalFilterFn: "includesString",
     enableColumnFilters: true,
@@ -363,7 +391,7 @@ export function DataTable<TData, TValue>({
 
       {paginated && (
         <div className="flex flex-col sm:flex-row items-center justify-between border-t p-4 gap-4">
-          <DataTablePagination table={table} prefix={prefix} />
+          <DataTablePagination table={table} prefix={prefix} rowCount={rowCount} />
         </div>
       )}
     </div>

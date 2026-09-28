@@ -4,7 +4,11 @@ import { getPrismaClient } from "@sla/db";
 import { getRequestContext } from "@/lib/request-context";
 import { getCaseDetailData } from "@/lib/case-detail-data";
 import { getCaseListData } from "@/lib/case-list-data";
-import type { CaseDetailData, CaseListData } from "@/lib/types/cases";
+import type {
+  CaseDetailData,
+  CaseListData,
+  CaseListParams,
+} from "@/lib/types/cases";
 
 export const CasesActions = {
   async getDetail(caseId: string): Promise<CaseDetailData> {
@@ -16,10 +20,10 @@ export const CasesActions = {
     return data;
   },
 
-  async getList(): Promise<CaseListData> {
+  async getList(params: Partial<CaseListParams> = {}): Promise<CaseListData> {
     const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
-    return getCaseListData(prisma, organizationId);
+    return getCaseListData(prisma, organizationId, params);
   },
 };

@@ -214,9 +214,10 @@ export function SettledRunway({
 }) {
   const tone = SETTLED_TONE[settled.status] ?? SETTLED_TONE.on_track!;
   const targetSeconds = settled.targetMinutes * 60;
+  const elapsedSeconds = settled.elapsedSeconds ?? 0;
   const percent =
-    targetSeconds > 0 ? (settled.elapsedSeconds / targetSeconds) * 100 : 0;
-  const overBy = settled.elapsedSeconds - targetSeconds;
+    targetSeconds > 0 ? (elapsedSeconds / targetSeconds) * 100 : 0;
+  const overBy = elapsedSeconds - targetSeconds;
 
   return (
     <div className="flex flex-col gap-1">
@@ -245,9 +246,11 @@ export function SettledRunway({
           className="size-3.5"
         />
         <span>
-          {settled.status === "breached" && overBy > 0
-            ? `+${formatMinutes(Math.ceil(overBy / 60))} over`
-            : `${formatMinutes(Math.max(0, Math.round(settled.elapsedSeconds / 60)))} used`}
+          {settled.elapsedSeconds == null
+            ? "—"
+            : settled.status === "breached" && overBy > 0
+              ? `+${formatMinutes(Math.ceil(overBy / 60))} over`
+              : `${formatMinutes(Math.max(0, Math.round(elapsedSeconds / 60)))} used`}
         </span>
       </div>
       <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-container-lowest">
@@ -367,91 +370,10 @@ export function SlaTargetRunwayCell({ row }: { row: CaseListRow }) {
   );
 }
 
-/** "Leg Allocation (Supp↔Eng)" — a compact two-segment mini bar. */
-export function LegAllocationCell({ row }: { row: CaseListRow }) {
-  const live = row.liveCommitment;
-  const snap = live ?? row.settledCommitment;
-
-  if (!snap) {
-    return <span className="text-xs text-muted-foreground">—</span>;
-  }
-
-  const total = snap.supportLegMinutes + snap.engineeringLegMinutes;
-  const supportShare = total > 0 ? (snap.supportLegMinutes / total) * 100 : 0;
-  const engineeringShare =
-    total > 0 ? (snap.engineeringLegMinutes / total) * 100 : 0;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between font-mono text-xxs text-on-surface-variant">
-        <span
-          className={cn(
-            supportShare > engineeringShare && "text-error font-medium",
-          )}
-        >
-          Supp: {formatMinutes(snap.supportLegMinutes)}
-        </span>
-        <span
-          className={cn(
-            engineeringShare > supportShare && "text-error font-medium",
-          )}
-        >
-          Eng: {formatMinutes(snap.engineeringLegMinutes)}
-        </span>
-      </div>
-      <div className="flex h-1.5 w-full overflow-hidden rounded bg-surface-container-lowest">
-        <div
-          className={cn(
-            "h-full",
-            supportShare > engineeringShare ? "bg-error" : "bg-primary/70",
-          )}
-          style={{ width: `${supportShare}%` }}
-          title={`Support leg: ${formatMinutes(snap.supportLegMinutes)}`}
-        />
-        <div
-          className={cn(
-            "h-full",
-            engineeringShare > supportShare ? "bg-error" : "bg-primary",
-          )}
-          style={{ width: `${engineeringShare}%` }}
-          title={`Engineering leg: ${formatMinutes(snap.engineeringLegMinutes)}`}
-        />
-      </div>
-      <div className="flex items-center gap-1 font-mono text-xxs">
-        {!live ? (
-          <span className="text-outline">
-            Settled ·{" "}
-            {engineeringShare > supportShare ? "mostly Eng" : "mostly Support"}
-          </span>
-        ) : live.status === "breached" ? (
-          <>
-            <Ms name={"hourglass_bottom"} className="size-3.25 text-error" />
-            <span className="text-error">Clock Halted / Latent</span>
-          </>
-        ) : (
-          <>
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                engineeringShare > supportShare
-                  ? "bg-error animate-ping"
-                  : "bg-primary animate-pulse",
-              )}
-            />
-            <span
-              className={cn(
-                engineeringShare > supportShare ? "text-error" : "text-primary",
-              )}
-            >
-              Active in{" "}
-              {engineeringShare > supportShare ? "Eng Jira" : "Support Tier"}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// "Leg Allocation (Supp↔Eng)" was removed from the case list
+// (performance-plan.md Phase 2 item 1): it needs per-case events, which the
+// snapshot list no longer loads. Still available live on the case-detail
+// page.
 
 /** "Current State & Assignee". */
 export function CurrentStateAssigneeCell({ row }: { row: CaseListRow }) {

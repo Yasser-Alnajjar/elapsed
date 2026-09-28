@@ -1,19 +1,14 @@
 import { Actions } from "@/actions";
-import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
+import { parseCaseListParams } from "@/lib/case-list-data";
 import { CaseListView } from "../csr/list-view";
 
-export const CaseList = async () => {
-  const [data] = await Promise.all([
-    Actions.Cases.getList(),
-    // Actions.WorkerSettings.getData(),
-  ]);
+interface CaseListProps {
+  searchParams: Record<string, string | string[] | undefined>;
+}
 
-  return (
-    <>
-      <CaseListView data={data} />
-      {/* <SlaAutoRefreshProvider
-        initInterval={worker.activePollIntervalMs - 2000}
-      /> */}
-    </>
-  );
+export const CaseList = async ({ searchParams }: CaseListProps) => {
+  const params = parseCaseListParams(searchParams);
+  const data = await Actions.Cases.getList(params);
+
+  return <CaseListView data={data} />;
 };

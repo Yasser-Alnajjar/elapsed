@@ -4,6 +4,12 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Cases",
 };
-export default function CasesPage() {
-  return <CaseList />;
+
+interface CasesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function CasesPage({ searchParams }: CasesPageProps) {
+  const resolvedSearchParams = await searchParams;
+  return <CaseList searchParams={resolvedSearchParams} />;
 }

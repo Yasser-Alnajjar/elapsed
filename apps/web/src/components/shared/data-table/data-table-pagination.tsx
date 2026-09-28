@@ -22,12 +22,15 @@ interface DataTablePaginationProps<TData> {
   table: Table<TData>;
   className?: string;
   prefix?: string;
+  /** Overrides the "Total" figure in manual-pagination mode, where the table only ever holds one page of rows. */
+  rowCount?: number;
 }
 
 export function DataTablePagination<TData>({
   table,
   className,
   prefix,
+  rowCount,
 }: DataTablePaginationProps<TData>) {
   const { createQueryFromObject, getQueryObject } = useQueryParams();
 
@@ -104,8 +107,8 @@ export function DataTablePagination<TData>({
       <div className="order-1 flex flex-wrap items-center justify-center gap-2 lg:gap-4 md:order-2">
         {/* Pagination Info */}
         <div className="text-nowrap text-sm font-medium">
-          Total: {table.getPrePaginationRowModel().rows.length} <span>|</span>{" "}
-          Page {currentPage} of {pageCount}
+          Total: {rowCount ?? table.getPrePaginationRowModel().rows.length}{" "}
+          <span>|</span> Page {currentPage} of {pageCount}
         </div>
 
         {/* Go To Page */}

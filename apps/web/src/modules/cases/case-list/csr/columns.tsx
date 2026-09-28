@@ -9,7 +9,6 @@ import {
   CorrelationCell,
   CurrentStateAssigneeCell,
   CustomerSubjectCell,
-  LegAllocationCell,
   PriorityDualKeyCell,
   SlaTargetRunwayCell,
 } from "./cells";
@@ -66,7 +65,10 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
       />
     ),
     cell: ({ row }) => <CorrelationCell row={row.original} />,
-    enableSorting: true,
+    // No persisted, monotonic backing value once the list stops evaluating
+    // live (link confidence is a to-many relation) — see SORT_COLUMNS in
+    // case-list-data.ts.
+    enableSorting: false,
     enableColumnFilter: false,
   },
   {
@@ -82,31 +84,8 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
       />
     ),
     cell: ({ row }) => <SlaTargetRunwayCell row={row.original} />,
-    enableSorting: true,
-    enableColumnFilter: false,
-  },
-
-  {
-    id: "legAllocation",
-    minSize: 180,
-    accessorFn: (row) =>
-      row.liveCommitment
-        ? row.liveCommitment.engineeringLegMinutes /
-          Math.max(
-            1,
-            row.liveCommitment.supportLegMinutes +
-              row.liveCommitment.engineeringLegMinutes,
-          )
-        : -1,
-    header: ({ column }) => (
-      <DataTableColumnHeader
-        className={HEADER_CLASS}
-        column={column}
-        title="Leg allocation (supp↔eng)"
-      />
-    ),
-    cell: ({ row }) => <LegAllocationCell row={row.original} />,
-    enableSorting: true,
+    // Remaining minutes has no persisted, monotonic column to sort by.
+    enableSorting: false,
     enableColumnFilter: false,
   },
 
