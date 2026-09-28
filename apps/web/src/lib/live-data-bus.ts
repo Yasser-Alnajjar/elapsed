@@ -1,21 +1,46 @@
 import "server-only";
-import { subscribeToLiveData, type LiveDataEvent } from "@sla/db";
+import { subscribeToLiveData, type LiveDataEvent, type LiveListenerStatus } from "@sla/db";
 
 type Listener = (event: LiveDataEvent) => void;
+type StatusListener = (status: LiveDataStatus) => void;
+
+/** `LiveListenerStatus` plus this process's own view of when data last actually flowed — the bus's addition on top of what the dedicated `LISTEN` connection itself knows. */
+export interface LiveDataStatus extends LiveListenerStatus {
+  lastEventAt: Date | null;
+}
 
 export interface LiveDataBus {
   /** Delivers every future event for `organizationId` to `listener` until the returned function is called. */
   subscribe(organizationId: string, listener: Listener): () => void;
+  /** Current snapshot of the dedicated `LISTEN` connection's health, for the Monitoring page and a new SSE subscriber's first status push. */
+  getStatus(): LiveDataStatus;
+  /** Delivers every future status *transition* (never a same-state duplicate — see `subscribeToLiveData`) until the returned function is called. */
+  subscribeToStatus(listener: StatusListener): () => void;
 }
 
 function createLiveDataBus(): LiveDataBus {
   const listenersByOrg = new Map<string, Set<Listener>>();
+  const statusListeners = new Set<StatusListener>();
+  let lastEventAt: Date | null = null;
 
-  subscribeToLiveData((event) => {
-    const listeners = listenersByOrg.get(event.organizationId);
-    if (!listeners) return;
-    for (const listener of listeners) listener(event);
-  });
+  const subscription = subscribeToLiveData(
+    (event) => {
+      lastEventAt = new Date();
+      const listeners = listenersByOrg.get(event.organizationId);
+      if (!listeners) return;
+      for (const listener of listeners) listener(event);
+    },
+    {
+      onStatusChange: () => {
+        const snapshot = getStatus();
+        for (const listener of statusListeners) listener(snapshot);
+      },
+    },
+  );
+
+  function getStatus(): LiveDataStatus {
+    return { ...subscription.getStatus(), lastEventAt };
+  }
 
   return {
     subscribe(organizationId, listener) {
@@ -29,6 +54,13 @@ function createLiveDataBus(): LiveDataBus {
       return () => {
         listeners!.delete(listener);
         if (listeners!.size === 0) listenersByOrg.delete(organizationId);
+      };
+    },
+    getStatus,
+    subscribeToStatus(listener) {
+      statusListeners.add(listener);
+      return () => {
+        statusListeners.delete(listener);
       };
     },
   };

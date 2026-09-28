@@ -1,15 +1,21 @@
 "use client";
 
 import { SettingsSectionHeader } from "@/components/settings/section-header";
-import { Activity, RefreshCw, Timer } from "lucide-react";
+import { Activity, RefreshCw, Timer, Radio } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Actions } from "@/actions/client";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Reveal } from "@/components/shared/reveal";
 import { formatExactTimestamp } from "@/lib/format";
+import {
+  getServerSseTransportSnapshot,
+  getSseTransportOpen,
+  subscribeLiveStatus,
+} from "@/lib/live-status-store";
+import type { LiveDataStatusView, LiveListenerConnectionState } from "@/lib/types/live-data-status";
 import {
   ACTIVE_POLL_OPTIONS,
   RECONCILIATION_OPTIONS,
@@ -30,8 +36,21 @@ const STATUS_VARIANT: Record<WorkerStatus, BadgeProps["variant"]> = {
   stopped: "destructive",
 };
 
+const LIVE_STATE_LABEL: Record<LiveListenerConnectionState, string> = {
+  connected: "Live",
+  reconnecting: "Reconnecting",
+  offline: "Offline",
+};
+
+const LIVE_STATE_VARIANT: Record<LiveListenerConnectionState, BadgeProps["variant"]> = {
+  connected: "success",
+  reconnecting: "warning",
+  offline: "destructive",
+};
+
 interface MonitoringViewProps {
   data: WorkerMonitoringData;
+  liveData: LiveDataStatusView;
 }
 
 /**
@@ -42,9 +61,18 @@ interface MonitoringViewProps {
  * `@sla/db`'s `WorkerSettings` doc comment) — every signed-in user can view
  * this page, but only an organization owner (`data.canEdit`) can change it.
  */
-export function MonitoringView({ data }: MonitoringViewProps) {
+export function MonitoringView({ data, liveData }: MonitoringViewProps) {
   const router = useRouter();
   const [settings, setSettings] = useState(data);
+  // This tab's own SSE transport — independent of `liveData.state` (the
+  // server's Postgres-listener state, refreshed only via "Refresh status"
+  // below): reads live from `live-status-store`, the same store the header
+  // badge reads, so it reflects reality even between refreshes.
+  const sseOpen = useSyncExternalStore(
+    subscribeLiveStatus,
+    getSseTransportOpen,
+    getServerSseTransportSnapshot,
+  );
 
   useEffect(() => {
     setSettings(data);
@@ -180,6 +208,65 @@ export function MonitoringView({ data }: MonitoringViewProps) {
                 {settings.nextReconciliationAt
                   ? formatExactTimestamp(settings.nextReconciliationAt)
                   : "Pending first check"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Reveal>
+
+      <Reveal delay={0.1}>
+        <Card className="bg-surface-container-low rounded-xl border-0 shadow-sm overflow-hidden">
+          <CardHeader className="p-6 pb-0">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded bg-surface-container-highest text-primary">
+                <Radio className="size-4" />
+              </span>
+              <div>
+                <CardTitle className="text-on-surface text-xl font-semibold tracking-tight">
+                  Live data
+                </CardTitle>
+                <p className="mt-1 text-xs text-on-surface-variant">
+                  Postgres LISTEN/NOTIFY → this web process → SSE → your browser. Reported by this process itself; the "SSE connection" row is this browser tab's own view.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="grid grid-cols-2 gap-4 p-6 pt-4 sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-on-surface-variant">Live data listener</p>
+              <Badge variant={LIVE_STATE_VARIANT[liveData.state]} className="mt-1">
+                {LIVE_STATE_LABEL[liveData.state]}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-xs text-on-surface-variant">SSE connection (this tab)</p>
+              <Badge variant={sseOpen ? "success" : "warning"} className="mt-1">
+                {sseOpen ? "Connected" : "Reconnecting"}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-xs text-on-surface-variant">Reconnects</p>
+              <p className="mt-1.5 text-sm font-medium">{liveData.reconnectCount}</p>
+            </div>
+            <div>
+              <p className="text-xs text-on-surface-variant">Last connected</p>
+              <p className="mt-1.5 text-sm font-medium">
+                {formatExactTimestamp(liveData.lastConnectedAt)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-on-surface-variant">Last event received</p>
+              <p className="mt-1.5 text-sm font-medium">
+                {formatExactTimestamp(liveData.lastEventAt)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-on-surface-variant">Last error</p>
+              <p className="mt-1.5 text-sm font-medium">
+                {liveData.lastErrorMessage
+                  ? `${liveData.lastErrorMessage} (${formatExactTimestamp(liveData.lastErrorAt)})`
+                  : "None"}
               </p>
             </div>
           </CardContent>

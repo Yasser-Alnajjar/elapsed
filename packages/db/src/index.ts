@@ -72,7 +72,12 @@ export {
   publishLiveDataEvent,
   subscribeToLiveData,
 } from "./live-events";
-export type { LiveDataEvent, LiveDataSubscription } from "./live-events";
+export type {
+  LiveDataEvent,
+  LiveDataSubscription,
+  LiveListenerConnectionState,
+  LiveListenerStatus,
+} from "./live-events";
 export { recordSlaImportSummary } from "./sla-import-summary";
 export type { SlaImportSummaryInput } from "./sla-import-summary";
 export { isPerfMetricsEnabled, perfCount, withPerfScope } from "./perf-metrics";

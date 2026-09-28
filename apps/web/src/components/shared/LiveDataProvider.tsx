@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { connectLiveData } from "@/lib/live-data-connection";
+import { setLiveStatus, setSseTransportOpen } from "@/lib/live-status-store";
 
 /**
  * Global, event-driven replacement for the old `SlaAutoRefreshProvider`
@@ -23,6 +24,8 @@ export function LiveDataProvider() {
     const connection = connectLiveData({
       url: "/api/live",
       onRefresh: () => routerRef.current.refresh(),
+      onStatusChange: setLiveStatus,
+      onTransportChange: setSseTransportOpen,
     });
     return () => connection.close();
   }, []);

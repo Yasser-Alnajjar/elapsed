@@ -13,19 +13,48 @@ vi.mock("server-only", () => ({}));
 
 const dbEvents = vi.hoisted(() => ({
   handler: null as ((event: LiveDataEvent) => void) | null,
+  onStatusChange: null as ((status: unknown) => void) | null,
 }));
 
+// Mutated in place, mirroring `live-events.ts`'s own contract: it mutates its
+// `status` object first, then calls `onStatusChange` — so `getStatus()`
+// always already reflects whatever the most recent callback announced.
+const fakeStatus: {
+  state: "connected" | "reconnecting" | "offline";
+  lastConnectedAt: Date | null;
+  lastErrorAt: Date | null;
+  lastErrorMessage: string | null;
+  reconnectCount: number;
+} = {
+  state: "connected",
+  lastConnectedAt: new Date("2026-01-01T00:00:00Z"),
+  lastErrorAt: null,
+  lastErrorMessage: null,
+  reconnectCount: 0,
+};
+
 vi.mock("@sla/db", () => ({
-  subscribeToLiveData: vi.fn((onEvent: (event: LiveDataEvent) => void) => {
-    dbEvents.handler = onEvent;
-    return { close: vi.fn() };
-  }),
+  subscribeToLiveData: vi.fn(
+    (
+      onEvent: (event: LiveDataEvent) => void,
+      options?: { onStatusChange?: (status: unknown) => void },
+    ) => {
+      dbEvents.handler = onEvent;
+      dbEvents.onStatusChange = options?.onStatusChange ?? null;
+      return { close: vi.fn(), getStatus: () => fakeStatus };
+    },
+  ),
 }));
 
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   dbEvents.handler = null;
+  dbEvents.onStatusChange = null;
+  fakeStatus.state = "connected";
+  fakeStatus.lastErrorAt = null;
+  fakeStatus.lastErrorMessage = null;
+  fakeStatus.reconnectCount = 0;
   // `getLiveDataBus` stashes its singleton on `globalThis` (surviving
   // `vi.resetModules()`, on purpose, for `next dev` hot reload) — cleared
   // here so each test gets its own bus and its own `subscribeToLiveData` call.
@@ -86,5 +115,44 @@ describe("getLiveDataBus", () => {
 
     // One dedicated connection per process, not one per subscriber.
     expect(vi.mocked(subscribeToLiveData)).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the dedicated connection's status plus its own last-event-at", async () => {
+    const { getLiveDataBus } = await import("../src/lib/live-data-bus");
+    const bus = getLiveDataBus();
+
+    expect(bus.getStatus()).toMatchObject({ state: "connected", lastEventAt: null });
+
+    dbEvents.handler!({ type: "data.updated", organizationId: "org-a" });
+
+    expect(bus.getStatus().lastEventAt).toBeInstanceOf(Date);
+  });
+
+  it("notifies status subscribers when the underlying connection's status changes", async () => {
+    const { getLiveDataBus } = await import("../src/lib/live-data-bus");
+    const bus = getLiveDataBus();
+
+    const listener = vi.fn();
+    bus.subscribeToStatus(listener);
+
+    fakeStatus.state = "reconnecting";
+    dbEvents.onStatusChange!(fakeStatus);
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ state: "reconnecting" }));
+  });
+
+  it("stops notifying a status listener once it unsubscribes", async () => {
+    const { getLiveDataBus } = await import("../src/lib/live-data-bus");
+    const bus = getLiveDataBus();
+
+    const listener = vi.fn();
+    const unsubscribe = bus.subscribeToStatus(listener);
+    unsubscribe();
+
+    fakeStatus.state = "offline";
+    dbEvents.onStatusChange!(fakeStatus);
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

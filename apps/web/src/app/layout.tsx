@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionProvider } from "@/providers/session-provider";
 import { GoToTop } from "@/components/ui/go-to-top";
+import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
 
 const hankenGrotesk = Hanken_Grotesk({
   subsets: ["latin"],
@@ -54,6 +55,7 @@ export default async function RootLayout({
           <ThemeProvider>
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
             <GoToTop />
+            <LiveDataProvider />
           </ThemeProvider>
         </SessionProvider>
       </body>

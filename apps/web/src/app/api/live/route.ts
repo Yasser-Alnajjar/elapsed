@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import type { LiveDataEvent } from "@sla/db";
 import { authOptions } from "@/lib/auth";
-import { getLiveDataBus } from "@/lib/live-data-bus";
+import { getLiveDataBus, type LiveDataStatus } from "@/lib/live-data-bus";
 
 // A long-lived stream must never be statically optimized or cached by Next
 // itself — only ever run per-request, with its own connection lifecycle.
@@ -13,6 +13,17 @@ const HEARTBEAT_MS = 20_000;
 
 function sseEvent(event: LiveDataEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+}
+
+/**
+ * The browser only needs the Postgres `LISTEN` connection's state to render
+ * its badge — never the raw error message, which could echo back
+ * connection-level detail (host, auth failure text). That stays server-side,
+ * visible only on the Monitoring settings page's own SSR read of
+ * `getLiveDataBus().getStatus()`.
+ */
+function statusSseEvent(status: LiveDataStatus): string {
+  return `event: listener.status\ndata: ${JSON.stringify({ state: status.state })}\n\n`;
 }
 
 /**
@@ -35,6 +46,7 @@ export async function GET(request: NextRequest) {
   const bus = getLiveDataBus();
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let unsubscribe: (() => void) | null = null;
+  let unsubscribeStatus: (() => void) | null = null;
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -57,6 +69,14 @@ export async function GET(request: NextRequest) {
         send(sseEvent(event));
       });
 
+      // The client must never infer "Live" merely from the stream opening —
+      // it gets the real, current Postgres-listener state right away, then
+      // only a push per actual transition (never a poll) after that.
+      send(statusSseEvent(bus.getStatus()));
+      unsubscribeStatus = bus.subscribeToStatus((status) => {
+        send(statusSseEvent(status));
+      });
+
       heartbeat = setInterval(() => {
         send(": heartbeat\n\n");
       }, HEARTBEAT_MS);
@@ -64,12 +84,14 @@ export async function GET(request: NextRequest) {
     cancel() {
       if (heartbeat) clearInterval(heartbeat);
       unsubscribe?.();
+      unsubscribeStatus?.();
     },
   });
 
   request.signal.addEventListener("abort", () => {
     if (heartbeat) clearInterval(heartbeat);
     unsubscribe?.();
+    unsubscribeStatus?.();
   });
 
   return new Response(stream, {

@@ -20,7 +20,24 @@ const bus = vi.hoisted(() => {
       return unsubscribe;
     },
   );
-  return { listenersByOrg, unsubscribe, subscribe };
+  const unsubscribeStatus = vi.fn();
+  let statusListener: ((status: { state: string }) => void) | null = null;
+  const subscribeToStatus = vi.fn((listener: (status: { state: string }) => void) => {
+    statusListener = listener;
+    return unsubscribeStatus;
+  });
+  const getStatus = vi.fn(
+    (): { state: "connected" | "reconnecting" | "offline" } => ({ state: "connected" }),
+  );
+  return {
+    listenersByOrg,
+    unsubscribe,
+    subscribe,
+    unsubscribeStatus,
+    subscribeToStatus,
+    getStatus,
+    emitStatus: (status: { state: string }) => statusListener?.(status),
+  };
 });
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
@@ -55,6 +72,10 @@ beforeEach(() => {
   bus.listenersByOrg.clear();
   bus.unsubscribe.mockClear();
   bus.subscribe.mockClear();
+  bus.unsubscribeStatus.mockClear();
+  bus.subscribeToStatus.mockClear();
+  bus.getStatus.mockClear();
+  bus.getStatus.mockReturnValue({ state: "connected" });
 });
 
 describe("GET /api/live", () => {
@@ -93,6 +114,10 @@ describe("GET /api/live", () => {
     const first = await readChunk(reader);
     expect(first).toContain(": connected");
 
+    // Then the current listener-status snapshot, also sent immediately.
+    const statusChunk = await readChunk(reader);
+    expect(statusChunk).toContain("event: listener.status");
+
     const listener = bus.listenersByOrg.get("org-1")!;
     listener({ type: "data.updated", organizationId: "org-1" });
 
@@ -101,6 +126,57 @@ describe("GET /api/live", () => {
     expect(next).toContain(JSON.stringify({ type: "data.updated", organizationId: "org-1" }));
 
     await reader.cancel();
+  });
+
+  it("sends the current listener status immediately, without waiting for a change", async () => {
+    auth.session = sessionFor("org-1");
+    bus.getStatus.mockReturnValue({ state: "offline" });
+    const { GET } = await import("../src/app/api/live/route");
+    const response = await GET(new NextRequest("http://localhost/api/live"));
+    const reader = response.body!.getReader();
+
+    await readChunk(reader); // ": connected" comment
+    const statusChunk = await readChunk(reader);
+
+    expect(statusChunk).toContain("event: listener.status");
+    expect(statusChunk).toContain(JSON.stringify({ state: "offline" }));
+
+    await reader.cancel();
+  });
+
+  it("pushes a status update to the stream when the bus reports a transition, and never leaks the raw error message", async () => {
+    auth.session = sessionFor("org-1");
+    const { GET } = await import("../src/app/api/live/route");
+    const response = await GET(new NextRequest("http://localhost/api/live"));
+    const reader = response.body!.getReader();
+
+    await readChunk(reader); // ": connected"
+    await readChunk(reader); // initial listener.status snapshot
+
+    bus.emitStatus({
+      state: "reconnecting",
+      lastErrorMessage: "password authentication failed for user \"sla\"",
+    } as never);
+
+    const chunk = await readChunk(reader);
+    expect(chunk).toContain("event: listener.status");
+    expect(chunk).toContain(JSON.stringify({ state: "reconnecting" }));
+    expect(chunk).not.toContain("password");
+
+    await reader.cancel();
+  });
+
+  it("unsubscribes from status updates when the client disconnects", async () => {
+    auth.session = sessionFor("org-1");
+    const { GET } = await import("../src/app/api/live/route");
+    const response = await GET(new NextRequest("http://localhost/api/live"));
+    const reader = response.body!.getReader();
+    await readChunk(reader);
+    await readChunk(reader);
+
+    await reader.cancel();
+
+    expect(bus.unsubscribeStatus).toHaveBeenCalledTimes(1);
   });
 
   it("never delivers another organization's event to this subscriber", async () => {
@@ -121,6 +197,7 @@ describe("GET /api/live", () => {
     const response = await GET(new NextRequest("http://localhost/api/live"));
     const reader = response.body!.getReader();
     await readChunk(reader); // drain the initial comment
+    await readChunk(reader); // drain the initial listener-status snapshot
 
     await reader.cancel();
 

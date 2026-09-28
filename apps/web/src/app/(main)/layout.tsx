@@ -12,7 +12,7 @@ import { Actions } from "@/actions";
 import { getRequestContext } from "@/lib/request-context";
 import { getAlertSummary } from "@/lib/alert-summary-data";
 import { isPlatformOperator } from "@/lib/authz";
-import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
+import { LiveStatusBadge } from "@/components/shared/LiveStatusBadge";
 import { AlertsPopover } from "@/components/layout/alerts-popover";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Input } from "@/components/ui/input";
@@ -48,13 +48,6 @@ export default async function AppLayout({ children }: AppLayoutProps) {
 
   const alerts = alertSummary.rows;
 
-  // Real per-integration connection state (Elapsed reconstruction's header
-  // sync pill and alert-channel indicator) — never a static "Sync Active"
-  // label, since that would fabricate a connection the org may not have.
-  const ticketSourceConnected = integrations.zendesk.connected;
-  const engineeringSourceConnected = integrations.jira.connected;
-  const anySynced = ticketSourceConnected || engineeringSourceConnected;
-
   return (
     <SidebarProvider defaultOpen={false}>
       {/* Global and page-agnostic (roadmap: event-driven live data) — mounted
@@ -62,7 +55,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           (dashboard, cases, commitments, settings, etc.) refreshes on a real
           data change instead of only the pages that used to opt into their
           own timer. */}
-      <LiveDataProvider />
+
       <AppSidebar
         autoSyncSeconds={Math.round(worker.activePollIntervalMs / 1000)}
         isPlatformOperator={isPlatformOperator(session)}
@@ -71,27 +64,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         <header className="border-border bg-surface-container-lowest/95 sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl">
           <SidebarTrigger />
 
-          <div
-            className="flex items-center gap-1.5 rounded border border-border-subtle bg-surface-container px-2.5 py-1"
-            title={
-              anySynced
-                ? [
-                    ticketSourceConnected && "Zendesk",
-                    engineeringSourceConnected && "Jira",
-                  ]
-                    .filter(Boolean)
-                    .join(" • ")
-                : "No ticket source connected yet"
-            }
-          >
-            <span
-              className={`size-1.5 rounded-full ${anySynced ? "bg-success animate-pulse" : "bg-outline"}`}
-              aria-hidden
-            />
-            <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-foreground">
-              {anySynced ? "Sync active" : "Not connected"}
-            </span>
-          </div>
+          <LiveStatusBadge />
 
           {/* Global search (⌘K) is Stitch's visual affordance for a
               capability this app doesn't have yet (no omnibar search
