@@ -1,17 +1,14 @@
 import "server-only";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import { getDashboardData } from "@/lib/dashboard-data";
 import type { DashboardData } from "@/lib/types/dashboard";
 
 export const DashboardActions = {
   async getData(): Promise<DashboardData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
-    return getDashboardData(prisma, session.user.organizationId);
+    return getDashboardData(prisma, organizationId);
   },
 };

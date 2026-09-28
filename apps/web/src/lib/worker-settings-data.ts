@@ -1,4 +1,5 @@
-import { deriveWorkerStatus, getOrCreateWorkerSettings, type PrismaClient } from "@sla/db";
+import { cache } from "react";
+import { deriveWorkerStatus, getWorkerSettingsForRead, type PrismaClient } from "@sla/db";
 import type { WorkerMonitoringData } from "./types/worker-settings";
 
 /**
@@ -8,12 +9,17 @@ import type { WorkerMonitoringData } from "./types/worker-settings";
  * takes no `organizationId`; `canEdit` (see `isPlatformOperator` in
  * `@/lib/authz`) only decides whether the page renders the edit control —
  * every tenant, including an org owner, gets a read-only view.
+ *
+ * `React.cache`-wrapped: the layout and every page's own `ssr` component
+ * (Dashboard, CaseList, CaseDetail, AtRisk, Monitoring) each call this, so
+ * without memoization one request reads (and would otherwise write, via the
+ * old `upsert`-based read path) the singleton row several times over.
  */
-export async function getWorkerMonitoringData(
+export const getWorkerMonitoringData = cache(async function getWorkerMonitoringData(
   prisma: PrismaClient,
   canEdit: boolean,
 ): Promise<WorkerMonitoringData> {
-  const settings = await getOrCreateWorkerSettings(prisma);
+  const settings = await getWorkerSettingsForRead(prisma);
 
   return {
     activePollIntervalMs: settings.activePollIntervalMs,
@@ -25,4 +31,4 @@ export async function getWorkerMonitoringData(
     nextReconciliationAt: settings.nextReconciliationAt?.toISOString() ?? null,
     canEdit,
   };
-}
+});

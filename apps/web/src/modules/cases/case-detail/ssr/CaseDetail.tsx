@@ -10,8 +10,10 @@ export const CaseDetail = async ({
   /** The commitment the user navigated from; ignored unless it belongs to this case. */
   commitmentId?: string;
 }) => {
-  const data = await Actions.Cases.getDetail(caseId);
-  const worker = await Actions.WorkerSettings.getData();
+  const [data, worker] = await Promise.all([
+    Actions.Cases.getDetail(caseId),
+    Actions.WorkerSettings.getData(),
+  ]);
 
   const selectedCommitmentId =
     data.commitments.find((c) => c.id === commitmentId)?.id ?? null;

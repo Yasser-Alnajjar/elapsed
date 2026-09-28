@@ -82,6 +82,35 @@ export async function getOrCreateWorkerSettings(
 }
 
 /**
+ * Read-only counterpart to `getOrCreateWorkerSettings` for callers that only
+ * display the settings (the web app's Monitoring page, the layout's poll
+ * interval) and don't need the singleton row to exist yet — a `findUnique`
+ * plus the same env-var/hardcoded defaults used to seed it, with no write.
+ * Keeps read-heavy paths (rendered on every page) off the write path that
+ * `getOrCreateWorkerSettings`'s `upsert` puts on every call.
+ */
+export async function getWorkerSettingsForRead(
+  prisma: PrismaClient,
+): Promise<WorkerSettingsRecord> {
+  const settings = await prisma.workerSettings.findUnique({
+    where: { id: SINGLETON_ID },
+  });
+  if (settings) return settings;
+
+  return {
+    activePollIntervalMs: readIntervalMsFromEnv("WORKER_ACTIVE_POLL_MS", DEFAULT_ACTIVE_POLL_INTERVAL_MS),
+    reconciliationIntervalMs: readIntervalMsFromEnv("WORKER_RECONCILIATION_MS", DEFAULT_RECONCILIATION_INTERVAL_MS),
+    lastHeartbeatAt: null,
+    lastActivePollAt: null,
+    lastActivePollFailures: null,
+    lastReconciliationAt: null,
+    lastReconciliationFailures: null,
+    nextActivePollAt: null,
+    nextReconciliationAt: null,
+  };
+}
+
+/**
  * The shortest `targets[].minutes` across every organization's *latest*
  * SLAPolicyVersion, platform-wide. Worker settings are global (see this
  * file's doc comment on the singleton row), so the safety check in

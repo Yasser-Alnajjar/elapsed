@@ -383,7 +383,7 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
     it("dashboard", async () => {
       const data = await lib.getDashboardData(prisma, orgA.organizationId, now);
       expect(
-        data.atRisk.length + data.breachedThisPeriod.length,
+        data.atRisk.length + data.breachedThisPeriod.total,
       ).toBeGreaterThan(0);
       expectOnlyOrgA(data);
     });

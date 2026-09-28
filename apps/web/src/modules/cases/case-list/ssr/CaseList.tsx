@@ -3,12 +3,14 @@ import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvid
 import { CaseListView } from "../csr/list-view";
 
 export const CaseList = async () => {
-  const data = await Actions.Cases.getList();
-  const worker = await Actions.WorkerSettings.getData();
+  const [data] = await Promise.all([
+    Actions.Cases.getList(),
+    // Actions.WorkerSettings.getData(),
+  ]);
 
   return (
     <>
-      <CaseListView data={data} pollIntervalMs={worker.activePollIntervalMs} />
+      <CaseListView data={data} />
       {/* <SlaAutoRefreshProvider
         initInterval={worker.activePollIntervalMs - 2000}
       /> */}

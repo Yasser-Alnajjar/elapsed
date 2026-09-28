@@ -1,15 +1,12 @@
 import "server-only";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import { listAuthorizedOrganizations, listSourceIntegrations } from "@/lib/concierge-access";
 import type { ConciergeExportPageData, ConciergeSourceProvider } from "@/lib/types/concierge-export";
 
 export const ConciergeActions = {
   async getExportData(provider: ConciergeSourceProvider): Promise<ConciergeExportPageData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { session } = await getRequestContext();
 
     const prisma = getPrismaClient();
     const organizations = await listAuthorizedOrganizations(prisma, session);

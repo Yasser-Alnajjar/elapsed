@@ -17,7 +17,7 @@ import {
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 import type {
-  BreachedCaseRow,
+  BreachedThisPeriodSummary,
   BreachesByStageRow,
   BreachesOverTimeLegPoint,
   BreachesOverTimePoint,
@@ -264,33 +264,22 @@ export function findBreachesInPeriod(
 }
 
 /**
- * The dashboard's "breached this period" list (and so its breach KPI, which
- * is the list's length): one row per breach from `findBreachesInPeriod`, the
- * same set the Breaches Over Time chart buckets, so the two always agree.
- * A breach whose case details are missing is dropped rather than rendered
- * half-empty.
+ * The dashboard's "breached this period" KPI tile and per-kind breakdown:
+ * counts only, from `findBreachesInPeriod`, the same set the Breaches Over
+ * Time chart buckets, so the two always agree. Neither of `DashboardView`'s
+ * two consumers (the KPI tile's `.length`, the per-kind panel's `.reduce`)
+ * ever renders an individual breach row, so this skips building
+ * `BreachedCaseRow`s (and the case `externalId`/`subject`/`customerName`
+ * that would only ever back them) entirely.
  */
-export function toBreachedCaseRows(
+export function summarizeBreachedThisPeriod(
   breaches: BreachOccurrence[],
-  caseDetailsById: ReadonlyMap<
-    string,
-    { externalId: string; subject: string | null; customerName: string | null }
-  >,
-): BreachedCaseRow[] {
-  const rows: BreachedCaseRow[] = [];
+): BreachedThisPeriodSummary {
+  const byKind: Partial<Record<CommitmentKind, number>> = {};
   for (const breach of breaches) {
-    const details = caseDetailsById.get(breach.caseId);
-    if (!details) continue;
-    rows.push({
-      commitmentId: breach.commitmentId,
-      caseId: breach.caseId,
-      externalId: details.externalId,
-      customerName: details.customerName,
-      kind: breach.kind,
-      subject: details.subject,
-    });
+    byKind[breach.kind] = (byKind[breach.kind] ?? 0) + 1;
   }
-  return rows;
+  return { total: breaches.length, byKind };
 }
 
 type ComplianceBucket = "met" | "at_risk" | "breached";
@@ -361,7 +350,7 @@ export async function getProjectAnalytics(
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<{
   analytics: ProjectAnalyticsData;
-  breachedThisPeriod: BreachedCaseRow[];
+  breachedThisPeriod: BreachedThisPeriodSummary;
 }> {
   const compliance = summarizeCompliance([
     ...openCommitmentStatuses,
@@ -382,14 +371,7 @@ export async function getProjectAnalytics(
       ],
     },
     include: {
-      case: {
-        select: {
-          openedAt: true,
-          externalId: true,
-          subject: true,
-          customer: { select: { name: true } },
-        },
-      },
+      case: { select: { openedAt: true } },
     },
   });
 
@@ -509,19 +491,7 @@ export async function getProjectAnalytics(
     timeZone,
   );
 
-  const breachedThisPeriod = toBreachedCaseRows(
-    breaches,
-    new Map(
-      commitmentRows.map((row) => [
-        row.caseId,
-        {
-          externalId: row.case.externalId,
-          subject: row.case.subject,
-          customerName: row.case.customer?.name ?? null,
-        },
-      ]),
-    ),
-  );
+  const breachedThisPeriod = summarizeBreachedThisPeriod(breaches);
 
   return {
     analytics: {

@@ -64,16 +64,11 @@ export const DashboardView = ({
       ? data.compliance.current - data.compliance.previous
       : null;
 
-  const breachedByKind = data.breachedThisPeriod.reduce<
-    Partial<Record<(typeof data.breachedThisPeriod)[number]["kind"], number>>
-  >((acc, row) => {
-    acc[row.kind] = (acc[row.kind] ?? 0) + 1;
-    return acc;
-  }, {});
+  const breachedByKind = data.breachedThisPeriod.byKind;
 
   const breachTrend =
     data.breachedPreviousPeriodCount !== null
-      ? data.breachedThisPeriod.length - data.breachedPreviousPeriodCount
+      ? data.breachedThisPeriod.total - data.breachedPreviousPeriodCount
       : null;
 
   const handleRefresh = () => {
@@ -263,7 +258,7 @@ export const DashboardView = ({
           <KpiTile
             label="Breached Cases"
             icon={AlarmClockOff}
-            value={data.breachedThisPeriod.length}
+            value={data.breachedThisPeriod.total}
             cornerFrom="from-error/15"
             qualifier={
               breachTrend !== null && (

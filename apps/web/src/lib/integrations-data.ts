@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { PrismaClient } from "@sla/db";
 import { getIntegrationConfigStatus } from "@sla/db";
 import type { ZendeskCredentials } from "@sla/zendesk";
@@ -50,8 +51,13 @@ function toConnectionView(
   };
 }
 
-/** Assembles the integrations settings page's read model (roadmap step 17). */
-export async function getIntegrationsData(
+/**
+ * Assembles the integrations settings page's read model (roadmap step 17).
+ * `React.cache`-wrapped: the layout and the Dashboard/Integrations pages
+ * each call this within the same request, and its 12-query fan-out is
+ * otherwise paid twice.
+ */
+export const getIntegrationsData = cache(async function getIntegrationsData(
   prisma: PrismaClient,
   organizationId: string,
 ): Promise<IntegrationsPageData> {
@@ -149,4 +155,4 @@ export async function getIntegrationsData(
     intercomConfig,
     githubConfig,
   };
-}
+});

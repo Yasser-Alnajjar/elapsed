@@ -1,18 +1,16 @@
 import "server-only";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import type { IUser } from "@/lib/types/user";
 
 export const ProfileActions = {
   async getData(): Promise<IUser> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { userId } = await getRequestContext();
 
     const prisma = getPrismaClient();
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: {
         id: true,
         organizationId: true,

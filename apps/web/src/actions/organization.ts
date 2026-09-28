@@ -1,21 +1,19 @@
 import "server-only";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
 
 export const OrganizationActions = {
   async getData(): Promise<OrganizationSettingsData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { organizationId, role } = await getRequestContext();
 
     const organization = await getPrismaClient().organization.findUnique({
-      where: { id: session.user.organizationId },
+      where: { id: organizationId },
       select: { name: true, timezone: true },
     });
     if (!organization) redirect("/sign-in");
 
-    return { ...organization, canEdit: session.user.role === "owner" };
+    return { ...organization, canEdit: role === "owner" };
   },
 };

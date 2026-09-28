@@ -1,8 +1,7 @@
 import "server-only";
-import { getServerSession } from "next-auth";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import { isPlatformOperator } from "@/lib/authz";
 import { getOperatorMonitoringData } from "@/lib/operator-monitoring-data";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
@@ -14,8 +13,7 @@ export const OperatorActions = {
    * same way a member gets `notFound()` on another organization's case.
    */
   async getData(): Promise<OperatorMonitoringData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { session } = await getRequestContext();
     if (!isPlatformOperator(session)) notFound();
 
     const prisma = getPrismaClient();

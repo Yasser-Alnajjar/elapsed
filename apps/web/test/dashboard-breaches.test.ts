@@ -7,7 +7,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { describe, expect, it } from "vitest";
-import { toBreachedCaseRows } from "../src/lib/analytics-data";
+import { summarizeBreachedThisPeriod } from "../src/lib/analytics-data";
 import { getDashboardData } from "../src/lib/dashboard-data";
 import { formatCommitmentKind } from "../src/lib/format";
 
@@ -151,6 +151,7 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
       // Phase 6.2's "no matching policy" panel: every case in this fixture
       // has a commitment, so nothing qualifies.
       findMany: async () => [],
+      count: async () => 0,
     },
     integration: {
       // Phase 6.3: no integrations connected in this fixture.
@@ -159,6 +160,7 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
     notificationFailure: {
       // Phase 6.4: no failed deliveries in this fixture.
       findMany: async () => [],
+      count: async () => 0,
     },
     sLAPolicyVersion: { findMany: async ({ where }: { where: { id: { in: string[] } } }) => (inIds(where).includes(policyRow.id) ? [policyRow] : []) },
     businessCalendarVersion: {
@@ -187,24 +189,10 @@ describe("getDashboardData breaches this period", () => {
   it("counts only breaches whose SLA clock crossed the target inside the period", async () => {
     const data = await getDashboardData(fakePrisma(cases), ORG, asOf);
 
-    expect(data.breachedThisPeriod).toEqual([
-      {
-        commitmentId: "commitment-in-closed",
-        caseId: "case-in-closed",
-        externalId: "ZD-in-closed",
-        customerName: "Customer in-closed",
-        kind: "first_response",
-        subject: "Subject in-closed",
-      },
-      {
-        commitmentId: "commitment-in-open",
-        caseId: "case-in-open",
-        externalId: "ZD-in-open",
-        customerName: "Customer in-open",
-        kind: "first_response",
-        subject: "Subject in-open",
-      },
-    ]);
+    expect(data.breachedThisPeriod).toEqual({
+      total: 2,
+      byKind: { first_response: 2 },
+    });
   });
 
   it("makes the breach KPI equal the Breaches Over Time chart total", async () => {
@@ -212,7 +200,7 @@ describe("getDashboardData breaches this period", () => {
 
     const chartTotal = data.analytics.breachesOverTime.reduce((sum, p) => sum + p.count, 0);
     expect(chartTotal).toBe(2);
-    expect(data.breachedThisPeriod.length).toBe(chartTotal);
+    expect(data.breachedThisPeriod.total).toBe(chartTotal);
     expect(data.analytics.breachesOverTime.filter((p) => p.count > 0)).toEqual([
       { date: "2026-09-09", count: 1 },
       { date: "2026-09-13", count: 1 },
@@ -224,12 +212,12 @@ describe("getDashboardData breaches this period", () => {
   it("shows nothing when the only breach predates the period", async () => {
     const data = await getDashboardData(fakePrisma([beforePeriod, met]), ORG, asOf);
 
-    expect(data.breachedThisPeriod).toEqual([]);
+    expect(data.breachedThisPeriod).toEqual({ total: 0, byKind: {} });
     expect(data.analytics.breachesOverTime.every((p) => p.count === 0)).toBe(true);
   });
 });
 
-describe("toBreachedCaseRows", () => {
+describe("summarizeBreachedThisPeriod", () => {
   const breach = (caseId: string) => ({
     commitmentId: `commitment-${caseId}`,
     caseId,
@@ -238,25 +226,24 @@ describe("toBreachedCaseRows", () => {
     breachedAt: new Date("2026-09-02T00:00:00.000Z"),
   });
 
-  it("keeps one row per breached commitment, in breach order", () => {
-    const rows = toBreachedCaseRows(
-      [breach("c1"), { ...breach("c1"), commitmentId: "second", kind: "first_response" }],
-      new Map([["c1", { externalId: "ZD-1", subject: null, customerName: null }]]),
-    );
-    expect(rows.map((r) => r.kind)).toEqual(["resolution", "first_response"]);
+  it("counts one per breach, split by kind", () => {
+    const summary = summarizeBreachedThisPeriod([
+      breach("c1"),
+      { ...breach("c1"), commitmentId: "second", kind: "first_response" },
+    ]);
+    expect(summary).toEqual({
+      total: 2,
+      byKind: { resolution: 1, first_response: 1 },
+    });
   });
 
-  it("drops a breach whose case details aren't loaded", () => {
-    expect(toBreachedCaseRows([breach("missing")], new Map())).toEqual([]);
+  it("returns zero counts for no breaches", () => {
+    expect(summarizeBreachedThisPeriod([])).toEqual({ total: 0, byKind: {} });
   });
 
   it("carries a next_reply breach through with the correct display label", () => {
-    const rows = toBreachedCaseRows(
-      [{ ...breach("c1"), kind: "next_reply" }],
-      new Map([["c1", { externalId: "ZD-1", subject: null, customerName: null }]]),
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.kind).toBe("next_reply");
-    expect(formatCommitmentKind(rows[0]!.kind)).toBe("Next reply");
+    const summary = summarizeBreachedThisPeriod([{ ...breach("c1"), kind: "next_reply" }]);
+    expect(summary.byKind.next_reply).toBe(1);
+    expect(formatCommitmentKind("next_reply")).toBe("Next reply");
   });
 });

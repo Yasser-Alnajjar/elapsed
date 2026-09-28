@@ -180,7 +180,10 @@ export async function seedPerfBaseline(
         policyId: policy.id,
         version: 1,
         match: {},
-        targets: { first_response: 60, resolution: 480 },
+        targets: [
+          { kind: "first_response", minutes: 60 },
+          { kind: "resolution", minutes: 480 },
+        ],
         pauseOnStates: [],
         calendarVersionId: calendarVersion.id,
         warnAtPercent: [80],

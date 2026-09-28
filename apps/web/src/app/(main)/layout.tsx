@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
-import { getServerSession } from "next-auth";
 
-import { withPerfScope } from "@sla/db";
+import { getPrismaClient, withPerfScope } from "@sla/db";
 import {
   SidebarInset,
   SidebarProvider,
@@ -10,7 +9,8 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Actions } from "@/actions";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
+import { getAlertSummary } from "@/lib/alert-summary-data";
 import { isPlatformOperator } from "@/lib/authz";
 import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
 import { AlertsPopover } from "@/components/layout/alerts-popover";
@@ -33,28 +33,20 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // avatar are user-editable from the Profile page (@modules/settings/profile)
   // and must show up here immediately via `router.refresh()`, not just after
   // the next sign-in.
-  const [user, integrations, worker, atRisk, session] = await withPerfScope(
+  const { session, organizationId } = await getRequestContext();
+
+  const [user, integrations, worker, alertSummary] = await withPerfScope(
     "layout",
     () =>
       Promise.all([
         Actions.Profile.getData(),
         Actions.Integrations.getData(),
         Actions.WorkerSettings.getData(),
-        Actions.AtRisk.getData(),
-        getServerSession(authOptions),
+        getAlertSummary(getPrismaClient(), organizationId),
       ]),
   );
 
-  const alerts = atRisk
-    .filter((r) => r.status === "at_risk" || r.status === "breached")
-    .map((r) => ({
-      commitmentId: r.commitmentId,
-      caseId: r.caseId,
-      externalId: r.externalId,
-      subject: r.subject,
-      status: r.status as "at_risk" | "breached",
-      remainingMinutes: r.remainingMinutes,
-    }));
+  const alerts = alertSummary.rows;
 
   // Real per-integration connection state (Elapsed reconstruction's header
   // sync pill and alert-channel indicator) — never a static "Sync Active"

@@ -123,6 +123,16 @@ async function getDashboardDataInner(
     periodStart.getTime() - PERIOD_DAYS * 86_400_000,
   );
 
+  const unmatchedCaseWhere = {
+    organizationId,
+    deletedAt: null,
+    closedAt: null,
+    commitments: { none: {} },
+  } as const;
+  const failedNotificationWhere = {
+    commitment: { case: { organizationId, deletedAt: null } },
+  } as const;
+
   const [
     openCommitmentRows,
     currentPeriodClosedRows,
@@ -130,8 +140,10 @@ async function getDashboardDataInner(
     organization,
     cycleTimeAnomalies,
     unmatchedCaseRows,
+    unmatchedCaseCount,
     integrationRows,
     failedNotificationRows,
+    failedNotificationCount,
   ] = await Promise.all([
     prisma.commitment.findMany({
       where: { case: { organizationId, deletedAt: null }, closedAt: null },
@@ -166,13 +178,10 @@ async function getDashboardDataInner(
     // Phase 6.2: open cases the commitment pipeline never matched to any
     // policy — `commitments: { none: {} }` is the direct read of "the
     // pipeline's `continue` on no match left this case with zero rows".
+    // Capped at the panel's display limit; `unmatchedCaseCount` carries the
+    // true total for the overflow footer instead of loading every row.
     prisma.case.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-        closedAt: null,
-        commitments: { none: {} },
-      },
+      where: unmatchedCaseWhere,
       select: {
         id: true,
         externalId: true,
@@ -181,7 +190,9 @@ async function getDashboardDataInner(
         customer: { select: { name: true } },
       },
       orderBy: { openedAt: "asc" },
+      take: UNMATCHED_CASES_LIMIT,
     }),
+    prisma.case.count({ where: unmatchedCaseWhere }),
     // Phase 6.3: every integration this organization has ever connected —
     // a provider with no row at all is onboarding's concern, not this panel's.
     prisma.integration.findMany({
@@ -193,9 +204,9 @@ async function getDashboardDataInner(
         lastSyncError: true,
       },
     }),
-    // Phase 6.4.
+    // Phase 6.4. Same cap-plus-count pattern as the unmatched-cases panel.
     prisma.notificationFailure.findMany({
-      where: { commitment: { case: { organizationId, deletedAt: null } } },
+      where: failedNotificationWhere,
       include: {
         commitment: {
           include: {
@@ -204,7 +215,9 @@ async function getDashboardDataInner(
         },
       },
       orderBy: { lastFailedAt: "desc" },
+      take: FAILED_ALERTS_LIMIT,
     }),
+    prisma.notificationFailure.count({ where: failedNotificationWhere }),
   ]);
 
   const engineeringLegTargetMinutes =
@@ -326,7 +339,12 @@ async function getDashboardDataInner(
   );
 
   const atRisk: AtRiskRow[] = [];
-  const otherOpenCommitments: AtRiskRow[] = [];
+  // Only `caseId`/`status` survive from a not-at-risk/breached open
+  // commitment: `getProjectAnalytics` needs those two fields for its
+  // compliance breakdown, nothing else here ever reads the rest of the row
+  // (the full `AtRiskRow` this used to collect never left this function).
+  const otherOpenCommitmentStatuses: { caseId: string; status: CommitmentStatus }[] =
+    [];
   const casesSeenForAging = new Set<string>();
   const agingInEngineering: AgingEscalationRow[] = [];
   // Phase 6.1: on-track/at-risk/breached per kind, among open commitments —
@@ -400,7 +418,10 @@ async function getDashboardDataInner(
         else tally.breached += 1;
       }
     } else {
-      otherOpenCommitments.push(sharedRow);
+      otherOpenCommitmentStatuses.push({
+        caseId: row.caseId,
+        status: evaluation.status,
+      });
     }
 
     if (!casesSeenForAging.has(row.caseId)) {
@@ -518,10 +539,10 @@ async function getDashboardDataInner(
     organizationId,
     periodStart,
     asOfDate,
-    [...atRisk, ...otherOpenCommitments].map((row) => ({
-      caseId: row.caseId,
-      status: row.status,
-    })),
+    [
+      ...atRisk.map((row) => ({ caseId: row.caseId, status: row.status })),
+      ...otherOpenCommitmentStatuses,
+    ],
     currentPeriodClosedRows,
     timezone,
   );
@@ -531,15 +552,13 @@ async function getDashboardDataInner(
     ...(healthByKindMap.get(kind) ?? { onTrack: 0, atRisk: 0, breached: 0 }),
   }));
 
-  const unmatchedCases: UnmatchedCaseRow[] = unmatchedCaseRows
-    .slice(0, UNMATCHED_CASES_LIMIT)
-    .map((row) => ({
-      caseId: row.id,
-      externalId: row.externalId,
-      subject: row.subject,
-      customerName: row.customer?.name ?? null,
-      openedAt: row.openedAt.toISOString(),
-    }));
+  const unmatchedCases: UnmatchedCaseRow[] = unmatchedCaseRows.map((row) => ({
+    caseId: row.id,
+    externalId: row.externalId,
+    subject: row.subject,
+    customerName: row.customer?.name ?? null,
+    openedAt: row.openedAt.toISOString(),
+  }));
 
   const integrationHealth: IntegrationHealthRow[] = integrationRows.map(
     (row) => ({
@@ -561,7 +580,6 @@ async function getDashboardDataInner(
         };
       } => row.commitment?.case != null,
     )
-    .slice(0, FAILED_ALERTS_LIMIT)
     .map((row) => ({
       commitmentId: row.commitmentId,
       caseId: row.commitment.case.id,
@@ -581,7 +599,6 @@ async function getDashboardDataInner(
     periodDays: PERIOD_DAYS,
     atRisk: atRisk.slice(0, AT_RISK_LIMIT),
     atRiskOverflowCount: Math.max(0, atRisk.length - AT_RISK_LIMIT),
-    otherOpenCommitments,
     breachedThisPeriod,
     breachedPreviousPeriodCount,
     agingInEngineering: agingInEngineering.slice(0, AGING_LIMIT),
@@ -600,13 +617,13 @@ async function getDashboardDataInner(
     unmatchedCases,
     unmatchedOverflowCount: Math.max(
       0,
-      unmatchedCaseRows.length - UNMATCHED_CASES_LIMIT,
+      unmatchedCaseCount - UNMATCHED_CASES_LIMIT,
     ),
     integrationHealth,
     failedAlerts,
     failedAlertsOverflowCount: Math.max(
       0,
-      failedNotificationRows.length - FAILED_ALERTS_LIMIT,
+      failedNotificationCount - FAILED_ALERTS_LIMIT,
     ),
   };
 }

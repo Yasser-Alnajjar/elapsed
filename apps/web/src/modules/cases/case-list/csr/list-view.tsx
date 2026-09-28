@@ -10,7 +10,7 @@ import { Reveal } from "@/components/shared/reveal";
 
 import { formatPriorityTier } from "@/lib/format";
 import { Utils } from "@/lib/utils";
-import type { CaseListData, CaseListRow } from "@/lib/types/cases";
+import type { CaseListData } from "@/lib/types/cases";
 
 import { useCaseListColumns } from "./columns";
 import {
@@ -21,13 +21,12 @@ import {
 } from "./constants";
 import { CaseListFilters } from "./filters";
 import { CaseListMetrics } from "./metrics";
-import type { FilterFn } from "@tanstack/react-table";
+
 interface CaseListViewProps {
   data: CaseListData;
-  pollIntervalMs?: number;
 }
 
-export const CaseListView = ({ data, pollIntervalMs }: CaseListViewProps) => {
+export const CaseListView = ({ data }: CaseListViewProps) => {
   const [globalFilter, setGlobalFilter] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [openState, setOpenState] = useState<OpenFilter>("all");

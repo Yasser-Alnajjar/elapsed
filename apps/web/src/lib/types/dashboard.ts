@@ -100,6 +100,12 @@ export interface BreachedCaseRow {
   subject: string | null;
 }
 
+/** The dashboard's "breached this period" KPI tile and per-kind breakdown — counts only, since neither ever renders an individual row (Phase 1 quick win: the KPI is a count, not a table). */
+export interface BreachedThisPeriodSummary {
+  total: number;
+  byKind: Partial<Record<CommitmentKind, number>>;
+}
+
 /** A customer/kind pair whose most recent cycle times statistically depart from their own history (roadmap step 25). */
 export interface CycleTimeAnomalyRow {
   customerName: string;
@@ -199,8 +205,7 @@ export interface DashboardData {
   periodDays: number;
   atRisk: AtRiskRow[];
   atRiskOverflowCount: number;
-  otherOpenCommitments: AtRiskRow[];
-  breachedThisPeriod: BreachedCaseRow[];
+  breachedThisPeriod: BreachedThisPeriodSummary;
   /** Breached-and-closed count for the prior 30-day period, for the KPI tile's trend arrow — null only when the underlying query hasn't run (never fabricated as 0). */
   breachedPreviousPeriodCount: number | null;
   agingInEngineering: AgingEscalationRow[];

@@ -1,9 +1,8 @@
 import "server-only";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getPrismaClient, getEmailSettingsStatus } from "@sla/db";
 import type { ZendeskCredentials } from "@sla/zendesk";
-import { authOptions } from "@/lib/auth";
+import { getRequestContext } from "@/lib/request-context";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getFindingsData } from "@/lib/findings-data";
 import { getIntegrationsData } from "@/lib/integrations-data";
@@ -17,14 +16,13 @@ import type {
 
 export const OnboardingActions = {
   async getData(): Promise<OnboardingPageData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
     const [status, zendeskIntegration] = await Promise.all([
-      getOnboardingStatus(prisma, session.user.organizationId),
+      getOnboardingStatus(prisma, organizationId),
       prisma.integration.findUnique({
-        where: { organizationId_provider: { organizationId: session.user.organizationId, provider: "zendesk" } },
+        where: { organizationId_provider: { organizationId, provider: "zendesk" } },
       }),
     ]);
     const zendeskCredentials = (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
@@ -33,20 +31,17 @@ export const OnboardingActions = {
   },
 
   async getPolicyImportReview(): Promise<PolicyImportReview> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
-    return getPolicyImportReview(prisma, session.user.organizationId);
+    return getPolicyImportReview(prisma, organizationId);
   },
 
   /** Reached only once onboarding is actually done (Step 4) — redirects back to the flow otherwise rather than rendering a half-set-up completion screen. */
   async getActivationData(): Promise<ActivationPageData> {
-    const session = await getServerSession(authOptions);
-    if (!session) redirect("/sign-in");
+    const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
-    const organizationId = session.user.organizationId;
 
     const status = await getOnboardingStatus(prisma, organizationId);
 

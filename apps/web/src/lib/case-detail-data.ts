@@ -43,6 +43,12 @@ import type {
   TimelineEventDetail,
 } from "./types/cases";
 
+// Every field this module actually reads off a zendesk/jira/intercom
+// `Integration` row: `id` (only to pass along to `buildConversationMessages`)
+// and `credentials` (parsed into `ZendeskCredentials`/`JiraCredentials`/
+// `IntercomCredentials` below) — never the row's other columns.
+const INTEGRATION_SELECT = { id: true, credentials: true } as const;
+
 // No business calendar exists yet for a case whose SLA hasn't matched any
 // policy — fall back to an always-open calendar purely for the purpose of
 // rendering the working/paused overlay (which does not actually depend on
@@ -117,19 +123,23 @@ async function getCaseDetailDataInner(
 ): Promise<CaseDetailData | null> {
   const asOf = asOfDate.toISOString();
 
-  const caseRow = await prisma.case.findFirst({
-    where: { id: caseId, organizationId, deletedAt: null },
-    include: { customer: true, caseLinks: true, commitments: true },
-  });
-  if (!caseRow) return null;
-
+  // Round 1: `caseRow` and the four queries below only ever need `caseId`/
+  // `organizationId` — none of them read `caseRow`'s output — so they run
+  // in the same round instead of waiting on `caseRow` first. The rare
+  // not-found case pays for events/integrations/organization it won't use;
+  // the common case (the case exists) saves a full round trip.
   const [
+    caseRow,
     eventRows,
     zendeskIntegration,
     jiraIntegration,
     intercomIntegration,
     organization,
   ] = await Promise.all([
+    prisma.case.findFirst({
+      where: { id: caseId, organizationId, deletedAt: null },
+      include: { customer: true, caseLinks: true, commitments: true },
+    }),
     prisma.normalizedEvent.findMany({
       where: { caseId },
       orderBy: [{ occurredAt: "asc" }, { sourceSequence: "asc" }],
@@ -138,22 +148,26 @@ async function getCaseDetailDataInner(
       where: {
         organizationId_provider: { organizationId, provider: "zendesk" },
       },
+      select: INTEGRATION_SELECT,
     }),
     prisma.integration.findUnique({
       where: {
         organizationId_provider: { organizationId, provider: "jira" },
       },
+      select: INTEGRATION_SELECT,
     }),
     prisma.integration.findUnique({
       where: {
         organizationId_provider: { organizationId, provider: "intercom" },
       },
+      select: INTEGRATION_SELECT,
     }),
     prisma.organization.findUnique({
       where: { id: organizationId },
       select: { engineeringLegTargetMinutes: true },
     }),
   ]);
+  if (!caseRow) return null;
 
   const policyVersionIds = [
     ...new Set(caseRow.commitments.map((c) => c.policyVersionId)),
@@ -166,11 +180,23 @@ async function getCaseDetailDataInner(
     caseRow.commitments.map((c) => [c.id, c.kind]),
   );
 
+  // The engine's own total order, so the timeline lists same-instant events
+  // exactly as the evaluations below consumed them. Computed here (ahead of
+  // round 2) since `buildConversationMessages` below needs it.
+  const domainEvents: NormalizedEvent[] = sortNormalizedEvents(
+    eventRows.map(toNormalizedEventDomain),
+  );
+
+  // Round 2: policy/calendar/history rows (depend on `caseRow.commitments`)
+  // and `buildConversationMessages` (depends on `caseRow`/`domainEvents`/
+  // `zendeskIntegration`, not on this round's other three queries) run
+  // together — neither needs the other's result.
   const [
     policyVersionRows,
     calendarVersionRows,
     policyChangeRows,
     notificationRows,
+    conversation,
   ] = await Promise.all([
     policyVersionIds.length > 0
       ? prisma.sLAPolicyVersion.findMany({
@@ -203,6 +229,14 @@ async function getCaseDetailDataInner(
       },
       orderBy: { sentAt: "asc" },
     }),
+    // Presentation-only: reads each reply's source text out of RawEvent,
+    // never altering `domainEvents` or anything derived from it.
+    buildConversationMessages(
+      prisma,
+      caseRow,
+      domainEvents,
+      zendeskIntegration?.id ?? null,
+    ),
   ]);
 
   const policyChangesByCommitmentId = new Map<
@@ -259,21 +293,6 @@ async function getCaseDetailDataInner(
         alwaysOpen: row.alwaysOpen,
       },
     ]),
-  );
-
-  // The engine's own total order, so the timeline lists same-instant events
-  // exactly as the evaluations below consumed them.
-  const domainEvents: NormalizedEvent[] = sortNormalizedEvents(
-    eventRows.map(toNormalizedEventDomain),
-  );
-
-  // Presentation-only: reads each reply's source text out of RawEvent, never
-  // altering domainEvents or anything derived from it below.
-  const conversation = await buildConversationMessages(
-    prisma,
-    caseRow,
-    domainEvents,
-    zendeskIntegration?.id ?? null,
   );
 
   const commitments: CommitmentDetail[] = caseRow.commitments

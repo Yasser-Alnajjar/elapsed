@@ -3,8 +3,10 @@ import { AtRiskView } from "../csr/AtRiskView";
 import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
 
 export const AtRisk = async () => {
-  const data = await Actions.AtRisk.getData();
-  const worker = await Actions.WorkerSettings.getData();
+  const [data, worker] = await Promise.all([
+    Actions.AtRisk.getData(),
+    Actions.WorkerSettings.getData(),
+  ]);
 
   return (
     <>
