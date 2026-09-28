@@ -1,11 +1,19 @@
 /**
  * getPersistedBreachedAt (performance-plan.md Phase 2 item 2): the dashboard's
- * "breachedAt" for a breached commitment is the earliest persisted `"breached"`
- * Evaluation row, read via a `DISTINCT ON` query — not a live, calendar-aware
- * re-simulation of `computeBreachedAt` over the commitment's full event history.
- * This suite is the DB-backed half of that; findBreachesInPeriod's period
- * filtering and dueAt fallback are covered as pure functions in
+ * "breachedAt" for a breached commitment is the `Evaluation.breachedAt`
+ * recorded on the earliest persisted `"breached"` Evaluation row that has
+ * one, read via a `DISTINCT ON` query — not a live, calendar-aware
+ * re-simulation of `computeBreachedAt` over the commitment's full event
+ * history. This suite is the DB-backed half of that; findBreachesInPeriod's
+ * period filtering and dueAt fallback are covered as pure functions in
  * analytics-data.test.ts.
+ *
+ * `breachedAt` is deliberately its own column, separate from `evaluatedAt`:
+ * `evaluatedAt` is only when the row was computed (a poll cycle, a
+ * reconciliation sweep, or a one-off historical import), which can land
+ * arbitrarily later than the real SLA-clock-crossing instant — see "uses
+ * breachedAt, not evaluatedAt, when they differ" below for the regression
+ * this column exists to fix.
  *
  * Real Postgres, like anomaly-data.test.ts: `DISTINCT ON` is exercised against
  * actual SQL, which a fake Prisma can't reproduce faithfully. Needs a migrated
@@ -137,6 +145,7 @@ describe.skipIf(!TEST_DATABASE_URL)("getPersistedBreachedAt (real Postgres)", ()
     commitmentId: string,
     evaluatedAt: Date,
     status: "on_track" | "at_risk" | "breached",
+    breachedAt?: Date,
   ) {
     await prisma.evaluation.create({
       data: {
@@ -145,24 +154,45 @@ describe.skipIf(!TEST_DATABASE_URL)("getPersistedBreachedAt (real Postgres)", ()
         elapsedSeconds: 0,
         remainingSeconds: 0,
         status,
+        breachedAt: status === "breached" ? (breachedAt ?? evaluatedAt) : null,
         inputs: {},
       },
     });
   }
 
-  it("returns the earliest breached Evaluation's evaluatedAt, not a later one", async () => {
+  it("returns the earliest breached Evaluation's breachedAt, not a later one", async () => {
     const dueAt = new Date("2026-09-10T00:30:00.000Z");
     const commitmentId = await seedCommitment({ dueAt });
     // Worker cycles: on_track, then breached at the true instant, then
     // breached again on a later reconciliation sweep — the earliest breached
-    // row is the one that counts.
+    // row is the one that counts, and its breachedAt is the real crossing
+    // instant regardless of which cycle recomputed it.
     await addEvaluation(commitmentId, new Date("2026-09-10T00:00:00.000Z"), "on_track");
-    await addEvaluation(commitmentId, new Date("2026-09-10T00:35:00.000Z"), "breached");
-    await addEvaluation(commitmentId, new Date("2026-09-17T12:00:00.000Z"), "breached");
+    await addEvaluation(commitmentId, new Date("2026-09-10T00:35:00.000Z"), "breached", dueAt);
+    await addEvaluation(commitmentId, new Date("2026-09-17T12:00:00.000Z"), "breached", dueAt);
 
     const result = await getPersistedBreachedAt(prisma, [commitmentId]);
 
-    expect(result.get(commitmentId)?.toISOString()).toBe("2026-09-10T00:35:00.000Z");
+    expect(result.get(commitmentId)?.toISOString()).toBe(dueAt.toISOString());
+  });
+
+  it("uses breachedAt, not evaluatedAt, when they differ (historical import / backfill)", async () => {
+    // The bug this column exists to fix: an org's backlog is imported and
+    // evaluated for the first time on 2026-09-28, long after the commitment
+    // actually breached on 2026-09-21. evaluatedAt is the import day for
+    // every such row; breachedAt is the true, spread-out crossing instant.
+    const trueBreachInstant = new Date("2026-09-21T22:38:16.000Z");
+    const importDay = new Date("2026-09-28T10:38:14.539Z");
+    const commitmentId = await seedCommitment({
+      dueAt: trueBreachInstant,
+      closedAt: importDay,
+    });
+    await addEvaluation(commitmentId, importDay, "breached", trueBreachInstant);
+
+    const result = await getPersistedBreachedAt(prisma, [commitmentId]);
+
+    expect(result.get(commitmentId)?.toISOString()).toBe(trueBreachInstant.toISOString());
+    expect(result.get(commitmentId)?.toISOString()).not.toBe(importDay.toISOString());
   });
 
   it("omits a commitment with no breached Evaluation row", async () => {
@@ -174,29 +204,50 @@ describe.skipIf(!TEST_DATABASE_URL)("getPersistedBreachedAt (real Postgres)", ()
     expect(result.has(commitmentId)).toBe(false);
   });
 
+  it("omits a commitment whose breached Evaluation predates the breachedAt column (not yet backfilled)", async () => {
+    const commitmentId = await seedCommitment({ dueAt: new Date("2026-09-10T00:30:00.000Z") });
+    // Directly write a row with breachedAt left null, mimicking a
+    // pre-migration Evaluation that hasn't run through the backfill script.
+    await prisma.evaluation.create({
+      data: {
+        commitmentId,
+        evaluatedAt: new Date("2026-09-10T00:35:00.000Z"),
+        elapsedSeconds: 0,
+        remainingSeconds: 0,
+        status: "breached",
+        breachedAt: null,
+        inputs: {},
+      },
+    });
+
+    const result = await getPersistedBreachedAt(prisma, [commitmentId]);
+
+    expect(result.has(commitmentId)).toBe(false);
+  });
+
   it("stays immutable across a later re-evaluation (reconciliation can't move it)", async () => {
     const dueAt = new Date("2026-09-10T00:30:00.000Z");
     const commitmentId = await seedCommitment({ dueAt });
-    await addEvaluation(commitmentId, new Date("2026-09-10T00:35:00.000Z"), "breached");
+    await addEvaluation(commitmentId, new Date("2026-09-10T00:35:00.000Z"), "breached", dueAt);
 
     const before = await getPersistedBreachedAt(prisma, [commitmentId]);
-    await addEvaluation(commitmentId, new Date("2026-09-20T09:00:00.000Z"), "breached");
+    await addEvaluation(commitmentId, new Date("2026-09-20T09:00:00.000Z"), "breached", dueAt);
     const after = await getPersistedBreachedAt(prisma, [commitmentId]);
 
     expect(after.get(commitmentId)?.toISOString()).toBe(before.get(commitmentId)?.toISOString());
-    expect(after.get(commitmentId)?.toISOString()).toBe("2026-09-10T00:35:00.000Z");
+    expect(after.get(commitmentId)?.toISOString()).toBe(dueAt.toISOString());
   });
 
   it("resolves each commitment independently across several candidates", async () => {
     const c1 = await seedCommitment({ dueAt: new Date("2026-09-10T00:30:00.000Z") });
     const c2 = await seedCommitment({ dueAt: new Date("2026-09-11T00:30:00.000Z") });
-    await addEvaluation(c1, new Date("2026-09-10T00:35:00.000Z"), "breached");
-    await addEvaluation(c2, new Date("2026-09-11T00:40:00.000Z"), "breached");
+    await addEvaluation(c1, new Date("2026-09-10T00:35:00.000Z"), "breached", new Date("2026-09-10T00:30:00.000Z"));
+    await addEvaluation(c2, new Date("2026-09-11T00:40:00.000Z"), "breached", new Date("2026-09-11T00:30:00.000Z"));
 
     const result = await getPersistedBreachedAt(prisma, [c1, c2]);
 
-    expect(result.get(c1)?.toISOString()).toBe("2026-09-10T00:35:00.000Z");
-    expect(result.get(c2)?.toISOString()).toBe("2026-09-11T00:40:00.000Z");
+    expect(result.get(c1)?.toISOString()).toBe("2026-09-10T00:30:00.000Z");
+    expect(result.get(c2)?.toISOString()).toBe("2026-09-11T00:30:00.000Z");
   });
 
   it("returns an empty map for an empty commitment id list without querying", async () => {

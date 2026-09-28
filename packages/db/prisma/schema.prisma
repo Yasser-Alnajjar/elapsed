@@ -703,6 +703,16 @@ model Evaluation {
   remainingSeconds  Int
   status            CommitmentStatus
   breachedBySeconds Int?
+  /// The instant the SLA clock actually crossed its target
+  /// (`evaluateCommitment`'s `effectiveDueAt`, working-minutes/calendar/pause
+  /// aware), set only when `status = "breached"`. Distinct from
+  /// `evaluatedAt`, which is only when this row was computed/persisted (a
+  /// poll cycle, or a one-off historical backfill) — never the breach
+  /// instant itself. Derived purely from events, so it's the same value no
+  /// matter which evaluation cycle computed it. Null for a pre-migration row
+  /// that hasn't been backfilled yet (see
+  /// packages/commitments/src/scripts/backfill-breached-at.ts).
+  breachedAt        DateTime?
   inputs            Json
   createdAt         DateTime         @default(now())
   commitment        Commitment       @relation(fields: [commitmentId], references: [id], onDelete: Cascade)

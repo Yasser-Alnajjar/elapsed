@@ -210,20 +210,34 @@ export interface BreachOccurrence {
 
 interface BreachedEvaluationRow {
   commitmentId: string;
-  evaluatedAt: Date;
+  breachedAt: Date;
 }
 
 /**
- * The instant each commitment's SLA clock first crossed its target, read
- * from history instead of recomputed live: the earliest persisted
- * `"breached"` Evaluation row per commitment. `runEvaluationPipeline`
+ * The instant each commitment's SLA clock actually crossed its target, read
+ * from history instead of recomputed live: the `breachedAt` (working-minutes/
+ * calendar/pause-aware target-crossing instant, `evaluateCommitment`'s
+ * `effectiveDueAt`) recorded on the earliest persisted `"breached"`
+ * Evaluation row per commitment that has one. `runEvaluationPipeline`
  * (packages/commitments/src/evaluate-pipeline.ts) only ever appends
  * Evaluations — id from `stableHash`, written with `skipDuplicates` — and
  * never updates or deletes one, so this is immutable across re-evaluation
- * and reconciliation. A commitment with no breached Evaluation yet (seeded
- * data, or a gap before the worker's first pass over it) has no entry;
- * callers fall back to `dueAt`. Same `DISTINCT ON` shape as
- * `anomaly-data.ts`'s terminal-evaluation lookup.
+ * and reconciliation.
+ *
+ * Deliberately NOT `evaluatedAt`: that column is only when the row was
+ * computed — a poll cycle, a reconciliation sweep, or a one-off historical
+ * backfill — which can land arbitrarily far after the real breach instant
+ * (e.g. every commitment imported from a customer's SLA backlog gets its
+ * first Evaluation, and therefore the same `evaluatedAt`, on the day it was
+ * imported, regardless of when each one actually breached weeks or months
+ * earlier). Using `evaluatedAt` as a breach-instant proxy silently pulls
+ * every such breach onto that one day.
+ *
+ * A commitment with no breached Evaluation yet, or whose breached Evaluation
+ * predates this column (`breachedAt IS NULL` — see
+ * packages/commitments/src/scripts/backfill-breached-at.ts for backfilling
+ * those), has no entry; callers fall back to `dueAt`. Same `DISTINCT ON`
+ * shape as `anomaly-data.ts`'s terminal-evaluation lookup.
  */
 export async function getPersistedBreachedAt(
   prisma: PrismaClient,
@@ -232,14 +246,15 @@ export async function getPersistedBreachedAt(
   if (commitmentIds.length === 0) return new Map();
   const rows = await prisma.$queryRaw<BreachedEvaluationRow[]>(
     Prisma.sql`
-      SELECT DISTINCT ON (e."commitmentId") e."commitmentId", e."evaluatedAt"
+      SELECT DISTINCT ON (e."commitmentId") e."commitmentId", e."breachedAt"
       FROM "evaluations" e
       WHERE e."commitmentId" IN (${Prisma.join(commitmentIds)})
         AND e.status = 'breached'
+        AND e."breachedAt" IS NOT NULL
       ORDER BY e."commitmentId", e."evaluatedAt" ASC, e.id ASC
     `,
   );
-  return new Map(rows.map((row) => [row.commitmentId, row.evaluatedAt]));
+  return new Map(rows.map((row) => [row.commitmentId, row.breachedAt]));
 }
 
 /**

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { bucketBreachesByDay, findBreachesInPeriod, summarizeCompliance } from "../src/lib/analytics-data";
+import {
+  bucketBreachesByDay,
+  bucketBreachesByDayAndLeg,
+  findBreachesInPeriod,
+  summarizeCompliance,
+} from "../src/lib/analytics-data";
 
 describe("bucketBreachesByDay", () => {
   it("fills every day in range with 0 when there are no breaches", () => {
@@ -166,5 +171,90 @@ describe("findBreachesInPeriod + bucketBreachesByDay (Breaches Over Time)", () =
     expect(rerun.breaches.map((b) => b.breachedAt.toISOString())).toEqual(
       first.breaches.map((b) => b.breachedAt.toISOString()),
     );
+  });
+
+  it("spreads breaches across their own days, not onto asOfDate, when breachedAt predates a same-day evaluation batch", () => {
+    // Regression for the dashboard bug: several commitments evaluated for
+    // the first time in the same batch (e.g. a historical-backlog import)
+    // must not all land on the batch's day just because that's when the
+    // Evaluation row recording each breach was written.
+    const importDay = new Date("2026-09-28T10:38:14.539Z");
+    const candidates = [
+      candidate("29", "2026-09-21T22:38:16.000Z", { breachedAt: "2026-09-21T22:38:16.000Z" }),
+      candidate("32", "2026-09-22T08:11:22.000Z", { breachedAt: "2026-09-22T08:11:22.000Z" }),
+      candidate("45", "2026-09-23T15:34:37.000Z", { breachedAt: "2026-09-23T15:34:37.000Z" }),
+      candidate("49", "2026-09-26T18:10:57.000Z", { breachedAt: "2026-09-26T18:10:57.000Z" }),
+    ];
+    const { nonZero } = chartFor(candidates, importDay, new Date("2026-09-21T00:00:00.000Z"));
+    expect(nonZero).toEqual([
+      { date: "2026-09-21", count: 1 },
+      { date: "2026-09-22", count: 1 },
+      { date: "2026-09-23", count: 1 },
+      { date: "2026-09-26", count: 1 },
+    ]);
+    expect(nonZero.find((p) => p.date === "2026-09-28")).toBeUndefined();
+  });
+});
+
+describe("bucketBreachesByDayAndLeg (Breaches Over Time, Support vs Engineering)", () => {
+  const periodStart = new Date("2026-09-01T00:00:00.000Z");
+  const asOf = new Date("2026-09-05T00:00:00.000Z");
+
+  it("fills every day in range with zero counts when there are no breaches", () => {
+    const points = bucketBreachesByDayAndLeg([], periodStart, asOf);
+    expect(points).toEqual([
+      { date: "2026-09-01", supportCount: 0, engineeringCount: 0 },
+      { date: "2026-09-02", supportCount: 0, engineeringCount: 0 },
+      { date: "2026-09-03", supportCount: 0, engineeringCount: 0 },
+      { date: "2026-09-04", supportCount: 0, engineeringCount: 0 },
+      { date: "2026-09-05", supportCount: 0, engineeringCount: 0 },
+    ]);
+  });
+
+  it("attributes each breach to the leg owning the case at its own breachedAt, on its own day", () => {
+    const points = bucketBreachesByDayAndLeg(
+      [
+        { breachedAt: new Date("2026-09-02T10:00:00.000Z"), leg: "support" },
+        { breachedAt: new Date("2026-09-02T14:00:00.000Z"), leg: "engineering" },
+        { breachedAt: new Date("2026-09-03T09:00:00.000Z"), leg: "engineering" },
+      ],
+      periodStart,
+      asOf,
+    );
+    expect(points.filter((p) => p.supportCount > 0 || p.engineeringCount > 0)).toEqual([
+      { date: "2026-09-02", supportCount: 1, engineeringCount: 1 },
+      { date: "2026-09-03", supportCount: 0, engineeringCount: 1 },
+    ]);
+  });
+
+  it("folds waiting_customer and unknown legs into supportCount, distinct only from engineering", () => {
+    const points = bucketBreachesByDayAndLeg(
+      [
+        { breachedAt: new Date("2026-09-02T10:00:00.000Z"), leg: "waiting_customer" },
+        { breachedAt: new Date("2026-09-02T11:00:00.000Z"), leg: "unknown" },
+      ],
+      periodStart,
+      asOf,
+    );
+    expect(points.find((p) => p.date === "2026-09-02")).toEqual({
+      date: "2026-09-02",
+      supportCount: 2,
+      engineeringCount: 0,
+    });
+  });
+
+  it("buckets by the organization's timezone, matching bucketBreachesByDay's contract", () => {
+    // 23:30 Los Angeles (UTC-7 in September) on the 1st is 06:30 UTC on the 2nd.
+    const points = bucketBreachesByDayAndLeg(
+      [{ breachedAt: new Date("2026-09-02T06:30:00.000Z"), leg: "engineering" }],
+      periodStart,
+      asOf,
+      "America/Los_Angeles",
+    );
+    expect(points.find((p) => p.engineeringCount > 0)).toEqual({
+      date: "2026-09-01",
+      supportCount: 0,
+      engineeringCount: 1,
+    });
   });
 });

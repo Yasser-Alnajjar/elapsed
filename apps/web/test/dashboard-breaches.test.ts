@@ -124,9 +124,14 @@ type Seeded = ReturnType<typeof seedCase>;
  * with the period-bound queries below, so this fixture's commitments do flow
  * into it — but its terminal-evaluation lookup is a raw `$queryRaw`, mocked
  * to return nothing, so `getCycleTimeAnomalies` always finds zero samples
- * regardless (nothing in `getDashboardData` itself reads `Evaluation`).
+ * regardless. `getPersistedBreachedAt`'s own `$queryRaw` (analytics-data.ts)
+ * is distinguished by its query text containing `"breachedAt"`; by default it
+ * also returns nothing, so every candidate here falls back to `dueAt` (see
+ * the file's top comment). Pass `breachedAtByCommitmentId` to instead have it
+ * return real persisted rows, for tests that need `breachedAt` to diverge
+ * from `dueAt`/`evaluatedAt`.
  */
-function fakePrisma(cases: Seeded[]): PrismaClient {
+function fakePrisma(cases: Seeded[], breachedAtByCommitmentId: ReadonlyMap<string, Date> = new Map()): PrismaClient {
   const commitments = cases.map((c) => c.commitment);
   const events = cases.flatMap((c) => c.events);
   const inIds = (where: { id?: { in: string[] } } | undefined) => where?.id?.in ?? [];
@@ -205,9 +210,18 @@ function fakePrisma(cases: Seeded[]): PrismaClient {
       findMany: async () =>
         commitments.map((c) => ({ commitmentId: c.id, status: "breached", evaluatedAt: reconciledAt })),
     },
-    // getCycleTimeAnomalies's terminal-evaluation lookup (Phase 2 item 3) —
-    // see the fixture's doc comment above.
-    $queryRaw: async () => [],
+    // getCycleTimeAnomalies's terminal-evaluation lookup (Phase 2 item 3) and
+    // getPersistedBreachedAt's (analytics-data.ts) share this one mock — see
+    // the fixture's doc comment above.
+    $queryRaw: async (query: { text: string; values: unknown[] }) => {
+      if (!query.text.includes('"breachedAt"')) return [];
+      return (query.values as string[])
+        .filter((commitmentId) => breachedAtByCommitmentId.has(commitmentId))
+        .map((commitmentId) => ({
+          commitmentId,
+          breachedAt: breachedAtByCommitmentId.get(commitmentId)!,
+        }));
+    },
     organization: { findUnique: async () => ({ timezone: "UTC" }) },
     case: {
       // Phase 6.2's "no matching policy" panel: every case in this fixture
@@ -277,6 +291,38 @@ describe("getDashboardData breaches this period", () => {
     expect(data.breachedThisPeriod).toEqual({ total: 0, byKind: {} });
     expect(data.analytics.breachesOverTime.every((p) => p.count === 0)).toBe(true);
   });
+
+  it("spreads a historical-import batch's breaches across their real days, not the reconciliation day (regression)", async () => {
+    // Reproduces the production bug directly: several cases opened and
+    // breached on different days, all first evaluated in one batch (e.g. a
+    // backlog import) — `evaluatedAt` is identical for all of them, but
+    // `breachedAt` (persisted per evaluate-pipeline.ts's `toEvaluationCreateInput`)
+    // is each commitment's real, distinct SLA-clock-crossing instant.
+    const importAsOf = new Date("2026-09-28T12:00:00.000Z");
+    const c29 = seedCase("c29", "2026-09-21T21:38:16.000Z", "2026-09-25T00:00:00.000Z");
+    const c32 = seedCase("c32", "2026-09-22T07:11:22.000Z", "2026-09-25T00:00:00.000Z");
+    const c45 = seedCase("c45", "2026-09-23T14:34:37.000Z", "2026-09-25T00:00:00.000Z");
+    const breachedAtByCommitmentId = new Map([
+      [c29.commitment.id, new Date("2026-09-21T22:38:16.000Z")],
+      [c32.commitment.id, new Date("2026-09-22T08:11:22.000Z")],
+      [c45.commitment.id, new Date("2026-09-23T15:34:37.000Z")],
+    ]);
+
+    const data = await getDashboardData(
+      fakePrisma([c29, c32, c45], breachedAtByCommitmentId),
+      ORG,
+      importAsOf,
+    );
+
+    const nonZero = data.analytics.breachesOverTime.filter((p) => p.count > 0);
+    expect(nonZero).toEqual([
+      { date: "2026-09-21", count: 1 },
+      { date: "2026-09-22", count: 1 },
+      { date: "2026-09-23", count: 1 },
+    ]);
+    expect(nonZero.find((p) => p.date === "2026-09-28")).toBeUndefined();
+    expect(data.breachedThisPeriod.total).toBe(3);
+  });
 });
 
 describe("summarizeBreachedThisPeriod", () => {
@@ -297,6 +343,28 @@ describe("summarizeBreachedThisPeriod", () => {
       total: 2,
       byKind: { resolution: 1, first_response: 1 },
     });
+  });
+
+  // Case-vs-commitment semantics: this counts breached *commitments*, not
+  // deduplicated cases. Two breaches on the same case ("c1" above) count as
+  // 2, matching one row per Commitment in `breachCandidateRows` — the same
+  // set `bucketBreachesByDay`/`bucketBreachesByDayAndLeg` chart. The KPI
+  // tile is labelled "Breached Cases", which is accurate today only because
+  // no case in current data has more than one breached commitment
+  // (verified against production data as part of this investigation); the
+  // label and this commitment-level count would diverge the moment a case
+  // breaches on two kinds (e.g. both First Response and Resolution). That's
+  // a pre-existing naming/semantics question, not something this fix
+  // changes — changing it would also have to change the chart and the
+  // by-stage/by-leg breakdowns to keep them all in agreement (see
+  // `getProjectAnalytics`'s doc comment), which is out of scope here.
+  it("does not deduplicate two breached commitments on the same case (documents current commitment-level semantics)", () => {
+    const summary = summarizeBreachedThisPeriod([
+      breach("case-x"),
+      { ...breach("case-x"), commitmentId: "case-x-resolution", kind: "resolution" },
+      { ...breach("case-x"), commitmentId: "case-x-first-response", kind: "first_response" },
+    ]);
+    expect(summary.total).toBe(3);
   });
 
   it("returns zero counts for no breaches", () => {

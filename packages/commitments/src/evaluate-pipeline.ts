@@ -163,6 +163,12 @@ async function loadProviderEventIds(
  * Maps an `evaluateCommitment` result onto an `evaluations` row: whole
  * seconds for durations (never truncated minutes), and `inputs.lastEvent` as
  * the stable source-event reference plus its provider event id when known.
+ * `breachedAt` is the row's copy of `evaluation.effectiveDueAt` — the actual
+ * SLA-clock-crossing instant — persisted only when `status === "breached"`;
+ * `effectiveDueAt` is also used for a live *projected* deadline on a
+ * still-running commitment, which is not a breach instant and must never
+ * land in this column. `evaluatedAt` stays what it always was: when this
+ * evaluation ran, not when the breach happened.
  */
 export function toEvaluationCreateInput(
   evaluation: Evaluation,
@@ -187,6 +193,10 @@ export function toEvaluationCreateInput(
     remainingSeconds: evaluation.remainingSeconds,
     status: evaluation.status,
     breachedBySeconds: evaluation.breachedBySeconds ?? null,
+    breachedAt:
+      evaluation.status === "breached" && evaluation.effectiveDueAt
+        ? new Date(evaluation.effectiveDueAt)
+        : null,
     inputs: inputs as unknown as Prisma.InputJsonValue,
   };
 }
