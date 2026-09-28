@@ -32,8 +32,8 @@ function subscribeToTick(listener: () => void): () => void {
 /**
  * Ticks a commitment's remaining time down once a second between server
  * refreshes, purely for display — `remainingMinutes` (recomputed on every
- * `SlaAutoRefreshProvider` refresh) stays the source of truth and resyncs
- * this clock whenever it changes.
+ * `LiveDataProvider`-triggered refresh) stays the source of truth and
+ * resyncs this clock whenever it changes.
  */
 export function CountdownClock({
   remainingMinutes,

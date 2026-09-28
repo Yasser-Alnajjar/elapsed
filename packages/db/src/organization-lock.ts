@@ -2,6 +2,7 @@ import pg from "pg";
 import { createLogger } from "@sla/logger";
 import type { PrismaClient } from "../generated/prisma/client";
 import { isPerfMetricsEnabled } from "./perf-metrics";
+import { publishLiveDataEvent } from "./live-events";
 
 const lockLogger = createLogger({ scope: "organization_lock" });
 
@@ -37,6 +38,14 @@ const LOCK_WAIT_TIMEOUT_MS = 15 * 60_000;
  * is what `work()` uses) but not used for the lock itself — the dedicated
  * connection is opened straight from `DATABASE_URL`, matching
  * `connectAdvisoryLockConnection`.
+ *
+ * This is also the one place that publishes the live-data NOTIFY (see
+ * `live-events.ts`): every call site that mutates Case/Commitment data for an
+ * organization — the worker's cycle, a Zendesk/Jira webhook delivery, and the
+ * onboarding backfill — already funnels through here, so it's the natural
+ * "a meaningful unit of work just committed" boundary, without notifying
+ * after every individual SQL statement. Queued on the same transaction as
+ * `work()`, so it only reaches listeners if `COMMIT` below actually runs.
  */
 export async function withOrganizationSlaLock<T>(
   _prisma: PrismaClient,
@@ -60,6 +69,10 @@ export async function withOrganizationSlaLock<T>(
     );
     const holdStartedAt = trackMetrics ? performance.now() : 0;
     const result = await work();
+    await publishLiveDataEvent(client, {
+      type: "data.updated",
+      organizationId,
+    });
     await client.query("COMMIT");
     if (trackMetrics) {
       lockLogger.info("organization_lock_duration", {
