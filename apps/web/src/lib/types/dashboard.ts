@@ -1,9 +1,4 @@
-import type {
-  CommitmentKind,
-  CommitmentStatus,
-  EngineeringLegEvaluation,
-  Leg,
-} from "@sla/core";
+import type { CommitmentKind, CommitmentStatus, Leg } from "@sla/core";
 import type { IntegrationProvider } from "./integrations";
 
 /**
@@ -51,26 +46,9 @@ export interface AtRiskRow {
   linkedIssue?: LinkedIssueRef | null;
 }
 
-export interface AgingEscalationRow {
-  caseId: string;
-  externalId: string;
-  customerName: string | null;
-  minutesInCurrentLeg: number;
-  legTarget: EngineeringLegEvaluation | null;
-  /** This case's active Jira/Linear correlation, or null when none exists yet. Only populated by `getDashboardData` — see the note on `AtRiskRow`. */
-  linkedIssue?: LinkedIssueRef | null;
-  /**
-   * Minutes between the case opening and this case's current engineering
-   * span starting — how long it waited before reaching engineering, distinct
-   * from `minutesInCurrentLeg` (how long it has been in that leg since).
-   * Only populated by `getDashboardData` — see the note on `AtRiskRow`.
-   */
-  queueWaitMinutes?: number;
-}
-
 /** The dashboard's "Total Escalated" KPI: cases whose leg history touches engineering at all within the reporting period, cross-referenced against link confidence. */
 export interface TotalEscalatedSummary {
-  /** Cases (open now, or closed within the period) whose derived leg spans include at least one engineering span. */
+  /** Cases closed within the period whose derived leg spans include at least one engineering span. */
   count: number;
   /** Of `count`, how many have an active `certain`-confidence Jira/Linear link. */
   linkedCertain: number;
@@ -208,12 +186,6 @@ export interface DashboardData {
   breachedThisPeriod: BreachedThisPeriodSummary;
   /** Breached-and-closed count for the prior 30-day period, for the KPI tile's trend arrow — null only when the underlying query hasn't run (never fabricated as 0). */
   breachedPreviousPeriodCount: number | null;
-  agingInEngineering: AgingEscalationRow[];
-  agingOverflowCount: number;
-  /** Of `agingInEngineering` (pre-slice), how many have exceeded the org's engineering-leg target — powers the operational anomaly banner. Null when no target is configured, since "exceeded" is meaningless without one. */
-  engineeringOverTargetCount: number | null;
-  /** Average of `queueWaitMinutes` across the full (pre-slice) aging list, or null when nothing is currently aging in engineering. */
-  avgQueueWaitMinutes: number | null;
   totalEscalated: TotalEscalatedSummary;
   attributionLedger: AttributionLedger;
   compliance: { current: number | null; previous: number | null };

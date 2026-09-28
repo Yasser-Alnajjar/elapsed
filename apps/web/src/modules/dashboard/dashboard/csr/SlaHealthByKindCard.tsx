@@ -7,11 +7,17 @@ import type { CommitmentKindHealth } from "@/lib/types/dashboard";
  * kind together, so a kind that's quietly all-breached while the others are
  * healthy has nowhere else to show up.
  */
-export function SlaHealthByKindCard({ rows }: { rows: CommitmentKindHealth[] }) {
+export function SlaHealthByKindCard({
+  rows,
+}: {
+  rows: CommitmentKindHealth[];
+}) {
   return (
-    <div className="bg-surface-container-low shadow-soft flex flex-col overflow-hidden rounded-xl">
+    <div className="h-full bg-surface-container-low shadow-soft flex flex-col overflow-hidden rounded-xl">
       <div className="bg-surface-container/60 border-surface-container-highest/60 border-b p-4">
-        <h3 className="text-on-surface text-base font-medium">SLA Health by Commitment Type</h3>
+        <h3 className="text-on-surface text-base font-medium">
+          SLA Health by Commitment Type
+        </h3>
         <p className="text-outline text-sm">
           On track, at risk, and breached — among currently open commitments
         </p>
@@ -25,7 +31,9 @@ export function SlaHealthByKindCard({ rows }: { rows: CommitmentKindHealth[] }) 
                 <span className="text-on-surface font-medium">
                   {formatCommitmentKind(row.kind)}
                 </span>
-                <span className="text-outline font-mono text-xs">{total} open</span>
+                <span className="text-outline font-mono text-xs">
+                  {total} open
+                </span>
               </div>
               {total === 0 ? (
                 <div className="bg-surface-container-highest h-2 w-full rounded-full" />

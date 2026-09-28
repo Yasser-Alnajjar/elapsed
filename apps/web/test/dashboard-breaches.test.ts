@@ -3,7 +3,13 @@
  * same breaches the Breaches Over Time chart plots: placed by when the SLA
  * clock crossed the target (`computeBreachedAt`), not by the worker's
  * `Evaluation.evaluatedAt`. A reconciliation run that stamps every
- * historical breach "now" must not pull older breaches into the period.
+ * historical breach "now" must not pull older breaches into the period —
+ * `getDashboardData` guards against this by never reading `Evaluation` for
+ * breach timing at all: it identifies breach *candidates* cheaply from
+ * persisted `Commitment.status === "breached"`, then runs `computeBreachedAt`
+ * (event/policy/calendar-aware) only over that small set. See
+ * performance-plan.md Phase 2 item 2 for why `Evaluation.evaluatedAt`/`dueAt`
+ * alone can't stand in for the true breach instant.
  */
 import type { PrismaClient } from "@sla/db";
 import { describe, expect, it } from "vitest";
@@ -108,45 +114,76 @@ function seedCase(name: string, openedAt: string, closedAt?: string) {
 type Seeded = ReturnType<typeof seedCase>;
 
 /**
- * Just enough Prisma for getDashboardData: the where clauses it builds are
- * matched on their distinguishing shape. Evaluations all claim "breached at
- * reconciliation time" — if anything still read them, the old breach would
- * leak into the period.
+ * Just enough Prisma for getDashboardData: the where/orderBy/take shapes it
+ * builds are matched on their distinguishing shape. `evaluation.findMany`
+ * only ever backs `getCycleTimeAnomalies` here (nothing in `getDashboardData`
+ * itself reads `Evaluation` any more) and is never actually reached in this
+ * fixture: `getCycleTimeAnomalies`'s own `commitment.findMany` call always
+ * returns `[]` below (matched by its `closedAt: { not: null }` shape).
  */
 function fakePrisma(cases: Seeded[]): PrismaClient {
   const commitments = cases.map((c) => c.commitment);
   const events = cases.flatMap((c) => c.events);
   const inIds = (where: { id?: { in: string[] } } | undefined) => where?.id?.in ?? [];
+  // This fixture's commitments are always "breached" or "met" (never
+  // "cancelled"), but the check mirrors production's `status: { not:
+  // "cancelled" }` filter, so it's kept generic rather than assuming that.
+  const openNonCancelled = () =>
+    commitments
+      .filter((c) => c.closedAt === null && (c.status as string) !== "cancelled")
+      .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime() || a.id.localeCompare(b.id));
   return {
     commitment: {
-      findMany: async ({ where }: { where: Record<string, unknown> }) => {
-        if (where.OR) {
-          // getProjectAnalytics' breach candidates.
-          return commitments.filter(
-            (c) =>
-              c.startedAt <= asOf &&
-              (c.closedAt === null || (c.status === "breached" && c.closedAt >= periodStart)),
-          );
+      findMany: async ({
+        where,
+        take,
+      }: {
+        where: Record<string, unknown>;
+        take?: number;
+      }) => {
+        // At-risk candidates: `closedAt: null` + `status: { not: "cancelled" }`,
+        // dueAt-ordered, bounded by `take`.
+        if (
+          where.closedAt === null &&
+          typeof where.status === "object" &&
+          where.status !== null &&
+          "not" in (where.status as Record<string, unknown>)
+        ) {
+          const rows = openNonCancelled();
+          return typeof take === "number" ? rows.slice(0, take) : rows;
         }
+        // All open commitments (health-by-kind, compliance open-half, breach
+        // candidates open-half) — no status filter.
         if (where.closedAt === null) return commitments.filter((c) => c.closedAt === null);
         const range = where.closedAt as { gte?: Date; lt?: Date; lte?: Date; not?: null };
+        // getCycleTimeAnomalies's own candidate query (`closedAt: { not: null }`)
+        // — no cases in this fixture carry a `customerId`, so it finds nothing.
         if (range && "not" in range) return [];
-        return commitments
-          .filter(
-            (c) =>
-              c.closedAt !== null &&
-              (!range.gte || c.closedAt >= range.gte) &&
-              (!range.lt || c.closedAt < range.lt) &&
-              (!range.lte || c.closedAt <= range.lte),
-          )
-          .map((c) => ({ caseId: c.caseId, status: c.status }));
+        return commitments.filter(
+          (c) =>
+            c.closedAt !== null &&
+            (!range.gte || c.closedAt >= range.gte) &&
+            (!range.lt || c.closedAt < range.lt) &&
+            (!range.lte || c.closedAt <= range.lte),
+        );
+      },
+      count: async ({ where }: { where: Record<string, unknown> }) => {
+        if (
+          where.closedAt === null &&
+          typeof where.status === "object" &&
+          where.status !== null &&
+          "not" in (where.status as Record<string, unknown>)
+        ) {
+          return openNonCancelled().length;
+        }
+        return 0;
       },
     },
     evaluation: {
       findMany: async () =>
         commitments.map((c) => ({ commitmentId: c.id, status: "breached", evaluatedAt: reconciledAt })),
     },
-    organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null, timezone: "UTC" }) },
+    organization: { findUnique: async () => ({ timezone: "UTC" }) },
     case: {
       // Phase 6.2's "no matching policy" panel: every case in this fixture
       // has a commitment, so nothing qualifies.

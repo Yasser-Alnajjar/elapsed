@@ -15,7 +15,11 @@ import {
   type SLAPolicyVersion,
   type WeeklyWindow,
 } from "@sla/core";
-import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
+import {
+  toCommitmentDomain,
+  toNormalizedEventDomain,
+  type CommitmentRecord,
+} from "@sla/commitments";
 import type {
   BreachedThisPeriodSummary,
   BreachesByStageRow,
@@ -326,19 +330,26 @@ export function summarizeCompliance(
   return { metSla, atRisk, breached, total: worstByCaseId.size };
 }
 
+/** A commitment whose persisted `status` is already `"breached"` (open or closed-in-period) — the candidate set `getProjectAnalytics` needs the true `breachedAt` instant for. See `dashboard-data.ts`'s `getDashboardData` for how these are cheaply identified from already-loaded, narrow-select commitment rows, with zero extra queries. */
+export type BreachCandidateRow = CommitmentRecord & { caseOpenedAt: Date };
+
 /**
  * Assembles the Project Analytics section (SLA Compliance, Breaches Over
  * Time, Breaches by Stage). `openCommitmentStatuses` and
  * `closedPeriodCommitmentStatuses` are passed in from `getDashboardData`,
  * which already fetches them for the KPI tiles — reusing them here avoids a
- * duplicate query. Breach timing/stage attribution needs its own queries:
- * it covers closed commitments too, which the dashboard doesn't load. The
- * breaches found are also returned as `breachedThisPeriod` rows, so the
- * dashboard's breach KPI and list reuse them instead of querying again.
+ * duplicate query. `breachCandidateRows` is also passed in (persisted
+ * `status === "breached"` commitments only, open or closed-in-period) —
+ * `computeBreachedAt` still needs each candidate's events/policy/calendar to
+ * find the true SLA-clock-crossing instant (see `dashboard-data.ts` for why
+ * `Evaluation.evaluatedAt`/`dueAt` alone can't stand in for it), but running
+ * it over only the already-breached subset instead of every open + recently
+ * closed commitment is what keeps this bounded. The breaches found are also
+ * returned as `breachedThisPeriod` rows, so the dashboard's breach KPI and
+ * list reuse them instead of querying again.
  */
 export async function getProjectAnalytics(
   prisma: PrismaClient,
-  organizationId: string,
   periodStart: Date,
   asOfDate: Date,
   openCommitmentStatuses: { caseId: string; status: CommitmentStatus }[],
@@ -347,6 +358,7 @@ export async function getProjectAnalytics(
     status: CommitmentStatus;
     closedAt?: Date | null;
   }[],
+  breachCandidateRows: BreachCandidateRow[],
   timeZone: string = DEFAULT_TIMEZONE,
 ): Promise<{
   analytics: ProjectAnalyticsData;
@@ -357,23 +369,7 @@ export async function getProjectAnalytics(
     ...closedPeriodCommitmentStatuses,
   ]);
 
-  // Candidates: every open commitment (breach state is computed live, like
-  // the at-risk list) plus closed ones stored as breached that closed inside
-  // the period. A breach always precedes its commitment's close, so one
-  // that closed before periodStart can't have breached inside the period.
-  const commitmentRows = await prisma.commitment.findMany({
-    where: {
-      case: { organizationId, deletedAt: null },
-      startedAt: { lte: asOfDate },
-      OR: [
-        { closedAt: null },
-        { status: "breached", closedAt: { gte: periodStart } },
-      ],
-    },
-    include: {
-      case: { select: { openedAt: true } },
-    },
-  });
+  const commitmentRows = breachCandidateRows;
 
   const policyVersionIds = [
     ...new Set(commitmentRows.map((c) => c.policyVersionId)),
@@ -440,7 +436,7 @@ export async function getProjectAnalytics(
   const breaches = findBreachesInPeriod(
     commitmentRows.map((row) => ({
       commitment: toCommitmentDomain(row),
-      caseOpenedAt: row.case.openedAt,
+      caseOpenedAt: row.caseOpenedAt,
     })),
     eventsByCaseId,
     policyVersionsById,

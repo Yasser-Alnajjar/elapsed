@@ -1,7 +1,7 @@
 import { Actions } from "@/actions";
 
 import { DashboardView } from "../csr/DashboardView";
-import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
+// import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvider";
 
 /**
  * `AppShell` is itself an async server component (it reads the session
@@ -10,9 +10,8 @@ import { SlaAutoRefreshProvider } from "@/components/shared/SlaAutoRefreshProvid
  * the browser bundle.
  */
 export const Dashboard = async () => {
-  const [data, worker, integrations] = await Promise.all([
+  const [data, integrations] = await Promise.all([
     Actions.Dashboard.getData(),
-    Actions.WorkerSettings.getData(),
     Actions.Integrations.getData(),
   ]);
 
@@ -20,14 +19,11 @@ export const Dashboard = async () => {
     <>
       <DashboardView
         data={data}
-        autoSyncSeconds={Math.round(worker.activePollIntervalMs / 1000)}
+        autoSyncSeconds={5}
         sourceStatus={{
           zendesk: integrations.zendesk.connected,
           jira: integrations.jira.connected,
         }}
-      />
-      <SlaAutoRefreshProvider
-        initInterval={worker.activePollIntervalMs - 2000}
       />
     </>
   );
