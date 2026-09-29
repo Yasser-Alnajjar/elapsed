@@ -16,7 +16,7 @@
 | H-8 | Lint step | **Blocked upstream**; a workaround needs your decision | [H-8](#h-8--lint-step) |
 | H-9 | Live onboarding walkthrough | **Needs you** (Zendesk sandbox OAuth), checklist prepared | [H-9 checklist](#h-9--live-onboarding-walkthrough) |
 | H-10 | Launch-Gate security items on production | **Needs production access**; script prepared and tested; one real gap found | [H-10 procedure](#h-10--production-security-verification) |
-| H-11 | First Response start actor | **Done** (already checked). Production repair still to run after deploy | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
+| H-11 | First Response start actor | **CLOSED 2026-09-29.** Code fixed; production repair applied and verified (7 false commitments deleted, 0 notifications sent, ticket 1 recreated) | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
 | H-12 | Pending pause decision (D30) | **Done** (already checked). Customer notice before deploy | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
 
 Dependencies between H items: H-4 needs H-1 only to choose tenants (the SQL in H-4 can pick them without H-1). H-9 is independent. H-10 is independent. **N1's own entry gate is H-1 and H-4.** Nothing else here blocks N1 (the roadmap says so; this pass found nothing that changes that, see [N1 readiness](#n1-readiness)).
@@ -170,7 +170,12 @@ The `$299/$699` pilot pricing in `plans/05` is obsolete and must not be reintrod
 ## Deploy-time steps from H-11 and H-12
 
 Not H items, but they are owed when these changes reach production and were flagged in the roadmap:
-- **H-11:** after deploying, run `pnpm --filter @sla/commitments repair:first-response-start` (dry run first, review the list), then `--apply`, then let the worker cycle recreate. Deleting a commitment cascades its evaluations and notifications.
+- **H-11: DONE 2026-09-29.** The repair (`repair:first-response-start`: dry run, review, `--apply`, worker cycle) was run on the host database for its one non-fixture organization. Recorded result:
+  - Dry run: 7 of 16 first-response commitments disagreed with the D5b rule (tickets 54 to 60, all `breached`, expected start none).
+  - Backup before the delete: `backups/sla-20260929T213644Z.dump` (3.4 MB). Note for next time: `backup.sh` defaults to `ENV_FILE=.env.prod` and the container's `$POSTGRES_DB`; on this host the app database is `elapsed_db` and the env file is `.env`, so it was run as `ENV_FILE=.env DB_NAME=elapsed_db ./scripts/backup.sh`.
+  - Notifications on those 7 commitments before the delete: **0** (no false-breach alert had been sent).
+  - `--apply` deleted exactly those 7. After the worker cycle: ticket 1's First Response commitment recreated; tickets 54 to 60 still have none (owner's verification).
+  - Method, for reference (unchanged): deleting a commitment cascades its evaluations and notifications, so review the dry-run list and check notifications first.
 - **H-12:** migration `20260929120000` changes elapsed time for open Resolution commitments on imported policies with Pending time; some may breach sooner and a breach is final (D2). **Tell customers before deploying.**
 
 ## N1 readiness
