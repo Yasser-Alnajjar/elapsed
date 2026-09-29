@@ -107,6 +107,7 @@ export function AppSidebar({
               </span>
             )}
           </div>
+
           <div className="text-muted-foreground flex items-center gap-1">
             <ShieldCheck className="text-tertiary size-3.5" />
             <span>Zendesk ↔ Jira deterministic</span>
@@ -126,7 +127,7 @@ function NavGroupItem({
   item: NavItem & { items: NavItem[] };
   pathname: string;
 }) {
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
 
   const isCollapsed = state === "collapsed";
   const isGroupRouteActive = isNavItemActive(pathname, item.href);
@@ -140,7 +141,13 @@ function NavGroupItem({
     }
   }, [isGroupRouteActive]);
 
-  if (isCollapsed) {
+  // Desktop collapsed sidebar:
+  // show nested navigation in a dropdown next to the icon.
+  //
+  // Mobile:
+  // keep nested navigation inside the mobile sidebar and use
+  // the regular collapsible behavior instead of a dropdown.
+  if (isCollapsed && !isMobile) {
     return (
       <SidebarMenuItem>
         <DropdownMenu>
@@ -183,6 +190,8 @@ function NavGroupItem({
     );
   }
 
+  // Expanded desktop + mobile:
+  // nested navigation stays inside the sidebar and expands vertically.
   return (
     <Collapsible
       asChild
