@@ -60,17 +60,17 @@ export function CaseListFilters({
     <div className="flex flex-col gap-4 rounded bg-surface-container-low p-4 shadow-sm">
       <div className="flex flex-col items-stretch gap-2 lg:flex-row lg:items-center flex-wrap">
         <div className="relative min-w-60 flex-1">
-          <Search className="absolute left-3 top-2.5 size-4.5 text-outline" />
+          <Search className="absolute inset-s-3 top-2.5 size-4.5 text-outline" />
 
           <Input
             value={globalFilter}
             onChange={(event) => setGlobalFilter(event.target.value)}
             placeholder="Search customer, ticket ID, or subject…"
             aria-label="Search cases"
-            className="h-auto rounded border-0 bg-surface-container-lowest py-2 pl-10 pr-24 text-sm text-on-surface shadow-inner placeholder:text-outline focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 md:text-sm"
+            className="h-auto rounded border-0 bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner placeholder:text-outline focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 md:text-sm"
           />
 
-          <div className="pointer-events-none absolute right-2.5 top-2 flex items-center gap-1">
+          <div className="pointer-events-none absolute inset-e-2.5 top-2 flex items-center gap-1">
             <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-xxs text-on-surface-variant">
               ZD
             </span>
@@ -141,7 +141,7 @@ function FilterGroup<T extends string>({
   onChange,
 }: FilterGroupProps<T>) {
   return (
-    <div className="flex shrink-0 items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:self-auto">
+    <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:shrink-0 lg:self-auto">
       <span className={GROUP_LABEL}>{label}</span>
 
       {options.map((filter) => {

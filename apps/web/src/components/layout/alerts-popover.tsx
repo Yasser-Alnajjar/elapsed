@@ -61,7 +61,7 @@ export function AlertsPopover({ items }: { items: AlertItem[] }) {
           <Bell className="size-4" />
           {items.length > 0 && (
             <span
-              className="bg-error absolute right-1.5 top-1.5 size-2 rounded-full"
+              className="bg-error absolute inset-e-1.5 top-1.5 size-2 rounded-full"
               aria-hidden
             />
           )}

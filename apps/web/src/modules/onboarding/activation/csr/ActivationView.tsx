@@ -49,7 +49,7 @@ const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
 function EngineStateChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 rounded-lg bg-surface-container-low p-3 shadow-sm">
-      <div className="flex flex-col text-right">
+      <div className="flex flex-col text-end">
         <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
           {label}
         </span>
@@ -452,7 +452,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           <div className="h-1 w-full bg-gradient-to-r from-primary via-tertiary to-primary" />
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 right-0 size-72 rounded-full bg-primary/10 blur-3xl"
+            className="pointer-events-none absolute -top-24 inset-e-0 size-72 rounded-full bg-primary/10 blur-3xl"
           />
 
           <div className="relative flex flex-col gap-6 p-6 md:p-8 xl:flex-row xl:items-center xl:justify-between">
@@ -721,7 +721,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
         </Reveal>
       </div>
       <Reveal>
-        <div className="flex flex-col items-center justify-between gap-3 rounded-lg bg-surface-container-lowest p-4 text-center sm:flex-row sm:text-left">
+        <div className="flex flex-col items-center justify-between gap-3 rounded-lg bg-surface-container-lowest p-4 text-center sm:flex-row sm:text-start">
           <div className="font-code-audit text-code-audit flex flex-wrap items-center justify-center gap-3 text-on-surface-variant sm:justify-start">
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-tertiary" />

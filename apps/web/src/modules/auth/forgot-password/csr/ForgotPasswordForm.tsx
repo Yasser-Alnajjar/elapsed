@@ -74,7 +74,7 @@ export const ForgotPasswordForm = () => {
           <div className="relative w-full overflow-hidden rounded-[4px] bg-background p-4 shadow-2xl sm:p-8">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80" />
 
-            <div className="mb-4 flex items-center justify-between gap-1 border-b border-border/70 pb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-1 border-b border-border/70 pb-4">
               <div
                 className={cn(
                   authLabelClass,
@@ -134,7 +134,7 @@ export const ForgotPasswordForm = () => {
 
                 return (
                   <Form className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1 text-left">
+                    <div className="flex flex-col gap-1 text-start">
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="email"
@@ -153,7 +153,7 @@ export const ForgotPasswordForm = () => {
                       <div className="relative flex items-center">
                         <AtSign
                           aria-hidden
-                          className="pointer-events-none absolute left-4 size-[18px] text-foreground-subtle"
+                          className="pointer-events-none absolute inset-s-4 size-[18px] text-foreground-subtle"
                         />
                         <AuthInput
                           {...getFieldProps("email")}
@@ -161,7 +161,7 @@ export const ForgotPasswordForm = () => {
                           type="email"
                           autoComplete="email"
                           placeholder="name@company.com"
-                          className="rounded-[2px] bg-background py-2 pl-10 pr-4 font-mono text-sm font-medium shadow-inner duration-150 placeholder:text-foreground-subtle/60"
+                          className="rounded-[2px] bg-background py-2 ps-10 pe-4 font-mono text-sm font-medium shadow-inner duration-150 placeholder:text-foreground-subtle/60"
                           aria-invalid={Boolean(touched.email && errors.email)}
                           aria-describedby={
                             touched.email && errors.email
@@ -193,8 +193,8 @@ export const ForgotPasswordForm = () => {
                     </div>
 
                     <div className="relative overflow-hidden rounded-[2px] bg-background/80 p-4">
-                      <div className="absolute inset-y-0 left-0 w-1 bg-warning" />
-                      <div className="flex items-start gap-2 pl-1">
+                      <div className="absolute inset-y-0 inset-s-0 w-1 bg-warning" />
+                      <div className="flex items-start gap-2 ps-1">
                         <Info
                           aria-hidden
                           className="mt-0.5 size-[18px] shrink-0 text-warning-text"
@@ -278,7 +278,7 @@ export const ForgotPasswordForm = () => {
               >
                 <div className="flex items-center gap-2">
                   <LockKeyhole aria-hidden className="size-[18px] text-primary-fixed-dim" />
-                  <div className="flex flex-col text-left">
+                  <div className="flex flex-col text-start">
                     <span
                       className={cn(
                         authLabelClass,
@@ -313,7 +313,7 @@ export const ForgotPasswordForm = () => {
                 aria-hidden
                 className="mt-0.5 size-[15px] shrink-0 text-foreground-subtle"
               />
-              <div className="flex flex-col gap-0.5 text-left">
+              <div className="flex flex-col gap-0.5 text-start">
                 <p className={cn(authLabelClass, "font-normal leading-normal text-foreground-subtle")}>
                   Reset tokens expire in 1 hour and self-invalidate upon
                   first cryptographic usage. Ingress audit trail logged.

@@ -43,7 +43,7 @@ export function SlaSection({
     <Reveal delay={delay} className={className}>
       <Card className="bg-surface-container-low flex h-full flex-col gap-4 overflow-hidden rounded-xl border-0 p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span className="bg-surface-container-highest text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
               {icon}
             </span>

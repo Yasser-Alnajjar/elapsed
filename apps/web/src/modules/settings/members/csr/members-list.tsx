@@ -58,13 +58,13 @@ export function MembersList({
     <Card className="bg-surface-container-low overflow-hidden rounded-xl border-0 shadow-sm">
       <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="text-outline pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+          <Search className="text-outline pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or email…"
             aria-label="Search members"
-            className="pl-9"
+            className="ps-9"
           />
         </div>
 
@@ -101,7 +101,7 @@ export function MembersList({
           </SelectContent>
         </Select>
 
-        <span className="text-on-surface-variant font-mono text-xxs uppercase sm:ml-2">
+        <span className="text-on-surface-variant font-mono text-xxs uppercase sm:ms-2">
           {filtered.length} of {members.length}
         </span>
       </div>
@@ -113,7 +113,7 @@ export function MembersList({
               (label, i) => (
                 <TableHead
                   key={label}
-                  className={`text-outline p-4 font-mono text-xxs font-semibold ${i === 4 ? "text-right" : ""}`}
+                  className={`text-outline p-4 font-mono text-xxs font-semibold ${i === 4 ? "text-end" : ""}`}
                 >
                   <div className="px-4">{label}</div>
                 </TableHead>

@@ -72,12 +72,12 @@ export default async function AppLayout({ children }: AppLayoutProps) {
               rule against faking a genuinely-missing capability. */}
           <div className="mx-auto hidden max-w-md flex-1 lg:block">
             <div className="relative flex items-center">
-              <Search className="text-outline pointer-events-none absolute left-3 size-4" />
+              <Search className="text-outline pointer-events-none absolute inset-s-3 size-4" />
               <Input
                 disabled
                 readOnly
                 placeholder="Search coming soon…"
-                className="bg-surface-container-low border-border-subtle text-on-surface placeholder:text-outline h-auto rounded py-1.5 pl-9 pr-3 text-sm md:text-sm"
+                className="bg-surface-container-low border-border-subtle text-on-surface placeholder:text-outline h-auto rounded py-1.5 ps-9 pe-3 text-sm md:text-sm"
               />
             </div>
           </div>

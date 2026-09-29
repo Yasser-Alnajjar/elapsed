@@ -127,7 +127,7 @@ function FilterGroup<T extends string>({
   onChange,
 }: FilterGroupProps<T>) {
   return (
-    <div className="flex shrink-0 items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:self-auto">
+    <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:shrink-0 lg:self-auto">
       <span className={GROUP_LABEL}>{label}</span>
 
       {options.map((filter) => {

@@ -136,7 +136,7 @@ function IntegrationCard({
     <Reveal delay={delay}>
       <Card className="bg-surface-container-low relative flex h-full flex-col gap-4 overflow-hidden rounded-xl border-0 p-6 shadow-sm">
         {/* {connected && (
-          <div className="bg-tertiary absolute bottom-0 left-0 top-0 w-1" />
+          <div className="bg-tertiary absolute bottom-0 inset-s-0 top-0 w-1" />
         )} */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">

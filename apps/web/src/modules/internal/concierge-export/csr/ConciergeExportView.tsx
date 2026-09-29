@@ -249,7 +249,7 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
                 {copy.archiveFiles.map((file) => (
                   <li key={file.name} className="flex items-baseline justify-between gap-3">
                     <span className="text-foreground">{file.name}</span>
-                    <span className="text-right text-[11px] text-muted-foreground">{file.description}</span>
+                    <span className="text-end text-[11px] text-muted-foreground">{file.description}</span>
                   </li>
                 ))}
               </ul>

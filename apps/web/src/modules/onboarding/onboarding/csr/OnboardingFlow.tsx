@@ -104,7 +104,7 @@ function ScopeBanner({ label, scopes }: { label: string; scopes: string[] }) {
 function EngineStateChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 rounded-lg bg-surface-container-low p-3 shadow-sm">
-      <div className="flex flex-col text-right">
+      <div className="flex flex-col text-end">
         <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
           {label}
         </span>

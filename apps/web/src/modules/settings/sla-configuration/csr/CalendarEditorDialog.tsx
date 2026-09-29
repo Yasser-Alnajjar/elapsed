@@ -301,16 +301,16 @@ export function CalendarEditorDialog({
                     </div>
 
                     {windows.length === 0 && (
-                      <p className="pl-1 text-xs text-on-surface-variant">
+                      <p className="ps-1 text-xs text-on-surface-variant">
                         Closed
                       </p>
                     )}
 
                     {windows.map((w, index) => (
                       // eslint-disable-next-line react/no-array-index-key
-                      <div key={index} className="flex items-center gap-2 pl-1">
+                      <div key={index} className="flex flex-wrap items-center gap-2 ps-1">
                         {w.fullDay ? (
-                          <span className="w-70 text-sm text-on-surface-variant">
+                          <span className="text-sm text-on-surface-variant sm:w-70">
                             Open 24 hours
                           </span>
                         ) : (

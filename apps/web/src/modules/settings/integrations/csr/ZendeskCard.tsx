@@ -35,9 +35,9 @@ export function ZendeskConnectForm() {
             placeholder="your-subdomain"
             pattern="[a-zA-Z0-9][a-zA-Z0-9\-]*"
             required
-            className="font-mono-metric-md text-mono-metric-md w-full rounded-lg bg-surface-container-lowest px-4 py-3 pr-32 text-on-surface transition-colors placeholder:text-on-surface-variant/60 focus:bg-surface-container-high focus:outline-none"
+            className="font-mono-metric-md text-mono-metric-md w-full rounded-lg bg-surface-container-lowest px-4 py-3 pe-32 text-on-surface transition-colors placeholder:text-on-surface-variant/60 focus:bg-surface-container-high focus:outline-none"
           />
-          <span className="font-code-audit text-code-audit pointer-events-none absolute right-4 text-on-surface-variant/60">
+          <span className="font-code-audit text-code-audit pointer-events-none absolute inset-e-4 text-on-surface-variant/60">
             .zendesk.com
           </span>
         </div>

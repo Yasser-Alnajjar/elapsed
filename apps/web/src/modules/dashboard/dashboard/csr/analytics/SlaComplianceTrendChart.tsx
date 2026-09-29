@@ -92,7 +92,7 @@ export function SlaComplianceTrendChart({
       </div>
 
       {/* Chart */}
-      <div className="min-h-0 min-w-0 flex-1">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-clip">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}

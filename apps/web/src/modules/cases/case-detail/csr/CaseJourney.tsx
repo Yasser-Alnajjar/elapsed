@@ -246,8 +246,8 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
             Engineering Leg
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded bg-surface-variant" />
-            Maintenance (Excluded)
+            <span className="size-2.5 rounded bg-leg-waiting" />
+            Pending For Customer Leg
           </span>
         </div>
       </div>
@@ -290,7 +290,7 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
                         {totalLegMinutes > 0 &&
                           ` (${((segMinutes / totalLegMinutes) * 100).toFixed(1)}%)`}
                         {isCurrent && (
-                          <span className="ml-2 inline-flex items-center gap-1">
+                          <span className="ms-2 inline-flex items-center gap-1">
                             <span className="size-1.5 animate-pulse rounded-full bg-current opacity-80" />
                             RUNNING NOW
                           </span>
@@ -313,7 +313,7 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
         </div>
 
         {/* Axis captions */}
-        <div className="flex items-center justify-between px-1 font-mono text-xxs text-outline">
+        <div className="flex flex-col items-start md:flex-row md:items-center justify-between px-1 font-mono text-xxs text-outline">
           <span>{formatDateTime(data.case.openedAt)} · Clock Start</span>
           {firstHandoffAt && (
             <span className="text-primary">

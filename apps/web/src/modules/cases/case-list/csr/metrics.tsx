@@ -33,8 +33,8 @@ export function MetricTile({
         : "text-primary";
 
   return (
-    <div className="flex flex-col justify-between rounded bg-surface-container-low p-4 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="flex min-w-0 flex-col justify-between rounded bg-surface-container-low p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
             "font-mono text-xxs font-semibold tracking-wider",
@@ -53,7 +53,7 @@ export function MetricTile({
         />
       </div>
 
-      <div className="mt-1 flex items-baseline gap-1">
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-1">
         <span
           className={cn(
             "font-mono text-2xl font-medium tracking-tight",

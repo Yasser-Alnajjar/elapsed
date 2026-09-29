@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Link2 } from "lucide-react";
 
 import {
   formatCaseLinkMethod,
@@ -12,24 +12,29 @@ import type { CaseDetailData, CaseLinkDetail } from "@/lib/types/cases";
 
 function systemLabel(s: CaseLinkDetail["system"] | string): string {
   switch (s) {
-    case "zendesk": return "Zendesk";
-    case "jira":    return "Jira Software";
-    case "linear":  return "Linear";
-    case "github":  return "GitHub";
-    default:        return s;
+    case "zendesk":
+      return "Zendesk";
+    case "jira":
+      return "Jira Software";
+    case "linear":
+      return "Linear";
+    case "github":
+      return "GitHub";
+    default:
+      return s;
   }
 }
 
 export function LinkedRecords({ data }: { data: CaseDetailData }) {
   const primaryJira = data.links.find((l) => l.system === "jira") ?? null;
-  const extraLinks  = data.links.filter((l) => l !== primaryJira);
+  const extraLinks = data.links.filter((l) => l !== primaryJira);
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-leg-engineering-text">⬡</span>
+          <Link2 size={16} className="text-leg-engineering-text" />
           <h2 className="text-xl font-semibold tracking-tight text-on-surface">
             Deterministic Correlation &amp; Linked Records
           </h2>
@@ -85,9 +90,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
           )}
 
           <div className="mt-2 flex justify-between border-t border-surface-container-high/40 pt-2 font-mono text-xxs text-outline">
-            {data.case.priority && (
-              <span>Priority: {data.case.priority}</span>
-            )}
+            {data.case.priority && <span>Priority: {data.case.priority}</span>}
             {data.case.status && (
               <span className="text-on-surface">
                 Status: {formatNormalizedState(data.case.status)}

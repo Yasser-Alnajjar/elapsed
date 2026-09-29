@@ -70,7 +70,7 @@ export function BreachesOverTimeChart({
           />
         </div>
       ) : (
-        <div className="h-48 w-full">
+        <div className="h-48 w-full min-w-0 overflow-x-clip">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}

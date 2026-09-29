@@ -70,7 +70,7 @@ const fieldLabelClass = cn(
 );
 
 const fieldClass =
-  "rounded-[2px] bg-surface-container-lowest px-4 py-2 pr-12 font-mono text-sm font-medium focus:ring-offset-2 focus:ring-offset-surface-container-lowest";
+  "rounded-[2px] bg-surface-container-lowest px-4 py-2 pe-12 font-mono text-sm font-medium focus:ring-offset-2 focus:ring-offset-surface-container-lowest";
 
 export const ResetPasswordForm = () => {
   const router = useRouter();
@@ -248,7 +248,7 @@ export const ResetPasswordForm = () => {
                         type="button"
                         aria-label="Toggle password visibility"
                         onClick={() => setShowPassword((shown) => !shown)}
-                        className="absolute right-2 p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
+                        className="absolute inset-e-2 p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
                       >
                         {showPassword ? (
                           <EyeOff aria-hidden className="size-5" />
@@ -300,7 +300,7 @@ export const ResetPasswordForm = () => {
                         }
                       />
                       {matches && (
-                        <div className="pointer-events-none absolute right-4 flex items-center text-success">
+                        <div className="pointer-events-none absolute inset-e-4 flex items-center text-success">
                           <Check aria-hidden className="size-5" />
                         </div>
                       )}
@@ -388,7 +388,7 @@ export const ResetPasswordForm = () => {
                             <span
                               className={cn(
                                 authLabelClass,
-                                "ml-auto text-success",
+                                "ms-auto text-success",
                               )}
                             >
                               {check.status}

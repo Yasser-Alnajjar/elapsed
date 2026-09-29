@@ -148,7 +148,7 @@ export const CommitmentCard = ({
               : `${formatSeconds(Math.max(0, remainingSeconds))} remaining`}
           </span>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <span className="block font-mono text-xxs uppercase tracking-wider text-outline">
             TARGET THRESHOLD
           </span>

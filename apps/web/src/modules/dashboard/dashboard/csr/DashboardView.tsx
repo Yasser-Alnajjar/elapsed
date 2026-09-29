@@ -160,10 +160,10 @@ export const DashboardView = ({
         <Reveal delay={0.03}>
           <div className="bg-surface-container-low shadow-soft relative overflow-hidden rounded-xl p-4">
             <div
-              className="bg-warning absolute inset-y-0 left-0 w-1.5"
+              className="bg-warning absolute inset-y-0 inset-s-0 w-1.5"
               aria-hidden
             />
-            <div className="flex flex-col gap-3 pl-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 ps-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <span className="bg-surface-container-highest flex size-8 shrink-0 items-center justify-center rounded">
                   <AlertTriangle className="text-warning size-4" />

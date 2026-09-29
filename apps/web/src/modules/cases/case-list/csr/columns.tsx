@@ -110,7 +110,7 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
     minSize: 100,
     header: () => <span className="sr-only">Action</span>,
     cell: ({ row }) => (
-      <div className="text-right">
+      <div className="text-end">
         <Button variant="subtle" size="sm" asChild>
           <Link href={`/cases/${row.original.caseId}`}>
             <span>View Case</span>

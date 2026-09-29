@@ -110,7 +110,7 @@ export function ConversationThread({ data }: { data: CaseDetailData }) {
           <ol
             ref={containerRef}
             onScroll={onScroll}
-            className="max-h-168 space-y-4 overflow-y-auto pr-1"
+            className="max-h-168 space-y-4 overflow-y-auto pe-1"
           >
             {data.conversation.map((message) => (
               <ConversationMessageBubble key={message.id} message={message} />

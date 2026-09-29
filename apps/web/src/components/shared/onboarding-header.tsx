@@ -13,7 +13,7 @@ export function OnboardingHeader({
   currentStep: 1 | 2 | 3 | 4 | null;
 }) {
   return (
-    <header className="fixed top-0 left-0 z-50 w-full bg-surface/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+    <header className="fixed top-0 inset-s-0 z-50 w-full bg-surface/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-xl">
       <div className="flex h-16 w-full items-center justify-center px-6">
         <nav className="hidden items-center gap-2 rounded-lg bg-surface-container-lowest px-1 py-1 md:flex max-w-fit">
           {NAV_STEPS.map((step, index) => {

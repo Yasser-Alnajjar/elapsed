@@ -234,7 +234,7 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
           <ol
             ref={containerRef}
             onScroll={onScroll}
-            className="relative max-h-144 overflow-y-auto pl-6 flex flex-col gap-5"
+            className="relative max-h-144 overflow-y-auto ps-6 flex flex-col gap-5"
           >
             {data.timeline.map((event, index) => {
               const isLast = index === data.timeline.length - 1;

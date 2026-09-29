@@ -125,7 +125,7 @@ export function BusinessCalendarsCard({
             <div className="col-span-2">Type</div>
             <div className="col-span-2">Status</div>
             <div className="col-span-3">Timezone &amp; window</div>
-            <div className="col-span-2 text-right">Actions</div>
+            <div className="col-span-2 text-end">Actions</div>
           </div>
           <div className="divide-outline-variant/10 divide-y">
             {calendars.map((calendar) => (

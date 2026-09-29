@@ -44,7 +44,7 @@ export function AtRiskKpiTile({
         className={cn("absolute inset-y-0 inset-s-0 w-1", toneBGClass[tone])}
       />
 
-      <div className="flex items-center justify-between gap-2 pl-2">
+      <div className="flex items-center justify-between gap-2 ps-2">
         <span
           className={
             "text-xxs font-medium uppercase tracking-wider text-muted-foreground"
@@ -57,7 +57,7 @@ export function AtRiskKpiTile({
 
       <p
         className={cn(
-          "mt-1.5 pl-2 font-mono text-2xl truncate  font-semibold tabular-nums ",
+          "mt-1.5 ps-2 font-mono text-2xl truncate  font-semibold tabular-nums ",
           toneTextClass[tone],
         )}
       >
@@ -66,7 +66,7 @@ export function AtRiskKpiTile({
       </p>
 
       {detail && (
-        <p className="mt-1 truncate pl-2 text-xs text-muted-foreground">
+        <p className="mt-1 truncate ps-2 text-xs text-muted-foreground">
           {detail}
         </p>
       )}

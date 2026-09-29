@@ -45,7 +45,7 @@ const signInSchema = Yup.object({
 type SignInFormValues = Yup.InferType<typeof signInSchema>;
 
 const fieldClass =
-  "h-10 rounded-[2px] border border-border bg-surface-container-lowest pl-9 text-sm focus:border-ring";
+  "h-10 rounded-[2px] border border-border bg-surface-container-lowest ps-9 text-sm focus:border-ring";
 
 export const SignInForm = () => {
   const router = useRouter();
@@ -229,7 +229,7 @@ export const SignInForm = () => {
                       <div className="relative flex items-center">
                         <Mail
                           aria-hidden
-                          className="pointer-events-none absolute left-3 size-4.25 text-foreground-subtle"
+                          className="pointer-events-none absolute inset-s-3 size-4.25 text-foreground-subtle"
                         />
                         <AuthInput
                           {...getFieldProps("email")}
@@ -237,7 +237,7 @@ export const SignInForm = () => {
                           type="email"
                           autoComplete="email"
                           placeholder="name@company.com"
-                          className={cn(fieldClass, "pr-3.5")}
+                          className={cn(fieldClass, "pe-3.5")}
                           aria-invalid={Boolean(touched.email && errors.email)}
                           aria-describedby={
                             touched.email && errors.email
@@ -273,7 +273,7 @@ export const SignInForm = () => {
                       <div className="relative flex items-center">
                         <Lock
                           aria-hidden
-                          className="pointer-events-none absolute left-3 size-4.25 text-foreground-subtle"
+                          className="pointer-events-none absolute inset-s-3 size-4.25 text-foreground-subtle"
                         />
                         <AuthInput
                           {...getFieldProps("password")}
@@ -283,7 +283,7 @@ export const SignInForm = () => {
                           placeholder="••••••••••••••••"
                           className={cn(
                             fieldClass,
-                            "pr-10 font-mono text-base font-bold tracking-widest",
+                            "pe-10 font-mono text-base font-bold tracking-widest",
                           )}
                           aria-invalid={Boolean(
                             touched.password && errors.password,
@@ -298,7 +298,7 @@ export const SignInForm = () => {
                           type="button"
                           aria-label="Toggle password visibility"
                           onClick={() => setShowPassword((shown) => !shown)}
-                          className="absolute right-2.5 flex items-center p-1 text-foreground-subtle transition-colors hover:text-foreground"
+                          className="absolute inset-e-2.5 flex items-center p-1 text-foreground-subtle transition-colors hover:text-foreground"
                         >
                           {showPassword ? (
                             <EyeOff aria-hidden className="size-4.25" />

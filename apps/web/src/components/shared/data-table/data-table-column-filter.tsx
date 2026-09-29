@@ -106,7 +106,7 @@ export function DataTableColumnFilter<TData, TValue>({
       <DropdownMenuTrigger className="text-foreground/60 cursor-pointer">
         <AlignJustify size={16} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80 p-4" align="start">
+      <DropdownMenuContent className="w-80 max-w-[calc(100vw-2rem)] p-4" align="start">
         <div className="space-y-4">
           <div className="font-medium text-sm">{title}</div>
 

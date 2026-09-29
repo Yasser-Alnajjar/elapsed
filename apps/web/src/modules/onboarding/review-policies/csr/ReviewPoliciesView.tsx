@@ -64,8 +64,8 @@ function StatTile({
 
   return (
     <div className="relative overflow-hidden rounded-lg bg-surface-container p-4 shadow-sm">
-      <div className={`absolute inset-y-0 left-0 w-1 ${classes.bar}`} />
-      <div className="space-y-1.5 pl-2">
+      <div className={`absolute inset-y-0 inset-s-0 w-1 ${classes.bar}`} />
+      <div className="space-y-1.5 ps-2">
         <div className="flex items-center justify-between gap-2">
           <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
             {label}

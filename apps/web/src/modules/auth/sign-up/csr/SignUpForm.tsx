@@ -123,7 +123,7 @@ const fieldClass =
   "h-10 rounded-[2px] bg-background px-3 text-sm placeholder:text-foreground-subtle focus:bg-surface-raised";
 
 const iconClass =
-  "pointer-events-none absolute right-3 size-4.5 text-foreground-subtle";
+  "pointer-events-none absolute inset-e-3 size-4.5 text-foreground-subtle";
 
 const fieldLabelClass = cn(authLabelClass, "text-muted-foreground");
 
@@ -189,7 +189,7 @@ export const SignUpForm = () => {
 
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-10 right-10 size-64 rounded-full bg-primary/10 blur-[100px]"
+            className="pointer-events-none absolute -bottom-10 inset-e-10 size-64 rounded-full bg-primary/10 blur-[100px]"
           />
 
           <div className="relative z-10 w-full rounded-lg bg-background/95 p-4 shadow-2xl md:p-8">
@@ -459,7 +459,7 @@ export const SignUpForm = () => {
                           type={showPassword ? "text" : "password"}
                           autoComplete="new-password"
                           placeholder="••••••••••••••••"
-                          className={cn(fieldClass, "pr-10")}
+                          className={cn(fieldClass, "pe-10")}
                           aria-invalid={Boolean(
                             touched.password && errors.password,
                           )}
@@ -474,7 +474,7 @@ export const SignUpForm = () => {
                           type="button"
                           aria-label="Toggle password visibility"
                           onClick={() => setShowPassword((shown) => !shown)}
-                          className="absolute right-3 text-foreground-subtle transition-colors hover:text-foreground focus:outline-none"
+                          className="absolute inset-e-3 text-foreground-subtle transition-colors hover:text-foreground focus:outline-none"
                         >
                           {showPassword ? (
                             <EyeOff aria-hidden className="size-4.5" />
@@ -642,7 +642,7 @@ export const SignUpForm = () => {
 
               <a
                 href="/sign-in"
-                className="ml-1 text-xs font-medium text-primary underline-offset-2 hover:text-primary-fixed-dim hover:underline"
+                className="ms-1 text-xs font-medium text-primary underline-offset-2 hover:text-primary-fixed-dim hover:underline"
               >
                 Sign in →
               </a>

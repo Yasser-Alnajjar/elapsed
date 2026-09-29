@@ -141,7 +141,7 @@ export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
           {formatDateTime(member.createdAt)}
         </TableCell>
 
-        <TableCell className=" text-right">
+        <TableCell className=" text-end">
           <div className="pe-4">
             <Button
               type="button"

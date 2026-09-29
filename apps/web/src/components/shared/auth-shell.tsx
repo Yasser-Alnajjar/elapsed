@@ -80,7 +80,7 @@ export function AuthPage({
   mainClassName?: string;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col justify-between bg-surface-container-lowest font-inter text-foreground selection:bg-primary selection:text-primary-foreground">
+    <div className="relative flex min-h-screen overflow-x-clip flex-col justify-between bg-surface-container-lowest font-inter text-foreground selection:bg-primary selection:text-primary-foreground">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_50%_0%,color-mix(in_oklch,var(--color-primary)_8%,transparent),transparent_55%),radial-gradient(circle_at_50%_100%,color-mix(in_oklch,var(--color-background)_80%,transparent),transparent_70%)]"

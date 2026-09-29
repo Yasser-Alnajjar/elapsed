@@ -24,7 +24,7 @@ export function StatTile({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute right-0 top-0 size-24 rounded-bl-full bg-gradient-to-bl to-transparent",
+          "pointer-events-none absolute inset-e-0 top-0 size-24 rounded-bl-full bg-gradient-to-bl to-transparent",
           tone === "destructive" && "from-error/15",
           tone === "success" && "from-success/15",
           tone === "warning" && "from-warning/15",

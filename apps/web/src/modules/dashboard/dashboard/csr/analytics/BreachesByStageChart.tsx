@@ -53,7 +53,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
       ) : (
         <>
           <div className="relative my-2 flex flex-col items-center justify-center">
-            <div className="size-36">
+            <div className="size-36 overflow-x-clip">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

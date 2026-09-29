@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { CaseDetailData, CommitmentDetail } from "@/lib/types/cases";
 import { pickHeroCommitment } from "./CaseRunwayHero";
+import { Calculator } from "lucide-react";
 
 /* ─── live remaining seconds (mirrors CommitmentCard) ────────── */
 
@@ -127,8 +128,7 @@ function LedgerRow({
     target: "text-on-surface",
     "runway-ok":
       "text-on-tertiary-container font-semibold uppercase tracking-wide text-sm",
-    "runway-risk":
-      "text-error font-semibold uppercase tracking-wide text-sm",
+    "runway-risk": "text-error font-semibold uppercase tracking-wide text-sm",
   }[variant];
 
   const valueClass = {
@@ -147,19 +147,10 @@ function LedgerRow({
       <div className="flex flex-col gap-0.5">
         <span className={cn("text-sm", labelClass)}>{label}</span>
         {sublabel && (
-          <span className="font-mono text-xxs text-outline">
-            {sublabel}
-          </span>
+          <span className="font-mono text-xxs text-outline">{sublabel}</span>
         )}
       </div>
-      <span
-        className={cn(
-          "font-mono tabular-nums",
-          valueClass,
-        )}
-      >
-        {value}
-      </span>
+      <span className={cn("font-mono tabular-nums", valueClass)}>{value}</span>
     </div>
   );
 }
@@ -199,7 +190,8 @@ export function CalculationLedger({
   // Gross wall-clock from startedAt to now (or closedAt)
   const referenceMs = isClosed
     ? new Date(commitment.closedAt!).getTime()
-    : new Date(data.asOf).getTime() + (commitment.remainingSeconds - remainingSeconds) * 1000;
+    : new Date(data.asOf).getTime() +
+      (commitment.remainingSeconds - remainingSeconds) * 1000;
   const grossSeconds = Math.max(
     0,
     Math.round((referenceMs - new Date(commitment.startedAt).getTime()) / 1000),
@@ -228,8 +220,7 @@ export function CalculationLedger({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {/* Calculator icon glyph */}
-          <span className="text-primary text-lg leading-none">⊞</span>
+          <Calculator className="hidden md:inline text-primary text-lg leading-none" />
           <h2 className="text-xl font-semibold tracking-tight text-on-surface">
             How this was calculated
           </h2>
@@ -288,7 +279,7 @@ export function CalculationLedger({
           {formatPolicyMatch(commitment.policyVersion.match)}
         </span>
         {commitment.targetChangeHistory.length > 0 && (
-          <span className="ml-3">
+          <span className="ms-3">
             · {commitment.targetChangeHistory.length} target change
             {commitment.targetChangeHistory.length > 1 ? "s" : ""} recorded
           </span>

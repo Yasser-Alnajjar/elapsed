@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
  */
 export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
   return (
-    <table className="w-full text-left border-collapse">
+    <table className="w-full text-start border-collapse">
       <thead>
         <tr className="bg-surface-container-lowest/80 text-outline border-b border-surface-container-highest/60 font-mono text-xxs font-semibold uppercase tracking-wider">
           <th className="py-3 px-4">Priority</th>
@@ -24,8 +24,8 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
           <th className="py-3 px-4">SLA target</th>
           <th className="py-3 px-4">Health status</th>
           <th className="py-3 px-4">Leg time allocation</th>
-          <th className="py-3 px-4 text-right">Time remaining</th>
-          <th className="py-3 px-4 text-right">Inspect</th>
+          <th className="py-3 px-4 text-end">Time remaining</th>
+          <th className="py-3 px-4 text-end">Inspect</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-surface-container-highest/40 text-sm">
@@ -107,13 +107,13 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
                   </div>
                 </div>
               </td>
-              <td className="py-3.5 px-4 whitespace-nowrap text-right">
+              <td className="py-3.5 px-4 whitespace-nowrap text-end">
                 <CountdownClock
                   remainingMinutes={row.remainingMinutes}
                   className={`text-sm font-semibold ${overdue ? "text-error" : "text-on-surface"}`}
                 />
               </td>
-              <td className="py-3.5 px-4 whitespace-nowrap text-right">
+              <td className="py-3.5 px-4 whitespace-nowrap text-end">
                 <Button
                   asChild
                   variant="surface"
