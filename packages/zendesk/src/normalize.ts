@@ -158,6 +158,53 @@ export function sortAuditsChronologically(audits: AuditRecord[]): AuditRecord[] 
 }
 
 /**
+ * A ticket's creation audit is stamped with the ticket's own `created_at`
+ * (Zendesk writes them in the same instant); allow a little clock slack.
+ */
+const CREATION_AUDIT_SLACK_MS = 5_000;
+
+/**
+ * Who created the ticket (H-11). This must depend only on facts fixed at
+ * creation, never on how much audit history has been ingested so far —
+ * `case_created.actor` decides where a First Response clock starts (D5b), and
+ * that commitment is created once and never re-derived, so an actor that
+ * changes as later audits arrive freezes the wrong start. (It used to be the
+ * author of the first *status change*, which is the agent who picked the
+ * ticket up or solved it, and fell back to the requester before any status
+ * change existed.)
+ *
+ * Order of evidence, each fixed for the life of the ticket:
+ * 1. the ticket's `submitter_id` — Zendesk's own record of who created it,
+ *    part of the ticket snapshot and identical on every ingest. It is what
+ *    Zendesk itself keys the first-reply SLA on: the dev-sandbox H-4 check
+ *    found Zendesk applied no first-reply target to agent-submitted tickets
+ *    and did apply one to a customer-submitted ticket whose creation audit
+ *    was nevertheless authored by an admin (a sample-data artifact), so the
+ *    audit author must not outrank it;
+ * 2. else the author of the creation audit — the chronologically first audit,
+ *    when it carries `Create` events or is stamped at the ticket's `created_at`;
+ * 3. else the requester (the oldest fallback: a customer).
+ * A later audit is never consulted, so the result is identical for any
+ * superset of the audits and for none.
+ */
+function resolveCreationActor(
+  ticket: ZendeskTicket,
+  sortedAudits: AuditRecord[],
+  userRoles: ZendeskUserRoles,
+): Actor {
+  if (ticket.submitter_id != null) {
+    return resolveActor(ticket.via?.channel, ticket.submitter_id, ticket, userRoles);
+  }
+  const first = sortedAudits[0]?.audit;
+  const isCreationAudit =
+    first !== undefined &&
+    (first.events.some((event) => event.type === "Create") ||
+      Math.abs(Date.parse(first.created_at) - Date.parse(ticket.created_at)) <= CREATION_AUDIT_SLACK_MS);
+  if (isCreationAudit) return resolveActor(first.via?.channel, first.author_id, ticket, userRoles);
+  return resolveActor(ticket.via?.channel, ticket.requester_id ?? -1, ticket, userRoles);
+}
+
+/**
  * `RawEvent` → `NormalizedEvent` for one ticket. Regenerated from scratch on
  * every run (never diffed incrementally) — callers should replace, not
  * append to, a case's existing NormalizedEvents with this output.
@@ -201,9 +248,7 @@ export function deriveNormalizedEventsForTicket(
 
   const firstChange = statusChanges[0];
   const initialStatus = firstChange ? firstChange.event.previous_value : ticket.status;
-  const createdActor = firstChange
-    ? resolveActor(firstChange.audit.via?.channel, firstChange.audit.author_id, ticket, userRoles)
-    : resolveActor(ticket.via?.channel, ticket.requester_id ?? -1, ticket, userRoles);
+  const createdActor = resolveCreationActor(ticket, sorted, userRoles);
 
   const events: DerivedNormalizedEvent[] = [
     {

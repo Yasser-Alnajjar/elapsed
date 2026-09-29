@@ -37,7 +37,7 @@ export {
   ensureDefaultCalendarVersion,
   extractMatchFromFilter,
   groupPolicyMetricsByPriority,
-  PAUSE_ON_STATES,
+  IMPORTED_PAUSE_ON_STATES,
   policyVersionContentEquals,
   resolvePolicyCalendarVersion,
   runZendeskSlaPolicyImport,

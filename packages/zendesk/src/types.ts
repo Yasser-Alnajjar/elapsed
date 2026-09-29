@@ -30,6 +30,8 @@ export interface ZendeskTicket {
   priority: string | null;
   organization_id: number | null;
   requester_id?: number | null;
+  /** Who created the ticket (an agent can submit on a customer's behalf, so this can differ from `requester_id`). Used only as the fallback creator when the creation audit isn't available yet. */
+  submitter_id?: number | null;
   /** Ticket tags, used as a generic SLA policy match input (`match.conditions`, field `"tags"`/`"current_tags"` — see `extractMatchFromFilter` in ./policies). Absent on very old snapshots fetched before this field was read. */
   tags?: string[];
   via?: { channel: string };

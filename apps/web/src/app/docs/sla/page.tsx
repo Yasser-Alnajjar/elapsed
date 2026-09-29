@@ -251,10 +251,12 @@ export default function SlaPage() {
           </p>
 
           <p className="leading-7 text-muted-foreground">
-            By default, a commitment pauses only while the case is in the
-            normalized <strong>&quot;Pending customer&quot;</strong> state —
-            currently the one configurable state that pauses the clock, and
-            it is not adjustable per policy from the settings UI today.
+            <strong>Zendesk-imported policies never pause Resolution while a
+            ticket is Pending</strong>, exactly like Zendesk&apos;s own Total
+            Resolution timer, so breach times match Zendesk&apos;s SLA view.
+            Policies you create in Elapsed pause on the normalized{" "}
+            <strong>&quot;Pending customer&quot;</strong> state by default;
+            this is not adjustable per policy from the settings UI today.
             Putting a ticket <strong>on hold</strong> (Zendesk&apos;s internal
             hold status) does not pause the resolution clock — that time
             keeps counting. This is a deliberate choice for the current
@@ -270,8 +272,9 @@ export default function SlaPage() {
             <AlertDescription>
               Zendesk&apos;s First Reply, Next Reply, Periodic Update, and Total
               Resolution targets do not pause merely because a ticket is in
-              Pending status. SLA does not assume that every Pending period is
-              automatically a customer-caused pause.
+              Pending status, and neither do Zendesk-imported policies here.
+              Only policies created in Elapsed pause Resolution on Pending
+              customer.
             </AlertDescription>
           </Alert>
         </section>

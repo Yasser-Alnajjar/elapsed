@@ -10,6 +10,7 @@ interface VersionRow {
   targets: unknown;
   calendarVersionId: string;
   source: "imported" | "override";
+  pauseOnStates?: string[];
 }
 
 /** In-memory `sLAPolicy`/`sLAPolicyVersion` delegates honoring the `where`/`orderBy` shapes `upsertPolicyVersion` passes. */
@@ -93,6 +94,16 @@ describe("upsertPolicyVersion with a manual override on top", () => {
 
     expect(created).toBe(true);
     expect(versions).toMatchObject([{ version: 1, source: "imported" }]);
+  });
+
+  it("stamps no pause states on an imported version: Zendesk never pauses Resolution on Pending (H-12)", async () => {
+    const versions: VersionRow[] = [];
+    await upsertPolicyVersion(fakePrisma(versions), "org_1", "123:urgent", "Urgent", {
+      match,
+      targets: [{ kind: "resolution" as const, minutes: 20 }],
+      calendarVersionId: "calv_1",
+    });
+    expect(versions[0]!.pauseOnStates).toEqual([]);
   });
 
   it("leaves a next_reply override as the latest version when Zendesk's policy is unchanged", async () => {
