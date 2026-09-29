@@ -83,7 +83,8 @@ async function tick(kind: CycleKind): Promise<void> {
   // run (roadmap 7.4).
   const cycleId = `${kind}:${startedAt}`;
   try {
-    const result = await runCycle(prisma, config, kind, cycleId);
+    const activePollMs = (await getOrCreateWorkerSettings(prisma)).activePollIntervalMs;
+    const result = await runCycle(prisma, config, kind, cycleId, { activePollMs });
     await recordWorkerCycleOutcome(prisma, kind, result.failures.length);
     logger.info("cycle_finished", { cycleId, durationMs: Date.now() - startedAt, ...result });
   } catch (error) {

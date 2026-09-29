@@ -1,4 +1,5 @@
 import {
+  loadPolicyContext,
   runCommitmentPipeline,
   runCommitmentReResolutionPipeline,
   runEvaluationPipeline,
@@ -41,7 +42,11 @@ import {
   runLinearNormalization,
 } from "@sla/linear";
 import { createLogger } from "@sla/logger";
-import { runNotificationPipeline } from "@sla/notifications";
+import {
+  claimNotifications,
+  deliverClaimedNotifications,
+  type NotificationClaims,
+} from "@sla/notifications";
 import {
   runZendeskBackfill,
   runZendeskBusinessCalendarImport,
@@ -66,6 +71,16 @@ function isPermissionDeniedError(error: unknown): boolean {
 }
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
+
+/**
+ * How far back the active-set poll looks for cases with new events to
+ * re-derive Next Reply cycles for, as a multiple of the poll interval (so a
+ * missed or slow tick still overlaps the next one), never under the floor.
+ * Anything older is the hourly reconciliation sweep's job.
+ */
+const ACTIVE_LOOKBACK_INTERVALS = 3;
+const ACTIVE_LOOKBACK_FLOOR_MS = 15 * 60 * 1000;
+const DEFAULT_ACTIVE_POLL_MS = 5 * 60 * 1000;
 
 export interface CycleResult {
   kind: CycleKind;
@@ -121,6 +136,13 @@ export async function runCycle(
   // emitted deep in a pipeline (`.child()`'d loggers below), regardless of
   // which organization or stage they came from.
   cycleId: string = `${kind}:${Date.now()}`,
+  // The configured active-poll interval (`WorkerSettings`, read fresh by
+  // `index.ts` each tick) — sizes the poll's "new events" lookback.
+  options: {
+    activePollMs?: number;
+    /** Restrict the cycle to these organizations — used by the perf-baseline script so a measurement run never touches unrelated organizations' live integrations. Omit for every organization. */
+    organizationIds?: string[];
+  } = {},
 ): Promise<CycleResult> {
   const cycleLogger = createLogger({ cycleId, kind });
   const result: CycleResult = {
@@ -139,6 +161,9 @@ export async function runCycle(
   };
 
   const organizations = await prisma.organization.findMany({
+    ...(options.organizationIds
+      ? { where: { id: { in: options.organizationIds } } }
+      : {}),
     select: {
       id: true,
       // Disconnected integrations keep their row (never deleted — see the
@@ -306,6 +331,7 @@ export async function runCycle(
     // ingest just failed: normalization is DB-local and still has whatever
     // RawEvents an earlier successful cycle already stored.
     let slaPolicyImportResult: SlaPolicyImportResult | null = null;
+    const notification: { claims: NotificationClaims | null } = { claims: null };
 
     await withOrganizationSlaLock(prisma, organization.id, async () => {
       await withPerfScope(
@@ -317,7 +343,13 @@ export async function runCycle(
 
             try {
               if (integration.provider === "zendesk") {
-                await runZendeskNormalization(prisma, integration.id);
+                // The poll only re-derives tickets touched since the
+                // watermark; the hourly sweep re-derives them all (and is
+                // the backstop for anything the watermark could miss).
+                await runZendeskNormalization(prisma, integration.id, {
+                  mode:
+                    kind === "active_set_poll" ? "incremental" : "full",
+                });
                 // Independent of Jira's own correlation below: the official
                 // Zendesk↔Jira link signal still establishes the relationship
                 // even when a Jira remote link is stale or Jira isn't connected
@@ -414,7 +446,24 @@ export async function runCycle(
       // One `asOf` snapshot for this organization's whole create -> derive
       // Next Reply cycles -> evaluate pass, so the three pipelines agree on
       // "now" instead of each independently calling `new Date()`.
-      const asOf = new Date().toISOString();
+      const asOfDate = new Date();
+      const asOf = asOfDate.toISOString();
+
+      // Policy versions, calendars and customer overrides, read once and
+      // shared by the commitment, re-resolution and next-reply pipelines
+      // instead of each re-reading the same rows. Loaded after normalization
+      // (which runs the Zendesk policy/calendar import) so it sees the
+      // tick's final policy state; a failure here fails the same stages
+      // that would each have failed reading it themselves.
+      let policyContext: Awaited<ReturnType<typeof loadPolicyContext>> | undefined;
+      try {
+        policyContext = await loadPolicyContext(prisma, organization.id);
+      } catch (error) {
+        // Each pipeline falls back to its own read and reports its own failure.
+        orgLogger.warn("policy_context_load_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       await withPerfScope(
         "worker_commitment",
@@ -423,6 +472,7 @@ export async function runCycle(
             const commitments = await runCommitmentPipeline(
               prisma,
               organization.id,
+              { context: policyContext },
             );
             result.commitmentsCreated += commitments.commitmentsCreated;
 
@@ -470,6 +520,7 @@ export async function runCycle(
               {
                 asOf,
                 logger: orgLogger,
+                context: policyContext,
               },
             );
             result.commitmentsReResolved += reResolution.commitmentsUpdated;
@@ -496,7 +547,25 @@ export async function runCycle(
             const cycles = await runNextReplyCyclePipeline(
               prisma,
               organization.id,
-              { asOf },
+              {
+                asOf,
+                context: policyContext,
+                // The poll only re-derives cycles for cases that can have
+                // changed; the hourly sweep re-derives every case.
+                ...(kind === "active_set_poll"
+                  ? {
+                      scope: "active" as const,
+                      changedSince: new Date(
+                        asOfDate.getTime() -
+                          Math.max(
+                            ACTIVE_LOOKBACK_FLOOR_MS,
+                            ACTIVE_LOOKBACK_INTERVALS *
+                              (options.activePollMs ?? DEFAULT_ACTIVE_POLL_MS),
+                          ),
+                      ),
+                    }
+                  : {}),
+              },
             );
             result.cyclesCreated += cycles.cyclesCreated;
             result.cyclesCancelled += cycles.cyclesCancelled;
@@ -551,21 +620,52 @@ export async function runCycle(
         { organizationId: organization.id, kind },
       );
 
+      // Claim stage: DB-only, so it stays inside the lock. It decides which
+      // candidates still need an alert and inserts their `Notification`
+      // claim rows (the `(commitmentId, threshold)` unique constraint makes
+      // that idempotent against a concurrent cycle or webhook). The slow
+      // Slack/SMTP sends happen below, after the lock is released, so they
+      // never make a webhook delivery for this organization wait on them.
       // Runs even for organizations with no Slack workspace connected and no
-      // SMTP configured — runNotificationPipeline no-ops cheaply in that case.
-      // A commitment that fails to notify never blocks another organization's
-      // cycle.
+      // SMTP configured — it no-ops cheaply in that case.
+      await withPerfScope(
+        "worker_notify_claim",
+        async () => {
+          try {
+            notification.claims = await claimNotifications(
+              prisma,
+              organization.id,
+              notificationCandidates,
+              { appUrl: config.appUrl },
+            );
+          } catch (error) {
+            result.failures.push({
+              organizationId: organization.id,
+              stage: "notifications",
+              error: error instanceof Error ? error.message : String(error),
+            });
+            captureException(error, {
+              organizationId: organization.id,
+              kind,
+              stage: "notifications",
+            });
+          }
+        },
+        { organizationId: organization.id, kind },
+      );
+    });
+
+    // Delivery stage, outside the lock. A commitment that fails to notify
+    // never blocks another organization's cycle.
+    if (notification.claims) {
+      const claims = notification.claims;
       await withPerfScope(
         "worker_notify",
         async () => {
           try {
-            const notifications = await runNotificationPipeline(
+            const notifications = await deliverClaimedNotifications(
               prisma,
-              organization.id,
-              notificationCandidates,
-              {
-                appUrl: config.appUrl,
-              },
+              claims,
             );
             result.notificationsSent += notifications.notificationsSent;
             for (const failed of notifications.notificationsFailed) {
@@ -590,7 +690,7 @@ export async function runCycle(
         },
         { organizationId: organization.id, kind },
       );
-    });
+    }
   }
 
   return result;

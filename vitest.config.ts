@@ -44,6 +44,9 @@ const realDatabaseSuites = [
   "apps/web/test/password-reset-race.test.ts",
   "apps/web/test/email-verification-race.test.ts",
   "apps/web/test/smoke-signup-to-alert.test.ts",
+  "apps/web/test/notification-claim.test.ts",
+  "apps/web/test/zendesk-incremental-normalization.test.ts",
+  "apps/web/test/scoped-pipelines.test.ts",
 ];
 
 export default defineConfig({

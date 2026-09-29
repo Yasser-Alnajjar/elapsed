@@ -226,6 +226,15 @@ model Integration {
   /// must survive a disconnect/reconnect cycle like connectedAt does. Null
   /// only for linear (no webhook receiver exists for it).
   webhookSecret  String?
+  /// Incremental-normalization watermark (roadmap 7.7 Phase 3): the greatest
+  /// `(RawEvent.fetchedAt, RawEvent.id)` the last normalization pass had
+  /// seen — a deterministic cursor, since `fetchedAt` alone can tie. The
+  /// active-set poll only re-derives tickets touched by RawEvents after this
+  /// point (minus an overlap window, because webhook and backfill inserts can
+  /// commit out of `fetchedAt` order). Null until the first full pass. Only
+  /// Zendesk uses it so far.
+  normalizedThroughFetchedAt DateTime?
+  normalizedThroughId        String?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   rawEvents      RawEvent[]
 

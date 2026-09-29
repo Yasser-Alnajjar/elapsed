@@ -17,7 +17,7 @@ import {
 } from "@sla/jira";
 import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
 import { getJiraOAuthConfig } from "@/lib/jira-env";
-import { runWebhookPipelineTail } from "@/lib/webhook-pipeline";
+import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 
 export const maxDuration = 60;
 
@@ -122,11 +122,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
 
   try {
     await runJiraWebhookIngest(prisma, integration.id, config, issueKey);
-    const pipeline = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
+    const { result, claims } = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
       await runJiraCorrelation(prisma, integration.id, { issueKey });
       await runJiraNormalization(prisma, integration.id, { issueKeys: [issueKey] });
-      return runWebhookPipelineTail(prisma, integration.organizationId);
+      // Every case this issue is (or was, if just unlinked) linked to —
+      // those are the only cases the issue's events can have changed.
+      const links = await prisma.caseLink.findMany({
+        where: { system: "jira", externalId: issueKey, case: { organizationId: integration.organizationId } },
+        select: { caseId: true },
+      });
+      return computeWebhookPipeline(prisma, integration.organizationId, {
+        caseIds: [...new Set(links.map((l) => l.caseId))],
+      });
     });
+    // Alerts go out after the lock is released (their claim rows were inserted inside it).
+    const pipeline = await deliverWebhookNotifications(prisma, result, claims);
 
     await prisma.integration.update({
       where: { id: integration.id },

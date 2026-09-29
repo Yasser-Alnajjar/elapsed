@@ -11,7 +11,7 @@ import {
 } from "@sla/zendesk";
 import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
 import { getZendeskOAuthConfig } from "@/lib/zendesk-env";
-import { runWebhookPipelineTail } from "@/lib/webhook-pipeline";
+import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 
 export const maxDuration = 60;
 
@@ -106,10 +106,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
       return NextResponse.json({ status: "deleted", ticketId });
     }
 
-    const pipeline = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
+    const { result, claims } = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
       await runZendeskNormalization(prisma, integration.id, { ticketIds: [ticketId] });
-      return runWebhookPipelineTail(prisma, integration.organizationId);
+      // Only this ticket's case: the lock is held for one ticket's worth of
+      // work, not the organization's.
+      const cases = await prisma.case.findMany({
+        where: { organizationId: integration.organizationId, externalId: String(ticketId) },
+        select: { id: true },
+      });
+      return computeWebhookPipeline(prisma, integration.organizationId, { caseIds: cases.map((c) => c.id) });
     });
+    // Alerts go out after the lock is released (their claim rows were inserted inside it).
+    const pipeline = await deliverWebhookNotifications(prisma, result, claims);
 
     return NextResponse.json({ status: "processed", ticketId, ...pipeline });
   } catch (error) {

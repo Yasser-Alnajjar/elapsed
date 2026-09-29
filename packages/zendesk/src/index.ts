@@ -1,7 +1,10 @@
 export {
   deriveNormalizedEventsForTicket,
+  diffNormalizedEvents,
+  findChangedTicketIds,
   isPublicCommentEvent,
   latestSnapshotById,
+  NORMALIZATION_OVERLAP_MS,
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,
@@ -26,6 +29,7 @@ export type {
   DerivedNormalizedEvent,
   NormalizationResult,
   ZendeskCommentBody,
+  ZendeskNormalizationScope,
   ZendeskUserRoles,
 } from "./normalize";
 export {

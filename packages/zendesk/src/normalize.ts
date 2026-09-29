@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import { Prisma, type PrismaClient } from "@sla/db";
 import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
 
@@ -408,6 +408,53 @@ function groupAuditsByTicketId(
   return byTicketId;
 }
 
+/** Everything that identifies a derived event's content — two events with the same key are interchangeable. */
+function normalizedEventKey(event: {
+  sourceRawEventId: string;
+  sourceSequence: number;
+  type: string;
+  occurredAt: Date | string;
+  actor: string;
+  fromState: string | null;
+  toState: string | null;
+}): string {
+  return [
+    event.sourceRawEventId,
+    event.sourceSequence,
+    event.type,
+    new Date(event.occurredAt).getTime(),
+    event.actor,
+    event.fromState ?? "",
+    event.toState ?? "",
+  ].join("|");
+}
+
+/**
+ * The write needed to turn `stored` into `derived`: derived events with no
+ * identical stored twin are created, stored events with no identical derived
+ * twin are deleted, the rest are left alone. Multiset-aware, so two events
+ * with the same content are matched one-to-one rather than collapsed.
+ */
+export function diffNormalizedEvents<D extends Parameters<typeof normalizedEventKey>[0]>(
+  stored: readonly (Parameters<typeof normalizedEventKey>[0] & { id: string })[],
+  derived: readonly D[],
+): { toCreate: D[]; toDeleteIds: string[] } {
+  const storedIdsByKey = new Map<string, string[]>();
+  for (const row of stored) {
+    const key = normalizedEventKey(row);
+    const ids = storedIdsByKey.get(key);
+    if (ids) ids.push(row.id);
+    else storedIdsByKey.set(key, [row.id]);
+  }
+  const toCreate: D[] = [];
+  for (const event of derived) {
+    const ids = storedIdsByKey.get(normalizedEventKey(event));
+    if (ids && ids.length > 0) ids.pop();
+    else toCreate.push(event);
+  }
+  return { toCreate, toDeleteIds: [...storedIdsByKey.values()].flat() };
+}
+
 export interface ZendeskNormalizationScope {
   /**
    * Limits the run to these tickets' own RawEvents — used by the webhook
@@ -418,15 +465,127 @@ export interface ZendeskNormalizationScope {
    * expensive, and a ticket's `organization_id`/comment authors aren't known
    * until the ticket itself is read. Omit for the worker's full-account
    * cycle, which must still see every ticket.
+   *
+   * A ticket-scoped run never moves the incremental watermark: it isn't a
+   * view of the whole integration.
    */
   ticketIds?: number[];
+  /**
+   * The worker's two speeds (roadmap 7.7 Phase 3). `"full"` (default):
+   * re-derive every ticket — the hourly reconciliation sweep, and the
+   * backstop for anything the incremental path can't see. `"incremental"`:
+   * only re-derive tickets touched by RawEvents newer than
+   * `Integration.normalizedThroughFetchedAt` (minus `NORMALIZATION_OVERLAP_MS`),
+   * falling back to a full pass on the first run or when the changed rows
+   * include a user role snapshot (a role change can alter the actor of any
+   * past comment, and rows for it are rare).
+   *
+   * Trade-off: a ticket whose derivation *fails* is retried on the next
+   * incremental poll only while it stays inside the overlap window; after
+   * that it waits for the next full pass. The failure is reported in
+   * `ticketsFailed` either way.
+   */
+  mode?: "full" | "incremental";
+}
+
+/**
+ * RawEvents are insert-only, but a webhook delivery and a backfill page can
+ * commit their inserts out of `fetchedAt` order (fetchedAt is assigned at
+ * insert, not commit), so a row can become visible *behind* the watermark.
+ * Each incremental pass re-reads this far back before the watermark; the
+ * reprocessing is idempotent (per-ticket derivation only writes a diff), so
+ * a re-read row costs a comparison, never a duplicate.
+ */
+export const NORMALIZATION_OVERLAP_MS = 10 * 60 * 1000;
+
+/** Tickets are derived in batches of this many, keeping each `OR` filter short. */
+const TICKET_BATCH_SIZE = 100;
+
+/** The greatest `(fetchedAt, id)` among an integration's RawEvents, or null when it has none. */
+async function readHighWaterMark(prisma: PrismaClient, integrationId: string) {
+  return prisma.rawEvent.findFirst({
+    where: { integrationId },
+    orderBy: [{ fetchedAt: "desc" }, { id: "desc" }],
+    select: { fetchedAt: true, id: true },
+  });
+}
+
+/**
+ * Ticket ids whose derived state can have changed because of RawEvents newer
+ * than `since`: tickets with a new snapshot, tickets with a new audit, and
+ * tickets belonging to an organization whose snapshot changed (so the case's
+ * customer link is refreshed). Returns null when the changed rows include a
+ * user role snapshot, meaning "cannot narrow — do a full pass".
+ */
+export async function findChangedTicketIds(
+  prisma: PrismaClient,
+  integrationId: string,
+  since: Date,
+): Promise<number[] | null> {
+  const changed = { integrationId, fetchedAt: { gt: since } };
+
+  if ((await prisma.rawEvent.count({ where: { ...changed, providerEventId: { startsWith: "user:" } } })) > 0) {
+    return null;
+  }
+
+  const ticketIds = new Set<number>();
+
+  // `fetchedAt` is a plain `timestamp(3)` holding UTC. A raw-SQL Date
+  // parameter is serialized in the session's local zone, so pass an ISO
+  // string and convert explicitly, as the typed Prisma queries above do.
+  const sinceUtc = Prisma.sql`(${since.toISOString()}::timestamptz AT TIME ZONE 'UTC')`;
+
+  const snapshots = await prisma.rawEvent.findMany({
+    where: { ...changed, providerEventId: { startsWith: "ticket:" } },
+    select: { providerEventId: true },
+  });
+  for (const { providerEventId } of snapshots) {
+    const match = /^ticket:(\d+):/.exec(providerEventId);
+    if (match) ticketIds.add(Number(match[1]));
+  }
+
+  // Audits carry the ticket id only in their payload, not their providerEventId.
+  const audits = await prisma.$queryRaw<{ ticketId: string | null }[]>(Prisma.sql`
+    SELECT DISTINCT ("payload"->>'ticket_id') AS "ticketId"
+    FROM "raw_events"
+    WHERE "integrationId" = ${integrationId}
+      AND "fetchedAt" > ${sinceUtc}
+      AND starts_with("providerEventId", 'ticket_audit:')
+  `);
+  for (const { ticketId } of audits) if (ticketId) ticketIds.add(Number(ticketId));
+
+  const changedOrgIds = (
+    await prisma.$queryRaw<{ orgId: string | null }[]>(Prisma.sql`
+      SELECT DISTINCT ("payload"->>'id') AS "orgId"
+      FROM "raw_events"
+      WHERE "integrationId" = ${integrationId}
+        AND "fetchedAt" > ${sinceUtc}
+        AND starts_with("providerEventId", 'organization:')
+    `)
+  ).flatMap(({ orgId }) => (orgId ? [orgId] : []));
+  if (changedOrgIds.length > 0) {
+    const ofOrgs = await prisma.$queryRaw<{ ticketId: string | null }[]>(Prisma.sql`
+      SELECT DISTINCT ("payload"->>'id') AS "ticketId"
+      FROM "raw_events"
+      WHERE "integrationId" = ${integrationId}
+        AND starts_with("providerEventId", 'ticket:')
+        AND "payload"->>'organization_id' IN (${Prisma.join(changedOrgIds)})
+    `);
+    for (const { ticketId } of ofOrgs) if (ticketId) ticketIds.add(Number(ticketId));
+  }
+
+  return [...ticketIds].filter(Number.isFinite);
 }
 
 /**
  * Projects everything ingested so far for one integration into
  * Customer/Case/NormalizedEvent. Idempotent and safe to re-run: customers
- * and cases are upserted, and each case's NormalizedEvents are replaced
- * wholesale from a fresh derivation rather than appended to.
+ * and cases are upserted, and each case's NormalizedEvents are re-derived
+ * and reconciled against what's stored (only the difference is written).
+ *
+ * The incremental mode's correctness rests on that idempotence: the
+ * watermark only decides *which* tickets get re-derived, and re-deriving a
+ * ticket that didn't actually change writes nothing.
  */
 export async function runZendeskNormalization(
   prisma: PrismaClient,
@@ -434,8 +593,43 @@ export async function runZendeskNormalization(
   scope: ZendeskNormalizationScope = {},
 ): Promise<NormalizationResult> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
+
+  // A ticket-scoped run (webhook) isn't a view of the whole integration, so
+  // it neither narrows by nor advances the watermark.
+  if (scope.ticketIds) return normalizeTickets(prisma, integration, scope.ticketIds);
+
+  // Read before deriving, so a RawEvent that lands mid-run is above the new
+  // watermark and picked up next time rather than skipped.
+  const highWater = await readHighWaterMark(prisma, integrationId);
+
+  let ticketIds: number[] | undefined;
+  if (scope.mode === "incremental" && integration.normalizedThroughFetchedAt) {
+    const since = new Date(integration.normalizedThroughFetchedAt.getTime() - NORMALIZATION_OVERLAP_MS);
+    ticketIds = (await findChangedTicketIds(prisma, integrationId, since)) ?? undefined;
+  }
+
+  const result = await normalizeTickets(prisma, integration, ticketIds);
+
+  if (highWater) {
+    await prisma.integration.update({
+      where: { id: integrationId },
+      data: { normalizedThroughFetchedAt: highWater.fetchedAt, normalizedThroughId: highWater.id },
+    });
+  }
+  return result;
+}
+
+/**
+ * Derives the given tickets (or every ticket when `ticketIds` is omitted)
+ * from their stored RawEvents.
+ */
+async function normalizeTickets(
+  prisma: PrismaClient,
+  integration: { id: string; organizationId: string },
+  ticketIds?: number[],
+): Promise<NormalizationResult> {
+  const integrationId = integration.id;
   const organizationId = integration.organizationId;
-  const { ticketIds } = scope;
 
   const result: NormalizationResult = {
     customersUpserted: 0,
@@ -443,32 +637,13 @@ export async function runZendeskNormalization(
     normalizedEventsWritten: 0,
     ticketsFailed: [],
   };
+  if (ticketIds && ticketIds.length === 0) return result;
 
-  const [orgRows, ticketRows, auditRows, userRows] = await Promise.all([
+  const [orgRows, userRows] = await Promise.all([
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "organization:" } },
       select: { id: true, payload: true, fetchedAt: true },
       orderBy: { fetchedAt: "asc" },
-    }),
-    prisma.rawEvent.findMany({
-      where: {
-        integrationId,
-        providerEventId: { startsWith: "ticket:" },
-        ...(ticketIds ? { OR: ticketIds.map((id) => ({ providerEventId: { startsWith: `ticket:${id}:` } })) } : {}),
-      },
-      select: { id: true, payload: true, fetchedAt: true },
-      orderBy: { fetchedAt: "asc" },
-    }),
-    prisma.rawEvent.findMany({
-      where: {
-        integrationId,
-        providerEventId: { startsWith: "ticket_audit:" },
-        // Audits carry no ticket id in their own providerEventId (they're
-        // keyed by the audit's own id — see rawEvents.ts) — the ticket
-        // scope has to go through the JSON payload instead.
-        ...(ticketIds ? { OR: ticketIds.map((id) => ({ payload: { path: ["ticket_id"], equals: id } })) } : {}),
-      },
-      select: { id: true, payload: true, fetchedAt: true },
     }),
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "user:" } },
@@ -486,12 +661,55 @@ export async function runZendeskNormalization(
     result.customersUpserted += 1;
   }
 
-  const latestTickets = latestSnapshotById<ZendeskTicket>(ticketRows);
-  const auditsByTicketId = groupAuditsByTicketId(auditRows);
   const userRoles: ZendeskUserRoles = new Map(
     [...latestSnapshotById<ZendeskUser>(userRows).values()].map(({ value }) => [value.id, value.role]),
   );
 
+  const batches: (number[] | undefined)[] = [];
+  if (ticketIds) for (let i = 0; i < ticketIds.length; i += TICKET_BATCH_SIZE) batches.push(ticketIds.slice(i, i + TICKET_BATCH_SIZE));
+  else batches.push(undefined);
+
+  for (const batch of batches) {
+    const [ticketRows, auditRows] = await Promise.all([
+      prisma.rawEvent.findMany({
+        where: {
+          integrationId,
+          providerEventId: { startsWith: "ticket:" },
+          ...(batch ? { OR: batch.map((id) => ({ providerEventId: { startsWith: `ticket:${id}:` } })) } : {}),
+        },
+        select: { id: true, payload: true, fetchedAt: true },
+        orderBy: { fetchedAt: "asc" },
+      }),
+      prisma.rawEvent.findMany({
+        where: {
+          integrationId,
+          providerEventId: { startsWith: "ticket_audit:" },
+          // Audits carry no ticket id in their own providerEventId (they're
+          // keyed by the audit's own id — see rawEvents.ts) — the ticket
+          // scope has to go through the JSON payload instead.
+          ...(batch ? { OR: batch.map((id) => ({ payload: { path: ["ticket_id"], equals: id } })) } : {}),
+        },
+        select: { id: true, payload: true, fetchedAt: true },
+      }),
+    ]);
+
+    const latestTickets = latestSnapshotById<ZendeskTicket>(ticketRows);
+    const auditsByTicketId = groupAuditsByTicketId(auditRows);
+
+    await deriveTickets(prisma, organizationId, latestTickets, auditsByTicketId, userRoles, result);
+  }
+
+  return result;
+}
+
+async function deriveTickets(
+  prisma: PrismaClient,
+  organizationId: string,
+  latestTickets: ReturnType<typeof latestSnapshotById<ZendeskTicket>>,
+  auditsByTicketId: Map<number, AuditRecord[]>,
+  userRoles: ZendeskUserRoles,
+  result: NormalizationResult,
+): Promise<void> {
   for (const { rawEventId: ticketRawEventId, value: ticket, rawEventIds: ticketSnapshotRawEventIds } of latestTickets.values()) {
     try {
       // Defense in depth: `runZendeskBackfill` routes "deleted"-status tickets
@@ -566,24 +784,42 @@ export async function runZendeskNormalization(
       });
       result.casesUpserted += 1;
 
-      await prisma.$transaction([
-        prisma.normalizedEvent.deleteMany({
-          where: { caseId: caseRow.id, sourceRawEventId: { in: ownRawEventIds } },
-        }),
-        prisma.normalizedEvent.createMany({
-          data: derived.map((event) => ({
-            caseId: caseRow.id,
-            sourceRawEventId: event.sourceRawEventId,
-            type: event.type,
-            occurredAt: new Date(event.occurredAt),
-            actor: event.actor,
-            system: "zendesk" as const,
-            fromState: event.fromState,
-            toState: event.toState,
-            sourceSequence: event.sourceSequence,
-          })) satisfies Prisma.NormalizedEventCreateManyInput[],
-        }),
-      ]);
+      // Reconcile against what's stored instead of deleting and recreating
+      // every event: unchanged events keep their id and `createdAt` (which
+      // the worker's "cases with new events" lookback relies on), and an
+      // unchanged ticket writes nothing at all.
+      const stored = await prisma.normalizedEvent.findMany({
+        where: { caseId: caseRow.id, sourceRawEventId: { in: ownRawEventIds } },
+        select: {
+          id: true,
+          sourceRawEventId: true,
+          type: true,
+          occurredAt: true,
+          actor: true,
+          fromState: true,
+          toState: true,
+          sourceSequence: true,
+        },
+      });
+      const { toCreate, toDeleteIds } = diffNormalizedEvents(stored, derived);
+      if (toDeleteIds.length > 0 || toCreate.length > 0) {
+        await prisma.$transaction([
+          prisma.normalizedEvent.deleteMany({ where: { id: { in: toDeleteIds } } }),
+          prisma.normalizedEvent.createMany({
+            data: toCreate.map((event) => ({
+              caseId: caseRow.id,
+              sourceRawEventId: event.sourceRawEventId,
+              type: event.type,
+              occurredAt: new Date(event.occurredAt),
+              actor: event.actor,
+              system: "zendesk" as const,
+              fromState: event.fromState,
+              toState: event.toState,
+              sourceSequence: event.sourceSequence,
+            })) satisfies Prisma.NormalizedEventCreateManyInput[],
+          }),
+        ]);
+      }
       result.normalizedEventsWritten += derived.length;
     } catch (error) {
       result.ticketsFailed.push({
@@ -592,6 +828,4 @@ export async function runZendeskNormalization(
       });
     }
   }
-
-  return result;
 }

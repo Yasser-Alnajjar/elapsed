@@ -1,4 +1,4 @@
-import { perfCount, type Prisma, type PrismaClient } from "@sla/db";
+import { perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
   evaluateCommitment,
   type BusinessCalendarVersion,
@@ -14,6 +14,7 @@ import {
   type WeeklyWindow,
 } from "@sla/core";
 import { ACTIVE_COMMITMENT_WHERE } from "./active-commitment";
+import { chunk } from "./tick-context";
 
 export interface CommitmentRecord {
   id: string;
@@ -201,6 +202,105 @@ export function toEvaluationCreateInput(
   };
 }
 
+/**
+ * Every field `toNormalizedEventDomain` reads — deliberately not the whole
+ * row (`createdAt` is never needed), since this is the widest read in the
+ * tick.
+ */
+const EVENT_SELECT = {
+  id: true,
+  caseId: true,
+  type: true,
+  occurredAt: true,
+  actor: true,
+  system: true,
+  fromState: true,
+  toState: true,
+  sourceRawEventId: true,
+  sourceSequence: true,
+} as const;
+
+/** Events for `caseIds`, `IN` list chunked so it's never one enormous parameter list. Ordered per case as the engine expects. */
+async function loadEventsForCases(prisma: PrismaClient, caseIds: readonly string[]) {
+  const rows: NormalizedEventRecord[] = [];
+  for (const ids of chunk(caseIds)) {
+    rows.push(
+      ...(await prisma.normalizedEvent.findMany({
+        where: { caseId: { in: ids } },
+        orderBy: [{ caseId: "asc" }, { occurredAt: "asc" }, { sourceSequence: "asc" }],
+        select: EVENT_SELECT,
+      })),
+    );
+  }
+  return rows;
+}
+
+/**
+ * The status of each commitment's most recent persisted evaluation, via
+ * `DISTINCT ON` in Postgres. Prisma's own `distinct` option de-duplicates
+ * client-side, i.e. it would read every evaluation row ever written for
+ * every commitment in scope and throw all but one away. `id DESC` breaks an
+ * `evaluatedAt` tie deterministically.
+ */
+async function loadLatestEvaluationStatuses(
+  prisma: PrismaClient,
+  commitmentIds: readonly string[],
+): Promise<{ commitmentId: string; status: CommitmentStatus }[]> {
+  const rows: { commitmentId: string; status: CommitmentStatus }[] = [];
+  for (const ids of chunk(commitmentIds)) {
+    rows.push(
+      ...(await prisma.$queryRaw<{ commitmentId: string; status: CommitmentStatus }[]>(Prisma.sql`
+        SELECT DISTINCT ON ("commitmentId") "commitmentId", "status"
+        FROM "evaluations"
+        WHERE "commitmentId" IN (${Prisma.join(ids)})
+        ORDER BY "commitmentId", "evaluatedAt" DESC, "id" DESC
+      `)),
+    );
+  }
+  return rows;
+}
+
+interface CommitmentUpdate {
+  id: string;
+  policyVersionId: string;
+  status: CommitmentStatus;
+  closedAt: string | null;
+}
+
+/**
+ * Applies status/closedAt changes as one `UPDATE … FROM (VALUES …)` per
+ * chunk instead of one `updateMany` per commitment. The compare-and-set
+ * conditions (E-2) are unchanged and evaluated per row inside the join: a
+ * concurrent cancellation or re-resolution onto a different policy version
+ * between the read and this write must never be clobbered by a status/
+ * closedAt computed from the stale row.
+ *
+ * `closedAt` goes in as an ISO string (always UTC, from `toISOString()`) and
+ * is converted with `AT TIME ZONE 'UTC'` because the column is a plain
+ * `timestamp(3)` — casting straight to `timestamp` would depend on the
+ * session time zone.
+ */
+async function applyCommitmentUpdates(prisma: PrismaClient, updates: readonly CommitmentUpdate[]) {
+  for (const batch of chunk(updates)) {
+    const values = Prisma.join(
+      batch.map(
+        (u) =>
+          Prisma.sql`(${u.id}, ${u.policyVersionId}, ${u.status}, ${u.closedAt}::text)`,
+      ),
+    );
+    await prisma.$executeRaw`
+      UPDATE "commitments" AS c
+      SET "status" = v."status"::"CommitmentStatus",
+          "closedAt" = CASE WHEN v."closedAt" IS NULL THEN NULL
+                            ELSE (v."closedAt"::timestamptz AT TIME ZONE 'UTC') END
+      FROM (VALUES ${values}) AS v("id", "policyVersionId", "status", "closedAt")
+      WHERE c."id" = v."id"
+        AND c."policyVersionId" = v."policyVersionId"
+        AND c."status" <> 'cancelled'
+    `;
+  }
+}
+
 export type EvaluationScope = "active" | "all";
 
 /**
@@ -266,7 +366,12 @@ export interface EvaluationPipelineResult {
 export async function runEvaluationPipeline(
   prisma: PrismaClient,
   organizationId: string,
-  options: { asOf?: string; scope?: EvaluationScope } = {},
+  options: {
+    asOf?: string;
+    scope?: EvaluationScope;
+    /** Limits the run to these cases (webhook/source-sync: only the cases the delivery touched). Omit for the whole organization. */
+    caseIds?: readonly string[];
+  } = {},
 ): Promise<EvaluationPipelineResult> {
   const asOf = options.asOf ?? new Date().toISOString();
   const scope = options.scope ?? "active";
@@ -281,7 +386,11 @@ export async function runEvaluationPipeline(
 
   const commitmentRows = await prisma.commitment.findMany({
     where: {
-      case: { organizationId, deletedAt: null },
+      case: {
+        organizationId,
+        deletedAt: null,
+        ...(options.caseIds ? { id: { in: [...options.caseIds] } } : {}),
+      },
       // "all" (the reconciliation sweep) still excludes cancelled commitments
       // — their cycle no longer exists — but otherwise re-checks every
       // commitment, finalized or not; "active" narrows to the shared
@@ -302,34 +411,21 @@ export async function runEvaluationPipeline(
   ];
   const caseIds = [...new Set(commitmentRows.map((c) => c.caseId))];
 
-  const [
-    policyVersionRows,
-    calendarVersionRows,
-    eventRows,
-    latestEvaluationRows,
-  ] = await Promise.all([
-    prisma.sLAPolicyVersion.findMany({
-      where: { id: { in: policyVersionIds } },
-      include: { policy: { select: { name: true } } },
-    }),
-    prisma.businessCalendarVersion.findMany({
-      where: { id: { in: calendarVersionIds } },
-    }),
-    prisma.normalizedEvent.findMany({
-      where: { caseId: { in: caseIds } },
-      orderBy: [
-        { caseId: "asc" },
-        { occurredAt: "asc" },
-        { sourceSequence: "asc" },
-      ],
-    }),
-    prisma.evaluation.findMany({
-      where: { commitmentId: { in: commitmentRows.map((c) => c.id) } },
-      distinct: ["commitmentId"],
-      orderBy: [{ commitmentId: "asc" }, { evaluatedAt: "desc" }],
-      select: { commitmentId: true, status: true },
-    }),
-  ]);
+  const [policyVersionRows, calendarVersionRows, eventRows, latestEvaluationRows] =
+    await Promise.all([
+      prisma.sLAPolicyVersion.findMany({
+        where: { id: { in: policyVersionIds } },
+        include: { policy: { select: { name: true } } },
+      }),
+      prisma.businessCalendarVersion.findMany({
+        where: { id: { in: calendarVersionIds } },
+      }),
+      loadEventsForCases(prisma, caseIds),
+      loadLatestEvaluationStatuses(
+        prisma,
+        commitmentRows.map((c) => c.id),
+      ),
+    ]);
 
   const previousStatusByCommitmentId = new Map<string, CommitmentStatus>(
     latestEvaluationRows.map((row) => [row.commitmentId, row.status]),
@@ -380,12 +476,7 @@ export async function runEvaluationPipeline(
   }
 
   const evaluationsToCreate: Evaluation[] = [];
-  const commitmentUpdates: {
-    id: string;
-    policyVersionId: string;
-    status: CommitmentStatus;
-    closedAt: string | null;
-  }[] = [];
+  const commitmentUpdates: CommitmentUpdate[] = [];
 
   for (const row of commitmentRows) {
     try {
@@ -486,25 +577,7 @@ export async function runEvaluationPipeline(
     result.evaluationsCreated = created.count;
   }
 
-  // Compare-and-set (E-2): a concurrent cancellation or re-resolution onto a
-  // different policy version between the read above and this write must
-  // never be clobbered by a status/closedAt computed from the stale row —
-  // `cancelled` is never overwritten, and the write only applies while the
-  // commitment is still on the policy version this evaluation was computed
-  // against.
-  for (const update of commitmentUpdates) {
-    await prisma.commitment.updateMany({
-      where: {
-        id: update.id,
-        policyVersionId: update.policyVersionId,
-        status: { not: "cancelled" },
-      },
-      data: {
-        status: update.status,
-        closedAt: update.closedAt ? new Date(update.closedAt) : null,
-      },
-    });
-  }
+  await applyCommitmentUpdates(prisma, commitmentUpdates);
 
   return result;
 }

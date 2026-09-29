@@ -85,6 +85,7 @@ function fakePrisma(options: FakePrismaOptions = {}) {
       create: vi.fn(createImpl ?? (() => Promise.resolve({ id: "ntf_1" }))),
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     notificationFailure: {
       upsert: notificationFailureUpsert,

@@ -209,7 +209,8 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
       asOf: at("11:00").toISOString(),
     });
 
-    expect(result.casesConsidered).toBe(1);
+    // A case with no anchor is never even loaded.
+    expect(result.casesConsidered).toBe(0);
     expect(result.casesFailed).toEqual([]);
     expect(result.cyclesCreated).toBe(0);
     expect(await nextReplyRows(caseId)).toEqual([]);
@@ -236,7 +237,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
       asOf: at("11:00").toISOString(),
     });
 
-    expect(result.casesConsidered).toBe(2);
+    expect(result.casesConsidered).toBe(1);
     expect(result.casesFailed).toEqual([]);
     expect(result.cyclesCreated).toBe(1);
     expect(await nextReplyRows(withTarget)).toHaveLength(1);
@@ -285,5 +286,97 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
     const rows = await nextReplyRows(caseId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ policyVersionId: policyWithTargetVersionId });
+  });
+
+  describe("scoping (roadmap 7.7 Phase 3)", () => {
+    async function anchoredCase(options: { closed?: boolean } = {}): Promise<string> {
+      const caseId = await createCase();
+      await seedConversation(caseId);
+      await prisma.commitment.create({
+        data: {
+          caseId,
+          kind: "first_response",
+          policyVersionId: policyWithTargetVersionId,
+          calendarVersionId,
+          startedAt: at("09:00"),
+          targetMinutes: 120,
+          dueAt: at("11:00"),
+          // A finalized (met) anchor: no active commitment on the case.
+          ...(options.closed ? { status: "met" as const, closedAt: at("09:30") } : {}),
+        },
+      });
+      return caseId;
+    }
+
+    const asOf = at("11:00").toISOString();
+    const hourAgo = () => new Date(Date.now() - 60 * 60 * 1000);
+
+    it("active scope re-derives a case with an active commitment", async () => {
+      const caseId = await anchoredCase();
+      const result = await commitments.runNextReplyCyclePipeline(prisma, organizationId, {
+        asOf,
+        scope: "active",
+        changedSince: new Date(Date.now() + 60_000),
+      });
+      expect(result.casesConsidered).toBe(1);
+      expect(await nextReplyRows(caseId)).toHaveLength(1);
+    });
+
+    it("active scope skips a finalized case with no recent events, and the full scope catches it", async () => {
+      const caseId = await anchoredCase({ closed: true });
+      // Events were created "now" by seedConversation; look only after that.
+      const active = await commitments.runNextReplyCyclePipeline(prisma, organizationId, {
+        asOf,
+        scope: "active",
+        changedSince: new Date(Date.now() + 60_000),
+      });
+      expect(active.casesConsidered).toBe(0);
+      expect(await nextReplyRows(caseId)).toEqual([]);
+
+      // The hourly reconciliation sweep (no scope) is the backstop.
+      const all = await commitments.runNextReplyCyclePipeline(prisma, organizationId, { asOf });
+      expect(all.casesConsidered).toBe(1);
+      expect(await nextReplyRows(caseId)).toHaveLength(1);
+    });
+
+    it("active scope picks up a finalized case that has a new event", async () => {
+      const caseId = await anchoredCase({ closed: true });
+      const result = await commitments.runNextReplyCyclePipeline(prisma, organizationId, {
+        asOf,
+        scope: "active",
+        changedSince: hourAgo(),
+      });
+      expect(result.casesConsidered).toBe(1);
+      expect(await nextReplyRows(caseId)).toHaveLength(1);
+    });
+
+    it("requires changedSince for the active scope", async () => {
+      await expect(
+        commitments.runNextReplyCyclePipeline(prisma, organizationId, { asOf, scope: "active" }),
+      ).rejects.toThrow(/changedSince/);
+    });
+
+    it("caseIds limits the run to the named cases and never skips a named one", async () => {
+      const touched = await anchoredCase();
+      const untouched = await anchoredCase();
+
+      const result = await commitments.runNextReplyCyclePipeline(prisma, organizationId, {
+        asOf,
+        caseIds: [touched],
+      });
+      expect(result.casesConsidered).toBe(1);
+      expect(await nextReplyRows(touched)).toHaveLength(1);
+      expect(await nextReplyRows(untouched)).toEqual([]);
+    });
+
+    it("writes nothing for a case whose persisted commitments already match", async () => {
+      const caseId = await anchoredCase();
+      await commitments.runNextReplyCyclePipeline(prisma, organizationId, { asOf });
+      const before = await nextReplyRows(caseId);
+
+      const rerun = await commitments.runNextReplyCyclePipeline(prisma, organizationId, { asOf });
+      expect(rerun).toMatchObject({ cyclesCreated: 0, cyclesCancelled: 0, cyclesRestored: 0 });
+      expect(await nextReplyRows(caseId)).toEqual(before);
+    });
   });
 });

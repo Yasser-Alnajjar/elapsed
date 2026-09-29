@@ -4,7 +4,7 @@ import {
   runEvaluationPipeline,
   runNextReplyCyclePipeline,
 } from "@sla/commitments";
-import { runNotificationPipeline } from "@sla/notifications";
+import { claimNotifications, deliverClaimedNotifications, type NotificationClaims } from "@sla/notifications";
 import type { PrismaClient } from "@sla/db";
 
 export interface WebhookPipelineResult {
@@ -41,37 +41,89 @@ export interface WebhookPipelineResult {
  * One `asOf` snapshot for commitment creation, re-resolution, Next Reply
  * cycle derivation, and evaluation, so all four agree on "now" for this
  * webhook.
+ *
+ * Split in two (`computeWebhookPipeline` / `deliverWebhookNotifications`) so
+ * the receivers can send alerts after releasing the organization lock, and
+ * scoped to the touched cases (`WebhookPipelineOptions.caseIds`) so the lock
+ * is held for one delivery's worth of work, not the whole organization's.
  */
-export async function runWebhookPipelineTail(
+export interface WebhookPipelineOptions {
+  /**
+   * The cases this delivery touched (roadmap 7.7 Phase 3): every stage is
+   * limited to them, so the lock is held for one ticket's worth of work
+   * instead of the whole organization's. An empty list is a valid scope
+   * ("touched nothing") and every stage no-ops. Omit to process the whole
+   * organization.
+   */
+  caseIds?: readonly string[];
+}
+
+/**
+ * The lock-holding half of the tail: commitments, re-resolution, Next Reply
+ * cycles, evaluation and — as DB-only claim rows — notifications. Returns the
+ * claims for `deliverWebhookNotifications`, which sends them *after* the
+ * caller has released the organization lock, so a slow Slack/SMTP call never
+ * makes the next delivery for this organization wait on it.
+ */
+export async function computeWebhookPipeline(
   prisma: PrismaClient,
   organizationId: string,
-): Promise<WebhookPipelineResult> {
+  options: WebhookPipelineOptions = {},
+): Promise<{ result: WebhookPipelineResult; claims: NotificationClaims }> {
   const asOf = new Date().toISOString();
+  const { caseIds } = options;
 
-  const commitments = await runCommitmentPipeline(prisma, organizationId);
-  const reResolution = await runCommitmentReResolutionPipeline(prisma, organizationId, { asOf });
-  const cycles = await runNextReplyCyclePipeline(prisma, organizationId, { asOf });
-  const evaluations = await runEvaluationPipeline(prisma, organizationId, { asOf, scope: "active" });
+  const commitments = await runCommitmentPipeline(prisma, organizationId, { caseIds });
+  const reResolution = await runCommitmentReResolutionPipeline(prisma, organizationId, { asOf, caseIds });
+  const cycles = await runNextReplyCyclePipeline(prisma, organizationId, { asOf, caseIds });
+  const evaluations = await runEvaluationPipeline(prisma, organizationId, { asOf, scope: "active", caseIds });
   // I-8: this tail previously omitted `appUrl` entirely, so a webhook-
   // triggered alert's email carried no "View ticket" link — only the
   // worker's own poll cycle (apps/worker/src/cycle.ts) passed it. Read
   // directly from the env, like the worker does (`config.appUrl`), rather
   // than `getAppUrl()`: that throws when unset, and a missing link must
   // never fail sending the alert itself.
-  const notifications = await runNotificationPipeline(prisma, organizationId, evaluations.notificationCandidates, {
+  const claims = await claimNotifications(prisma, organizationId, evaluations.notificationCandidates, {
     appUrl: process.env.NEXTAUTH_URL ?? null,
   });
 
   return {
-    commitmentsCreated: commitments.commitmentsCreated,
-    commitmentsReResolved: reResolution.commitmentsUpdated,
-    cyclesCreated: cycles.cyclesCreated,
-    cyclesCancelled: cycles.cyclesCancelled,
-    cyclesRestored: cycles.cyclesRestored,
-    commitmentsConsidered: evaluations.commitmentsConsidered,
-    evaluationsCreated: evaluations.evaluationsCreated,
-    commitmentsFinalized: evaluations.commitmentsFinalized,
+    result: {
+      commitmentsCreated: commitments.commitmentsCreated,
+      commitmentsReResolved: reResolution.commitmentsUpdated,
+      cyclesCreated: cycles.cyclesCreated,
+      cyclesCancelled: cycles.cyclesCancelled,
+      cyclesRestored: cycles.cyclesRestored,
+      commitmentsConsidered: evaluations.commitmentsConsidered,
+      evaluationsCreated: evaluations.evaluationsCreated,
+      commitmentsFinalized: evaluations.commitmentsFinalized,
+      notificationsSent: 0,
+      notificationsFailed: [],
+    },
+    claims,
+  };
+}
+
+/** The lock-free half of the tail: sends what `computeWebhookPipeline` claimed and folds the outcome into its result. */
+export async function deliverWebhookNotifications(
+  prisma: PrismaClient,
+  result: WebhookPipelineResult,
+  claims: NotificationClaims,
+): Promise<WebhookPipelineResult> {
+  const notifications = await deliverClaimedNotifications(prisma, claims);
+  return {
+    ...result,
     notificationsSent: notifications.notificationsSent,
     notificationsFailed: notifications.notificationsFailed,
   };
+}
+
+/** Both halves back to back, for callers that don't hold the organization lock. */
+export async function runWebhookPipelineTail(
+  prisma: PrismaClient,
+  organizationId: string,
+  options: WebhookPipelineOptions = {},
+): Promise<WebhookPipelineResult> {
+  const { result, claims } = await computeWebhookPipeline(prisma, organizationId, options);
+  return deliverWebhookNotifications(prisma, result, claims);
 }

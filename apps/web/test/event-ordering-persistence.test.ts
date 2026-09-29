@@ -136,13 +136,15 @@ describe.skipIf(!TEST_DATABASE_URL)("normalized event ordering (real Postgres)",
     ]);
   });
 
-  it("is idempotent: renormalizing rewrites the rows with identical ordering and sequences", async () => {
+  it("is idempotent: renormalizing leaves the rows untouched, with identical ordering and sequences", async () => {
     await zendesk.runZendeskNormalization(prisma, integrationId);
     const first = await loadPersisted();
     await zendesk.runZendeskNormalization(prisma, integrationId);
     const second = await loadPersisted();
 
-    expect(second.map((row) => row.id)).not.toEqual(first.map((row) => row.id));
+    // Reconciled against what's stored, not deleted and recreated: an
+    // unchanged derivation keeps every row's id.
+    expect(second.map((row) => row.id)).toEqual(first.map((row) => row.id));
     expect(second.map(describeRow)).toEqual(first.map(describeRow));
   });
 

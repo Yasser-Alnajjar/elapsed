@@ -14,6 +14,7 @@ import {
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
 import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 
 export { toCalendarVersionDomain } from "./calendar-domain";
 
@@ -174,9 +175,17 @@ export interface CommitmentPipelineResult {
  * first-response commitment was created) does it fall back to the newest
  * version of the *same* policy — still with the sibling's calendar.
  */
+export interface CommitmentPipelineOptions {
+  /** Policy/calendar/override reads a worker tick loaded once for all three pipelines. */
+  context?: PolicyContext;
+  /** Limits the run to these cases (webhook/source-sync: only the cases the delivery touched). Omit for the whole organization. */
+  caseIds?: readonly string[];
+}
+
 export async function runCommitmentPipeline(
   prisma: PrismaClient,
   organizationId: string,
+  options: CommitmentPipelineOptions = {},
 ): Promise<CommitmentPipelineResult> {
   const result: CommitmentPipelineResult = {
     casesConsidered: 0,
@@ -185,13 +194,8 @@ export async function runCommitmentPipeline(
     casesFailed: [],
   };
 
-  const policyVersionRows = await prisma.sLAPolicyVersion.findMany({
-    where: { policy: { organizationId, archivedAt: null, deactivatedAt: null } },
-    include: {
-      calendarVersion: true,
-      policy: { select: { position: true, source: true } },
-    },
-  });
+  const { policyVersionRows, customersWithCalendarOverride } =
+    options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
   const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map(
@@ -232,13 +236,6 @@ export async function runCommitmentPipeline(
   // 4d: frozen at the moment a customer's calendar override was set
   // (`Customer.calendarVersionId`), never the calendar's latest version —
   // consistent with how a policy pins to a specific calendar version.
-  const customersWithCalendarOverride = await prisma.customer.findMany({
-    where: { organizationId, calendarVersionId: { not: null } },
-    select: {
-      id: true,
-      calendarVersion: true,
-    },
-  });
   const customerCalendarVersionByCustomerId = new Map<
     string,
     BusinessCalendarVersion
@@ -252,7 +249,15 @@ export async function runCommitmentPipeline(
   }
 
   const cases = await prisma.case.findMany({
-    where: { organizationId, deletedAt: null },
+    where: {
+      organizationId,
+      deletedAt: null,
+      ...(options.caseIds ? { id: { in: [...options.caseIds] } } : {}),
+      // Only cases still missing a kind (NOT EXISTS per kind) — a case with
+      // both is skipped below anyway, so never loading it saves the row, its
+      // JSON attributes, and the nested commitments read on every tick.
+      OR: COMMITMENT_KINDS.map((kind) => ({ commitments: { none: { kind } } })),
+    },
     select: {
       id: true,
       priority: true,
@@ -316,6 +321,8 @@ export async function runCommitmentPipeline(
     for (const row of rows)
       calendarsById.set(row.id, toCalendarVersionDomain(row));
   }
+
+  const commitmentsToCreate: Prisma.CommitmentCreateManyInput[] = [];
 
   for (const caseRow of cases) {
     result.casesConsidered += 1;
@@ -415,26 +422,48 @@ export async function runCommitmentPipeline(
           policyVersion,
           calendarVersion,
         );
-        await prisma.commitment.create({
-          data: {
-            id: commitment.id,
-            caseId: commitment.caseId,
-            kind: commitment.kind,
-            policyVersionId: commitment.policyVersionId,
-            calendarVersionId: commitment.calendarVersionId,
-            startedAt: new Date(commitment.startedAt),
-            targetMinutes: commitment.targetMinutes,
-            dueAt: new Date(commitment.dueAt),
-            status: commitment.status,
-          } satisfies Prisma.CommitmentCreateManyInput,
+        commitmentsToCreate.push({
+          id: commitment.id,
+          caseId: commitment.caseId,
+          kind: commitment.kind,
+          policyVersionId: commitment.policyVersionId,
+          calendarVersionId: commitment.calendarVersionId,
+          startedAt: new Date(commitment.startedAt),
+          targetMinutes: commitment.targetMinutes,
+          dueAt: new Date(commitment.dueAt),
+          status: commitment.status,
         });
-        result.commitmentsCreated += 1;
       }
     } catch (error) {
       result.casesFailed.push({
         caseId: caseRow.id,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+  }
+
+  // One createMany per chunk instead of a create per commitment. `id` is a
+  // deterministic hash and `@@unique([caseId, kind, cycleKey])` backs it, so a
+  // concurrent run (or a re-run) can't duplicate: `skipDuplicates` drops the
+  // loser's row and `count` only reports what actually landed. If a batch
+  // fails outright, fall back to one insert per row so a single bad case is
+  // still isolated in `casesFailed` like before, instead of failing the rest.
+  for (const batch of chunk(commitmentsToCreate)) {
+    try {
+      const created = await prisma.commitment.createMany({ data: batch, skipDuplicates: true });
+      result.commitmentsCreated += created.count;
+    } catch {
+      for (const data of batch) {
+        try {
+          const created = await prisma.commitment.createMany({ data: [data], skipDuplicates: true });
+          result.commitmentsCreated += created.count;
+        } catch (error) {
+          result.casesFailed.push({
+            caseId: data.caseId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
     }
   }
 

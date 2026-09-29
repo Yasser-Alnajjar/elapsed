@@ -15,6 +15,7 @@ import { RE_RESOLUTION_ELIGIBLE_WHERE } from "./active-commitment";
 import { latestVersionPerPolicy, resolveCommitmentCalendarVersion, toCaseAttributes } from "./pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
 import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import { loadPolicyContext, type PolicyContext } from "./tick-context";
 
 /**
  * The only trigger `runCommitmentReResolutionPipeline` acts on (D1, D1b): a
@@ -111,7 +112,14 @@ export async function runCommitmentReResolutionPipeline(
   // passes one already `.child()`-ed with cycle/integration context so
   // these warnings come out with the same fields as everything else in
   // the cycle they ran in.
-  options: { asOf?: string; logger?: Logger } = {},
+  options: {
+    asOf?: string;
+    logger?: Logger;
+    /** Policy/calendar/override reads a worker tick loaded once for all three pipelines. */
+    context?: PolicyContext;
+    /** Limits the run to these cases (webhook/source-sync). Omit for the whole organization. */
+    caseIds?: readonly string[];
+  } = {},
 ): Promise<CommitmentReResolutionResult> {
   const asOf = options.asOf ?? new Date().toISOString();
   const logger = (options.logger ?? createLogger()).child({
@@ -128,13 +136,8 @@ export async function runCommitmentReResolutionPipeline(
     casesFailed: [],
   };
 
-  const policyVersionRows = await prisma.sLAPolicyVersion.findMany({
-    where: { policy: { organizationId, archivedAt: null, deactivatedAt: null } },
-    include: {
-      calendarVersion: true,
-      policy: { select: { position: true, source: true } },
-    },
-  });
+  const { policyVersionRows, customersWithCalendarOverride } =
+    options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
   const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map((row) => ({
@@ -169,10 +172,6 @@ export async function runCommitmentReResolutionPipeline(
   );
 
   // 4d: frozen at the moment the override was set (`Customer.calendarVersionId`), never the calendar's latest version.
-  const customersWithCalendarOverride = await prisma.customer.findMany({
-    where: { organizationId, calendarVersionId: { not: null } },
-    select: { id: true, calendarVersion: true },
-  });
   const customerCalendarVersionByCustomerId = new Map<string, BusinessCalendarVersion>();
   for (const customer of customersWithCalendarOverride) {
     if (!customer.calendarVersion) continue;
@@ -183,6 +182,7 @@ export async function runCommitmentReResolutionPipeline(
     where: {
       organizationId,
       deletedAt: null,
+      ...(options.caseIds ? { id: { in: [...options.caseIds] } } : {}),
       commitments: { some: RE_RESOLUTION_ELIGIBLE_WHERE },
     },
     select: {

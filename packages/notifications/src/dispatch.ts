@@ -37,24 +37,44 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * A claim still `pending` after this long belonged to a process that died
+ * between claiming and finishing its sends. It's released so the alert is
+ * retried on the next cycle rather than lost. Generous on purpose: a live
+ * cycle's sends finish in seconds, so this only ever fires for a crash.
+ */
+export const STALE_CLAIM_MS = 15 * 60 * 1000;
+
+/**
  * Sends Slack and/or email alerts for notification candidates surfaced by
  * `runEvaluationPipeline` (Phase 13.7). Both channels share one dedup slot:
  * the `Notification` table's `@@unique([commitmentId, threshold])`
  * constraint guards "has this alert been dispatched at all", not
  * per-channel.
  *
- * Claim-before-send: the row is `create`d (with a placeholder `channel`)
- * *before* any Slack/email call, so a webhook-triggered pipeline and a
- * concurrent poll cycle racing on the same candidate can't both send — the
- * loser's `create` hits `P2002` and is counted as skipped, not failed. The
- * winner then attempts every configured channel and rewrites `channel` to
- * what actually delivered (e.g. `"slack,email"`); if every channel failed,
- * the claim is deleted so a later cycle retries. The in-memory pre-check
- * against existing rows only avoids needless work on later cycles — the
- * unique constraint is the real guarantee. Trade-off: a process that dies
- * between claiming and finishing the sends leaves a `"pending"` row, so
- * that alert is never retried — at-most-once, deliberately preferred over
- * paging a customer twice for one breach.
+ * Two phases, split so the slow one runs outside the organization's advisory
+ * lock (roadmap 7.7 — Slack/SMTP round trips used to hold it, blocking
+ * webhook deliveries for that organization):
+ *
+ * 1. `claimNotifications` — cheap, DB-only, run *inside* the lock. Decides
+ *    which candidates still need sending and `create`s their `Notification`
+ *    row (placeholder `channel`) before any Slack/email call. A concurrent
+ *    cycle or webhook racing on the same candidate hits `P2002` on the
+ *    unique constraint and skips, so no two processes ever send the same
+ *    alert, lock or no lock.
+ * 2. `deliverClaimedNotifications` — the network calls, run *after* the lock
+ *    is released. Sends only what was claimed, then finalizes: rewrites
+ *    `channel` to what actually delivered (e.g. `"slack,email"`), or, if
+ *    every channel failed, deletes the claim (so a later cycle retries) and
+ *    upserts a `NotificationFailure`.
+ *
+ * A process that dies between the two leaves a `"pending"` claim.
+ * `claimNotifications` releases claims older than `STALE_CLAIM_MS` on the
+ * next cycle, so that alert is retried instead of lost. (Before this the
+ * pipeline was strictly at-most-once; a stale-claim release means a rare
+ * crash-mid-send can now page twice rather than never.)
+ *
+ * `runNotificationPipeline` runs both back to back for callers that don't
+ * hold the lock or don't care (webhook tail, tests).
  *
  * Email credentials are loaded per organization from `OrganizationEmailSettings`
  * (the settings UI, roadmap: organization SMTP configuration) rather than a
@@ -70,16 +90,50 @@ function errorMessage(error: unknown): string {
 export interface NotificationPipelineOptions {
   /** Deployment base URL (`NEXTAUTH_URL`) — used only to build a "View ticket" link in the branded HTML email. Omit (or leave unconfigured) and emails send without that link. */
   appUrl?: string | null;
+  /** Override for `STALE_CLAIM_MS` (tests). */
+  staleClaimMs?: number;
 }
 
-export async function runNotificationPipeline(
+interface ClaimedNotification {
+  candidate: NotificationCandidate;
+  claimId: string;
+  context: {
+    externalId: string;
+    customerName: string | null;
+    subject: string | null;
+    caseUrl: string | null;
+  };
+}
+
+/** Everything `deliverClaimedNotifications` needs, resolved while the lock was held so nothing is re-read after it. */
+export interface NotificationClaims {
+  claimed: ClaimedNotification[];
+  skipped: number;
+  slack: { accessToken: string; channelId: string } | null;
+  emailConfig: EmailConfig | null;
+  emailTo: string[];
+}
+
+export async function claimNotifications(
   prisma: PrismaClient,
   organizationId: string,
   candidates: NotificationCandidate[],
   options: NotificationPipelineOptions = {},
-): Promise<NotificationPipelineResult> {
-  const result: NotificationPipelineResult = { notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] };
-  if (candidates.length === 0) return result;
+): Promise<NotificationClaims> {
+  const claims: NotificationClaims = { claimed: [], skipped: 0, slack: null, emailConfig: null, emailTo: [] };
+
+  // Release claims a crashed process never finished, before deciding what
+  // still needs sending — even with no candidates this cycle, so a stale
+  // claim doesn't linger until the commitment next alerts.
+  await prisma.notification.deleteMany({
+    where: {
+      channel: CLAIMED_CHANNEL,
+      sentAt: { lt: new Date(Date.now() - (options.staleClaimMs ?? STALE_CLAIM_MS)) },
+      commitment: { case: { organizationId } },
+    },
+  });
+
+  if (candidates.length === 0) return claims;
 
   const [slack, emailSettings] = await Promise.all([
     prisma.slackIntegration.findUnique({ where: { organizationId } }),
@@ -98,9 +152,12 @@ export async function runNotificationPipeline(
   const emailReady = Boolean(emailConfig) && emailTo.length > 0;
 
   if (!slackReady && !emailReady) {
-    result.notificationsSkipped = candidates.length;
-    return result;
+    claims.skipped = candidates.length;
+    return claims;
   }
+  claims.slack = slackReady ? { accessToken: decryptToken(slack!.accessToken), channelId: slack!.channelId! } : null;
+  claims.emailConfig = emailReady ? emailConfig : null;
+  claims.emailTo = emailReady ? emailTo : [];
 
   const existing = await prisma.notification.findMany({
     where: { commitmentId: { in: candidates.map((c) => c.commitmentId) } },
@@ -108,8 +165,8 @@ export async function runNotificationPipeline(
   });
   const alreadySent = new Set(existing.map((e) => `${e.commitmentId}:${e.threshold}`));
   const toSend = candidates.filter((c) => !alreadySent.has(`${c.commitmentId}:${c.threshold}`));
-  result.notificationsSkipped += candidates.length - toSend.length;
-  if (toSend.length === 0) return result;
+  claims.skipped += candidates.length - toSend.length;
+  if (toSend.length === 0) return claims;
 
   const caseRows = await prisma.case.findMany({
     where: { id: { in: [...new Set(toSend.map((c) => c.caseId))] }, deletedAt: null },
@@ -121,40 +178,68 @@ export async function runNotificationPipeline(
     const caseRow = caseById.get(candidate.caseId);
     if (!caseRow) continue;
 
-    let claim: { id: string };
     try {
-      claim = await prisma.notification.create({
+      const claim = await prisma.notification.create({
         data: { commitmentId: candidate.commitmentId, threshold: candidate.threshold, channel: CLAIMED_CHANNEL },
         select: { id: true },
       });
+      claims.claimed.push({
+        candidate,
+        claimId: claim.id,
+        context: {
+          externalId: caseRow.externalId,
+          customerName: caseRow.customer?.name ?? null,
+          subject: caseRow.subject,
+          // 3.9/E-19: shared by both channels — Slack alerts previously carried
+          // no case link at all.
+          caseUrl: options.appUrl ? `${options.appUrl}/cases/${caseRow.id}` : null,
+        },
+      });
     } catch (error) {
       if (!isUniqueConstraintError(error)) throw error;
-      result.notificationsSkipped += 1;
-      continue;
+      claims.skipped += 1;
     }
+  }
 
-    const context = {
-      externalId: caseRow.externalId,
-      customerName: caseRow.customer?.name ?? null,
-      subject: caseRow.subject,
-      // 3.9/E-19: shared by both channels — Slack alerts previously carried
-      // no case link at all.
-      caseUrl: options.appUrl ? `${options.appUrl}/cases/${caseRow.id}` : null,
-    };
+  return claims;
+}
+
+export async function runNotificationPipeline(
+  prisma: PrismaClient,
+  organizationId: string,
+  candidates: NotificationCandidate[],
+  options: NotificationPipelineOptions = {},
+): Promise<NotificationPipelineResult> {
+  return deliverClaimedNotifications(prisma, await claimNotifications(prisma, organizationId, candidates, options));
+}
+
+export async function deliverClaimedNotifications(
+  prisma: PrismaClient,
+  claims: NotificationClaims,
+): Promise<NotificationPipelineResult> {
+  const result: NotificationPipelineResult = {
+    notificationsSent: 0,
+    notificationsSkipped: claims.skipped,
+    notificationsFailed: [],
+  };
+  const { slack, emailConfig, emailTo } = claims;
+
+  for (const { candidate, claimId, context } of claims.claimed) {
+    const claim = { id: claimId };
     const delivered: string[] = [];
     const errors: string[] = [];
 
-    if (slackReady) {
+    if (slack) {
       try {
-        await postMessage(decryptToken(slack!.accessToken), slack!.channelId!, formatSlackMessage(candidate, context));
+        await postMessage(slack.accessToken, slack.channelId, formatSlackMessage(candidate, context));
         delivered.push("slack");
       } catch (error) {
         errors.push(`slack: ${errorMessage(error)}`);
       }
     }
 
-    if (emailReady) {
-      const brand = { name: emailConfig!.fromName };
+    if (emailConfig) {
+      const brand = { name: emailConfig.fromName };
       const { subject, text, html } = formatEmailMessage(candidate, context, brand);
       // 3.10: one send per recipient, not everyone listed in one `To` — a
       // bad address for one recipient doesn't block the others, and no
@@ -163,7 +248,7 @@ export async function runNotificationPipeline(
       let anyEmailSent = false;
       for (const recipient of emailTo) {
         try {
-          await sendEmail(emailConfig!, { to: [recipient], subject, text, html });
+          await sendEmail(emailConfig, { to: [recipient], subject, text, html });
           anyEmailSent = true;
         } catch (error) {
           recipientErrors.push(`${recipient}: ${errorMessage(error)}`);

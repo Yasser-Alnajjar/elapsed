@@ -5,7 +5,9 @@ export {
   runCommitmentPipeline,
   toCaseAttributes,
 } from "./pipeline";
-export type { CaseRecord, CommitmentPipelineResult, PolicyVersionRecord } from "./pipeline";
+export type { CaseRecord, CommitmentPipelineOptions, CommitmentPipelineResult, PolicyVersionRecord } from "./pipeline";
+export { chunk, IN_LIST_CHUNK_SIZE, loadPolicyContext } from "./tick-context";
+export type { PolicyContext } from "./tick-context";
 export {
   isTerminalStatus,
   runEvaluationPipeline,
@@ -28,7 +30,7 @@ export type {
   PersistNextReplyCommitmentsResult,
 } from "./cycle-commitments";
 export { runNextReplyCyclePipeline } from "./cycle-pipeline";
-export type { NextReplyCyclePipelineResult } from "./cycle-pipeline";
+export type { NextReplyCyclePipelineOptions, NextReplyCyclePipelineResult } from "./cycle-pipeline";
 export { overridePolicyTargets, PolicyNotFoundError } from "./override";
 export type { PolicyOverrideResult } from "./override";
 export {

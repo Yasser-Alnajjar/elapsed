@@ -9,6 +9,7 @@ import type { WorkerConfig } from "../src/config";
 // cycle's per-integration status handling is what's under test.
 vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
+  loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [] }),
   runCommitmentPipeline: vi.fn().mockResolvedValue({ commitmentsCreated: 0 }),
   runCommitmentReResolutionPipeline: vi.fn().mockResolvedValue({
     casesConsidered: 0,
@@ -33,7 +34,10 @@ vi.mock("@sla/commitments", () => ({
   }),
 }));
 vi.mock("@sla/notifications", () => ({
-  runNotificationPipeline: vi.fn().mockResolvedValue({ notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] }),
+  claimNotifications: vi.fn().mockResolvedValue({ claimed: [], skipped: 0, slack: null, emailConfig: null, emailTo: [] }),
+  deliverClaimedNotifications: vi
+    .fn()
+    .mockResolvedValue({ notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] }),
 }));
 // Linear's *real* backfill, client and token lifecycle run against a stubbed
 // `fetch`, so each case below starts from an actual HTTP status code. Only the
@@ -320,7 +324,9 @@ describe("runCycle — Next Reply cycle pipeline wiring (Step 7)", () => {
 
     const result = await runCycle(prisma, config, "active_set_poll");
 
-    expect(runCommitmentPipeline).toHaveBeenCalledWith(prisma, "org_1");
+    expect(runCommitmentPipeline).toHaveBeenCalledWith(prisma, "org_1", {
+      context: { policyVersionRows: [], customersWithCalendarOverride: [] },
+    });
     expect(runNextReplyCyclePipeline).toHaveBeenCalledTimes(1);
     expect(runEvaluationPipeline).toHaveBeenCalledTimes(1);
 
@@ -340,6 +346,22 @@ describe("runCycle — Next Reply cycle pipeline wiring (Step 7)", () => {
     expect(result.cyclesCreated).toBe(2);
     expect(result.cyclesCancelled).toBe(1);
     expect(result.cyclesRestored).toBe(1);
+  });
+
+  it("scopes the poll's Next Reply pass to active cases, and the hourly sweep to all", async () => {
+    const prisma = orgOnlyDb();
+
+    await runCycle(prisma, config, "active_set_poll", "poll", { activePollMs: 60 * 60 * 1000 });
+    const [, , pollOptions] = vi.mocked(runNextReplyCyclePipeline).mock.calls[0]!;
+    expect(pollOptions).toMatchObject({ scope: "active", changedSince: expect.any(Date) });
+    // Lookback is 3 poll intervals (an hour here), so a slow tick still overlaps the next.
+    const { asOf, changedSince } = pollOptions as { asOf: string; changedSince: Date };
+    expect(new Date(asOf).getTime() - changedSince.getTime()).toBe(3 * 60 * 60 * 1000);
+
+    vi.mocked(runNextReplyCyclePipeline).mockClear();
+    await runCycle(prisma, config, "reconciliation_sweep");
+    const [, , sweepOptions] = vi.mocked(runNextReplyCyclePipeline).mock.calls[0]!;
+    expect(sweepOptions).not.toHaveProperty("scope");
   });
 
   it("records a Next Reply cycle pipeline failure without aborting commitments or evaluation", async () => {
