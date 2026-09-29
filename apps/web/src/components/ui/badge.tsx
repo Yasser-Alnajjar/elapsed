@@ -11,7 +11,7 @@ const badgeVariants = cva(
         primary: "border-transparent bg-primary/15 text-primary",
         secondary: "border-transparent bg-secondary/20 text-secondary",
         success: "border-transparent bg-success/15 text-success",
-        warning: "border-transparent bg-warning/15 text-warning",
+        warning: "border-transparent bg-warning/15 text-warning-text",
         destructive: "border-transparent bg-error/15 text-error",
         outline: "border-border text-muted-foreground",
         tertiary: "border-transparent bg-tertiary/15 text-tertiary",

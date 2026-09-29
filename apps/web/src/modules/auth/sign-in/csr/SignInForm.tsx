@@ -45,7 +45,7 @@ const signInSchema = Yup.object({
 type SignInFormValues = Yup.InferType<typeof signInSchema>;
 
 const fieldClass =
-  "h-10 rounded-[2px] border border-border bg-surface-container-lowest pl-9 text-sm focus:border-sky-500";
+  "h-10 rounded-[2px] border border-border bg-surface-container-lowest pl-9 text-sm focus:border-ring";
 
 export const SignInForm = () => {
   const router = useRouter();
@@ -126,7 +126,7 @@ export const SignInForm = () => {
       <div className="relative z-10 flex w-full flex-col items-center justify-center">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 size-120 rounded-full bg-sky-500/10 blur-[130px]"
+          className="pointer-events-none absolute -top-24 size-120 rounded-full bg-primary/10 blur-[130px]"
         />
         <div
           aria-hidden
@@ -153,7 +153,7 @@ export const SignInForm = () => {
                   className="group relative flex h-10 w-full cursor-not-allowed items-center justify-between rounded-[2px] border border-border bg-surface-raised px-3.5 transition-all duration-150 hover:border-primary/50 hover:bg-interactive"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-5 items-center justify-center rounded-[2px] bg-sky-500/20 text-primary">
+                    <span className="flex size-5 items-center justify-center rounded-[2px] bg-primary/20 text-primary">
                       <KeyRound aria-hidden className="size-3.75" />
                     </span>
                     <span className="font-mono text-sm font-medium text-foreground">
@@ -163,7 +163,7 @@ export const SignInForm = () => {
                   <span
                     className={cn(
                       authLabelClass,
-                      "rounded-[2px] border border-border bg-zinc-800 px-1.5 py-0.5 text-primary-fixed-dim group-hover:border-primary/30",
+                      "rounded-[2px] border border-border bg-surface-raised px-1.5 py-0.5 text-primary-fixed-dim group-hover:border-primary/30",
                     )}
                   >
                     DEFAULT
@@ -355,7 +355,7 @@ export const SignInForm = () => {
                       disabled={isSubmitting || inCooldown}
                       className={cn(
                         authButtonClass,
-                        "mt-1 h-10 text-sm text-primary-foreground hover:shadow-[0_0_20px_rgba(14,165,233,0.45)]",
+                        "mt-1 h-10 text-sm text-primary-foreground hover:shadow-[0_0_20px_color-mix(in_srgb,var(--primary)_45%,transparent)]",
                       )}
                     >
                       {isSubmitting && (

@@ -111,9 +111,9 @@ export function SlaComplianceTrendChart({
                 x2="0"
                 y2="1"
               >
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="var(--telemetry)" stopOpacity={0.25} />
 
-                <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                <stop offset="100%" stopColor="var(--telemetry)" stopOpacity={0} />
               </linearGradient>
             </defs>
 
@@ -138,7 +138,7 @@ export function SlaComplianceTrendChart({
                 height * (1 - BENCHMARK / 100),
               ]}
               vertical={false}
-              stroke="#38bdf8"
+              stroke="var(--telemetry)"
               strokeDasharray="3 3"
               strokeWidth={1.5}
               opacity={0.6}
@@ -163,7 +163,7 @@ export function SlaComplianceTrendChart({
             <Area
               type="monotone"
               dataKey="compliancePercent"
-              stroke="#f59e0b"
+              stroke="var(--warning)"
               strokeWidth={2.5}
               fill="url(#complianceGradient)"
               fillOpacity={1}
@@ -171,8 +171,8 @@ export function SlaComplianceTrendChart({
               dot={false}
               activeDot={{
                 r: 4,
-                fill: "#f59e0b",
-                stroke: "#0b1326",
+                fill: "var(--warning)",
+                stroke: "var(--card)",
                 strokeWidth: 2,
               }}
             />

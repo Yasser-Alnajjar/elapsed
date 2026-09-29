@@ -354,9 +354,9 @@ export const ResetPasswordForm = () => {
                               "rounded-[1px]",
                               check.met
                                 ? index === checks.length - 1
-                                  ? "bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                                  : "bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]"
-                                : "bg-gray-700",
+                                  ? "bg-success shadow-[0_0_8px_color-mix(in_srgb,var(--success)_50%,transparent)]"
+                                  : "bg-primary shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_50%,transparent)]"
+                                : "bg-border-strong",
                             )}
                           />
                         ))}
@@ -404,7 +404,7 @@ export const ResetPasswordForm = () => {
                       id="revoke-sessions"
                       type="checkbox"
                       defaultChecked
-                      className="mt-1 size-4 cursor-pointer rounded-[2px] accent-sky-500"
+                      className="mt-1 size-4 cursor-pointer rounded-[2px] accent-primary"
                     />
                     <label htmlFor="revoke-sessions" className="cursor-pointer">
                       <span className="block text-sm font-medium leading-5 text-foreground">
@@ -436,7 +436,7 @@ export const ResetPasswordForm = () => {
                       disabled={isSubmitting}
                       className={cn(
                         authButtonClass,
-                        "h-11 gap-1 shadow-[0_0_16px_rgba(14,165,233,0.3)] hover:shadow-[0_0_24px_rgba(14,165,233,0.5)]",
+                        "h-11 gap-1 shadow-[0_0_16px_color-mix(in_srgb,var(--primary)_30%,transparent)] hover:shadow-[0_0_24px_color-mix(in_srgb,var(--primary)_50%,transparent)]",
                       )}
                     >
                       {isSubmitting && (

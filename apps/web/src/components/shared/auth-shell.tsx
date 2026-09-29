@@ -17,7 +17,7 @@ export const authLabelClass =
 
 /** Base for every text field: canvas fill, sky focus ring. */
 export const authInputBase =
-  "w-full text-foreground placeholder:text-foreground-subtle transition-all focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full text-foreground placeholder:text-foreground-subtle transition-all focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Inline link inside a card. */
 export const authLinkClass =
@@ -25,7 +25,7 @@ export const authLinkClass =
 
 /** Solid sky primary action. */
 export const authButtonClass =
-  "group flex w-full items-center justify-center gap-2 rounded-[2px] bg-sky-500 text-sm font-semibold tracking-wide text-surface-container-lowest transition-all duration-200 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60";
+  "group flex w-full items-center justify-center gap-2 rounded-[2px] bg-primary text-sm font-semibold tracking-wide text-primary-foreground transition-all duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60";
 
 export const AuthInput = React.forwardRef<
   HTMLInputElement,
@@ -80,7 +80,7 @@ export function AuthPage({
   mainClassName?: string;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col justify-between bg-surface-container-lowest font-inter text-foreground selection:bg-sky-500 selection:text-primary-foreground">
+    <div className="relative flex min-h-screen flex-col justify-between bg-surface-container-lowest font-inter text-foreground selection:bg-primary selection:text-primary-foreground">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_50%_0%,color-mix(in_oklch,var(--color-primary)_8%,transparent),transparent_55%),radial-gradient(circle_at_50%_100%,color-mix(in_oklch,var(--color-background)_80%,transparent),transparent_70%)]"
@@ -138,8 +138,8 @@ export function AuthShell({
 }
 
 const alertTones = {
-  danger: "border-error/40 bg-error/10 text-rose-300",
-  warning: "border-warning/40 bg-warning/10 text-orange-300",
+  danger: "border-error/40 bg-error/10 text-error",
+  warning: "border-warning/40 bg-warning/10 text-warning-text",
   success: "border-success/40 bg-success/10 text-success",
 } as const;
 

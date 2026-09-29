@@ -1,331 +1,289 @@
 :root {
-  /* ─────────────────────────────────────────────
-   * Base
-   * ───────────────────────────────────────────── */
+  /* Elapsed theme — LIGHT ("Boardroom / Audit Export").
+   * Source of truth: stitch_elapsed/design/code.html.
+   * Reference token names come first; legacy shadcn / Stitch names below
+   * are aliases onto them so existing components keep resolving. */
 
-  --background: oklch(0.985 0.004 255);
-  --foreground: oklch(0.145 0.015 255);
+  /* ── Reference tokens ─────────────────────────── */
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #f1f5f9;
+  --surface-overlay: #ffffff;
+  --surface-hover: #e2e8f0;
+  --surface-active: #dbeafe;
 
-  --card: oklch(1 0 0);
+  --foreground: #0f172a;
+  --foreground-muted: #475569;
+  --foreground-subtle: #64748b;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.015 255);
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --telemetry: #0369a1;
+  --primary-subtle: #e0f2fe;
+  --primary-foreground: #ffffff;
 
-  /* ─────────────────────────────────────────────
-   * Primary
-   * ───────────────────────────────────────────── */
+  --success: #059669;
+  --success-subtle: #d1fae5;
+  --success-border: #a7f3d0;
 
-  --primary: oklch(0.52 0.16 255);
-  --primary-foreground: oklch(0.985 0.004 255);
+  --warning: #d97706;
+  --warning-subtle: #fef3c7;
+  --warning-border: #fde68a;
+  --warning-text: #b45309;
+  --warning-foreground: #ffffff;
 
-  --primary-container: #38bdf8;
-  --primary-fixed-dim: #7bd0ff;
+  --danger: #e11d48;
+  --danger-subtle: #ffe4e6;
+  --danger-border: #fecdd3;
+  --danger-foreground: #ffffff;
 
-  --on-primary: #ffffff;
-  --on-primary-container: #004965;
+  --neutral: #475569;
+  --neutral-subtle: #f1f5f9;
+  --neutral-border: #e2e8f0;
 
-  /* ─────────────────────────────────────────────
-   * Secondary
-   * ───────────────────────────────────────────── */
+  --stage-support: #0ea5e9;
+  --stage-eng: #f59e0b;
+  --stage-waiting: #4f46e5;
+  --stage-limbo: #cbd5e1;
+  /* Legible label/text variants of the stage colors + ink used on the solid bars. */
+  --stage-support-text: #0284c7;
+  --stage-eng-text: #d97706;
+  --stage-waiting-text: #4f46e5;
+  --stage-limbo-text: #475569;
+  --on-stage-support: #080e1a;
+  --on-stage-eng: #080e1a;
+  --on-stage-waiting: #ffffff;
+  --on-stage-limbo: #0f172a;
 
-  --secondary: oklch(0.5 0.02 255);
-  --secondary-foreground: oklch(0.22 0.02 255);
+  --border: #cbd5e1;
+  --border-strong: #94a3b8;
+  --ring: #0284c7;
 
-  --secondary-container: #2f3aa3;
+  --sidebar-background: #f8fafc;
+  --sidebar-border: #e2e8f0;
 
-  --muted: oklch(0.955 0.008 255);
-  --muted-foreground: oklch(0.5 0.02 255);
+  /* ── shadcn semantic tokens ───────────────────── */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-overlay);
+  --popover-foreground: var(--foreground);
 
-  /* ─────────────────────────────────────────────
-   * Accent
-   * ───────────────────────────────────────────── */
+  --secondary: var(--stage-waiting-text);
+  --secondary-foreground: #ffffff;
+  --secondary-container: var(--primary-subtle);
 
-  --accent: oklch(0.95 0.015 255);
-  --accent-foreground: oklch(0.32 0.08 255);
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--foreground-muted);
 
-  /* ─────────────────────────────────────────────
-   * Error
-   * ───────────────────────────────────────────── */
+  --accent: var(--primary-subtle);
+  --accent-foreground: var(--primary-hover);
 
-  --error: oklch(0.63 0.22 20);
-  --error-container: color-mix(
-    in oklch,
-    oklch(0.63 0.22 20) 14%,
-    var(--surface)
-  );
-  --error-foreground: oklch(1 0 0);
-
-  /* ─────────────────────────────────────────────
-   * Borders / Inputs
-   * ───────────────────────────────────────────── */
-
-  --border: oklch(0.9 0.01 255);
-  --input: oklch(0.9 0.01 255);
-  --ring: oklch(0.52 0.16 255);
-
-  --border-subtle: oklch(0.94 0.006 255);
-  --border-strong: #2d3c59;
-
-  --outline: var(--foreground-subtle);
-  --outline-variant: var(--border-strong);
-
-  /* ─────────────────────────────────────────────
-   * Radius
-   * 2/4/6/8px scale
-   * ───────────────────────────────────────────── */
+  --input: var(--border-strong);
 
   --radius: 0.25rem;
 
-  /* ─────────────────────────────────────────────
-   * Surfaces
-   * ───────────────────────────────────────────── */
+  /* ── Primary (Stitch aliases) ─────────────────── */
+  --primary-container: var(--primary);
+  --primary-fixed-dim: var(--primary-hover);
+  --on-primary: var(--primary-foreground);
+  --on-primary-container: var(--primary-foreground);
 
-  --surface: var(--background);
-  --surface-raised: var(--card);
+  /* ── Error → danger ───────────────────────────── */
+  --error: var(--danger);
+  --error-container: var(--danger-subtle);
+  --error-foreground: var(--danger-foreground);
 
-  --elevated: oklch(1 0 0);
-  --interactive: oklch(0.955 0.008 255);
+  /* ── Borders / outlines ───────────────────────── */
+  --border-subtle: color-mix(in srgb, var(--border) 50%, var(--background));
+  --outline: var(--foreground-subtle);
+  --outline-variant: var(--border-strong);
 
-  --surface-subtle: oklch(0.975 0.005 255);
-  --surface-hover: oklch(0.955 0.008 255);
-  --surface-active: oklch(0.93 0.012 255);
-
+  /* ── Surfaces (Stitch container ladder) ───────── */
+  --elevated: var(--surface-overlay);
+  --interactive: var(--surface-hover);
+  --surface-subtle: var(--surface-raised);
   --surface-bright: #ffffff;
-  --surface-variant: #e2e8f0;
+  --surface-variant: var(--surface-hover);
 
   --surface-container-lowest: var(--background);
-  --surface-container-low: var(--surface-subtle);
-  --surface-container: var(--surface-raised);
+  --surface-container-low: var(--surface-raised);
+  --surface-container: var(--surface);
   --surface-container-high: var(--surface-hover);
   --surface-container-highest: var(--surface-active);
 
-  /* ─────────────────────────────────────────────
-   * Foreground hierarchy
-   * ───────────────────────────────────────────── */
-
-  --foreground-subtle: oklch(0.62 0.015 255);
-
   --on-surface: var(--foreground);
-  --on-surface-variant: var(--muted-foreground);
+  --on-surface-variant: var(--foreground-muted);
 
-  /* ─────────────────────────────────────────────
-   * Semantic Status Colors
-   * ───────────────────────────────────────────── */
-
-  --success: hsl(152 60% 38%);
-
-  --warning: hsl(35 92% 50%);
-  --warning-foreground: hsl(30 80% 15%);
-
-  /* ─────────────────────────────────────────────
-   * Tertiary
-   * ───────────────────────────────────────────── */
-
+  /* ── Tertiary → success ───────────────────────── */
   --tertiary: var(--success);
-  --tertiary-container: color-mix(in oklch, var(--success) 16%, var(--surface));
+  --tertiary-container: var(--success-subtle);
+  --tertiary-fixed: var(--success);
+  --on-tertiary-container: var(--success);
 
-  --tertiary-fixed: #6ffbbe;
-  --on-tertiary-container: #004e34;
+  /* ── SLA legs / clock ─────────────────────────── */
+  --leg-support: var(--stage-support);
+  --leg-engineering: var(--stage-eng);
+  --leg-waiting: var(--stage-waiting);
+  --leg-unknown: var(--stage-limbo);
+  --clock-running: var(--success);
+  --clock-paused: var(--neutral);
 
-  /* ─────────────────────────────────────────────
-   * SLA Semantic Colors
-   * ───────────────────────────────────────────── */
+  /* ── Sidebar ──────────────────────────────────── */
+  --sidebar: var(--sidebar-background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--primary-subtle);
+  --sidebar-accent-foreground: var(--primary-hover);
+  --sidebar-ring: var(--ring);
 
-  --leg-support: hsl(204 80% 48%);
-  --leg-engineering: hsl(230 65% 55%);
-  --leg-waiting: hsl(35 92% 50%);
-  --leg-unknown: hsl(220 10% 50%);
-
-  --clock-running: hsl(152 60% 38%);
-  --clock-paused: hsl(220 10% 50%);
-
-  /* ─────────────────────────────────────────────
-   * Charts
-   * ───────────────────────────────────────────── */
-
-  /* ─────────────────────────────────────────────
-   * Sidebar
-   * ───────────────────────────────────────────── */
-
-  --sidebar: oklch(0.975 0.005 255);
-  --sidebar-foreground: oklch(0.18 0.015 255);
-
-  --sidebar-accent: oklch(0.95 0.015 255);
-  --sidebar-accent-foreground: oklch(0.32 0.08 255);
-
-  --sidebar-border: oklch(0.91 0.008 255);
-  --sidebar-ring: oklch(0.52 0.16 255);
-
-  /* ─────────────────────────────────────────────
-   * Shadows
-   * ───────────────────────────────────────────── */
-
+  /* ── Shadows ──────────────────────────────────── */
   --shadow-soft-value: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow-panel-value: 0 4px 12px rgb(15 23 42 / 0.07);
   --shadow-elevated-value: 0 8px 20px rgb(15 23 42 / 0.09);
-  --shadow-glow-value: 0 0 16px oklch(0.52 0.16 255 / 0.1);
+  --shadow-glow-value: 0 0 16px rgb(2 132 199 / 0.1);
 }
 
 .dark {
-  /* ─────────────────────────────────────────────
-   * Base
-   * ───────────────────────────────────────────── */
+  /* Elapsed theme — DARK ("Operational Default"). */
 
-  --background: #0b1326;
-  --foreground: #dae2fd;
-
-  --card: #131b2e;
-
-  --popover: #0b1326;
-  --popover-foreground: #f8fafc;
-
-  /* ─────────────────────────────────────────────
-   * Primary
-   * ───────────────────────────────────────────── */
-
-  --primary: #8ed5ff;
-  --primary-foreground: #00354a;
-
-  --primary-container: #38bdf8;
-  --primary-fixed-dim: #7bd0ff;
-
-  --on-primary: #00354a;
-  --on-primary-container: #004965;
-
-  /* ─────────────────────────────────────────────
-   * Secondary
-   * ───────────────────────────────────────────── */
-
-  --secondary: #bdc2ff;
-  --secondary-foreground: #e2e8f0;
-
-  --secondary-container: #2f3aa3;
-
-  --muted: #17233b;
-  --muted-foreground: #94a3b8;
-
-  /* ─────────────────────────────────────────────
-   * Accent
-   * ───────────────────────────────────────────── */
-
-  --accent: #1a2945;
-  --accent-foreground: #7dd3fc;
-
-  /* ─────────────────────────────────────────────
-   * Error
-   * ───────────────────────────────────────────── */
-
-  --error: #f43f5e;
-  --error-container: #93000a;
-  --error-foreground: #ffffff;
-
-  /* ─────────────────────────────────────────────
-   * Borders / Inputs
-   * ───────────────────────────────────────────── */
-
-  --border: #1c273c;
-  --input: #1c273c;
-  --ring: #8ed5ff;
-
-  --border-subtle: #101827;
-  --border-strong: #2d3c59;
-
-  --outline: #87929a;
-  --outline-variant: #3e484f;
-
-  /* ─────────────────────────────────────────────
-   * Surfaces
-   * ───────────────────────────────────────────── */
-
-  --elevated: #1a2745;
-  --interactive: #233356;
-
-  --surface: #0b1326;
+  /* ── Reference tokens ─────────────────────────── */
+  --background: #060a12;
+  --surface: #0b1324;
   --surface-raised: #111c34;
-
-  --surface-subtle: #0b1326;
+  --surface-overlay: #1a2745;
   --surface-hover: #233356;
-  --surface-active: #2d3c59;
+  --surface-active: #2b3d64;
 
-  --surface-container-lowest: #060e20;
-  --surface-container-low: #131b2e;
-  --surface-container: #171f33;
-  --surface-container-high: #222a3d;
-  --surface-container-highest: #2d3449;
-
-  --surface-bright: #31394d;
-  --surface-variant: #2d3449;
-
-  /* ─────────────────────────────────────────────
-   * Foreground hierarchy
-   * ───────────────────────────────────────────── */
-
+  --foreground: #f8fafc;
+  --foreground-muted: #94a3b8;
   --foreground-subtle: #64748b;
 
-  --on-surface: #dae2fd;
-  --on-surface-variant: #bdc8d1;
-
-  /* ─────────────────────────────────────────────
-   * Inverse
-   * ───────────────────────────────────────────── */
-
-  /* ─────────────────────────────────────────────
-   * Semantic Status Colors
-   * ───────────────────────────────────────────── */
+  --primary: #0ea5e9;
+  --primary-hover: #38bdf8;
+  --telemetry: #38bdf8;
+  --primary-subtle: rgb(14 165 233 / 0.15);
+  --primary-foreground: #080e1a;
 
   --success: #10b981;
+  --success-subtle: rgb(16 185 129 / 0.12);
+  --success-border: rgb(16 185 129 / 0.3);
 
   --warning: #f59e0b;
-  --warning-foreground: #451a03;
+  --warning-subtle: rgb(245 158 11 / 0.12);
+  --warning-border: rgb(245 158 11 / 0.35);
+  --warning-text: #f59e0b;
+  --warning-foreground: #080e1a;
 
-  /* ─────────────────────────────────────────────
-   * Tertiary
-   * ───────────────────────────────────────────── */
+  --danger: #f43f5e;
+  --danger-subtle: rgb(244 63 94 / 0.14);
+  --danger-border: rgb(244 63 94 / 0.4);
+  --danger-foreground: #ffffff;
 
-  --tertiary: #56e5a9;
-  --tertiary-container: #30c88f;
+  --neutral: #64748b;
+  --neutral-subtle: rgb(100 116 139 / 0.12);
+  --neutral-border: rgb(100 116 139 / 0.3);
 
-  --tertiary-fixed: #6ffbbe;
-  --on-tertiary-container: #004e34;
+  --stage-support: #0284c7;
+  --stage-eng: #d97706;
+  --stage-waiting: #6366f1;
+  --stage-limbo: #334155;
+  --stage-support-text: #38bdf8;
+  --stage-eng-text: #f59e0b;
+  --stage-waiting-text: #818cf8;
+  --stage-limbo-text: #cbd5e1;
+  --on-stage-support: #ffffff;
+  --on-stage-eng: #080e1a;
+  --on-stage-waiting: #ffffff;
+  --on-stage-limbo: #f8fafc;
 
-  /* ─────────────────────────────────────────────
-   * SLA Semantic Colors
-   * ───────────────────────────────────────────── */
+  --border: #1c273c;
+  --border-strong: #2d3c59;
+  --ring: #0ea5e9;
 
-  --leg-support: hsl(204 80% 58%);
-  --leg-engineering: hsl(230 65% 68%);
-  --leg-waiting: hsl(35 92% 58%);
-  --leg-unknown: hsl(220 10% 60%);
-
-  --clock-running: #10b981;
-  --clock-paused: hsl(220 10% 60%);
-
-  /* ─────────────────────────────────────────────
-   * Charts
-   * ───────────────────────────────────────────── */
-
-  /* ─────────────────────────────────────────────
-   * Sidebar
-   * ───────────────────────────────────────────── */
-
-  --sidebar: #0a1221;
-  --sidebar-foreground: #e2e8f0;
-
-  --sidebar-accent: #17233b;
-  --sidebar-accent-foreground: #7dd3fc;
-
+  --sidebar-background: #070c18;
   --sidebar-border: #1c273c;
-  --sidebar-ring: #8ed5ff;
 
-  /* ─────────────────────────────────────────────
-   * Shadows
-   * ───────────────────────────────────────────── */
+  --secondary-foreground: #080e1a;
 
+  /* ── shadcn semantic tokens (aliases onto the dark reference tokens) ── */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+
+  --secondary: var(--stage-waiting-text);
+  --secondary-container: var(--primary-subtle);
+
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--foreground-muted);
+
+  --accent: var(--primary-subtle);
+  --accent-foreground: var(--primary-hover);
+
+  --input: var(--border-strong);
+
+  --radius: 0.25rem;
+
+  /* ── Primary (Stitch aliases) ─────────────────── */
+  --primary-container: var(--primary);
+  --primary-fixed-dim: var(--primary-hover);
+  --on-primary: var(--primary-foreground);
+  --on-primary-container: var(--primary-foreground);
+
+  /* ── Error → danger ───────────────────────────── */
+  --error: var(--danger);
+  --error-container: var(--danger-subtle);
+  --error-foreground: var(--danger-foreground);
+
+  /* ── Borders / outlines ───────────────────────── */
+  --border-subtle: color-mix(in srgb, var(--border) 50%, var(--background));
+  --outline: var(--foreground-subtle);
+  --outline-variant: var(--border-strong);
+
+  /* ── Surfaces ─────────────────────────────────── */
+  --elevated: var(--surface-overlay);
+  --interactive: var(--surface-hover);
+  --surface-variant: var(--surface-hover);
+
+  --on-surface: var(--foreground);
+  --on-surface-variant: var(--foreground-muted);
+
+  /* ── Tertiary → success ───────────────────────── */
+  --tertiary: var(--success);
+  --tertiary-container: var(--success-subtle);
+  --tertiary-fixed: var(--success);
+  --on-tertiary-container: var(--success);
+
+  /* ── SLA legs / clock ─────────────────────────── */
+  --leg-support: var(--stage-support);
+  --leg-engineering: var(--stage-eng);
+  --leg-waiting: var(--stage-waiting);
+  --leg-unknown: var(--stage-limbo);
+  --clock-running: var(--success);
+  --clock-paused: var(--neutral);
+
+  /* ── Sidebar ──────────────────────────────────── */
+  --sidebar: var(--sidebar-background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--primary-subtle);
+  --sidebar-accent-foreground: var(--primary-hover);
+  --sidebar-ring: var(--ring);
+
+  /* ── Shadows ──────────────────────────────────── */
   --shadow-soft-value: 0 1px 2px rgb(0 0 0 / 0.22);
   --shadow-panel-value: 0 4px 12px rgb(0 0 0 / 0.2);
   --shadow-elevated-value: 0 8px 24px rgb(0 0 0 / 0.28);
-  --shadow-glow-value: 0 0 20px oklch(0.68 0.15 255 / 0.1);
+  --shadow-glow-value: 0 0 20px rgb(14 165 233 / 0.1);
+
+  /* Stitch container ladder: dark ascends in lightness with elevation. */
+  --surface-container-lowest: var(--background);
+  --surface-container-low: var(--surface);
+  --surface-container: var(--surface-raised);
+  --surface-container-high: var(--surface-overlay);
+  --surface-container-highest: var(--surface-hover);
+  --surface-bright: var(--surface-active);
+  --surface-subtle: var(--surface);
 }
+
 @theme {
   /* ─────────────────────────────────────────────
    * Fonts
@@ -469,9 +427,29 @@
    * ───────────────────────────────────────────── */
 
   --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
 
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+  --color-warning-text: var(--warning-text);
+
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-border: var(--danger-border);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --color-neutral: var(--neutral);
+  --color-neutral-subtle: var(--neutral-subtle);
+  --color-neutral-border: var(--neutral-border);
+
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-telemetry: var(--telemetry);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-surface-overlay: var(--surface-overlay);
 
   /* ─────────────────────────────────────────────
    * Surfaces
@@ -540,6 +518,21 @@
   /* ─────────────────────────────────────────────
    * SLA
    * ───────────────────────────────────────────── */
+
+  --color-stage-support: var(--stage-support);
+  --color-stage-eng: var(--stage-eng);
+  --color-stage-waiting: var(--stage-waiting);
+  --color-stage-limbo: var(--stage-limbo);
+
+  --color-leg-support-text: var(--stage-support-text);
+  --color-leg-engineering-text: var(--stage-eng-text);
+  --color-leg-waiting-text: var(--stage-waiting-text);
+  --color-leg-unknown-text: var(--stage-limbo-text);
+
+  --color-on-leg-support: var(--on-stage-support);
+  --color-on-leg-engineering: var(--on-stage-eng);
+  --color-on-leg-waiting: var(--on-stage-waiting);
+  --color-on-leg-unknown: var(--on-stage-limbo);
 
   --color-leg-support: var(--leg-support);
   --color-leg-engineering: var(--leg-engineering);

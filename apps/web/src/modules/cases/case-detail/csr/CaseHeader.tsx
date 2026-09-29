@@ -31,11 +31,11 @@ export function formatCaseIdentity(
 const PRIORITY_CHIP: Record<string, { label: string; className: string }> = {
   urgent: {
     label: "P1 — CRITICAL",
-    className: "bg-error-container text-error-foreground",
+    className: "bg-error-container text-error",
   },
   high: {
     label: "P2 — HIGH",
-    className: "bg-error-container text-error-foreground",
+    className: "bg-error-container text-error",
   },
   normal: {
     label: "P3 — NORMAL",
@@ -111,7 +111,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
             {engKey && (
               <>
                 {" ↔ "}
-                <span className="text-secondary-foreground">{engKey}</span>
+                <span className="text-leg-engineering-text">{engKey}</span>
               </>
             )}
           </span>
@@ -175,7 +175,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
             {engKey && (
               <>
                 <span className="text-sm text-outline">↔</span>
-                <span className="rounded bg-surface-container-highest px-2 py-0.5 font-mono text-xs text-secondary-foreground">
+                <span className="rounded bg-surface-container-highest px-2 py-0.5 font-mono text-xs text-leg-engineering-text">
                   {engKey}
                 </span>
               </>

@@ -64,7 +64,7 @@ export const AtRiskHeader = ({
         <Button
           size="sm"
           onClick={onRefresh}
-          className="gap-1.5 bg-primary-container text-on-primary hover:bg-primary"
+          className="gap-1.5 bg-primary-container text-on-primary hover:bg-primary-hover"
         >
           <RefreshCcw className="size-4" />
           Sync Pulse (Auto 5s)

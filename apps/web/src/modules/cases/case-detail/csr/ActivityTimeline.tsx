@@ -47,16 +47,16 @@ const DOT_CLASS: Record<string, string> = {
   commitment_cancelled: "bg-outline",
   commitment_started: "bg-primary",
   case_created: "bg-primary",
-  issue_linked: "bg-secondary-foreground",
+  issue_linked: "bg-leg-engineering",
   state_changed: "bg-outline",
 };
 
 const PILL_CLASS: Record<string, string> = {
   commitment_met: "bg-tertiary-container text-on-tertiary-container",
   case_closed: "bg-tertiary-container text-on-tertiary-container",
-  commitment_breached: "bg-error-container text-error-foreground",
-  commitment_at_risk: "bg-error-container text-error-foreground",
-  issue_linked: "bg-surface-container text-secondary-foreground",
+  commitment_breached: "bg-error-container text-error",
+  commitment_at_risk: "bg-error-container text-error",
+  issue_linked: "bg-surface-container text-leg-engineering-text",
   commitment_started: "bg-surface-container text-on-surface-variant",
   case_created: "bg-surface-container text-on-surface-variant",
 };

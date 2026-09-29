@@ -39,9 +39,9 @@ const LEG_DOT: Record<string, string> = {
 };
 
 const LEG_TONE: Record<string, string> = {
-  support: "text-leg-support",
-  engineering: "text-leg-engineering",
-  waiting_customer: "text-leg-waiting",
+  support: "text-leg-support-text",
+  engineering: "text-leg-engineering-text",
+  waiting_customer: "text-leg-waiting-text",
   unknown: "text-muted-foreground",
 };
 

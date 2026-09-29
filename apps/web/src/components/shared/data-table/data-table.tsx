@@ -337,7 +337,7 @@ export function DataTable<TData, TValue>({
                       ref={(el) => {
                         resizersRef.current[index] = el;
                       }}
-                      className="absolute top-0 inset-e-0 h-full w-1 cursor-col-resize hover:bg-gray-300"
+                      className="absolute top-0 inset-e-0 h-full w-1 cursor-col-resize hover:bg-border-strong"
                       onMouseDown={(e) => handleMouseDown(index, e)}
                     />
                   </TableHead>

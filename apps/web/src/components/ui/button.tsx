@@ -13,7 +13,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: `${SHINE} bg-primary text-primary-foreground shadow-soft hover:brightness-110 active:brightness-95`,
+        default: `${SHINE} bg-primary text-primary-foreground shadow-soft hover:bg-primary-hover active:brightness-95`,
         secondary: `${SHINE} bg-secondary text-secondary-foreground shadow-soft hover:brightness-105 active:brightness-95`,
         outline: `${SHINE} border border-border bg-transparent text-foreground hover:bg-interactive/60 active:bg-interactive`,
         ghost: `${SHINE} text-foreground hover:bg-interactive/60 active:bg-interactive`,
@@ -24,7 +24,7 @@ const buttonVariants = cva(
           "bg-surface-container-high text-on-surface shadow-soft hover:bg-surface-active",
         /** Emphasised tonal action (primary container). */
         tonal:
-          "bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary",
+          "bg-primary-container text-on-primary-container hover:bg-primary-hover hover:text-on-primary",
         /** Quiet text-only control, e.g. a dismiss "x". */
         subtle: "text-outline hover:text-on-surface",
         /** Filter chip; the selected state is driven by `aria-pressed`. */

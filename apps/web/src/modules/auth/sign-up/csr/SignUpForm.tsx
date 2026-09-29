@@ -189,7 +189,7 @@ export const SignUpForm = () => {
 
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-10 right-10 size-64 rounded-full bg-cyan-500/10 blur-[100px]"
+            className="pointer-events-none absolute -bottom-10 right-10 size-64 rounded-full bg-primary/10 blur-[100px]"
           />
 
           <div className="relative z-10 w-full rounded-lg bg-background/95 p-4 shadow-2xl md:p-8">
@@ -411,7 +411,7 @@ export const SignUpForm = () => {
                           </span>
                         </div>
 
-                        <div className="flex h-10 items-center overflow-hidden rounded-[2px] bg-background px-3 transition-all focus-within:bg-surface-raised focus-within:ring-1 focus-within:ring-sky-500">
+                        <div className="flex h-10 items-center overflow-hidden rounded-[2px] bg-background px-3 transition-all focus-within:bg-surface-raised focus-within:ring-1 focus-within:ring-ring">
                           <span className="select-none font-mono text-xs font-medium text-foreground-subtle">
                             https://
                           </span>
@@ -497,7 +497,7 @@ export const SignUpForm = () => {
                               "h-1 rounded-[2px] transition-all",
                               segment <= strength.level
                                 ? strength.tone
-                                : "bg-gray-700",
+                                : "bg-border-strong",
                             )}
                           />
                         ))}
@@ -576,7 +576,7 @@ export const SignUpForm = () => {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-sky-500 px-6 py-3.5 font-mono text-sm font-bold text-surface-container-lowest shadow-lg shadow-sky-500/20 transition-all hover:bg-cyan-500 hover:shadow-sky-500/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-primary px-6 py-3.5 font-mono text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary-hover hover:shadow-primary/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isSubmitting && (
                           <Loader2

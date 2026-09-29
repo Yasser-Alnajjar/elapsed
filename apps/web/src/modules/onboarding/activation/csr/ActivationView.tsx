@@ -82,7 +82,7 @@ function CompletionStrip({ steps }: { steps: CompletedStep[] }) {
             key={step.number}
             className={`flex items-start gap-3 rounded-lg p-3.5 ${
               isLast
-                ? "bg-tertiary/10 shadow-[0_0_15px_rgba(86,229,169,0.12)]"
+                ? "bg-tertiary/10 shadow-[0_0_15px_color-mix(in_srgb,var(--success)_12%,transparent)]"
                 : "bg-surface-container-low"
             }`}
           >

@@ -128,7 +128,7 @@ function LedgerRow({
     "runway-ok":
       "text-on-tertiary-container font-semibold uppercase tracking-wide text-sm",
     "runway-risk":
-      "text-error-foreground font-semibold uppercase tracking-wide text-sm",
+      "text-error font-semibold uppercase tracking-wide text-sm",
   }[variant];
 
   const valueClass = {
@@ -137,7 +137,7 @@ function LedgerRow({
     subtotal: "text-on-surface font-semibold",
     target: "text-on-surface",
     "runway-ok": "text-on-tertiary-container text-lg font-bold",
-    "runway-risk": "text-error-foreground text-lg font-bold",
+    "runway-risk": "text-error text-lg font-bold",
   }[variant];
 
   return (

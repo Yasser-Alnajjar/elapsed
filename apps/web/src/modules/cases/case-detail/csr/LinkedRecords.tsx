@@ -29,7 +29,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-secondary-foreground">⬡</span>
+          <span className="text-leg-engineering-text">⬡</span>
           <h2 className="text-xl font-semibold tracking-tight text-on-surface">
             Deterministic Correlation &amp; Linked Records
           </h2>
@@ -103,7 +103,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
               <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
                 Linked Engineering Issue
               </span>
-              <span className="rounded bg-secondary/20 px-2 py-0.5 font-mono text-xxs text-secondary-foreground">
+              <span className="rounded bg-leg-engineering/20 px-2 py-0.5 font-mono text-xxs text-leg-engineering-text">
                 {systemLabel(primaryJira.system)}
               </span>
             </div>

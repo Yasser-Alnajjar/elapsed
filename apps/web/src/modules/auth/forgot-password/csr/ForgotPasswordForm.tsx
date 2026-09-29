@@ -64,7 +64,7 @@ export const ForgotPasswordForm = () => {
         <div className="relative w-full max-w-[540px]">
           <div
             aria-hidden
-            className="pointer-events-none absolute -left-16 -top-16 size-64 rounded-full bg-sky-500/10 blur-3xl"
+            className="pointer-events-none absolute -left-16 -top-16 size-64 rounded-full bg-primary/10 blur-3xl"
           />
           <div
             aria-hidden
@@ -72,7 +72,7 @@ export const ForgotPasswordForm = () => {
           />
 
           <div className="relative w-full overflow-hidden rounded-[4px] bg-background p-4 shadow-2xl sm:p-8">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-sky-500 to-transparent opacity-80" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80" />
 
             <div className="mb-4 flex items-center justify-between gap-1 border-b border-border/70 pb-4">
               <div
@@ -81,7 +81,7 @@ export const ForgotPasswordForm = () => {
                   "flex items-center gap-1 tracking-wider text-foreground-subtle",
                 )}
               >
-                <span className="inline-block size-1.5 animate-pulse rounded-full bg-sky-500" />
+                <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
                 <span>AUTH-DAEMON v4.19</span>
                 <span className="text-border-strong">/</span>
                 <span className="text-muted-foreground">SESSION_RECOVERY</span>
@@ -93,7 +93,7 @@ export const ForgotPasswordForm = () => {
 
             <div className="flex flex-col items-center text-center">
               <div className="group relative mb-4">
-                <div className="absolute inset-0 rounded-[8px] bg-sky-500/20 blur-md transition-all duration-300 group-hover:blur-lg" />
+                <div className="absolute inset-0 rounded-[8px] bg-primary/20 blur-md transition-all duration-300 group-hover:blur-lg" />
                 <div className="relative flex size-14 items-center justify-center rounded-[8px] bg-surface-raised shadow-lg">
                   <LockKeyhole aria-hidden className="size-7 fill-primary/20 text-primary" />
                   <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-elevated shadow-sm">
@@ -105,7 +105,7 @@ export const ForgotPasswordForm = () => {
               <div
                 className={cn(
                   authLabelClass,
-                  "mb-2 inline-flex items-center gap-1 rounded-[2px] bg-zinc-900 px-2 py-1 tracking-widest text-primary",
+                  "mb-2 inline-flex items-center gap-1 rounded-[2px] bg-surface-raised px-2 py-1 tracking-widest text-primary",
                 )}
               >
                 <Timer aria-hidden className="size-3.5" />
@@ -193,17 +193,17 @@ export const ForgotPasswordForm = () => {
                     </div>
 
                     <div className="relative overflow-hidden rounded-[2px] bg-background/80 p-4">
-                      <div className="absolute inset-y-0 left-0 w-1 bg-amber-600" />
+                      <div className="absolute inset-y-0 left-0 w-1 bg-warning" />
                       <div className="flex items-start gap-2 pl-1">
                         <Info
                           aria-hidden
-                          className="mt-0.5 size-[18px] shrink-0 text-orange-300"
+                          className="mt-0.5 size-[18px] shrink-0 text-warning-text"
                         />
                         <div className="flex flex-col gap-0.5">
                           <span
                             className={cn(
                               authLabelClass,
-                              "tracking-wider text-orange-300",
+                              "tracking-wider text-warning-text",
                             )}
                           >
                             Federated Identity Notice
@@ -221,10 +221,10 @@ export const ForgotPasswordForm = () => {
                       type="submit"
                       disabled={isSubmitting}
                       className={cn(
-                        "group relative mt-1 flex w-full items-center justify-center gap-2 rounded-[2px] px-4 py-2 text-sm font-semibold tracking-wide text-surface-container-lowest shadow-md transition-all duration-200 hover:shadow-sky-500/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70",
+                        "group relative mt-1 flex w-full items-center justify-center gap-2 rounded-[2px] px-4 py-2 text-sm font-semibold tracking-wide text-primary-foreground shadow-md transition-all duration-200 hover:shadow-primary/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70",
                         submitted
                           ? "bg-success"
-                          : "bg-sky-500 hover:bg-cyan-500",
+                          : "bg-primary hover:bg-primary-hover",
                       )}
                     >
                       {isSubmitting && (
@@ -274,7 +274,7 @@ export const ForgotPasswordForm = () => {
             <div className="mt-6 flex flex-col gap-2 border-t border-border pt-4">
               <a
                 href="/docs/faq"
-                className="group flex items-center justify-between rounded-[2px] bg-zinc-900/50 p-2 transition-colors duration-150 hover:bg-interactive/50"
+                className="group flex items-center justify-between rounded-[2px] bg-surface-raised/50 p-2 transition-colors duration-150 hover:bg-interactive/50"
               >
                 <div className="flex items-center gap-2">
                   <LockKeyhole aria-hidden className="size-[18px] text-primary-fixed-dim" />

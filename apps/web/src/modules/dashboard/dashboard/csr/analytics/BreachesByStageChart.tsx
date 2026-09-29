@@ -13,6 +13,14 @@ const LEG_COLORS: Record<string, string> = {
   unknown: "var(--leg-unknown)",
 };
 
+/** Legible-on-surface variants of the leg colors, for text. */
+const LEG_TEXT_COLORS: Record<string, string> = {
+  support: "var(--stage-support-text)",
+  engineering: "var(--stage-eng-text)",
+  waiting_customer: "var(--stage-waiting-text)",
+  unknown: "var(--stage-limbo-text)",
+};
+
 /**
  * Stitch's "Breaches by Stage" chart is a donut, not the bar chart the
  * pre-reconstruction dashboard used — rebuilt on the same `Pie`/donut
@@ -89,7 +97,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
                 <span
                   className="mt-0.5 font-mono text-xxs font-medium uppercase"
                   style={{
-                    color: LEG_COLORS[dominant.leg] ?? "var(--primary)",
+                    color: LEG_TEXT_COLORS[dominant.leg] ?? "var(--primary)",
                   }}
                 >
                   {formatLeg(dominant.leg)}

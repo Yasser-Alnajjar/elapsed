@@ -15,22 +15,22 @@ import { CircleAlert } from "lucide-react";
 /* ─── Stitch token mappings for each leg ─────────────────────── */
 
 const LEG_BAR_CLASS: Record<string, string> = {
-  support: "bg-primary-container",
+  support: "bg-leg-support",
   engineering: "bg-leg-engineering",
   waiting_customer: "bg-leg-waiting",
   unknown: "bg-leg-unknown",
 };
 
 const LEG_TEXT_CLASS: Record<string, string> = {
-  support: "text-on-primary",
-  engineering: "text-white",
-  waiting_customer: "text-warning-foreground",
-  unknown: "text-white",
+  support: "text-on-leg-support",
+  engineering: "text-on-leg-engineering",
+  waiting_customer: "text-on-leg-waiting",
+  unknown: "text-on-leg-unknown",
 };
 
 const LEG_PCT_CLASS: Record<string, string> = {
   support: "text-primary",
-  engineering: "text-secondary-foreground",
+  engineering: "text-leg-engineering-text",
   waiting_customer: "text-outline",
   unknown: "text-tertiary",
 };
@@ -52,7 +52,7 @@ const LEG_ORDER = [
 
 const LEG_HEADER_CLASS: Record<string, string> = {
   support: "text-outline",
-  engineering: "text-secondary-foreground",
+  engineering: "text-leg-engineering-text",
   waiting_customer: "text-outline",
   unknown: "text-outline",
 };
@@ -238,7 +238,7 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-outline">
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded bg-primary-container" />
+            <span className="size-2.5 rounded bg-leg-support" />
             Support Leg
           </span>
           <span className="flex items-center gap-1.5">
@@ -283,7 +283,7 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
                       <span
                         className={cn(
                           "font-mono text-xxs font-semibold truncate",
-                          LEG_TEXT_CLASS[span.leg] ?? "text-white",
+                          LEG_TEXT_CLASS[span.leg] ?? "text-on-leg-unknown",
                         )}
                       >
                         {formatLeg(span.leg)} {formatMinutes(segMinutes)}
@@ -291,7 +291,7 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
                           ` (${((segMinutes / totalLegMinutes) * 100).toFixed(1)}%)`}
                         {isCurrent && (
                           <span className="ml-2 inline-flex items-center gap-1">
-                            <span className="size-1.5 animate-pulse rounded-full bg-white/80" />
+                            <span className="size-1.5 animate-pulse rounded-full bg-current opacity-80" />
                             RUNNING NOW
                           </span>
                         )}
