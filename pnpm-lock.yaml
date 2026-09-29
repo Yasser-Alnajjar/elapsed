@@ -227,6 +227,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/zendesk
     devDependencies:
+      '@sla/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@types/node':
         specifier: ^26.4.1
         version: 26.4.1

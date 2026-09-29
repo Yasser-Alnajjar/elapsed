@@ -19,7 +19,9 @@
     "test:db:prepare": "DATABASE_URL=\"$TEST_DATABASE_URL\" pnpm --filter @sla/db exec prisma migrate deploy",
     "test:watch": "vitest",
     "db:encrypt-tokens": "pnpm --filter @sla/db run encrypt-tokens",
-    "db:seed:perf-baseline": "pnpm --filter @sla/db run seed:perf-baseline"
+    "db:seed:perf-baseline": "pnpm --filter @sla/db run seed:perf-baseline",
+    "db:seed:test-customers": "pnpm --filter @sla/worker run seed:test-customers",
+    "db:seed:test-customers:validate": "pnpm --filter @sla/worker run seed:test-customers:validate"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
