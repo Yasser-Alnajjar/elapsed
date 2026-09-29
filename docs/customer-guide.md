@@ -389,7 +389,7 @@ Holidays are dates the calendar treats as fully non-working, in the calendar's o
 
 ### Paused states ("waiting for customer")
 
-By default, a commitment pauses only while the case is in the **"Pending customer"** normalized state — regardless of which connected system reported that status. This is the one *configurable* pause state in the current implementation; it is not currently adjustable per policy from the settings UI. Putting a ticket **on hold** (Zendesk's internal-hold status) does **not** pause the resolution clock — that time keeps counting, the same as any other open time. This is a deliberate MVP choice, not a gap: on-hold is for internal triage, not customer waiting, so it doesn't excuse the clock.
+**Zendesk-imported policies never pause Resolution while a ticket is Pending**, exactly like Zendesk's own Total Resolution timer, so the breach times and elapsed numbers you see here match Zendesk's SLA view. (Time spent **solved** is still excluded after a reopen, as in Zendesk.) **Policies you create in Elapsed** pause on the **"Pending customer"** normalized state by default, regardless of which connected system reported that status; this is not adjustable per policy from the settings UI. First Response and Next Reply never pause under either kind of policy. Putting a ticket **on hold** (Zendesk's internal-hold status) does **not** pause the resolution clock — that time keeps counting, the same as any other open time. This is a deliberate MVP choice, not a gap: on-hold is for internal triage, not customer waiting, so it doesn't excuse the clock.
 
 ### Reopened tickets
 
@@ -559,7 +559,7 @@ Every setting that exists in the product today, in one place.
 | **SLA policy target override** | Settings → SLA | Override the imported minutes for a first-response or resolution target on a specific policy | Uses the value imported from Zendesk | If the imported value doesn't match your actual contractual target | Creates a new policy version; existing commitments keep their original target, new commitments use the override |
 | **Slack alert channel** | Settings → Integrations → Slack | Which Slack channel receives at-risk/breach alerts | None — no alerts sent until a channel is chosen | Once, after connecting Slack | Alerts start posting to the chosen channel |
 
-**Settings that do not exist in the current implementation** (do not look for these — they are not hidden elsewhere): per-policy pause-state configuration (which statuses pause a clock, beyond the fixed "Pending customer" default), custom warning-threshold percentages, per-user notification preferences, role-based permissions, and a public API key.
+**Settings that do not exist in the current implementation** (do not look for these — they are not hidden elsewhere): per-policy pause-state configuration (which statuses pause a clock, beyond the fixed defaults above), custom warning-threshold percentages, per-user notification preferences, role-based permissions, and a public API key.
 
 ---
 
@@ -587,7 +587,7 @@ Every setting that exists in the product today, in one place.
 This product's entire value depends on its numbers being trustworthy — so this section says plainly where the numbers can be incomplete, approximate, or simply not produced yet.
 
 - **Unlinked escalations have no engineering leg.** If a case can't be correlated to an engineering-tracker record with certainty, it is reported as unlinked — never guessed at, and never silently attributed to `engineering`. Its "escalated" status and any engineering-leg timing is simply absent, not estimated.
-- **The pause rule is fixed, not customer-tunable.** Only Zendesk's "Pending" status (normalized as `pending_customer`) currently pauses a commitment clock. If your workflow uses a different status to represent customer-caused waiting and expects it to pause the clock, it currently will not, unless it also maps to that same normalized state.
+- **The pause rule is fixed, not customer-tunable.** Zendesk-imported policies do not pause Resolution on Pending (matching Zendesk). Policies created in Elapsed pause Resolution on "Pending customer" only. If your workflow uses another status for customer-caused waiting and expects it to pause the clock, it will not.
 - **Warning thresholds are fixed at 50/80/95% of target** for every policy; they are not currently adjustable per policy or per customer from the UI.
 - **Customer/case tier is not currently populated.** Neither the Zendesk nor Intercom integration currently writes a tier value onto a customer or case, even though the underlying policy-matching engine supports tier-based rules. If your SLA policies are meant to differ by account tier, that distinction is not currently applied automatically — until tier data is populated, tier-based policy conditions have no effect.
 - **A closed ticket's reopen behavior is intentional, not a bug.** Reopening a solved ticket resumes the original clock rather than starting a fresh one — see Section 13.
@@ -708,7 +708,7 @@ No. No issue, status, comment, or field is ever created or changed.
 Every 5 minutes for open cases, every 60 minutes for a full reconciliation sweep, and near-instantly for Zendesk/Jira when a webhook is configured. See [Section 20](#20-data-synchronization).
 
 **How is an SLA calculated?**
-As working time elapsed against a target, computed from the recorded event history under a specific policy and calendar version, pausing only on the "Pending customer" state by default. See [Section 13](#13-sla-calculation).
+As working time elapsed against a target, computed from the recorded event history under a specific policy and calendar version, pausing only where the policy says so: never for Zendesk-imported policies, on the "Pending customer" state for policies created in Elapsed. See [Section 13](#13-sla-calculation).
 
 **What happens when a ticket is escalated?**
 The case's leg switches to `engineering` the moment a verified link to an engineering-tracker record is recorded. The customer commitment's clock keeps running — escalation itself does not pause it.
@@ -782,7 +782,7 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 | **Met** | A commitment closed within its target. |
 | **Working Hours** | The portion of elapsed time that falls inside a calendar's defined open windows; only this time counts toward a business-hours commitment. |
 | **Business Calendar** | A named set of weekly working windows, a timezone, and holidays (or an always-open 24/7 calendar), imported from Zendesk or applied by default. |
-| **Pause** | A period during which a commitment's clock is not counting, currently triggered only by the "Pending customer" normalized state. |
+| **Pause** | A period during which a commitment's clock is not counting, triggered by the "Pending customer" normalized state under policies created in Elapsed, and by a solved ticket (until reopened) for Resolution. Zendesk-imported policies do not pause on Pending. |
 | **Correlation** | The process of matching a case to a record in another connected system (e.g. a Zendesk ticket to a Jira issue), using only verifiable, deterministic evidence. |
 | **Backfill** | The one-time import of the last 90 days of history from a newly connected integration. |
 | **Synchronization (sync)** | The ongoing process of polling connected systems for changes and updating cases, commitments, and evaluations accordingly. |

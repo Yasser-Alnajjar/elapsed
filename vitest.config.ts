@@ -31,6 +31,7 @@ const realDatabaseSuites = [
   "apps/web/test/zendesk-sla-policy-position.test.ts",
   "apps/web/test/sla-golden-scenarios.test.ts",
   "apps/web/test/first-response-creation-actor.test.ts",
+  "apps/web/test/imported-policy-pending-parity.test.ts",
   "apps/web/test/zendesk-normalization-scope.test.ts",
   "apps/web/test/jira-normalization-scope.test.ts",
   "apps/web/test/jira-correlation-scope.test.ts",

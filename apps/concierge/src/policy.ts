@@ -1,6 +1,6 @@
-import type { BusinessCalendarVersion, SLAPolicyVersion } from "@sla/core";
+import type { BusinessCalendarVersion, NormalizedState, SLAPolicyVersion } from "@sla/core";
 // The product's own defaults for Zendesk-imported policies.
-import { PAUSE_ON_STATES, WARN_AT_PERCENT } from "@sla/zendesk/src/policies";
+import { WARN_AT_PERCENT } from "@sla/zendesk/src/policies";
 import { isValidTimeZone, parseBusinessHours, parseDuration } from "./time";
 
 export const CALENDAR_ID = "concierge-calendar";
@@ -37,6 +37,14 @@ export function parseResolutionTargets(spec: string): ResolutionTarget[] {
 }
 
 /**
+ * The concierge analysis keeps pausing on Pending (its leg split reports
+ * waiting-on-customer time). The product's imported Zendesk policies stopped
+ * pausing on Pending in H-12 to match Zendesk's own SLA view; revisit this if
+ * the concierge's comparison against Zendesk's breach flag should mirror that.
+ */
+const CONCIERGE_PAUSE_ON_STATES: NormalizedState[] = ["pending_customer"];
+
+/**
  * One `SLAPolicyVersion` per target, shaped like the Zendesk importer's
  * per-priority policies so the core's `matchPolicyVersion` picks the
  * priority-specific one over the fallback.
@@ -50,7 +58,7 @@ export function buildPolicyVersions(targets: ResolutionTarget[]): SLAPolicyVersi
       version: 1,
       match: target.priority ? { priority: [target.priority] } : {},
       targets: [{ kind: "resolution", minutes: target.minutes }],
-      pauseOnStates: PAUSE_ON_STATES,
+      pauseOnStates: CONCIERGE_PAUSE_ON_STATES,
       calendarVersionId: CALENDAR_ID,
       warnAtPercent: WARN_AT_PERCENT,
       effectiveFrom: "1970-01-01T00:00:00.000Z",

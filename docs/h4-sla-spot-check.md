@@ -44,7 +44,9 @@ So the error goes both ways: spurious FR breaches (and their alerts) on agent-su
 
 **Task (done as H-11):** derive the creation actor from facts fixed at creation, correct existing FR commitments, add regression tests.
 
-### F2 — Elapsed pauses Resolution on `pending_customer`; Zendesk does not · **semantic difference (needs an owner decision)**
+### F2 — Elapsed pauses Resolution on `pending_customer`; Zendesk does not · **RESOLVED by H-12 / D30 (2026-09-29): imported Zendesk policies no longer pause on Pending**
+
+> Resolved after the audit: imported policies now mirror Zendesk (migration `20260929120000_imported_policies_do_not_pause_on_pending`); native policies keep the Pending pause. Re-checking the dev dataset with the engine under the corrected policies, Resolution elapsed and breach time match Zendesk on **32/32** comparable tickets (ticket 19 breaches at 11:37:45, as in Zendesk). The stored evaluations of already-finished commitments are unchanged, so the Resolution table below still shows the audit-time numbers. The text that follows describes the finding as audited.
 
 Zendesk emits no `pause` event on `resolution_time` for any of the 15 Pending intervals in the sample, and its `breach` event lands exactly at start + target even when a Pending interval preceded it (ticket 19: Zendesk breach 11:37:45; Elapsed 11:38:29, +44 s = the two Pending intervals). Elapsed pauses Resolution on `pending_customer` by design (`clock-rules.ts`, imported policy `pauseOnStates`; roadmap E-13/1.7), so 11 tickets show a shorter Elapsed elapsed time, each differing by exactly the Elapsed pause length (8 s to 3184 s).
 

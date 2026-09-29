@@ -83,8 +83,18 @@ function isResolvedConditionField(field: string): boolean {
     RESOLVED_CONDITION_FIELDS.has(field) || CUSTOM_FIELD_CONDITION.test(field)
   );
 }
-/** Customer-caused waiting, regardless of which system reports it (Phase 13.4) — fixed for every imported policy, not configurable in v1. Only commitment kinds whose clock rules honor the policy's pause states pause on it (`pauseStatesFor` in @sla/core): resolution does, first response never pauses. */
-export const PAUSE_ON_STATES: NormalizedState[] = ["pending_customer"];
+/**
+ * Imported Zendesk policies never pause Resolution (H-12, 2026-09-29): Zendesk
+ * itself does not. The H-4 spot check found no `pause` event on Zendesk's
+ * `resolution_time` for any Pending interval, and its `breach` event lands
+ * exactly at start + target even when the ticket sat in Pending first. An
+ * imported policy mirrors its source, so Elapsed's breach times and elapsed
+ * numbers must match the ones customers see in Zendesk. (Solved intervals are
+ * still excluded from Resolution by `clock-rules.ts` (D3), as Zendesk does.)
+ * Native policies are unaffected: they default to pausing on
+ * `pending_customer` (`native-policy.ts`).
+ */
+export const IMPORTED_PAUSE_ON_STATES: NormalizedState[] = [];
 export const WARN_AT_PERCENT = [50, 80, 95];
 
 // `ensureDefaultCalendarVersion`/`DEFAULT_CALENDAR_NAME` now live in
@@ -356,7 +366,7 @@ export async function upsertPolicyVersion(
       version: (latestVersion?.version ?? 0) + 1,
       match: desired.match as unknown as Prisma.InputJsonValue,
       targets: desired.targets as unknown as Prisma.InputJsonValue,
-      pauseOnStates: PAUSE_ON_STATES,
+      pauseOnStates: IMPORTED_PAUSE_ON_STATES,
       calendarVersionId: desired.calendarVersionId,
       warnAtPercent: WARN_AT_PERCENT,
       effectiveFrom: new Date(),
