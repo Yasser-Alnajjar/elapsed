@@ -33,7 +33,8 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
           const supportMinutes = row.supportLegMinutes ?? 0;
           const engineeringMinutes = row.engineeringLegMinutes ?? 0;
           const legTotal = supportMinutes + engineeringMinutes;
-          const supportPercent = legTotal > 0 ? (supportMinutes / legTotal) * 100 : 100;
+          const supportPercent =
+            legTotal > 0 ? (supportMinutes / legTotal) * 100 : 100;
           const overdue = row.remainingMinutes < 0;
 
           return (
@@ -78,7 +79,9 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
               <td className="py-3.5 px-4 whitespace-nowrap">
                 <span className="text-on-surface-variant font-mono text-xs">
                   {formatCommitmentKind(row.kind)}
-                  {row.targetMinutes ? ` (${formatMinutes(row.targetMinutes)} max)` : ""}
+                  {row.targetMinutes
+                    ? ` (${formatMinutes(row.targetMinutes)} max)`
+                    : ""}
                 </span>
               </td>
               <td className="py-3.5 px-4 whitespace-nowrap">
@@ -90,7 +93,7 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
                     <span className="text-primary">
                       Support {formatMinutes(supportMinutes)}
                     </span>
-                    <span className="text-outline-variant">•</span>
+                    <span className="text-muted-foreground">•</span>
                     <span className="text-error font-medium">
                       Eng {formatMinutes(engineeringMinutes)}
                     </span>

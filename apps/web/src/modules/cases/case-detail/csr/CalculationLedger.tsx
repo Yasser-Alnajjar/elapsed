@@ -259,7 +259,7 @@ export function CalculationLedger({
               "mt-0.5 font-mono text-xxs",
               commitment.calendar.alwaysOpen
                 ? "text-tertiary"
-                : "text-outline-variant",
+                : "text-muted-foreground",
             )}
           >
             {commitment.calendar.alwaysOpen

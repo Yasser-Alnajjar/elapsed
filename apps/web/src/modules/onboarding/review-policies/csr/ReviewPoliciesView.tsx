@@ -126,14 +126,14 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
             {review.lastImportAt ? "POLICY_IMPORT_COMPLETE" : "AWAITING_IMPORT"}
           </span>
-          <span className="text-outline-variant">/</span>
+          <span className="text-muted-foreground">/</span>
           <span>
             IMPORTED: {review.importedPolicies.length.toLocaleString()}{" "}
             {review.importedPolicies.length === 1 ? "policy" : "policies"}
           </span>
           {review.lastImportAt && (
             <>
-              <span className="text-outline-variant">/</span>
+              <span className="text-muted-foreground">/</span>
               <span className="text-tertiary">
                 LAST RUN: {formatExactTimestamp(review.lastImportAt)}
               </span>

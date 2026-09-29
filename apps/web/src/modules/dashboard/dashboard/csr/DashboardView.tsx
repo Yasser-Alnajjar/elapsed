@@ -93,7 +93,7 @@ export const DashboardView = ({
               </span>
               {data.organizationName && (
                 <>
-                  <span className="text-outline-variant">•</span>
+                  <span className="text-muted-foreground">•</span>
                   <span className="text-primary font-mono text-xxs uppercase">
                     {data.organizationName}
                   </span>
@@ -119,7 +119,7 @@ export const DashboardView = ({
               >
                 Zendesk ({sourceStatus.zendesk ? "Connected" : "Not connected"})
               </span>
-              <span className="text-outline-variant text-xxs">•</span>
+              <span className="text-muted-foreground text-xxs">•</span>
               <span
                 className={
                   sourceStatus.jira

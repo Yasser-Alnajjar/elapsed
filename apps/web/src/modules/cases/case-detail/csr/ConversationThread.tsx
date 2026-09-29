@@ -64,7 +64,7 @@ function ConversationMessageBubble({
           >
             {senderLabel}
           </span>
-          <span className="text-outline-variant">·</span>
+          <span className="text-muted-foreground">·</span>
           <time className="font-mono text-xxs text-outline tabular-nums">
             {formatDateTime(message.occurredAt)}
           </time>
@@ -79,14 +79,14 @@ function ConversationMessageBubble({
 
 export function ConversationThread({ data }: { data: CaseDetailData }) {
   const lastMessage = data.conversation[data.conversation.length - 1];
-  const { containerRef, onScroll } = useStickToBottom<HTMLOListElement>(
+  const { containerRef, onScroll } = useStickToBottom<HTMLDivElement>(
     lastMessage?.id ?? "",
   );
   return (
     <Reveal delay={0.1}>
-      <section className="flex min-w-0 flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
-        <header className="flex flex-col justify-between gap-3 border-b border-surface-variant/50 pb-4 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
+      <section className="flex min-w-0 flex-col gap-4 rounded-xl bg-surface-container-low  shadow-sm">
+        <header className="px-6 pt-6 flex flex-col justify-between gap-3 border-b border-surface-variant/50 pb-4 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-2">
             <MessageSquare className="size-5.5 text-primary" />
             <div>
               <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-primary">
@@ -102,21 +102,23 @@ export function ConversationThread({ data }: { data: CaseDetailData }) {
             {data.conversation.length !== 1 ? "s" : ""} Recorded
           </span>
         </header>
-        {data.conversation.length === 0 ? (
-          <div className="rounded-lg bg-surface-container px-4 py-8 text-center text-sm text-on-surface-variant">
-            No customer or agent messages yet.
-          </div>
-        ) : (
-          <ol
-            ref={containerRef}
-            onScroll={onScroll}
-            className="max-h-168 space-y-4 overflow-y-auto pe-1"
-          >
-            {data.conversation.map((message) => (
-              <ConversationMessageBubble key={message.id} message={message} />
-            ))}
-          </ol>
-        )}
+        <div
+          ref={containerRef}
+          className="px-6 pb-6 max-h-168 space-y-4 overflow-y-auto "
+          onScroll={onScroll}
+        >
+          {data.conversation.length === 0 ? (
+            <div className="rounded-lg bg-surface-container px-4 py-8 text-center text-sm text-on-surface-variant">
+              No customer or agent messages yet.
+            </div>
+          ) : (
+            <ol>
+              {data.conversation.map((message) => (
+                <ConversationMessageBubble key={message.id} message={message} />
+              ))}
+            </ol>
+          )}
+        </div>
       </section>
     </Reveal>
   );

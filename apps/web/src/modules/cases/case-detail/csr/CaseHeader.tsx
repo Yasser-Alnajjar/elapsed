@@ -97,13 +97,13 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
       <div className="w-full flex flex-wrap items-center justify-between gap-4 bg-surface-container-low px-6 py-2 rounded-xl">
         <div className="flex items-center gap-1 font-mono text-sm leading-4.5">
           <span className="text-outline">Cases</span>
-          <span className="text-outline-variant">/</span>
+          <span className="text-muted-foreground">/</span>
           {(c.customerName ?? c.requesterName) && (
             <>
               <span className="text-outline">
                 {c.customerName ?? c.requesterName}
               </span>
-              <span className="text-outline-variant">/</span>
+              <span className="text-muted-foreground">/</span>
             </>
           )}
           <span className="font-medium text-primary">

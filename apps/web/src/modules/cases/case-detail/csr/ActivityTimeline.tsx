@@ -212,9 +212,9 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
+      <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low  shadow-sm">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-6 pt-6">
           <div className="flex items-center gap-2">
             <History className="size-5.5 text-primary" />
             <h2 className="text-xl font-medium tracking-tight text-on-surface">
@@ -234,7 +234,7 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
           <ol
             ref={containerRef}
             onScroll={onScroll}
-            className="relative max-h-144 overflow-y-auto ps-6 flex flex-col gap-5"
+            className="relative max-h-144 overflow-y-auto ps-12 pe-6 pb-6 flex flex-col gap-5"
           >
             {data.timeline.map((event, index) => {
               const isLast = index === data.timeline.length - 1;
@@ -252,13 +252,13 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
                   className={cn(
                     "relative flex flex-col",
                     !isLast &&
-                      "before:absolute before:-start-4.75 before:top-2.5 before:-bottom-5 before:w-0.5 before:bg-surface-container-high",
+                      "before:absolute before:-inset-s-4.75 before:top-2.5 before:-bottom-5 before:w-0.5 before:bg-surface-container-high",
                   )}
                 >
                   {/* Dot node */}
                   <div
                     className={cn(
-                      "absolute -start-6 top-1 size-3 rounded-full ring-4 ring-surface-container-low",
+                      "absolute -inset-s-6 top-1 size-3 rounded-full ring-4 ring-surface-container-low",
                       dotClass,
                       isLast && "animate-pulse",
                     )}

@@ -181,7 +181,7 @@ export const CommitmentCard = ({
         </span>
       </div>
       {!isClosed && (
-        <p className="mt-1 font-mono text-xxs text-outline-variant">
+        <p className="mt-1 font-mono text-xxs text-muted-foreground">
           {formatCommitmentDeadline(commitment)}
         </p>
       )}

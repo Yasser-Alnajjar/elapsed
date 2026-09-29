@@ -166,7 +166,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
               Link Method: {formatCaseLinkMethod(primaryJira.method)}
             </span>
           </div>
-          <p className="font-mono text-xxs text-outline-variant">
+          <p className="font-mono text-xxs text-muted-foreground">
             {primaryJira.externalId} correlated to #{data.case.externalId} via{" "}
             {formatCaseLinkMethod(primaryJira.method)}. Confidence:{" "}
             <span className="text-on-surface">{primaryJira.confidence}</span>.
