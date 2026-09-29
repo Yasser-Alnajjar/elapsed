@@ -67,7 +67,7 @@ export function CaseListFilters({
             onChange={(event) => setGlobalFilter(event.target.value)}
             placeholder="Search customer, ticket ID, or subject…"
             aria-label="Search cases"
-            className="h-auto rounded border-0 bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner placeholder:text-outline focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 md:text-sm"
+            className="h-auto bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner md:text-sm"
           />
 
           <div className="pointer-events-none absolute inset-e-2.5 top-2 flex items-center gap-1">

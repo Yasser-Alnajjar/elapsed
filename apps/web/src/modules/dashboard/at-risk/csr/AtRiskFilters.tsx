@@ -59,7 +59,7 @@ export const AtRiskFilters = ({
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Search customer, ticket ID, or subject…"
             aria-label="Search at-risk cases"
-            className="h-auto rounded border-0 bg-surface-container-lowest py-2 ps-10 text-sm text-on-surface shadow-inner placeholder:text-outline focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 md:text-sm"
+            className="h-auto bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner md:text-sm"
           />
         </div>
         <div className="flex self-start  rounded bg-surface-container-lowest p-1  flex-wrap items-center justify-center gap-1.5 sm:justify-start">

@@ -35,13 +35,13 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, worker, alertSummary] = await withPerfScope(
+  const [user, integrations, activePollIntervalMs, alertSummary] = await withPerfScope(
     "layout",
     () =>
       Promise.all([
         Actions.Profile.getData(),
         Actions.Integrations.getData(),
-        Actions.WorkerSettings.getData(),
+        Actions.WorkerSettings.getActivePollIntervalMs(),
         getAlertSummary(getPrismaClient(), organizationId),
       ]),
   );
@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           own timer. */}
 
       <AppSidebar
-        autoSyncSeconds={Math.round(worker.activePollIntervalMs / 1000)}
+        autoSyncSeconds={Math.round(activePollIntervalMs / 1000)}
         isPlatformOperator={isPlatformOperator(session)}
       />
       <SidebarInset>

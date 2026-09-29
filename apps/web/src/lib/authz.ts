@@ -21,18 +21,17 @@ export function isPlatformOperator(session: Session | null): boolean {
 }
 
 /**
- * Gate for the one admin-only mutation in the app today (Worker/Monitoring
- * settings — global, shared by every organization on the deployment, see
- * `@sla/db`'s `WorkerSettings` doc comment). Only a platform operator
- * (`PLATFORM_ADMIN_EMAILS`) may write it; every tenant, including an org
- * owner, gets a read-only view. This is a separate axis from `UserRole` —
+ * Gate for the operator-only Worker/Monitoring settings — global, shared by
+ * every organization on the deployment, see `@sla/db`'s `WorkerSettings` doc
+ * comment. Only a platform operator (`PLATFORM_ADMIN_EMAILS`) may read or
+ * write them; every tenant, including an org owner, is denied. This is a separate axis from `UserRole` —
  * the platform operator stays configured only through the environment,
  * never as an organization role (see `requireOwner` for that axis).
  */
 export function requirePlatformOperator(session: Session | null): NextResponse | null {
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!isPlatformOperator(session)) {
-    return NextResponse.json({ error: "Only a platform operator can change this setting" }, { status: 403 });
+    return NextResponse.json({ error: "Only a platform operator can access this" }, { status: 403 });
   }
   return null;
 }

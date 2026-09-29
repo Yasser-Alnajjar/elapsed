@@ -1,15 +1,32 @@
 import "server-only";
+import { notFound } from "next/navigation";
 import { getPrismaClient } from "@sla/db";
 import { getRequestContext } from "@/lib/request-context";
 import { isPlatformOperator } from "@/lib/authz";
-import { getWorkerMonitoringData } from "@/lib/worker-settings-data";
+import { getActivePollIntervalMs, getWorkerMonitoringData } from "@/lib/worker-settings-data";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 
 export const WorkerSettingsActions = {
-  async getData(): Promise<WorkerMonitoringData> {
+  /**
+   * Full worker/Monitoring diagnostics — platform operators only.
+   * `notFound()` before anything is queried, the same convention as
+   * `OperatorActions.getData`: this route doesn't exist for a tenant.
+   */
+  async getMonitoringData(): Promise<WorkerMonitoringData> {
     const { session } = await getRequestContext();
+    if (!isPlatformOperator(session)) notFound();
 
     const prisma = getPrismaClient();
-    return getWorkerMonitoringData(prisma, isPlatformOperator(session));
+    return getWorkerMonitoringData(prisma, true);
+  },
+
+  /**
+   * The one non-sensitive value the app-wide layout needs (the sidebar's
+   * "Auto-sync Ns" footer). Deliberately exposes nothing else about the
+   * worker — see `getMonitoringData` for the operator-only diagnostics.
+   */
+  async getActivePollIntervalMs(): Promise<number> {
+    const prisma = getPrismaClient();
+    return getActivePollIntervalMs(prisma);
   },
 };

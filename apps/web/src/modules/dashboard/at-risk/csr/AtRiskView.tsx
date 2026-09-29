@@ -103,11 +103,13 @@ export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
 
       <div className="mt-4 flex flex-col gap-3">
         {data.totalCount === 0 ? (
-          <EmptyState
-            icon={ListChecks}
-            title="No open commitments"
-            description="Everything currently tracked is closed."
-          />
+          <Reveal delay={0.2}>
+            <EmptyState
+              icon={ListChecks}
+              title="No open commitments"
+              description="Everything currently tracked is closed."
+            />
+          </Reveal>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={Search}

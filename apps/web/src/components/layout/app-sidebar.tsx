@@ -45,7 +45,7 @@ export function AppSidebar({
 }: {
   /** The worker's active poll interval, for the footer's real sync cadence — never a fabricated version number. */
   autoSyncSeconds?: number;
-  /** Adds the operator-only `/operator` link (roadmap 7.5) — see `buildNavItems`. */
+  /** Adds the operator-only `/operator` group (roadmap 7.5) — see `buildNavItems`. */
   isPlatformOperator?: boolean;
 }) {
   const pathname = usePathname();
@@ -141,12 +141,6 @@ function NavGroupItem({
     }
   }, [isGroupRouteActive]);
 
-  // Desktop collapsed sidebar:
-  // show nested navigation in a dropdown next to the icon.
-  //
-  // Mobile:
-  // keep nested navigation inside the mobile sidebar and use
-  // the regular collapsible behavior instead of a dropdown.
   if (isCollapsed && !isMobile) {
     return (
       <SidebarMenuItem>
@@ -169,7 +163,11 @@ function NavGroupItem({
           >
             {item.items.map((child) => {
               const ChildIcon = child.icon;
-              const childActive = isNavItemActive(pathname, child.href);
+              const childActive = isNavItemActive(
+                pathname,
+                child.href,
+                child.exact,
+              );
 
               return (
                 <DropdownMenuItem
@@ -222,7 +220,11 @@ function NavGroupItem({
           <SidebarMenuSub>
             {item.items.map((child) => {
               const ChildIcon = child.icon;
-              const childActive = isNavItemActive(pathname, child.href);
+              const childActive = isNavItemActive(
+                pathname,
+                child.href,
+                child.exact,
+              );
 
               return (
                 <SidebarMenuSubItem key={child.href}>

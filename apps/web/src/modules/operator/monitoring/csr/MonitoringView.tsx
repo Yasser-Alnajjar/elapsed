@@ -54,12 +54,13 @@ interface MonitoringViewProps {
 }
 
 /**
- * Worker/Monitoring settings — the active-set poll and reconciliation sweep
+ * Operator Monitoring — the active-set poll and reconciliation sweep
  * intervals that drive `apps/worker`'s two-speed scheduler, plus its
  * observed run status. Global, not per-organization: one worker process
  * polls every organization on the platform on these same two timers (see
- * `@sla/db`'s `WorkerSettings` doc comment) — every signed-in user can view
- * this page, but only an organization owner (`data.canEdit`) can change it.
+ * `@sla/db`'s `WorkerSettings` doc comment). Only reachable by platform
+ * operators (`PLATFORM_ADMIN_EMAILS`) — see `WorkerSettingsActions.getMonitoringData`;
+ * `data.canEdit` is still honored by the controls below.
  */
 export function MonitoringView({ data, liveData }: MonitoringViewProps) {
   const router = useRouter();

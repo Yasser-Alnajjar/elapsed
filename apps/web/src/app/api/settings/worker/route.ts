@@ -2,16 +2,17 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { deriveWorkerStatus, getPrismaClient, saveWorkerSettings, WorkerSettingsValidationError } from "@sla/db";
 import { authOptions } from "@/lib/auth";
-import { isPlatformOperator, requirePlatformOperator } from "@/lib/authz";
+import { requirePlatformOperator } from "@/lib/authz";
 import { getWorkerMonitoringData } from "@/lib/worker-settings-data";
 
-/** Viewable by any signed-in organization member — see `requirePlatformOperator` for why only the write path is gated. */
+/** Platform operators only — worker diagnostics are global operational data, not tenant data. */
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const denied = requirePlatformOperator(session);
+  if (denied) return denied;
 
   const prisma = getPrismaClient();
-  const data = await getWorkerMonitoringData(prisma, isPlatformOperator(session));
+  const data = await getWorkerMonitoringData(prisma, true);
   return NextResponse.json(data);
 }
 

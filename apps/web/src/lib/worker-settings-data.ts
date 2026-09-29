@@ -3,18 +3,29 @@ import { deriveWorkerStatus, getWorkerSettingsForRead, type PrismaClient } from 
 import type { WorkerMonitoringData } from "./types/worker-settings";
 
 /**
- * Assembles the Monitoring settings page's read model. Worker settings are
+ * Assembles the operator Monitoring page's read model. Worker settings are
  * global (shared by every organization — see `@sla/db`'s `WorkerSettings`
  * doc comment), so unlike every other `*-data.ts` in this directory this
- * takes no `organizationId`; `canEdit` (see `isPlatformOperator` in
- * `@/lib/authz`) only decides whether the page renders the edit control —
- * every tenant, including an org owner, gets a read-only view.
+ * takes no `organizationId`. Callers must already have established that the
+ * viewer is a platform operator (`isPlatformOperator` in `@/lib/authz`) —
+ * this exposes operational diagnostics and does no authorization itself;
+ * `canEdit` only decides whether the page renders the edit control.
  *
- * `React.cache`-wrapped: the layout and every page's own `ssr` component
- * (Dashboard, CaseList, CaseDetail, AtRisk, Monitoring) each call this, so
- * without memoization one request reads (and would otherwise write, via the
- * old `upsert`-based read path) the singleton row several times over.
+ * `React.cache`-wrapped so one request reads the singleton row once even if
+ * several server components ask for it.
  */
+/**
+ * The active-poll interval alone, for the app-wide layout's sidebar footer.
+ * Kept separate from `getWorkerMonitoringData` so the layout never touches
+ * (or receives) worker status, timestamps or other operator diagnostics.
+ */
+export const getActivePollIntervalMs = cache(async function getActivePollIntervalMs(
+  prisma: PrismaClient,
+): Promise<number> {
+  const settings = await getWorkerSettingsForRead(prisma);
+  return settings.activePollIntervalMs;
+});
+
 export const getWorkerMonitoringData = cache(async function getWorkerMonitoringData(
   prisma: PrismaClient,
   canEdit: boolean,

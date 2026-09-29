@@ -48,7 +48,9 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
 
   const columns = useCaseListColumns();
 
-  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [searchDraft, setSearchDraft] = React.useState(globalFilter);
   React.useEffect(() => setSearchDraft(globalFilter), [globalFilter]);
 
@@ -61,13 +63,21 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
   };
 
   const setStatus = (value: StatusFilter) =>
-    createQueryFromObject(withPageReset({ status: value === "all" ? undefined : value }));
+    createQueryFromObject(
+      withPageReset({ status: value === "all" ? undefined : value }),
+    );
   const setOpenState = (value: OpenFilter) =>
-    createQueryFromObject(withPageReset({ openState: value === "all" ? undefined : value }));
+    createQueryFromObject(
+      withPageReset({ openState: value === "all" ? undefined : value }),
+    );
   const setLinkState = (value: LinkFilter) =>
-    createQueryFromObject(withPageReset({ linkState: value === "all" ? undefined : value }));
+    createQueryFromObject(
+      withPageReset({ linkState: value === "all" ? undefined : value }),
+    );
   const setSeverity = (value: SeverityFilter) =>
-    createQueryFromObject(withPageReset({ severity: value === "all" ? undefined : value }));
+    createQueryFromObject(
+      withPageReset({ severity: value === "all" ? undefined : value }),
+    );
 
   const handleSortingChange = (next: SortingState) => {
     const first = next[0];
@@ -89,13 +99,22 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
 
   const counts = data.counts;
 
-  if (data.rowCount === 0 && !globalFilter && status === "all" && openState === "all" && linkState === "all" && severity === "all") {
+  if (
+    data.rowCount === 0 &&
+    !globalFilter &&
+    status === "all" &&
+    openState === "all" &&
+    linkState === "all" &&
+    severity === "all"
+  ) {
     return (
-      <EmptyState
-        icon={ListChecks}
-        title="No cases yet"
-        description="Cases will show up here once they start syncing in."
-      />
+      <Reveal delay={0}>
+        <EmptyState
+          icon={ListChecks}
+          title="No cases yet"
+          description="Cases will show up here once they start syncing in."
+        />
+      </Reveal>
     );
   }
 

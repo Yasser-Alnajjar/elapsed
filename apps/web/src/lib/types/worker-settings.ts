@@ -3,7 +3,7 @@ import type { WorkerStatus } from "@sla/db";
 export type { WorkerStatus };
 
 // Deliberately not imported from `@sla/db` (which also exports these): this
-// file is imported by client components (`modules/settings/monitoring/csr`),
+// file is imported by client components (`modules/operator/monitoring/csr`),
 // and a *value* import of anything from `@sla/db`'s barrel would pull the
 // whole package — including the `pg`/`@prisma/adapter-pg` Node-only Postgres
 // driver — into the browser bundle. These are UI-only convenience bounds
@@ -28,7 +28,7 @@ export interface WorkerMonitoringData {
   lastReconciliationAt: string | null;
   /** Same contract as `nextActivePollAt`, for the reconciliation sweep. */
   nextReconciliationAt: string | null;
-  /** Whether the signed-in user can change these settings (organization owner) — view-only for everyone else. */
+  /** Whether the signed-in user can change these settings (platform operator; this data is only served to platform operators). */
   canEdit: boolean;
 }
 
