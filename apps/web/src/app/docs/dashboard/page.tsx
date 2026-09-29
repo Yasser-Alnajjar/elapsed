@@ -246,16 +246,20 @@ export default function DashboardPage() {
           </p>
 
           <p className="leading-7 text-muted-foreground">
-            A separate endpoint (
+            The dashboard&apos;s <strong>Export Full Report</strong> button
+            (top right) covers every commitment your organization has, open
+            and closed, with no date-range or status filter — the report to
+            use for a QBR or an audit trail. It offers CSV or JSON; the same
+            endpoint (
             <code className="rounded bg-muted px-1.5 py-0.5 text-sm">
               /api/reports/commitments
             </code>
-            ) generates a complete CSV of every commitment your organization
-            has, open and closed, with no date-range or status filter — the
-            report to use for a QBR or an audit trail. It is functional and safe
-            to use, but not currently linked from any button or menu in the
-            product — reach it by navigating directly to the URL while signed
-            in. PDF export is not currently available.
+            , or{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">
+              ?format=json
+            </code>{" "}
+            for JSON) can also be reached directly while signed in. PDF export
+            is not currently available.
           </p>
         </section>
 

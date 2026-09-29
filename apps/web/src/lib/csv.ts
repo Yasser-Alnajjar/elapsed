@@ -4,8 +4,22 @@ function escapeField(value: string): string {
   return value;
 }
 
+function formatRow(row: (string | number | null)[]): string {
+  return row.map((cell) => escapeField(String(cell ?? ""))).join(",");
+}
+
+/** A single CRLF-terminated CSV header line. */
+export function buildCsvHeaderLine(header: string[]): string {
+  return formatRow(header) + "\r\n";
+}
+
+/** CRLF-terminated CSV body lines, no header — for appending to a streamed response batch by batch. */
+export function buildCsvRowLines(rows: (string | number | null)[][]): string {
+  if (rows.length === 0) return "";
+  return rows.map(formatRow).join("\r\n") + "\r\n";
+}
+
 /** Builds a CRLF-terminated CSV string, header row first. */
 export function buildCsv(header: string[], rows: (string | number | null)[][]): string {
-  const lines = [header, ...rows].map((row) => row.map((cell) => escapeField(String(cell ?? ""))).join(","));
-  return lines.join("\r\n") + "\r\n";
+  return buildCsvHeaderLine(header) + buildCsvRowLines(rows);
 }

@@ -16,6 +16,7 @@
  * because every test truncates all tables.
  */
 import type { Session } from "next-auth";
+import { NextRequest } from "next/server";
 import type { PrismaClient } from "@sla/db";
 import {
   afterAll,
@@ -413,14 +414,27 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       ).toBeNull();
     });
 
-    it("compliance report helper and CSV export route", async () => {
+    it("compliance report helper, CSV export route and JSON export route", async () => {
       expectOnlyOrgA(
         await lib.getComplianceReportRows(prisma, orgA.organizationId, now),
       );
 
-      const response = await routes.reportCsv.GET();
-      expect(response.status).toBe(200);
-      expectOnlyOrgA(await response.text());
+      const csvResponse = await routes.reportCsv.GET(
+        new NextRequest("http://localhost/api/reports/commitments"),
+      );
+      expect(csvResponse.status).toBe(200);
+      expectOnlyOrgA(await csvResponse.text());
+
+      const jsonResponse = await routes.reportCsv.GET(
+        new NextRequest(
+          "http://localhost/api/reports/commitments?format=json",
+        ),
+      );
+      expect(jsonResponse.status).toBe(200);
+      const json = await jsonResponse.text();
+      expectOnlyOrgA(json);
+      expect(() => JSON.parse(json)).not.toThrow();
+      expect(Array.isArray(JSON.parse(json))).toBe(true);
     });
 
     it("findings", async () => {

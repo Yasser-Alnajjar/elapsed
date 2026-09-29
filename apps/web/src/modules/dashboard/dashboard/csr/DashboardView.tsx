@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/shared/reveal";
 import { EmptyState } from "@/components/shared/empty-state";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { formatCommitmentKind, formatMinutes } from "@/lib/format";
 import type { DashboardData } from "@/lib/types/dashboard";
 import { AtRiskSnapshotTable } from "./AtRiskSnapshotTable";
@@ -126,14 +132,29 @@ export const DashboardView = ({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
-            <a
-              href="/api/reports/commitments"
-              download
-              className="cursor-pointer bg-surface-container hover:bg-surface-container-high text-on-surface shadow-soft flex items-center gap-2 rounded px-3.5 py-2 text-xs md:text-sm transition-colors"
-            >
-              <Download className="text-primary size-4" />
-              Export Full CSV ({data.periodDays} Days)
-            </a>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="cursor-pointer bg-surface-container hover:bg-surface-container-high text-on-surface shadow-soft flex items-center gap-2 rounded px-3.5 py-2 text-xs md:text-sm transition-colors"
+                >
+                  <Download className="text-primary size-4" />
+                  Export Full Report ({data.periodDays} Days)
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <a href="/api/reports/commitments" download>
+                    Export as CSV
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="/api/reports/commitments?format=json" download>
+                    Export as JSON
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               type="button"
               onClick={handleRefresh}
