@@ -1,4 +1,11 @@
 import { z } from "zod";
+import { NextResponse } from "next/server";
+import {
+  SmtpDestinationNotAllowedError,
+  resolvePublicSmtpAddress,
+  privateSmtpHostsAllowed,
+} from "@sla/email";
+import { getEmailSettings, savedPasswordApplies, type PrismaClient } from "@sla/db";
 
 /**
  * Shared by the save route and the two test routes (Test Connection, Send
@@ -53,4 +60,46 @@ export function redactSecret(message: string, secret: string | undefined): strin
 export function smtpErrorMessage(error: unknown, secret: string | undefined): string {
   const message = error instanceof Error ? error.message : "SMTP request failed";
   return redactSecret(message, secret).slice(0, 300);
+}
+
+/**
+ * The password a test action should use. A password in the request wins. A
+ * blank one falls back to the saved password ONLY when the host and username
+ * are the saved ones, so a stored credential can never be sent to a host the
+ * caller just typed (H-10 F-D). `null` means the caller must re-enter it.
+ */
+export async function resolveTestPassword(
+  prisma: PrismaClient,
+  organizationId: string,
+  input: { host: string; username: string; password?: string },
+): Promise<{ password: string } | { error: string; status: 400 }> {
+  if (input.password) return { password: input.password };
+  const saved = await getEmailSettings(prisma, organizationId).catch(() => null);
+  if (!saved) return { error: "Enter the SMTP password to test the connection.", status: 400 };
+  if (!savedPasswordApplies(saved, input)) {
+    return { error: "Re-enter the SMTP password when you change the host or username.", status: 400 };
+  }
+  return { password: saved.password };
+}
+
+/**
+ * Save-time check of the destination, so an owner gets the refusal when
+ * configuring rather than on the first alert. The same check runs again on
+ * every connection (see `@sla/email`'s `publicDestinationOnly`).
+ */
+export async function destinationRefusal(host: string): Promise<NextResponse | null> {
+  if (privateSmtpHostsAllowed()) return null;
+  try {
+    await resolvePublicSmtpAddress(host);
+    return null;
+  } catch (error) {
+    // Only a refusal for a non-public address blocks a save; a name that does
+    // not resolve yet (DNS not set up) is allowed, and fails at send time.
+    if (error instanceof SmtpDestinationNotAllowedError) {
+      return error.reason === "private"
+        ? NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+        : null;
+    }
+    throw error;
+  }
 }

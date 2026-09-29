@@ -76,7 +76,11 @@ export async function updateMemberRole(
 
   await prisma.user.updateMany({
     where: { id: input.memberId, organizationId: input.organizationId },
-    data: { role: input.role },
+    // The role is baked into the member's JWT at sign-in and never re-read
+    // (see `auth.ts`'s `jwt` callback), so without a `sessionVersion` bump a
+    // demoted owner would keep owner powers until the token expires (30 days).
+    // Bumping signs the member out; they sign back in with the new role.
+    data: { role: input.role, sessionVersion: { increment: 1 } },
   });
 }
 

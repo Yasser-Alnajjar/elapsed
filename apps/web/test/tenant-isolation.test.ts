@@ -264,6 +264,126 @@ async function seedOrg(
   };
 }
 
+interface SeededExtras {
+  invitationId: string;
+  invitationEmail: string;
+  memberId: string;
+  resetToken: string;
+  verifyToken: string;
+}
+
+/** Rows for the models `seedOrg` doesn't create; every text field carries the org label. */
+async function seedExtras(
+  prisma: PrismaClient,
+  label: string,
+  org: SeededOrg,
+): Promise<SeededExtras> {
+  const lower = label.toLowerCase();
+  const { hashToken } = await import("@sla/db");
+  const resetToken = `${lower}-reset-token`;
+  const verifyToken = `${lower}-verify-token`;
+  const invitationEmail = `invitee-${lower}@example.test`;
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: org.userId,
+      tokenHash: hashToken(resetToken),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+  });
+  await prisma.emailVerificationToken.create({
+    data: {
+      userId: org.userId,
+      tokenHash: hashToken(verifyToken),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+  });
+  const invitation = await prisma.organizationInvitation.create({
+    data: {
+      organizationId: org.organizationId,
+      email: invitationEmail,
+      tokenHash: hashToken(`${lower}-invite-token`),
+      invitedByUserId: org.userId,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+  });
+  // A second, non-owner member so demote/remove targets exist.
+  const member = await prisma.user.create({
+    data: {
+      organizationId: org.organizationId,
+      email: `member-${lower}@example.test`,
+      passwordHash: "unused",
+      role: "member",
+    },
+  });
+  await prisma.slaImportSummary.create({
+    data: {
+      organizationId: org.organizationId,
+      unsupportedConditions: label === A ? 11 : 22,
+    },
+  });
+  await prisma.slackIntegration.create({
+    data: {
+      organizationId: org.organizationId,
+      accessToken: `${label}-slack-token`,
+      teamId: `${label}-team`,
+      teamName: `${label} Slack Team`,
+      botUserId: `${label}-bot`,
+      channelId: `${label}-channel-id`,
+      channelName: `${label}-channel`,
+    },
+  });
+  await prisma.integrationConfig.create({
+    data: {
+      organizationId: org.organizationId,
+      provider: "zendesk",
+      clientId: `${label}-client-id`,
+      clientSecret: "unused",
+    },
+  });
+
+  const commitments = await prisma.commitment.findMany({
+    where: { caseId: org.caseId },
+  });
+  const open = commitments.find((c) => c.closedAt === null)!;
+  await prisma.commitmentPolicyChange.create({
+    data: {
+      commitmentId: open.id,
+      previousPolicyVersionId: open.policyVersionId,
+      newPolicyVersionId: open.policyVersionId,
+      previousTargetMinutes: 240,
+      newTargetMinutes: 120,
+      previousCalendarVersionId: open.calendarVersionId,
+      newCalendarVersionId: open.calendarVersionId,
+      changedAt: new Date(),
+      reason: `${label} changed the target`,
+    },
+  });
+  await prisma.notification.create({
+    data: { commitmentId: open.id, threshold: 80, channel: `${label}-channel` },
+  });
+  await prisma.notificationFailure.create({
+    data: { commitmentId: open.id, threshold: 95, error: `${label} smtp refused` },
+  });
+  await prisma.legSpan.create({
+    data: {
+      caseId: org.caseId,
+      leg: "support",
+      confidence: "certain",
+      startedAt: new Date(),
+      note: `${label} leg`,
+    },
+  });
+
+  return {
+    invitationId: invitation.id,
+    invitationEmail,
+    memberId: member.id,
+    resetToken,
+    verifyToken,
+  };
+}
+
 function sessionFor(org: SeededOrg, label: string): Session {
   return {
     expires: new Date(Date.now() + 3_600_000).toISOString(),
@@ -305,6 +425,8 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
   let prisma: PrismaClient;
   let orgA: SeededOrg;
   let orgB: SeededOrg;
+  let extraA: SeededExtras;
+  let extraB: SeededExtras;
   const now = new Date();
 
   let lib: {
@@ -317,6 +439,8 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
     getBusinessCalendars: typeof import("../src/lib/customer-calendars-data").getBusinessCalendars;
     getCustomerCalendarSummaries: typeof import("../src/lib/customer-calendars-data").getCustomerCalendarSummaries;
     getIntegrationsData: typeof import("../src/lib/integrations-data").getIntegrationsData;
+    getPolicyImportReview: typeof import("../src/lib/policy-import-review-data").getPolicyImportReview;
+    assertSessionStillValid: typeof import("../src/lib/session-validity").assertSessionStillValid;
   };
   let routes: {
     reportCsv: typeof import("../src/app/api/reports/commitments/route");
@@ -326,6 +450,17 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
     email: typeof import("../src/app/api/settings/email/route");
     jiraDisconnect: typeof import("../src/app/api/integrations/jira/disconnect/route");
     zendeskWebhook: typeof import("../src/app/api/webhooks/zendesk/[integrationId]/route");
+    emailTestConnection: typeof import("../src/app/api/settings/email/test-connection/route");
+    emailTestSend: typeof import("../src/app/api/settings/email/test-send/route");
+    members: typeof import("../src/app/api/settings/members/route");
+    member: typeof import("../src/app/api/settings/members/[id]/route");
+    invitations: typeof import("../src/app/api/settings/invitations/route");
+    invitation: typeof import("../src/app/api/settings/invitations/[id]/route");
+    slackChannel: typeof import("../src/app/api/integrations/slack/channel/route");
+    slackDisconnect: typeof import("../src/app/api/integrations/slack/disconnect/route");
+    zendeskConfig: typeof import("../src/app/api/integrations/zendesk/config/route");
+    passwordResetConfirm: typeof import("../src/app/api/password-reset/confirm/route");
+    emailVerificationConfirm: typeof import("../src/app/api/email-verification/confirm/route");
   };
 
   beforeAll(async () => {
@@ -336,6 +471,8 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
     process.env.SMTP_ENCRYPTION_KEY ??= "tenant-isolation-test-smtp-key";
     process.env.INTEGRATION_CONFIG_ENCRYPTION_KEY ??=
       "tenant-isolation-test-integration-key";
+    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY ??=
+      "tenant-isolation-test-token-key";
 
     prisma = (await import("@sla/db")).getPrismaClient();
     lib = {
@@ -347,6 +484,8 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       ...(await import("../src/lib/sla-policies-data")),
       ...(await import("../src/lib/customer-calendars-data")),
       ...(await import("../src/lib/integrations-data")),
+      ...(await import("../src/lib/policy-import-review-data")),
+      ...(await import("../src/lib/session-validity")),
     };
     routes = {
       reportCsv: await import("../src/app/api/reports/commitments/route"),
@@ -361,6 +500,21 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
         await import("../src/app/api/integrations/jira/disconnect/route"),
       zendeskWebhook:
         await import("../src/app/api/webhooks/zendesk/[integrationId]/route"),
+      emailTestConnection:
+        await import("../src/app/api/settings/email/test-connection/route"),
+      emailTestSend: await import("../src/app/api/settings/email/test-send/route"),
+      members: await import("../src/app/api/settings/members/route"),
+      member: await import("../src/app/api/settings/members/[id]/route"),
+      invitations: await import("../src/app/api/settings/invitations/route"),
+      invitation: await import("../src/app/api/settings/invitations/[id]/route"),
+      slackChannel: await import("../src/app/api/integrations/slack/channel/route"),
+      slackDisconnect:
+        await import("../src/app/api/integrations/slack/disconnect/route"),
+      zendeskConfig: await import("../src/app/api/integrations/zendesk/config/route"),
+      passwordResetConfirm:
+        await import("../src/app/api/password-reset/confirm/route"),
+      emailVerificationConfirm:
+        await import("../src/app/api/email-verification/confirm/route"),
     };
   });
 
@@ -373,6 +527,8 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
     );
     orgA = await seedOrg(prisma, A, now);
     orgB = await seedOrg(prisma, B, now);
+    extraA = await seedExtras(prisma, A, orgA);
+    extraB = await seedExtras(prisma, B, orgB);
     auth.session = sessionFor(orgA, A);
   });
 
@@ -600,6 +756,280 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
           where: { integrationId: orgB.zendeskIntegrationId },
         }),
       ).toBe(1);
+    });
+  });
+
+  describe("models the original suite did not name (H-10)", () => {
+    const url = "http://localhost:3000/api";
+    const idParams = (id: string) => ({ params: Promise.resolve({ id }) });
+
+    it("reads: members, pending invitations, import review, integrations (Slack, config) and case detail (events, links, notifications, policy changes) show only this org", async () => {
+      expectOnlyOrgA(await (await routes.members.GET()).json());
+      expectOnlyOrgA(await (await routes.invitations.GET()).json());
+      const review = await lib.getPolicyImportReview(prisma, orgA.organizationId);
+      expect(review.warnings.unsupportedConditions).toBe(11);
+      const integrations = await lib.getIntegrationsData(prisma, orgA.organizationId);
+      expectOnlyOrgA(integrations);
+      const detail = await lib.getCaseDetailData(prisma, orgA.organizationId, orgA.caseId, now);
+      const text = JSON.stringify(detail).toLowerCase();
+      expect(text).toContain("alpha changed the target");
+      expect(text).not.toContain("bravo");
+    });
+
+    it("dashboard failed-alert list carries this org's NotificationFailure only", async () => {
+      const data = await lib.getDashboardData(prisma, orgA.organizationId, now);
+      const text = JSON.stringify(data).toLowerCase();
+      expect(text).toContain("alpha smtp refused");
+      expect(text).not.toContain("bravo smtp refused");
+    });
+
+    it("revoking another org's invitation is a no-op", async () => {
+      const response = await routes.invitation.DELETE(
+        new Request(`${url}/settings/invitations/${extraB.invitationId}`, { method: "DELETE" }),
+        idParams(extraB.invitationId),
+      );
+      expect(response.status).toBe(200);
+      const b = await prisma.organizationInvitation.findUniqueOrThrow({ where: { id: extraB.invitationId } });
+      expect(b.status).toBe("pending");
+      // Control: own invitation is revoked.
+      await routes.invitation.DELETE(
+        new Request(`${url}/settings/invitations/${extraA.invitationId}`, { method: "DELETE" }),
+        idParams(extraA.invitationId),
+      );
+      const a = await prisma.organizationInvitation.findUniqueOrThrow({ where: { id: extraA.invitationId } });
+      expect(a.status).toBe("revoked");
+    });
+
+    it("changing the role of, or removing, another org's member is rejected and changes nothing", async () => {
+      const patch = await routes.member.PATCH(
+        jsonRequest(`${url}/settings/members/${extraB.memberId}`, { role: "owner" }),
+        idParams(extraB.memberId),
+      );
+      expect(patch.status).toBe(404);
+      const del = await routes.member.DELETE(
+        new Request(`${url}/settings/members/${extraB.memberId}`, { method: "DELETE" }),
+        idParams(extraB.memberId),
+      );
+      expect(del.status).toBe(404);
+      const b = await prisma.user.findUniqueOrThrow({ where: { id: extraB.memberId } });
+      expect(b.role).toBe("member");
+      expect(b.sessionVersion).toBe(0);
+    });
+
+    it("Slack channel and disconnect only touch the session's organization", async () => {
+      const set = await routes.slackChannel.POST(
+        jsonRequest(`${url}/integrations/slack/channel`, { channelId: "C-NEW", channelName: "new-channel" }),
+      );
+      expect(set.status).toBe(200);
+      const off = await routes.slackDisconnect.POST();
+      expect(off.status).toBe(200);
+      expect(await prisma.slackIntegration.count({ where: { organizationId: orgA.organizationId } })).toBe(0);
+      const b = await prisma.slackIntegration.findUniqueOrThrow({ where: { organizationId: orgB.organizationId } });
+      expect(b.channelId).toBe("BRAVO-channel-id");
+    });
+
+    it("saving an OAuth client config only changes the session's organization", async () => {
+      const response = await routes.zendeskConfig.POST(
+        jsonRequest(`${url}/integrations/zendesk/config`, { clientId: "alpha-new-id", clientSecret: "alpha-new-secret" }),
+      );
+      expect(response.status).toBe(200);
+      const [a, b] = await Promise.all([
+        prisma.integrationConfig.findUniqueOrThrow({
+          where: { organizationId_provider: { organizationId: orgA.organizationId, provider: "zendesk" } },
+        }),
+        prisma.integrationConfig.findUniqueOrThrow({
+          where: { organizationId_provider: { organizationId: orgB.organizationId, provider: "zendesk" } },
+        }),
+      ]);
+      expect(a.clientId).toBe("alpha-new-id");
+      expect(b.clientId).toBe("BRAVO-client-id");
+      expect(b.clientSecret).toBe("unused");
+    });
+
+    it("an own policy override creates no policy-change, notification or failure row for another org", async () => {
+      const before = {
+        changes: await prisma.commitmentPolicyChange.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+        notes: await prisma.notification.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+        fails: await prisma.notificationFailure.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+      };
+      const response = await routes.policyOverride.POST(
+        jsonRequest(`${url}/settings/sla-policies/override`, {
+          policyId: orgA.policyId,
+          targets: [{ kind: "resolution", minutes: 5 }],
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect({
+        changes: await prisma.commitmentPolicyChange.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+        notes: await prisma.notification.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+        fails: await prisma.notificationFailure.count({ where: { commitment: { case: { organizationId: orgB.organizationId } } } }),
+      }).toEqual(before);
+    });
+
+    it("consuming one user's reset or verification token affects that user only", async () => {
+      const reset = await routes.passwordResetConfirm.POST(
+        jsonRequest(`${url}/password-reset/confirm`, { token: extraA.resetToken, password: "a-new-password-1" }),
+      );
+      expect(reset.status).toBe(200);
+      const verify = await routes.emailVerificationConfirm.POST(
+        jsonRequest(`${url}/email-verification/confirm`, { token: extraA.verifyToken }),
+      );
+      expect(verify.status).toBe(200);
+      const b = await prisma.user.findUniqueOrThrow({ where: { id: orgB.userId } });
+      expect(b.passwordHash).toBe("unused");
+      expect(b.sessionVersion).toBe(0);
+      expect(b.emailVerifiedAt).toBeNull();
+      expect(await prisma.passwordResetToken.count({ where: { userId: orgB.userId, usedAt: null } })).toBe(1);
+      expect(await prisma.emailVerificationToken.count({ where: { userId: orgB.userId, usedAt: null } })).toBe(1);
+    });
+
+    it("a token from one org's user can't be replayed against another (each token is single-use)", async () => {
+      const first = await routes.passwordResetConfirm.POST(
+        jsonRequest(`${url}/password-reset/confirm`, { token: extraB.resetToken, password: "another-password-1" }),
+      );
+      expect(first.status).toBe(200);
+      const replay = await routes.passwordResetConfirm.POST(
+        jsonRequest(`${url}/password-reset/confirm`, { token: extraB.resetToken, password: "another-password-2" }),
+      );
+      expect(replay.status).toBe(410);
+    });
+
+    it("demoting a member signs their existing sessions out (role is baked into the JWT)", async () => {
+      // Promote the second member to owner so demoting them is allowed.
+      const target = extraA.memberId;
+      const token = { userId: target, sessionVersion: 0 };
+      await expect(lib.assertSessionStillValid(prisma, token)).resolves.toBeUndefined();
+
+      const promote = await routes.member.PATCH(
+        jsonRequest(`${url}/settings/members/${target}`, { role: "owner" }),
+        idParams(target),
+      );
+      expect(promote.status).toBe(200);
+      await expect(lib.assertSessionStillValid(prisma, token)).rejects.toThrow(/no longer valid/);
+
+      const fresh = { userId: target, sessionVersion: 1 };
+      const demote = await routes.member.PATCH(
+        jsonRequest(`${url}/settings/members/${target}`, { role: "member" }),
+        idParams(target),
+      );
+      expect(demote.status).toBe(200);
+      await expect(lib.assertSessionStillValid(prisma, fresh)).rejects.toThrow(/no longer valid/);
+    });
+
+    it("removing a member invalidates their session", async () => {
+      const token = { userId: extraA.memberId, sessionVersion: 0 };
+      const del = await routes.member.DELETE(
+        new Request(`${url}/settings/members/${extraA.memberId}`, { method: "DELETE" }),
+        idParams(extraA.memberId),
+      );
+      expect(del.status).toBe(200);
+      await expect(lib.assertSessionStillValid(prisma, token)).rejects.toThrow(/no longer valid/);
+    });
+
+    it("a plain member can't use owner-only routes", async () => {
+      auth.session = {
+        ...sessionFor(orgA, A),
+        user: { ...sessionFor(orgA, A).user, id: extraA.memberId, role: "member" },
+      };
+      const role = await routes.member.PATCH(
+        jsonRequest(`${url}/settings/members/${orgA.userId}`, { role: "member" }),
+        idParams(orgA.userId),
+      );
+      expect(role.status).toBe(403);
+      expect((await routes.slackDisconnect.POST()).status).toBe(403);
+      expect((await routes.jiraDisconnect.POST()).status).toBe(403);
+      expect(await prisma.slackIntegration.count({ where: { organizationId: orgA.organizationId } })).toBe(1);
+    });
+  });
+
+  describe("SMTP settings can't move the saved password or reach internal hosts (H-10 F-D)", () => {
+    const url = "http://localhost:3000/api/settings/email";
+    const base = {
+      host: "smtp.alpha.test",
+      port: 587,
+      security: "starttls",
+      username: "alpha",
+      fromEmail: "alerts@alpha.test",
+    };
+    const save = (extra: Record<string, unknown>) =>
+      routes.email.POST(jsonRequest(url, { ...base, ...extra }));
+    const post = (route: { POST: (r: Request) => Promise<Response> }, path: string, body: Record<string, unknown>) =>
+      route.POST(jsonRequest(`${url}/${path}`, body));
+
+    beforeEach(async () => {
+      expect((await save({ password: "alpha-saved-password" })).status).toBe(200);
+    });
+
+    it("saving a different host or username without a password is refused and changes nothing", async () => {
+      for (const change of [{ host: "smtp.attacker.test" }, { username: "someone-else" }]) {
+        const response = await save(change);
+        expect(response.status).toBe(400);
+        expect((await response.json()).error).toMatch(/re-enter the smtp password/i);
+      }
+      const row = await prisma.organizationEmailSettings.findUniqueOrThrow({
+        where: { organizationId: orgA.organizationId },
+      });
+      expect(row.host).toBe("smtp.alpha.test");
+      expect(row.username).toBe("alpha");
+    });
+
+    it("saving with the password, or changing only port/security/from-address, is allowed", async () => {
+      expect((await save({ host: "smtp.new.test", password: "fresh" })).status).toBe(200);
+      expect((await save({ host: "SMTP.NEW.TEST.", password: undefined, port: 465, security: "ssl_tls" })).status).toBe(200);
+      expect((await save({ host: "smtp.new.test", fromEmail: "other@alpha.test" })).status).toBe(200);
+    });
+
+    it("test actions never use the saved password for a different host or username", async () => {
+      for (const route of [
+        ["test-connection", routes.emailTestConnection],
+        ["test-send", routes.emailTestSend],
+      ] as const) {
+        for (const change of [{ host: "smtp.attacker.test" }, { username: "someone-else" }]) {
+          const response = await post(route[1], route[0], { ...base, ...change });
+          expect(response.status).toBe(400);
+          expect((await response.json()).error).toMatch(/re-enter the smtp password/i);
+        }
+      }
+    });
+
+    it("with the saved host and username a blank password falls back to the saved one (no re-entry demanded)", async () => {
+      const response = await post(routes.emailTestConnection, "test-connection", base);
+      // smtp.alpha.test doesn't resolve, so the attempt stops at the destination check,
+      // which is only reached once the password fallback was accepted.
+      expect((await response.json()).error).not.toMatch(/re-enter/i);
+    });
+
+    it.each(["127.0.0.1", "localhost", "169.254.169.254", "10.0.0.5", "[::1]", "192.168.1.10"])(
+      "refuses %s for save, test-connection and test-send",
+      async (host) => {
+        const bare = host.replace(/^\[|\]$/g, "");
+        const withPassword = { ...base, host: bare, password: "typed" };
+        const saved = await save(withPassword);
+        expect(saved.status).toBe(400);
+        expect((await saved.json()).error).toMatch(/private|non-public/i);
+        for (const [path, route] of [
+          ["test-connection", routes.emailTestConnection],
+          ["test-send", routes.emailTestSend],
+        ] as const) {
+          const response = await post(route, path, withPassword);
+          expect(response.status).toBe(400);
+          expect((await response.json()).error).toMatch(/private|non-public/i);
+        }
+        const row = await prisma.organizationEmailSettings.findUniqueOrThrow({
+          where: { organizationId: orgA.organizationId },
+        });
+        expect(row.host).toBe("smtp.alpha.test");
+      },
+    );
+
+    it("a plain member can't reach any of the three", async () => {
+      auth.session = {
+        ...sessionFor(orgA, A),
+        user: { ...sessionFor(orgA, A).user, id: extraA.memberId, role: "member" },
+      };
+      expect((await save({ password: "x" })).status).toBe(403);
+      expect((await post(routes.emailTestConnection, "test-connection", { ...base, password: "x" })).status).toBe(403);
+      expect((await post(routes.emailTestSend, "test-send", { ...base, password: "x" })).status).toBe(403);
     });
   });
 });

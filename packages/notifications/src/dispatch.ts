@@ -248,7 +248,7 @@ export async function deliverClaimedNotifications(
       let anyEmailSent = false;
       for (const recipient of emailTo) {
         try {
-          await sendEmail(emailConfig, { to: [recipient], subject, text, html });
+          await sendEmail(emailConfig, { to: [recipient], subject, text, html }, { publicDestinationOnly: true });
           anyEmailSent = true;
         } catch (error) {
           recipientErrors.push(`${recipient}: ${errorMessage(error)}`);

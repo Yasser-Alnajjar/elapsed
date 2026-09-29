@@ -58,6 +58,34 @@ export class EmailSettingsUnreadableError extends Error {
   }
 }
 
+/**
+ * Thrown when a save or test names a different SMTP host or username than the
+ * saved one but leaves the password blank. A blank password means "keep the
+ * saved one", and that is only safe while it is still sent to the same place
+ * under the same login: otherwise a stored credential could be pointed at a
+ * server the caller controls (H-10 F-D).
+ */
+export class SmtpPasswordRequiredError extends Error {
+  constructor() {
+    super("Re-enter the SMTP password when you change the host or username.");
+    this.name = "SmtpPasswordRequiredError";
+  }
+}
+
+/**
+ * Whether a blank password may fall back to the saved one: only when the host
+ * (case-insensitive, ignoring a trailing dot) and the username are unchanged.
+ * Port, security and from-address changes do not move the credential to a new
+ * host, so they don't need it.
+ */
+export function savedPasswordApplies(
+  saved: { host: string; username: string },
+  input: { host: string; username: string },
+): boolean {
+  const norm = (host: string) => host.trim().toLowerCase().replace(/\.$/, "");
+  return norm(saved.host) === norm(input.host) && saved.username.trim() === input.username.trim();
+}
+
 const ENCRYPTION_SALT = "elapsed/email-settings";
 
 /**
@@ -160,11 +188,14 @@ export async function saveEmailSettings(
 ): Promise<void> {
   const existing = await prisma.organizationEmailSettings.findUnique({
     where: { organizationId },
-    select: { id: true },
+    select: { id: true, host: true, username: true },
   });
 
   if (!existing && !input.password) {
     throw new Error("Password is required to configure email notifications");
+  }
+  if (existing && !input.password && !savedPasswordApplies(existing, input)) {
+    throw new SmtpPasswordRequiredError();
   }
 
   const fromName = input.fromName?.trim() || null;

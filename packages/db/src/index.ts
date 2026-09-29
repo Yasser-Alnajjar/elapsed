@@ -29,6 +29,8 @@ export {
   getEmailSettings,
   getEmailSettingsStatus,
   saveEmailSettings,
+  savedPasswordApplies,
+  SmtpPasswordRequiredError,
   encryptSmtpPassword,
   decryptSmtpPassword,
   EmailSettingsUnreadableError,

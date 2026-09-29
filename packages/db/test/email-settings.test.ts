@@ -154,19 +154,42 @@ describe("saveEmailSettings / getEmailSettings", () => {
     ).rejects.toThrow(/password is required/i);
   });
 
-  it("updates an existing configuration without a password, keeping the old one", async () => {
+  it("updates an existing configuration without a password, keeping the old one, while the host and username are unchanged", async () => {
     const { prisma } = createFakePrisma();
     await saveEmailSettings(prisma, "org-a", baseInput);
 
     await saveEmailSettings(prisma, "org-a", {
       ...baseInput,
-      host: "smtp2.example.com",
+      host: baseInput.host.toUpperCase() + ".",
+      port: 465,
       password: undefined,
     });
 
     const settings = await getEmailSettings(prisma, "org-a");
-    expect(settings?.host).toBe("smtp2.example.com");
+    expect(settings?.port).toBe(465);
     expect(settings?.password).toBe("hunter2");
+  });
+
+  it("refuses a new host or username without a password, and leaves the saved row alone (H-10 F-D)", async () => {
+    const { prisma } = createFakePrisma();
+    await saveEmailSettings(prisma, "org-a", baseInput);
+
+    for (const change of [{ host: "smtp2.example.com" }, { username: "someone-else" }]) {
+      await expect(
+        saveEmailSettings(prisma, "org-a", { ...baseInput, ...change, password: undefined }),
+      ).rejects.toThrow(/re-enter the smtp password/i);
+    }
+    const settings = await getEmailSettings(prisma, "org-a");
+    expect(settings?.host).toBe(baseInput.host);
+    expect(settings?.username).toBe(baseInput.username);
+    expect(settings?.password).toBe("hunter2");
+  });
+
+  it("accepts a new host when the password is provided again", async () => {
+    const { prisma } = createFakePrisma();
+    await saveEmailSettings(prisma, "org-a", baseInput);
+    await saveEmailSettings(prisma, "org-a", { ...baseInput, host: "smtp2.example.com", password: "again" });
+    expect((await getEmailSettings(prisma, "org-a"))?.host).toBe("smtp2.example.com");
   });
 
   it("updates the password when one is provided", async () => {
