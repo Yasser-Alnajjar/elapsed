@@ -132,29 +132,14 @@ export const DashboardView = ({
             </div>
           </div>
           <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="cursor-pointer bg-surface-container hover:bg-surface-container-high text-on-surface shadow-soft flex items-center gap-2 rounded px-3.5 py-2 text-xs md:text-sm transition-colors"
-                >
-                  <Download className="text-primary size-4" />
-                  Export Full Report ({data.periodDays} Days)
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem asChild>
-                  <a href="/api/reports/commitments" download>
-                    Export as CSV
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="/api/reports/commitments?format=json" download>
-                    Export as JSON
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <a
+              href="/api/reports/commitments"
+              download
+              className="cursor-pointer bg-surface-container hover:bg-surface-container-high text-on-surface shadow-soft flex items-center gap-2 rounded px-3.5 py-2 text-xs md:text-sm transition-colors"
+            >
+              <Download className="text-primary size-4" />
+              Export Full Report ({data.periodDays} Days)
+            </a>
             <button
               type="button"
               onClick={handleRefresh}
