@@ -1,15 +1,17 @@
 # Production Hygiene close-out (H-1 to H-12)
 
+> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12. **Still open, and none of them gates an N-phase:** H-2 (your D14 decision), H-6 (Sentry credentials), H-8 (blocked upstream), H-9 (Zendesk sandbox walkthrough), H-10 (host verification and third-party rotation).
+
 **Prepared:** 2026-09-29. Everything below that could be done without production access or your decisions has been done and is listed under "Ready". What is left needs you, and each step says exactly what to run. **Nothing here touches production until you run it.** All production commands are read-only except where marked.
 
 ## Status of every H item
 
 | ID | Item | Status | What closes it |
 | --- | --- | --- | --- |
-| H-1 | Provider pair and status per live tenant | **Needs production access** (read-only SQL, prepared) | [H-1 procedure](#h-1--provider-pairs-per-tenant) |
+| H-1 | Provider pair and status per live tenant | **CLOSED 2026-09-30, accepted limitation.** 12 tenants, all Zendesk + Jira, all connected; 11 are `seed-org-*` fixtures, the real 10-customer data was not verified | [H-1 record](#h-1--provider-pairs-per-tenant) |
 | H-2 | D14 pricing decision | **Needs your decision** | [H-2 question](#h-2--d14-the-exact-question) |
 | H-3 | Pricing-page false claims | **Done** (already checked) | — |
-| H-4 | Engine vs Zendesk on live tenants | **Needs production access** (kit built and tested on fixtures) and depends on **H-1** for tenant choice | [H-4 procedure](#h-4--live-tenant-spot-check) |
+| H-4 | Engine vs Zendesk on live tenants | **CLOSED 2026-09-30, accepted limitation.** Export and comparison run on one tenant (the dev sandbox); all 18 UNEXPLAINED rows explained; not two live tenants | [H-4 record](#h-4--live-tenant-spot-check) |
 | H-5 | Retention / on-call note | **Done** (already checked). Two of its findings are still open, see [Findings from this pass](#findings-from-this-pass) | — |
 | H-6 | Sentry source maps on the host | **Needs production access** and Sentry credentials from you | [H-6 procedure](#h-6--sentry-source-maps) |
 | H-7 | `perf:baseline` re-run and capacity limits | **Done** in the roadmap's terms (measured; dev hardware, stated as such) | [`capacity-limits.md`](capacity-limits.md) |
@@ -45,6 +47,13 @@ Dependencies between H items: H-4 needs H-1 only to choose tenants (the SQL in H
 
 ## H-1 — provider pairs per tenant
 
+> **CLOSED 2026-09-30 by owner decision, with an accepted limitation.**
+> - **Evidence** (`scripts/prod/h1-provider-pairs.sql`, run read-only on the host's application database): 12 tenants; provider pair **12 × Zendesk + Jira**, all connected; 0 with an unhealthy integration; 0 without a connected integration; no tenant with Intercom, Linear or GitHub. Cases: total 1,508, min 45, median 133, max 133.
+> - **Limitation, stated plainly:** 11 of the 12 organizations are `seed-org-*` fixtures written by `seed-test-customers`. That is known test/fixture data, **not production customer evidence**. The other organization is the dev Zendesk sandbox tenant. **The real 10-customer dataset was not queried or verified**, and the case-size figures are fixture artifacts, not live tenant sizes.
+> - **Accepted risk:** the acceptance below ("the 10 live tenants") cannot be truthfully met from this host, so the item is closed on this evidence so N1 is not blocked. "No tenant has both Zendesk and Intercom" is an **assumption** for the real customers; if one is later found with another pair, redo N1.2's classification for it. D15 stays unticked.
+>
+> The procedure below is kept for reference. Note that on this host the compose flags are `docker compose exec ...` with the default `.env` and the database is `elapsed_db`, not `$POSTGRES_DB`.
+
 **Acceptance (roadmap):** the provider pair and integration status of each of the 10 live tenants recorded as **counts per pair** in the Status Board, never customer names.
 
 Run on the production host (read-only; prints no names or ids):
@@ -58,6 +67,17 @@ docker compose -f docker-compose.yml --env-file .env.prod exec -T postgres \
 Paste the three result tables to me. I will put the counts in the Status Board, resolve the data half of D15, and tick H-1. Note the roadmap's own caveat: you deferred H-1 because production database access was not being requested; this is the smallest access that closes it (three SELECTs).
 
 ## H-4 — live-tenant spot check
+
+> **CLOSED 2026-09-30 by owner decision, with an accepted limitation.**
+> - **Evidence:** the live export (`h4-live-export.ts`, after fixing a wrong calendar column in its query) and `compare-live.py` against Zendesk, on the host's one non-fixture organization (the dev sandbox): 45 tickets; 33 MATCH, 7 SEMANTIC, 13 DATA, 18 initially UNEXPLAINED. **All 18 were then explained; none is an unexplained engine defect:**
+>   - 12 Resolution elapsed differences: **H-12 / D30**. Finished commitments still carry the old Pending pause; each shortfall equals the time in `pending_customer` to the second (16, 44, 8, 8, 216, 123, 72, 824, 5, 50, 3184, 45 s), confirmed by query.
+>   - 4 First Response target rows (tickets 21, 46, 47, 48): **D5b**, agent-submitted tickets (Zendesk: Next Reply 40 min; Elapsed: First Response 30 min).
+>   - Ticket 27: the documented **reverse Next Reply case** (F4 in `h4-sla-spot-check.md`).
+>   - Ticket 1: the **H-11** shape, repaired in production. Ticket 45 and the DATA rows: the since-deleted sandbox policy "Phase 4 Native Test" (F3), data not engine. The First Response rows for tickets 54 to 60 were pre-repair state and are gone after the H-11 repair.
+> - **Doubled reply obligation (tickets 21, 27, 48):** an agent reply before the customer's first message on an agent-submitted ticket makes that message open both a First Response (30 min) and a Next Reply (40 min); Zendesk opens one. Deliberate in the code (`findFirstResponseEvent` is called without the D5b start bound for cycle derivation). **Owner decision 2026-09-30: a documented product semantic (D5b × Next Reply gating), not an engine defect.** Revisit if customers report duplicate reply alerts.
+> - **Limitation, accepted (no second tenant or export required):** the acceptance below asks for two live tenants, one on business hours, open commitments included. This run covers **one** tenant (the dev sandbox), 0 open commitments, 24/7 calendar. Not covered: business hours, holidays, DST, open commitments and at-risk state, legs, any live customer tenant. Risk accepted: a difference specific to those areas would first show in N1's replay/diff gate or in production.
+>
+> The procedure and the caveat below are historical: the export has since been run against Zendesk (with the calendar-column fix).
 
 **Acceptance (roadmap):** engine numbers spot-checked against Zendesk's own SLA view on real tickets for **at least two live tenants**; any unexplained disagreement opens a correctness task **before** N1 starts. **Proposed closing evidence** (mine, to cover what the dev-sandbox run could not): at least two live tenants; at least one on a business-hours calendar; open commitments included; every row classified; **UNEXPLAINED = 0, or each one a filed task**. The 45-ticket dev run alone does not close H-4.
 
@@ -180,4 +200,4 @@ Not H items, but they are owed when these changes reach production and were flag
 
 ## N1 readiness
 
-N1's declared entry gate is **H-1 and H-4** (roadmap phase table and the Production Hygiene preamble). After H-1 is ticked and H-4 is ticked under the acceptance above, N1 needs no further roadmap audit: N1.0 ("H-1 recorded, backup restored into the scratch DB") is then satisfied except the backup restore, which is N1's own first task (`scripts/restore-drill.sh` exists). H-2, H-6, H-8, H-9 and H-10 do not gate any N-phase (H-5 gates N5.4 and N8-S6 and is done). What could still surprise N1: an UNEXPLAINED row from H-4 becoming a correctness task, which is what H-4 exists to surface.
+**Update 2026-09-30: H-1 and H-4 are closed (each with the accepted limitation recorded above), so N1's entry gate is met and N1 is unblocked.** N1's declared entry gate was **H-1 and H-4** (roadmap phase table and the Production Hygiene preamble). With both closed, N1 needs no further roadmap audit: N1.0 ("H-1 recorded, backup restored into the scratch DB") is then satisfied except the backup restore, which is N1's own first task (`scripts/restore-drill.sh` exists). H-2, H-6, H-8, H-9 and H-10 do not gate any N-phase (H-5 gates N5.4 and N8-S6 and is done). What could still surprise N1: an UNEXPLAINED row from H-4 becoming a correctness task, which is what H-4 exists to surface.
