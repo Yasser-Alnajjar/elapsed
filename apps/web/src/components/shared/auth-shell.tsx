@@ -19,10 +19,6 @@ export const authLabelClass =
 export const authInputBase =
   "w-full text-foreground placeholder:text-foreground-subtle transition-all focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Inline link inside a card. */
-export const authLinkClass =
-  "font-medium text-primary transition-colors hover:text-primary-fixed-dim";
-
 /** Solid sky primary action. */
 export const authButtonClass =
   "group flex w-full items-center justify-center gap-2 rounded-[2px] bg-primary text-sm font-semibold tracking-wide text-primary-foreground transition-all duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60";

@@ -11,9 +11,6 @@ export function formatTargetClock(totalMinutes: number): string {
   return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
 }
 
-export const monoChip =
-  "bg-surface-container text-on-surface-variant rounded px-1.5 py-0.5 font-mono text-xxs";
-
 /**
  * Shared card shell for the SLA configuration panels: icon tile, title with an
  * optional mono meta label, subtitle and a trailing header action.
