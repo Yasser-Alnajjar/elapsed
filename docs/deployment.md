@@ -170,9 +170,18 @@ variables, set inline in the cron line if you need them:
 | `DB_NAME` | the container's `POSTGRES_DB` | |
 
 **Copy dumps off the host.** A backup on the same disk as the database
-won't survive losing the server. Add a second cron line that syncs
-`backups/` to object storage or another machine with your usual tool
-(`rclone`, `aws s3 sync`, `restic`), scheduled after the backup.
+won't survive losing the server. Set `OFFSITE_COPY_CMD` to a command that
+copies one dump, given as `$1`; `backup.sh` runs it after each good dump and
+exits non-zero if it fails (the local dump is kept):
+
+```cron
+15 3 * * * cd /opt/elapsed && OFFSITE_COPY_CMD='aws s3 cp "$1" s3://my-bucket/sla/' scripts/backup.sh >> /var/log/sla-backup.log 2>&1
+```
+
+`rclone copy "$1" remote:sla` or `restic backup "$1"` work the same way. Local
+retention is `RETENTION_DAYS`; set the off-site retention on the bucket itself
+(an S3 lifecycle rule, for example 30 days) so a compromised host can't delete
+its own off-site history.
 
 If you run your own managed Postgres instead of the bundled service, use the
 provider's automated snapshots and point-in-time recovery; these scripts
@@ -207,31 +216,18 @@ reconnect**, and one click on the Integrations page fixes it.
 ### Test the restore
 
 An untested backup is a guess. Once a quarter, and after any change to the
-setup, restore the latest dump into a scratch database next to the real one
-and check the row counts:
+setup, run the drill on the host:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres \
-  sh -c 'createdb -U "$POSTGRES_USER" sla_restore_check'
+scripts/restore-drill.sh
 ```
 
-```bash
-DB_NAME=sla_restore_check SKIP_SAFETY_BACKUP=1 \
-  scripts/restore.sh "$(ls backups/sla-*.dump | tail -1)" --yes
-```
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres \
-  sh -c 'psql -U "$POSTGRES_USER" -d sla_restore_check -c "select count(*) from cases"'
-```
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres \
-  sh -c 'dropdb -U "$POSTGRES_USER" sla_restore_check'
-```
-
-A restore into a scratch database still briefly stops `web` and `worker`,
-so run the check at a quiet time.
+It restores the newest dump (or the one you pass) into a scratch database
+next to the real one, times the restore, checks that the tables and `cases`
+rows are there, drops the scratch database, and appends a line to
+[`restore-drills.log`](restore-drills.log) (dump, size, restore seconds, table
+and case counts). It never stops `web` or `worker`. Commit the log line so the
+recorded timing is the recovery-time figure you quote.
 
 ## Security notes
 

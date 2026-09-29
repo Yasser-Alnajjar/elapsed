@@ -11,7 +11,9 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+if [ -z "${COMPOSE_FILE:-}" ]; then
+  if [ -f docker-compose.prod.yml ]; then COMPOSE_FILE=docker-compose.prod.yml; else COMPOSE_FILE=docker-compose.yml; fi
+fi
 ENV_FILE="${ENV_FILE:-.env.prod}"
 
 dump="${1:-}"

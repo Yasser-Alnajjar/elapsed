@@ -4,16 +4,22 @@
 # "Backups" section of docs/deployment.md.
 #
 # Environment (all optional):
-#   COMPOSE_FILE    compose file with the `postgres` service  (docker-compose.prod.yml)
+#   COMPOSE_FILE    compose file with the `postgres` service  (docker-compose.prod.yml, else docker-compose.yml)
 #   ENV_FILE        env file passed to compose                (.env.prod, if it exists)
 #   BACKUP_DIR      where dumps are written                   (./backups)
 #   RETENTION_DAYS  dumps older than this are deleted         (14)
 #   DB_NAME         database to dump            (the container's $POSTGRES_DB)
+#   OFFSITE_COPY_CMD  shell command run after each good dump, with the dump path
+#                   as $1, to copy it off the host, e.g.
+#                   'aws s3 cp "$1" s3://my-bucket/sla/'  or  'rclone copy "$1" remote:sla'
+#                   If it fails the script exits non-zero (the local dump is kept).
 set -eu
 
 cd "$(dirname "$0")/.."
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+if [ -z "${COMPOSE_FILE:-}" ]; then
+  if [ -f docker-compose.prod.yml ]; then COMPOSE_FILE=docker-compose.prod.yml; else COMPOSE_FILE=docker-compose.yml; fi
+fi
 ENV_FILE="${ENV_FILE:-.env.prod}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
@@ -55,3 +61,12 @@ echo "backup: wrote $final ($(du -h "$final" | cut -f1))"
 
 find "$BACKUP_DIR" -name 'sla-*.dump' -type f -mtime +"$RETENTION_DAYS" -print -delete \
   | sed 's/^/backup: pruned /'
+
+if [ -n "${OFFSITE_COPY_CMD:-}" ]; then
+  if sh -c "$OFFSITE_COPY_CMD" backup-offsite "$final"; then
+    echo "backup: copied $final off-site"
+  else
+    echo "backup: OFF-SITE COPY FAILED for $final" >&2
+    exit 1
+  fi
+fi
