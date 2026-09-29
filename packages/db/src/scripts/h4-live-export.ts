@@ -97,7 +97,7 @@ const elapsedCommitments = (
             pv."policyId", pv."pauseOnStates", pv."calendarVersionId",
             (select e."elapsedSeconds" from evaluations e where e."commitmentId"=m.id order by e."evaluatedAt" desc, e.id desc limit 1) as "elapsedSeconds",
             (select e."breachedAt" from evaluations e where e."commitmentId"=m.id and e."breachedAt" is not null order by e."evaluatedAt" asc limit 1) as "breachedAt",
-            cal."timezone" as timezone, cal.definition as calendar
+            cal."timezone" as timezone, cal."alwaysOpen" as "alwaysOpen", cal.weekly, cal.holidays
        from commitments m
        join cases c on c.id=m."caseId"
        join sla_policy_versions pv on pv.id=m."policyVersionId"
