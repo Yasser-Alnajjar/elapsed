@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveNextReplyCycles, findFirstResponseEvent, type NormalizedEvent } from "@sla/core";
+import { deriveNextReplyCycles, findFirstResponseEvent, resolveFirstResponseStartedAt, type NormalizedEvent } from "@sla/core";
 import {
   deriveCaseClosedAt,
   deriveNormalizedEventsForTicket,
@@ -1172,5 +1172,115 @@ describe("zendeskConditionAttributes", () => {
     expect(result).not.toHaveProperty("organization_id");
     expect(result).not.toHaveProperty("priority");
     expect(result).not.toHaveProperty("tags");
+  });
+});
+
+// H-11: case_created.actor is fixed at creation and never rewritten by later audits.
+describe("deriveNormalizedEventsForTicket — creation actor (H-11)", () => {
+  const CUSTOMER = 900;
+  const AGENT_ID = 500;
+  const roles = new Map<number, "end-user" | "agent">([
+    [CUSTOMER, "end-user"],
+    [AGENT_ID, "agent"],
+  ]);
+  const CREATED = "2026-09-28T10:55:08Z";
+
+  const base = (over: Partial<ZendeskTicket> = {}): ZendeskTicket => ({
+    ...ticket,
+    id: 54,
+    created_at: CREATED,
+    status: "solved",
+    requester_id: CUSTOMER,
+    submitter_id: AGENT_ID,
+    via: { channel: "web" },
+    ...over,
+  });
+
+  // The creation audit carries Create events only (no status Change), like real Zendesk audits.
+  const creationAudit = (authorId: number, id = 1): AuditRecord =>
+    audit({
+      id,
+      created_at: CREATED,
+      author_id: authorId,
+      via: { channel: "web" },
+      events: [{ id: id * 10, type: "Create", field_name: "priority", value: "urgent" }],
+    });
+  // Later audit that used to flip the actor: the first status Change, authored by whoever picks the ticket up.
+  const laterStatusAudit = (authorId: number, id = 2): AuditRecord =>
+    audit({
+      id,
+      created_at: "2026-09-28T11:14:47Z",
+      author_id: authorId,
+      via: { channel: "web" },
+      events: [statusChange("solved", "open")],
+    });
+
+  const creator = (t: ZendeskTicket, audits: AuditRecord[]) =>
+    deriveNormalizedEventsForTicket(t, audits, "raw_t", roles).find((e) => e.type === "case_created")!.actor;
+
+  it("agent-created ticket stays agent-created when a customer-authored status change arrives later", () => {
+    const t = base();
+    expect(creator(t, [creationAudit(AGENT_ID)])).toBe("agent");
+    expect(creator(t, [creationAudit(AGENT_ID), laterStatusAudit(CUSTOMER)])).toBe("agent");
+  });
+
+  it("customer-created ticket stays customer-created when an agent solves it before the first sync", () => {
+    const t = base({ submitter_id: CUSTOMER });
+    expect(creator(t, [creationAudit(CUSTOMER)])).toBe("customer");
+    // Previously the solving agent (first status change) became the "creator".
+    expect(creator(t, [creationAudit(CUSTOMER), laterStatusAudit(AGENT_ID)])).toBe("customer");
+    expect(creator(t, [laterStatusAudit(AGENT_ID)])).toBe("customer");
+  });
+
+  it("submitter_id wins over an admin-authored creation audit (Zendesk's own view of a customer-submitted ticket)", () => {
+    const t = base({ id: 1, submitter_id: CUSTOMER, via: { channel: "email" } });
+    expect(creator(t, [creationAudit(AGENT_ID), laterStatusAudit(AGENT_ID)])).toBe("customer");
+  });
+
+  it("without submitter_id, the creation audit's author decides, not a later status change", () => {
+    const t = base({ submitter_id: undefined });
+    expect(creator(t, [creationAudit(AGENT_ID), laterStatusAudit(CUSTOMER)])).toBe("agent");
+    expect(creator(t, [creationAudit(CUSTOMER), laterStatusAudit(AGENT_ID)])).toBe("customer");
+  });
+
+  it("without submitter_id or a creation audit, falls back to the requester (a customer), never to a later audit's author", () => {
+    const t = base({ submitter_id: undefined });
+    expect(creator(t, [])).toBe("customer");
+    expect(creator(t, [laterStatusAudit(AGENT_ID)])).toBe("customer");
+  });
+
+  it("is the same for every prefix of the audit history (replay is stable as audits arrive)", () => {
+    const t = base();
+    const history = [creationAudit(AGENT_ID), laterStatusAudit(AGENT_ID, 2), laterStatusAudit(CUSTOMER, 3)];
+    const actors = [1, 2, 3].map((n) => creator(t, history.slice(0, n)));
+    expect(new Set(actors)).toEqual(new Set(["agent"]));
+    expect(creator(t, [])).toBe("agent"); // submitter_id alone already decides
+  });
+
+  it("re-normalization is deterministic: identical input twice, and audit order does not matter", () => {
+    const t = base();
+    const audits = [creationAudit(AGENT_ID), laterStatusAudit(AGENT_ID)];
+    const first = deriveNormalizedEventsForTicket(t, audits, "raw_t", roles);
+    expect(deriveNormalizedEventsForTicket(t, audits, "raw_t", roles)).toEqual(first);
+    expect(deriveNormalizedEventsForTicket(t, [...audits].reverse(), "raw_t", roles)).toEqual(first);
+  });
+
+  describe("first-response start (D5b) follows the fixed creation actor", () => {
+    const asEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
+      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-54", system: "zendesk" }));
+    const firstResponseStart = (t: ZendeskTicket, audits: AuditRecord[]) =>
+      resolveFirstResponseStartedAt(asEvents(deriveNormalizedEventsForTicket(t, audits, "raw_t", roles)), t.created_at);
+
+    it("agent-submitted ticket with no customer reply never starts a first-response clock, before or after the solve audit", () => {
+      const t = base();
+      expect(firstResponseStart(t, [creationAudit(AGENT_ID)])).toBeNull();
+      expect(firstResponseStart(t, [creationAudit(AGENT_ID), laterStatusAudit(AGENT_ID)])).toBeNull();
+    });
+
+    it("customer-submitted ticket starts at creation whether or not an agent already touched it", () => {
+      const t = base({ id: 1, submitter_id: CUSTOMER });
+      expect(firstResponseStart(t, [creationAudit(CUSTOMER)])).toBe(CREATED);
+      expect(firstResponseStart(t, [creationAudit(CUSTOMER), laterStatusAudit(AGENT_ID)])).toBe(CREATED);
+    });
   });
 });

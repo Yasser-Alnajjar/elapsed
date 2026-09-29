@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "backfill:breached-at": "dotenv -e ../../.env -- tsx src/scripts/backfill-breached-at.ts"
+    "backfill:breached-at": "dotenv -e ../../.env -- tsx src/scripts/backfill-breached-at.ts",
+    "repair:first-response-start": "dotenv -e ../../.env -- tsx src/scripts/repair-first-response-start.ts"
   },
   "dependencies": {
     "@sla/core": "workspace:*",
