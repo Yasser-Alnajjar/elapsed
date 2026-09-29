@@ -22,6 +22,14 @@ ENV DATABASE_URL=postgresql://build:build@localhost:5432/build \
     INTEGRATION_CONFIG_ENCRYPTION_KEY=build-integration-config-encryption-key \
     SMTP_ENCRYPTION_KEY=build-smtp-encryption-key \
     NEXT_TELEMETRY_DEBUG=1
+# Optional Sentry source-map upload (roadmap 7.6, docs/deployment.md). These
+# ARGs exist only in this build stage — the runner stage below never sees
+# them, so the token is not in the final image. All three must be set for
+# next.config.mjs to upload; otherwise the build is unchanged.
+ARG SENTRY_AUTH_TOKEN=""
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
+ARG SENTRY_URL=""
 RUN pnpm --filter @sla/db generate
 RUN pnpm --filter @sla/web build
 

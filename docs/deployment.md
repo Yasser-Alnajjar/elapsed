@@ -373,8 +373,18 @@ A standby only waits.
   `Integration.lastSyncError` (excluding routine reauth-required errors,
   which the settings UI already surfaces), and each worker cycle's own
   uncaught failure. Leaving it unset disables the SDK outright with no
-  other effect. No build-time source-map upload is wired up — this is
-  runtime error capture only.
+  other effect.
+- **Sentry source maps** (web only): to get readable stack traces, set
+  `SENTRY_AUTH_TOKEN` (scopes `project:releases` and `org:read`),
+  `SENTRY_ORG` and `SENTRY_PROJECT` in `.env.prod` — and `SENTRY_URL` for
+  self-hosted Sentry — then rebuild the image
+  (`docker compose --env-file .env.prod build web`). `next build` uploads the
+  maps, matched to the running code by debug ID, and deletes them from the
+  build output. If any of the three is blank nothing is uploaded and the
+  build is unchanged. The values are build args of the builder stage only, so
+  the token is not in the final image (it does appear in the build cache's
+  metadata on the build host — treat that host accordingly). The worker's
+  stack traces are not source-mapped.
 - **Stalled-cycle alerting**: the worker checks its own `WorkerSettings`
   every two minutes and, if either the active-set poll or the
   reconciliation sweep hasn't completed successfully in over 3x its

@@ -43,6 +43,13 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Optional source-map upload at build time (roadmap 7.6); all blank
+      # means no upload. See docs/deployment.md.
+      args:
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+        SENTRY_URL: ${SENTRY_URL:-}
     restart: unless-stopped
     container_name: web
     depends_on:
