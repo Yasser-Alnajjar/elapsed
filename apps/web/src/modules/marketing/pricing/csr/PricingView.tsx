@@ -43,7 +43,6 @@ const PLANS: PricingPlan[] = [
       "20 seats",
       "Slack notifications before breach",
       "Full case correlation across engineering",
-      "90-day case history",
     ],
   },
   {
@@ -58,8 +57,6 @@ const PLANS: PricingPlan[] = [
     features: [
       "Everything in Team",
       "Unlimited seats",
-      "SSO / SAML",
-      "Custom data retention",
       "Dedicated onboarding support",
     ],
   },
@@ -79,7 +76,7 @@ const FAQS: PricingFaq[] = [
   {
     question: "Can I change plans later?",
     answer:
-      "Yes, you can upgrade, downgrade, or cancel at any time from your account settings. Changes are prorated automatically.",
+      "Yes. Talk to us and we will change your plan or cancel it; there is no long-term commitment.",
   },
   {
     question: "Do you write back to our connected tools?",
@@ -105,9 +102,8 @@ export const PricingView = () => {
           </Reveal>
           <Reveal delay={0.05}>
             <p className="mt-5 text-lg leading-8 text-muted-foreground text-balance">
-              Every plan includes read-only integrations, automatic case
-              correlation, and unlimited case history for the plan&apos;s
-              retention window.
+              Every plan includes read-only integrations and automatic case
+              correlation.
             </p>
           </Reveal>
         </div>
