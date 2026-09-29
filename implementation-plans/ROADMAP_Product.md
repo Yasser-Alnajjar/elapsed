@@ -1,8 +1,10 @@
 # Elapsed — Product Roadmap
 
-> **The single, living implementation plan for Elapsed.** It says what we build next, what is in progress, and what is done. It is updated in place as the product evolves. Never start a second roadmap file.
+> **The single, living roadmap for Elapsed.** It says what we build next, what is in progress, and what is done. It is updated in place as the product evolves. Never start a second roadmap file.
 >
-> **Revision:** 4 · **Last updated:** 2026-09-29 · **Capacity:** 10–15 h/week
+> **Revision:** 5 · **Last updated:** 2026-09-29 · **Capacity:** 10–15 h/week
+> **Stage:** a live multi-tenant product with **10 customers**. The active forward plan is the [Provider-Neutral Roadmap (N1–N8)](#active-roadmap--provider-neutral-platform-n1n8). The [historical Phases 0–7](#historical-phases-07) are kept below as the record of completed work.
+> **Implementation plans:** each active phase has one plan next to this file (`01-provider-neutral-core.md` … `08-scale.md`). **This roadmap owns order and status; the plans own the how.** Plans never track status.
 > **History:** the steps already delivered (0–44) are in [`roadmap-completed.md`](roadmap-completed.md). Parked ideas are in [`ignored.md`](ignored.md).
 
 ---
@@ -11,16 +13,63 @@
 
 _Update this section every time a task or phase changes state._
 
+| | |
+| --- | --- |
+| **Stage** | Live, multi-tenant, **10 customers** on the single EC2 deployment. The validation-first gate (D11) and the first-customer [Launch Gate](#launch-gate) are **historical** (Rev 5). |
+| **Now** | [Production Hygiene](#production-hygiene) entry tasks **H-1 to H-5**, then **[Phase N1 — Provider-neutral core](#phase-n1--provider-neutral-core)** (⬜ not started; no phase branch created yet). |
+| **Up next** | [Phase N2 — Provider contract + shared projector](#phase-n2--provider-contract--shared-projector). |
+| **Blocked on decisions** | **D14** (which pricing model the 10 customers pay on) and **D15** (which provider pairs they use; captured as data by H-1). D13 blocks N3.5. D25–D29 block parts of N5–N7. |
+| **Recently completed** | Historical Phases 0–5 ✅. Phases 6 and 7 closed as historical on 2026-09-29, with open tasks moved to Production Hygiene. Rev 5 re-baseline after the provider-agnostic architecture audit. |
+| **Target** | A reliable, provider-independent SLA/commitment platform where providers are replaceable ingestion boundaries, not architectural dependencies. Proven by zero-diff replay and the `{Zendesk, Intercom} × {Jira, Linear}` matrix. |
+| **Estimate** | N1–N5 ≈ 17–21 weeks at 10–15 h/week. N6 and N8 start on triggers; N7 on recorded demand. |
+
+<details>
+<summary>Rev 4 status board (historical, kept for traceability)</summary>
+
 |                          |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Now**                  | Phase 7 — Production Launch, 7/12 tasks done (2026-09-29): 7.1 (one-shot migration service), 7.4 (structured JSON logging via new `@sla/logger`), 7.5 (operator monitoring view), 7.8 (wider evaluation-id hash) and 7.9 (smoke e2e test) done. 7.10 partly done (golden scenarios now have a dedicated CI gate, but the lint half is blocked — see 7.10's note). 7.7 turned out not to need a real deployment target — Phase 0 (instrumentation + baseline against the dev org's existing 5k-case seed) is done 2026-09-28, see `implementation-plans/performance-plan.md`; Phases 1, 2 and 3 are done (2026-09-28/29) — only a final re-baseline against the seeded org remains before 7.7 can be ticked. 7.2 and 7.3 are done (verified on the EC2 host, 2026-09-29). 7.6 (Sentry source maps) has its code done but still needs a real Sentry project/token to verify the upload. Phase 6 — SLA Health Dashboard & Guided Onboarding, 7/8 tasks done (2026-09-27): only 6.8 remains, a live Zendesk sandbox walkthrough accepted as an owner-only manual step. Phase 3 — Explainable Cases, completed 2026-09-29; all 10 tasks completed and verified. |
-| **Up next**              | A final `perf:baseline` re-run against the seeded org to close 7.7 (see `implementation-plans/performance-plan.md`). Verifying 7.6 (Sentry source map upload) once a Sentry project and auth token are available; a lint step for 7.10 once typescript-eslint supports TypeScript 7 (or the repo pins TS 6.x for lint tooling)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Now**                  | Phase 7 — Production Launch, 7/12 tasks done (2026-09-29): 7.1 (one-shot migration service), 7.4 (structured JSON logging via new `@sla/logger`), 7.5 (operator monitoring view), 7.8 (wider evaluation-id hash) and 7.9 (smoke e2e test) done. 7.10 partly done (golden scenarios now have a dedicated CI gate, but the lint half is blocked — see 7.10's note). 7.7 turned out not to need a real deployment target — Phase 0 (instrumentation + baseline against the dev org's existing 5k-case seed) is done 2026-09-28, see `plans/performance-plan.md`; Phases 1, 2 and 3 are done (2026-09-28/29) — only a final re-baseline against the seeded org remains before 7.7 can be ticked. 7.2 and 7.3 are done (verified on the EC2 host, 2026-09-29). 7.6 (Sentry source maps) has its code done but still needs a real Sentry project/token to verify the upload. Phase 6 — SLA Health Dashboard & Guided Onboarding, 7/8 tasks done (2026-09-27): only 6.8 remains, a live Zendesk sandbox walkthrough accepted as an owner-only manual step. Phase 3 — Explainable Cases, completed 2026-09-29; all 10 tasks completed and verified. |
+| **Up next**              | A final `perf:baseline` re-run against the seeded org to close 7.7 (see `plans/performance-plan.md`). Verifying 7.6 (Sentry source map upload) once a Sentry project and auth token are available; a lint step for 7.10 once typescript-eslint supports TypeScript 7 (or the repo pins TS 6.x for lint tooling)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Blocked on decisions** | D11 (scheduling)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **Recently completed**   | Phase 6 — SLA Health Dashboard & Guided Onboarding, 7/8 tasks (2026-09-27), merged to `main` (PR #27) — see [Phase 6](#phase-6--sla-health-dashboard--guided-onboarding)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | **Target**               | Production-ready MVP for **Zendesk + Jira** customers. Intercom, Linear and GitHub as Beta.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **Estimate**             | 24 weeks plus 3 buffer (about 6–7 months)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
+</details>
+
 ### Phase overview
+
+**Active roadmap: the forward plan.** Dependency chain: `historical Phases 0–7 → N1 → N2 → N3 → N4 → N5 → N6 → N7 → N8`.
+
+| Phase | Product outcome | Plan | Needs | Est. | Priority | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| [N1](#phase-n1--provider-neutral-core) | Core decides by role, not provider; Intercom cases get an engineering leg; replay/diff gate in place | [01](01-provider-neutral-core.md) | H-1, H-4 | 5–6 wk | P0 | ⬜ Not started |
+| [N2](#phase-n2--provider-contract--shared-projector) | One typed adapter contract, shared projector, no provider branches in worker/web | [02](02-provider-contract-and-projector.md) | N1 | 4–5 wk | P0 | ⬜ Not started |
+| [N3](#phase-n3--provider-isolation--freshness) | Provider outages isolated; stale data labelled on evaluations, alerts and UI | [03](03-provider-isolation-and-freshness.md) | N2, D13 | 2–3 wk | P0 | ⬜ Not started |
+| [N4](#phase-n4--platform-admin--plan-records) | Platform Admin: tenants, plans, health, audit log | [04](04-platform-admin-and-plan-records.md) | N3, D14 (plan names) | 3 wk | P1 | ⬜ Not started |
+| [N5](#phase-n5--customer-onboarding--retention) | Any supported pair onboards unaided; monthly report; usage measured | [05](05-customer-onboarding-and-retention.md) | N2, N4, D26 | 3–4 wk | P1 | ⬜ Not started |
+| [N6](#phase-n6--entitlements--billing) | Current pricing represented once in code; soft limits; billing provider | [06](06-entitlements-and-billing.md) | N4, N5, D14, trigger | 2–3 wk | P2 | ⏸ Trigger-based |
+| [N7](#phase-n7--third-ticket-source) | Third ticket source with zero core changes (contract test) | [07](07-third-ticket-source.md) | N2, N3, D29 | 3–4 wk | P2 | ⏸ Demand-based |
+| [N8](#phase-n8--scale) | Fix the scale limit that is measured to bite next | [08](08-scale.md) | N3 metrics, triggers | per item | P3 | ⏸ Trigger-based |
+
+**Current production hygiene:** [Production Hygiene](#production-hygiene) tasks H-1 to H-10 run alongside the N-phases (not a phase).
+
+**Historical phases: record only.**
+
+| Phase | Product outcome | Est. | Status |
+| --- | --- | --- | --- |
+| [0](#phase-0--safe-foundation) | Safe foundation: no cross-tenant control, deterministic SLA state | 2 wk | ✅ Complete (2026-09-19) |
+| [1](#phase-1--correct-sla-commitments) | Correct SLA commitments: final, tested First Response / Next Reply / Resolution rules | 3 wk | ✅ Complete (2026-09-19) |
+| [2](#phase-2--reliable-zendesk--jira-connections) | Reliable Zendesk + Jira connections, verified live | 3 wk | ✅ Complete (2026-09-20) |
+| [3](#phase-3--explainable-cases) | Explainable cases: timeline, commitment transparency, assignee, rich alerts | 3 wk | ✅ Complete (2026-09-21) |
+| [4](#phase-4--sla-policy--calendar-management) | SLA policy and calendar management inside Watchtower | 4 wk | ✅ Complete (2026-09-22) |
+| [5](#phase-5--team--account-management) | Team and account management | 2 wk | ✅ Complete (2026-09-22) |
+| [6](#phase-6--sla-health-dashboard--guided-onboarding) | SLA health dashboard and guided onboarding | 2 wk | 📦 Closed as historical (2026-09-29): 7/8; 6.8 → H-9 / N5.8 |
+| [7](#phase-7--production-launch) | Production launch | 5 wk | 📦 Closed as historical (2026-09-29): 7/12; 7.6 → H-6, 7.7 → H-7, 7.10 lint → H-8, 7.11 → H-5, 7.12 superseded |
+| [Next](#next-product-work) | Post-launch backlog (Rev 4) | — | Absorbed into N1–N8, see the Rev 5 note there |
+
+<details>
+<summary>Rev 4 phase overview (historical, kept for traceability)</summary>
 
 | Phase                                                  | Product outcome                                                                       | Est. | Status                                                                |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------- |
@@ -34,13 +83,15 @@ _Update this section every time a task or phase changes state._
 | [7](#phase-7--production-launch)                       | Production launch                                                                     | 5 wk | 🔄 In progress (5/12, 2026-09-27)                                     |
 | [Next](#next-product-work)                             | Post-launch product work                                                              | —    | Backlog                                                               |
 
+</details>
+
 ---
 
 ## How This Roadmap Works
 
 ### Workflow
 
-1. **Define.** Upcoming product work is written here as a task inside a phase, or in [Next Product Work](#next-product-work) if it isn't scheduled yet.
+1. **Define.** Upcoming product work is written here as a task inside a phase, or in [Next Product Work](#next-product-work) if it isn't scheduled yet. From Rev 5, active phases are the N-series, and each has one implementation plan (`0N-*.md` next to this file) describing the how. Tasks here stay one line and link to their plan.
 2. **Implement.** Take the next unchecked task in the current phase, in order unless the task says otherwise. Mark it 🔄 while it's being worked on.
 3. **Complete.** Tick the checkbox only when the task is **implemented and verified**: its "Done when" is met, tests pass, and CI is green. Add the date, e.g. `(done 2026-09-24)`.
 4. **Close the phase.** When every task in a phase is ticked, change the phase status to ✅ with the date, in both the phase heading and the [Phase overview](#phase-overview), and update the [Status Board](#status-board).
@@ -65,6 +116,8 @@ Examples:
 - `phase/0-safe-foundation`
 - `phase/1-correct-sla-commitments`
 - `phase/2-reliable-zendesk-jira-connections`
+
+From Rev 5, active-roadmap phases use `phase/n<number>-<short-name>` (e.g. `phase/n1-provider-neutral-core`, `phase/n8-<item>` for a triggered scale item), and [Production Hygiene](#production-hygiene) tasks use `hygiene/<id>-<short-name>` (e.g. `hygiene/h-4-engine-spot-check`). Branches are created only when the work starts.
 
 #### Branch rules
 
@@ -159,6 +212,8 @@ Only mark `[x]` when the task is fully implemented and all required verification
 | `- [x]`       | Done: implemented **and** verified                  |
 | `- [x] ~~…~~` | Dropped; the reason is written inline               |
 | ⬜ / 🔄 / ✅  | Phase status: not started / in progress / completed |
+| 📦            | Phase closed as historical (Rev 5): open tasks moved to [Production Hygiene](#production-hygiene), left unchecked in place |
+| ⏸             | Phase starts on a trigger or recorded demand, not on a date |
 
 **Task tags:** `P0` blocking · `P1` MVP · `P2` post-launch · `P3` nice to have. Kind is one of: Feature, UX, Bug, Security, Reliability, Testing, Infra, Docs. Layer: **A** exists but broken · **B** exists but incomplete · **C** not built yet.
 **Refs** such as `E-4` or `I-1` point to [Appendix A — Audit Findings](#appendix-a--audit-findings).
@@ -167,12 +222,16 @@ Only mark `[x]` when the task is fully implemented and all required verification
 
 - **Fix before build.** Don't start a phase while an earlier phase still has an open `P0`.
 - **Phase order is a dependency chain.** Phase 0 → 1 → 2 → 3, then 4 (needs Phase 1 semantics final) → 5 → 6 (needs the Phase 1 import data and the Phase 4 editors) → 7. Tasks inside a phase can be reordered when they don't depend on each other.
+- **Active roadmap order (Rev 5):** N1 → N2 → N3 → N4 → N5 → N6 → N7 → N8. N6 and N8 start on their triggers, N7 on recorded demand. Production Hygiene runs alongside, except H-1/H-4, which gate N1.
+- **Replay gate (D24).** No change to `@sla/core`, `@sla/commitments`, a normalizer, correlation or customer/case identity merges without a replay/diff run on a restored backup showing zero unintended status / `breachedAt` differences. Intentional differences are classified and approved in the phase's plan.
 - **Engine semantics freeze after Phase 1.** A later phase that finds an engine problem goes back through a decision, then a test, then code. No quiet fixes inside UI work.
-- **No real customer account is connected before task 2.1** (token encryption).
+- **No real customer account is connected before task 2.1** (token encryption). _(Historical: satisfied; 10 customers are live.)_
 - **Product constraints:**
   - No AI.
-  - Zendesk is the Case source of truth.
-  - Engineering systems are the engineering leg only.
+  - ~~Zendesk is the Case source of truth.~~ **Rev 5 (D19):** a case's own ticket-source integration is its source of truth.
+  - Work trackers are the engineering leg only.
+  - Provider-specific knowledge stays at the adapter boundary. No generic connector SDK, no dynamic plugin framework, no provider-specific SLA engine (D16).
+  - Raw events stay replayable, normalized events are derived, evaluations are immutable.
   - Store events, never computed time.
   - No blame language.
   - Customer ≠ Requester.
@@ -199,10 +258,329 @@ Decisions that change product behavior. Tick one when it is decided and write th
   - **Update (2026-09-22):** a second audit — specifically of the original `OPS_ALERT_SMTP_*`, added independently for the stalled-worker alert — found its separation from a deployment-level transactional mailer was never a deliberate design choice; it predates `TRANSACTIONAL_SMTP_*` entirely and was only ever built to be independent of _customer-owned_ `OrganizationEmailSettings`. Both already call the same `sendEmail(config, message)`, so there was no technical reason for two deployment-owned SMTP transports. Consolidated into one shared config, renamed `DEPLOYMENT_SMTP_*` (no longer purely "transactional" once it also backs ops alerts) — see 5.1's updated status.
 - [x] **D9** — Intercom in the MVP? **Decided: Beta.** Native policies (Phase 4) give Intercom orgs commitments.
 - [x] **D10** — Show the assignee? **Decided: yes, display only.** Store the display name only, never used for analytics or scoring. _Confirm you accept storing agent names._ → 3.6
-- [ ] **D11** — Keep the validation-first gate from `plans/05` (outreach recorded as 0 of 40) before scheduling launch? → scheduling only
+- [x] **D11** — Keep the validation-first gate from `plans/05` (outreach recorded as 0 of 40) before scheduling launch? → scheduling only. **Closed 2026-09-29 (Rev 5): superseded.** The product has 10 live customers, so the validation-first gate and the first-customer [Launch Gate](#launch-gate) are historical. They are replaced by [Validation Metrics](#validation-metrics) and [Review Triggers](#review-triggers).
 - [x] **D12** — How do native and Zendesk-imported policies coexist? **Decided: imported policies are read-only (target overrides only) and match first, by Zendesk position; native policies follow, by specificity** (the recommended option). → blocks 4.1
 
+**Rev 5 decisions (2026-09-29, provider-agnostic re-baseline):**
+
+- [ ] **D13** — When a case's source integration is stale, what happens to its alerts? (a) Send marked "data stale since…"; (b) send at-risk alerts marked and hold breach alerts until the source is fresh again; (c) hold all alerts. Recommended: (b). → blocks N3.5
+- [ ] **D14** — **Which pricing model is current, and which do the 10 customers pay on?** Two models are documented and neither is enforced in code:
+  - the live pricing page (`apps/web/src/modules/marketing/pricing/csr/PricingView.tsx`, last changed 2026-09-27): Starter $49 · Team $149 · Enterprise Custom, seat-based;
+  - `plans/03` Phase 18: Starter $79 · Growth $149 · Scale $249, banded by monthly escalations.
+
+  The `$299/$699` pilot pricing in `plans/05` is obsolete and must not be reintroduced. **Owner decision; not inferred here.** → blocks H-3 (amounts only), N4.3 (plan names), N6
+- [ ] **D15** — **Which provider pairs do the 10 customers use?** Not recorded anywhere in the repository. Captured as data by H-1 (and N4.7). It decides whether N1.8/N1.11 can produce approved replay differences, and weights N5/N7 priorities. → blocks N1.2 diff classification
+- [x] **D16** — Provider integration model. **Decided: no generic connector framework, no dynamic plugin loading, no provider-specific SLA engine.** One statically typed adapter contract with compile-time registries (N2), containing only what current code needs.
+- [x] **D17** — Provider matrix roles. **Decided:** Zendesk + Jira = production baseline; Zendesk + Linear = matrix validation; Intercom + Jira and Intercom + Linear = provider-boundary proof. Intercom and Linear leave the Rev 4 "freeze" for the boundary work only and stay **Beta**. Passing tests never promotes a provider or pair; promotion out of Beta is a separate, explicit decision per pair.
+- [x] **D18** — GitHub. **Decided: frozen, Beta, `code_host` role, never an SLA source.**
+- [x] **D19** — Case source of truth. **Decided: the case's own ticket-source integration, not Zendesk globally.** Replaces Appendix D invariant 6 and the Rules line "Zendesk is the Case source of truth".
+- [x] **D20** — Billing. **Decided: trigger-based (N6), not immediate.** Manual plan and status records first (N4).
+- [x] **D21** — Scale. **Decided: trigger-based per item (N8), never speculative.**
+- [x] **D22** — Freshness. **Decided: freshness is an explicit concern.** Last successful sync per integration, recorded on evaluations and shown to customers and operators (N3). Circuit breaking is built **only** if N3's measurements justify it.
+- [x] **D23** — Customer identity. **Decided: normalized into `CustomerIdentity` (provider, kind, externalId)** instead of provider-specific `Customer` columns, and Case uniqueness includes the source integration (N1 expand, N2 contract).
+- [x] **D24** — Replay/diff gate. **Decided:** existing customer behaviour must not silently change. Engine-adjacent changes need a zero-unintended-difference replay on a restored backup; intentional differences are classified, documented and owner-approved (procedure: [plan 01 §5](01-provider-neutral-core.md#5-safety-contract-replaydiff-comes-first)).
+- [ ] **D25** — Do imported policies count toward plan policy limits? Recommended: no. → blocks N6.2
+- [ ] **D26** — How does a tracker admin who is not a member connect the tracker? Recommended: a signed, single-use, org- and provider-scoped connect link. → blocks N5.3
+- [ ] **D27** — Trial expiry behaviour. Recommended: banner, owner email and admin flag; monitoring continues. → blocks N6.4
+- [ ] **D28** — Billing provider. → blocks N6.5
+- [ ] **D29** — Which third ticket source (Freshdesk, Pylon, HubSpot), chosen by recorded demand (at least two customers or qualified prospects). → blocks N7
+
 ---
+
+# Current Stage (Rev 5, 2026-09-29)
+
+**What changed.** The product is no longer at the "validate whether anyone wants this" stage. It runs **10 live customers** on a multi-tenant deployment. Three planning assumptions are therefore obsolete:
+
+- **The validation-first plan** in `plans/05`: first five customers, CSV concierge, `$299/$699` paid pilots, and the kill criteria built around them. D11 is closed. It is replaced by [Validation Metrics](#validation-metrics) and [Review Triggers](#review-triggers).
+- **The first-customer Launch Gate.** It is kept as history; its still-relevant items are now [Production Hygiene](#production-hygiene).
+- **Zendesk as the architectural centre.** The Rev 4 target was "Production-ready MVP for Zendesk + Jira customers", with "Zendesk is the Case source of truth" as a rule. The new target is a provider-independent core (D16–D19).
+
+**What the 2026-09-29 audit found.** The engine math (`@sla/core`: event folding, calendars, versioned policies, immutable evaluations) is provider-independent and pure. The system around it is Zendesk-centred:
+
+- the core decides ticket-source vs. tracker by provider name;
+- Jira and Linear correlate only to Zendesk ticket URLs, so an Intercom + Jira customer gets no engineering leg;
+- `Customer` stores provider-specific identity columns;
+- onboarding requires Zendesk;
+- the worker and web branch per provider;
+- there is no notion of data freshness.
+
+The full violation list, with file references, is in [plan 01 §4](01-provider-neutral-core.md#4-current-implementation-relevant-to-this-phase).
+
+**How this roadmap is organised from Rev 5:**
+
+1. **[Active Roadmap N1–N8](#active-roadmap--provider-neutral-platform-n1n8)**: the forward plan.
+2. **[Production Hygiene](#production-hygiene)**: open items carried from Phases 6–7 and the Launch Gate, plus the facts N1 needs.
+3. **[Historical Phases 0–7](#historical-phases-07)**: the completed record. Nothing there was deleted; task IDs such as `7.7` stay stable because code comments and commits reference them.
+
+---
+
+## Production Hygiene
+
+Work that keeps the live product honest and operable. **Not a phase.** Each task goes on its own small branch `hygiene/<id>-<short-name>`, following the same verification rules as phase tasks.
+
+- **H-1 and H-4 are entry conditions for N1.**
+- **H-5** is needed by N5.4 and N8-S6.
+- Nothing else here blocks an N-phase.
+
+- [ ] **H-1** Record the provider pair and integration status of each of the 10 live tenants. Put **counts per pair** in the Status Board, never customer names. Resolves the data half of D15. Needed before N1.2 can classify replay differences. `P0 · Docs · —`
+- [ ] **H-2** Owner decision on **D14**: which pricing model is current and which the 10 customers pay on. `P0 · Decision · —`
+- [ ] **H-3** Remove pricing-page claims that describe unbuilt features in `apps/web/src/modules/marketing/pricing/csr/PricingView.tsx`: self-serve plan changes with automatic proration, "90-day case history", SSO/SAML, custom data retention. Amounts wait for D14; removing false claims does not. `P0 · Bug · A`
+- [ ] **H-4** Spot-check engine numbers against Zendesk's own SLA view on real tickets for at least two live tenants (the Launch Gate "SLA correctness" item). Any unexplained disagreement opens a correctness task **before** N1 starts. `P0 · Testing · B`
+- [ ] **H-5** Data retention and deletion answer, plus an on-call note (was **7.11**). `P1 · Docs · B`
+- [ ] **H-6** Sentry source-map upload verified on the host (was **7.6**; code side done). `P2 · Reliability · B`
+- [ ] **H-7** Final `perf:baseline` re-run and documented capacity limits (was **7.7** and the Launch Gate capacity item). See [`plans/performance-plan.md`](../plans/performance-plan.md). `P1 · Reliability · C`
+- [ ] **H-8** Lint step (the lint half of **7.10**). Blocked upstream: typescript-eslint does not support TypeScript 7. `P2 · Testing · C`
+- [ ] **H-9** Live onboarding walkthrough against a real Zendesk sandbox (was **6.8**; continues as N5.8). `P1 · Testing · B`
+- [ ] **H-10** Confirm and record the Launch Gate security items against production: leaked secrets rotated (`scripts/rotate-secrets.sh`), no development services in production, authorization audit current, tenant isolation covers every model. `P1 · Security · B`
+
+---
+
+# Active Roadmap — Provider-Neutral Platform (N1–N8)
+
+**Intent:** audit and harden the existing provider boundary, move **only** the provider decisions that currently leak into the domain, and prove the boundary with replay/diff and the 2×2 provider matrix. **This is not a core rewrite.** Engine math, calendars, policy versioning, evaluation identity and every working behaviour stay as they are unless a replay shows an approved, intentional difference (D24).
+
+**Provider matrix (D17).** Tests passing never promotes a provider or pair; promotion out of Beta is a separate decision.
+
+```text
+              Jira                         Linear
+Zendesk       production baseline          matrix validation
+Intercom      provider-boundary proof      provider-boundary proof
+```
+
+GitHub stays frozen and Beta (`code_host`, never an SLA source, D18). Freshdesk, Pylon and HubSpot are future candidates for N7 (D29).
+
+**Dependency chain:**
+
+```text
+Historical Phases 0–7 (production launch / existing work)
+        ↓
+Phase N1 — Provider-neutral core
+        ↓
+Phase N2 — Provider contract + shared projector
+        ↓
+Phase N3 — Provider isolation + freshness
+        ↓
+Phase N4 — Platform Admin + plan records
+        ↓
+Phase N5 — Customer onboarding + retention
+        ↓
+Phase N6 — Entitlements + billing        (starts on its trigger)
+        ↓
+Phase N7 — Third ticket source           (starts on recorded demand)
+        ↓
+Phase N8 — Scale                         (each item starts on its trigger)
+```
+
+**Architectural constraints carried into every N-phase:**
+
+- Store events, never computed time. Raw events stay replayable; normalized events are derived; evaluations are immutable.
+- The SLA engine stays pure and deterministic.
+- Provider-specific knowledge belongs at the adapter boundary.
+- No generic connector SDK, no dynamic plugin framework, no provider-specific SLA engine, no unnecessary abstraction.
+- Customer ≠ Requester. Conversation ≠ Activity Timeline.
+- No blame-oriented language.
+- Multi-tenant isolation everywhere.
+
+---
+
+### Phase N1 — Provider-neutral core
+
+**Status:** ⬜ Not started · **Estimate:** 5–6 weeks · **Priority:** P0 · **Plan:** [`01-provider-neutral-core.md`](01-provider-neutral-core.md) · **Needs:** H-1, H-4 · **Branch:** `phase/n1-provider-neutral-core` (not created yet)
+**Goal:** the core decides by role, not by provider name; Intercom cases get a real engineering leg; existing customers' results do not change.
+**Phase is done when:**
+- zero provider literals in `@sla/core`, `@sla/commitments` and `@sla/notifications`;
+- no provider package depends on `@sla/commitments`;
+- replay on a restored backup shows 0 unintended differences;
+- all four matrix pairs pass the smoke test;
+- an Intercom-only org can onboard.
+
+- [ ] **N1.0** Entry check: H-1 recorded, backup restored into the scratch DB.
+- [ ] **N1.1** Replay/diff harness (L1 evaluation replay: `replay:capture` / `replay:compare`).
+- [ ] **N1.2** Baseline capture on a restored production backup; record pre-existing drift.
+- [ ] **N1.3** Provider-neutral golden scenarios in `@sla/core`.
+- [ ] **N1.4** Import-boundary and provider-literal ratchet test.
+- [ ] **N1.5** `sourceRole` on normalized events; `SourceSystem` removed from core.
+- [ ] **N1.6** `TICKET_SOURCE_SYSTEMS` replaced by a role check.
+- [ ] **N1.7** Role-based leg derivation (`legs.ts`).
+- [ ] **N1.8** Role-based event ordering (`SYSTEM_RANK` removed).
+- [ ] **N1.9** Canonical priority vocabulary.
+- [ ] **N1.10** Zendesk condition aliases moved from `toCaseAttributes` into the Zendesk adapter.
+- [ ] **N1.11** Imported policies scoped to their source (D15 needed to classify replay differences).
+- [ ] **N1.12** `@sla/zendesk` no longer depends on `@sla/commitments`.
+- [ ] **N1.13** Generic link resolution for Jira/Linear, including Intercom conversation URLs.
+- [ ] **N1.14** `CustomerIdentity` table (expand + dual-write).
+- [ ] **N1.15** Source-aware Case uniqueness (expand).
+- [ ] **N1.16** Intercom as an onboarding ticket source.
+- [ ] **N1.17** 2×2 provider matrix smoke tests.
+- [ ] **N1.18** Close-out: final replay; Appendix D invariants updated.
+
+### Phase N2 — Provider contract + shared projector
+
+**Status:** ⬜ Not started · **Estimate:** 4–5 weeks · **Priority:** P0 · **Plan:** [`02-provider-contract-and-projector.md`](02-provider-contract-and-projector.md) · **Needs:** N1 · **Branch:** `phase/n2-provider-contract-and-projector`
+**Goal:** every provider is reached through one statically typed adapter record; adapters return canonical records; one projector persists them.
+**Phase is done when:**
+- the worker dispatches through a typed registry with no provider branches;
+- no provider package writes domain tables;
+- web code has no provider branches outside integration/OAuth/webhook/concierge surfaces;
+- legacy identity columns and keys are dropped;
+- replay is clean and all four pairs pass.
+
+- [ ] **N2.1** `@sla/ingestion` package: contract types and shared errors.
+- [ ] **N2.2** Shared projector (cases, customer identities, normalized events, links).
+- [ ] **N2.3** Adapters migrated to canonical batches, one provider per commit (Intercom → Linear → Jira → GitHub → Zendesk).
+- [ ] **N2.4** Worker registry and role-ordered dispatch.
+- [ ] **N2.5** Link resolution through the registry.
+- [ ] **N2.6** Web registry: external URLs and Conversation rendering through adapters.
+- [ ] **N2.7** Capability-driven connect-time projection, webhooks and onboarding.
+- [ ] **N2.8** Import summary generalised per provider.
+- [ ] **N2.9** Boundary test extended to the worker and web.
+- [ ] **N2.10** Contract migrations: drop legacy `Customer` identity columns and the source-less Case key.
+- [ ] **N2.11** Close-out.
+
+### Phase N3 — Provider isolation + freshness
+
+**Status:** ⬜ Not started · **Estimate:** 2–3 weeks · **Priority:** P0 · **Plan:** [`03-provider-isolation-and-freshness.md`](03-provider-isolation-and-freshness.md) · **Needs:** N2, D13 (for N3.5) · **Branch:** `phase/n3-provider-isolation-and-freshness`
+**Goal:** a provider outage degrades only its own integrations and tenants, and stale data is labelled, not silent.
+**Phase is done when:**
+- in a simulated 2-hour outage, other tenants' tick time is within ±10% and no stale-source alert goes out without D13 treatment;
+- freshness is visible to customers and operators;
+- the circuit breaker is either built with trigger evidence or recorded as not needed (D22).
+
+- [ ] **N3.1** Last successful sync, consecutive failures and duration per integration.
+- [ ] **N3.2** Pure freshness function in `@sla/core`.
+- [ ] **N3.3** Freshness recorded on evaluations (metadata only; replay 0 differences when fresh).
+- [ ] **N3.4** Decide D13.
+- [ ] **N3.5** Freshness-aware notifications, per D13.
+- [ ] **N3.6** Per-request timeouts, tick/integration durations, outage drill test.
+- [ ] **N3.7** Circuit breaker, **only if N3.6 justifies it**.
+- [ ] **N3.8** Customer-visible freshness (settings, dashboard, banner, case detail).
+- [ ] **N3.9** Operator visibility of stale and failing integrations.
+
+### Phase N4 — Platform Admin + plan records
+
+**Status:** ⬜ Not started · **Estimate:** 3 weeks · **Priority:** P1 · **Plan:** [`04-platform-admin-and-plan-records.md`](04-platform-admin-and-plan-records.md) · **Needs:** N3; D14 for plan names · **Branch:** `phase/n4-platform-admin-and-plan-records`
+**Goal:** answer "who are the customers, which plan, are they healthy?" on one page, with every operator action audited and nothing platform-level visible to customers.
+**Phase is done when:**
+- `/admin/tenants` shows plan, status and health for every tenant;
+- non-operators get 404/403;
+- every admin action is audited;
+- the 10 tenants' records are filled in.
+
+- [ ] **N4.1** Separate `/admin` shell; `/operator` redirects.
+- [ ] **N4.2** Append-only admin audit log.
+- [ ] **N4.3** Manual plan and status record per organization (plan names wait on D14).
+- [ ] **N4.4** Tenants list and tenant detail read models, including shared link coverage.
+- [ ] **N4.5** Minimal admin actions: pause/resume polling, request re-normalization.
+- [ ] **N4.6** Boundary guarantees: admin modules unreachable from tenant code.
+- [ ] **N4.7** Capture the 10 customers' plan records; record provider-pair counts.
+
+### Phase N5 — Customer onboarding + retention
+
+**Status:** ⬜ Not started · **Estimate:** 3–4 weeks · **Priority:** P1 · **Plan:** [`05-customer-onboarding-and-retention.md`](05-customer-onboarding-and-retention.md) · **Needs:** N2, N4; D26 for N5.3 · **Branch:** `phase/n5-customer-onboarding-and-retention`
+**Goal:** any supported pair reaches findings unaided, and existing customers get a recurring reason to return.
+**Phase is done when:**
+- all four pairs onboard in local dev, and Zendesk + Jira live;
+- a ticket-source-only org gets partial value;
+- the monthly report is delivered exactly once per org per month;
+- the usage metrics are readable.
+
+- [ ] **N5.1** Capability-driven onboarding steps.
+- [ ] **N5.2** Partial value before a tracker is connected.
+- [ ] **N5.3** Request-access flow for the tracker admin (⛔ D26).
+- [ ] **N5.4** Forwardable security summary (needs H-5).
+- [ ] **N5.5** Link coverage panel.
+- [ ] **N5.6** Monthly report (email + CSV, Slack link; idempotent per org and month).
+- [ ] **N5.7** Usage instrumentation: weekly active orgs, alert click-through, time to first value.
+- [ ] **N5.8** Live walkthroughs per pair (closes 6.8 / H-9).
+
+### Phase N6 — Entitlements + billing
+
+**Status:** ⏸ Trigger-based (D20) · **Estimate:** 2–3 weeks once triggered · **Priority:** P2 · **Plan:** [`06-entitlements-and-billing.md`](06-entitlements-and-billing.md) · **Needs:** N4, N5, D14, D25, D27, D28 · **Branch:** `phase/n6-entitlements-and-billing`
+**Trigger:** ≥15 paying tenants, **or** manual plan/invoice work costs more than ~2 h per month, **or** a customer asks for self-serve plan changes. The trigger counts only once D14 is resolved.
+**Goal:** the current, intentional pricing is represented once in code; limits are soft; monitoring is never gated by plan state.
+
+- [ ] **N6.1** Record D14 and a single plan constant shared by the pricing page and enforcement.
+- [ ] **N6.2** Usage read model (⛔ D25 for imported policies).
+- [ ] **N6.3** Soft enforcement at invite, integration connect and native policy creation.
+- [ ] **N6.4** Trial lifecycle (⛔ D27).
+- [ ] **N6.5** Billing provider integration (⛔ D28).
+- [ ] **N6.6** Public claims match the code.
+
+### Phase N7 — Third ticket source
+
+**Status:** ⏸ Demand-based (D29) · **Estimate:** 3–4 weeks · **Priority:** P2 · **Plan:** [`07-third-ticket-source.md`](07-third-ticket-source.md) · **Needs:** N2, N3, D29 · **Branch:** `phase/n7-third-ticket-source`
+**Trigger:** at least two customers or qualified prospects on the same unsupported helpdesk (Freshdesk, Pylon, HubSpot), recorded here. N7 follows N6 in the chain; if N6's trigger has not fired when N5 is done, N7 may start and the skip is recorded here.
+**Goal:** add a provider with **zero** lines changed in `@sla/core`, `@sla/commitments`, `@sla/notifications` and the projector.
+
+- [ ] **N7.1** Spike: real payloads, status mapping, tracker link formats.
+- [ ] **N7.2** Package skeleton.
+- [ ] **N7.3** Adapter record (ingest, normalize, URL recognition, rendering).
+- [ ] **N7.4** Registration and settings surface only.
+- [ ] **N7.5** Matrix extended to six pairs; existing tenants' replay clean.
+- [ ] **N7.6** Onboarding via capabilities; Beta label.
+
+### Phase N8 — Scale
+
+**Status:** ⏸ Trigger-based per item (D21) · **Priority:** P3 · **Plan:** [`08-scale.md`](08-scale.md) · **Needs:** N3 metrics · **Branch:** `phase/n8-<item>` per triggered item
+**Goal:** fix the limit that is measured to bite next, in the order it bites.
+
+- [ ] **N8-S1** Per-org time budget and fairness in the worker (trigger: tick p95 > 50% of the interval).
+- [ ] **N8-S2** Resumable, rate-aware backfill (trigger: backfill > 4 h or repeated 429s).
+- [ ] **N8-S3** Narrower evaluation scope (trigger: org sweep > 30 s or lock hold > 10 s; replay-gated).
+- [ ] **N8-S4** Per-chunk org lock (trigger: webhook latency p95 > 30 s).
+- [ ] **N8-S5** Shared rate limiting and multi-instance web (R-7).
+- [ ] **N8-S6** Retention and partitioning (needs H-5; respects the replay horizon).
+- [ ] **N8-S7** Encryption key rotation without downtime (S-7).
+- [ ] **N8-S8** Read replica for analytics.
+
+---
+
+## Validation Metrics
+
+These replace the `plans/05` first-five-customers criteria. They are **measured, not gated**. Targets are starting points, to be revisited once there is a quarter of data. Where instrumentation is missing, the task that adds it is named.
+
+| Area | Metric | Starting target | Source |
+| --- | --- | --- | --- |
+| Product | Weekly active orgs (≥1 member session in the week) | ≥ 8 of 10 | N5.7 |
+| Product | Alert click-through to the case page, per org | Tracked; investigate orgs near 0 | N5.7 |
+| Product | Link coverage per tenant (`certain` links ÷ escalated cases) | Report all; flag < 60% | N4.4 / N5.5 |
+| Product | Open disputed-evaluation reports older than 7 days | 0 | Support log |
+| Reliability | Integration-hours healthy (last successful sync < 2× poll interval) | ≥ 95% | N3.1 |
+| Reliability | Alert delivery failure rate (`NotificationFailure` ÷ notifications) | < 1% | Existing tables |
+| Reliability | Worker active-poll tick p95 ÷ interval | < 50% | N3.6 |
+| Reliability | Alerts on stale data sent without D13 treatment | 0 | N3.5 |
+| Provider independence | Provider literals in core / commitments / notifications (non-comment) | 0 | N1.4 |
+| Provider independence | `provider ===` branches in the worker | 0 | N2.9 |
+| Provider independence | Matrix pairs passing the smoke test | 4 of 4 (6 after N7) | N1.17 |
+| Provider independence | Unintended replay differences after an engine-adjacent change | 0 | D24 |
+| Provider independence | Core/commitments files changed to add a provider | 0 | N7 |
+| Commercial | Logo retention at 90 days | ≥ 9 of 10 | N4.3 |
+| Commercial | Tenants paying vs. on trial; revenue by plan under the current pricing | Tracked | N4.3 (D14) |
+| Commercial | New tenants onboarded without a call | Majority | N5.7 |
+| Operations | Support tickets caused by the product, per month | Trending down | Support log |
+| Operations | Time to answer "is tenant X healthy?" | One page, < 1 minute | N4 |
+
+## Review Triggers
+
+These replace the `plans/05` kill criteria. The question is no longer whether the problem exists. It is what to fix, rescope, remove or reprioritise.
+
+| Signal | Action |
+| --- | --- |
+| Any credible disputed number | **Fix.** Stop feature work until it is reproduced with the replay harness and fixed. |
+| ≥ 3 of 10 churn within 90 days citing wrong numbers or noisy alerts | **Fix.** Halt the roadmap; work on correctness and alert tuning. |
+| Intercom + Jira needs core changes beyond role, priority, source scoping and freshness | **Rescope** the contract before N7. |
+| A tenant's link coverage stays < 60% after N1.13 | **Rescope for that tenant.** Report coverage honestly; do not guess links. |
+| A Beta provider has 0 tenants for 2 quarters and still costs maintenance | **Remove** it (GitHub first). |
+| ≥ 2 customers or qualified prospects on the same unsupported helpdesk | **Change provider priority:** it becomes N7 (D29). |
+| Most tenants use Elapsed without a tracker | **Change positioning** from "escalation continuity" to "customer commitment clock across tools". |
+| After N2, no tenant or prospect uses a non-Zendesk ticket source for 2 quarters | **Stop expanding ticket sources.** Keep the boundary. |
+| The seat-based pricing (if confirmed by D14) visibly suppresses expansion (shared logins, downgrades) | **Revisit the pricing metric** (see `plans/03` Phase 18). |
+
+---
+
+# Historical Phases 0–7
+
+> **Record only.** These phases built the product the 10 customers run on today. They are kept for traceability and are not re-opened. Phases 0–5 are complete. Phases 6 and 7 were **closed as historical on 2026-09-29 (Rev 5)**: the product went live before they finished, and their open tasks moved to [Production Hygiene](#production-hygiene). Task IDs are stable; code comments and commits reference them.
 
 ## Phase 0 — Safe Foundation
 
@@ -496,7 +874,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 ## Phase 6 — SLA Health Dashboard & Guided Onboarding
 
-**Status:** 🔄 In progress (7/8 tasks done, 2026-09-27) — merged to `main` (PR #27); only 6.8 remains · **Estimate:** 2 weeks
+**Status:** 📦 Closed as historical (2026-09-29, Rev 5): 7/8 tasks done, merged to `main` (PR #27). 6.8 was never done; it carries on as [H-9](#production-hygiene) / N5.8 · **Estimate:** 2 weeks
 **Goal:**
 
 - The dashboard shows SLA health by commitment type and everything that is silently _not_ being monitored.
@@ -530,7 +908,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 ## Phase 7 — Production Launch
 
-**Status:** 🔄 In progress (7/12 tasks done, 2026-09-29) · **Estimate:** 5 weeks
+**Status:** 📦 Closed as historical (2026-09-29, Rev 5): 7/12 tasks done. The product went live with 10 customers before this phase closed. Open tasks carried to [Production Hygiene](#production-hygiene): 7.6 → H-6, 7.7 → H-7, 7.10 (lint half) → H-8, 7.11 → H-5. 7.12 is superseded (see the Launch Gate note) · **Estimate:** 5 weeks
 **Goal:** The first real customer runs on a verified, observable, recoverable deployment.
 **Phase is done when:** every item in the [Launch Gate](#launch-gate) is ticked, or explicitly accepted as an exception.
 
@@ -557,7 +935,7 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
 
 **Performance**
 
-- [ ] **7.7** Performance baseline with 5,000 cases and 200,000+ events (case list, dashboard, case detail, evaluation, worker, database queries). Fix the slowest part based on the measurements. `P1 · Reliability · C` · D-5 — see [`implementation-plans/performance-plan.md`](performance-plan.md) for the phased plan.
+- [ ] **7.7** Performance baseline with 5,000 cases and 200,000+ events (case list, dashboard, case detail, evaluation, worker, database queries). Fix the slowest part based on the measurements. `P1 · Reliability · C` · D-5 — see [`plans/performance-plan.md`](../plans/performance-plan.md) for the phased plan.
   - **Phase 0 (instrumentation + baseline) done (2026-09-28).** `packages/db/src/scripts/seed-perf-baseline.ts` (`pnpm db:seed:perf-baseline`) generates the dataset — this ran previously into the dev org (`yasseralnajjar72@gmail.com`), which now carries 5,088 cases / 212,322 normalized events / 10,158 commitments (4,050 open), matching the 7.7 target without a real deployment. `PERF_METRICS=1` work counters (`packages/db/src/perf-metrics.ts`: an `AsyncLocalStorage` scope, a Prisma `$extends` query hook, `perfCount` at every `evaluateCommitment`/`deriveLegSpans` call site) are wired into the four page loaders, the layout, and every worker stage; lock wait/hold ms is logged in `organization-lock.ts`. Baseline captured against the seeded org with `pnpm --filter @sla/web perf:baseline` / `pnpm --filter @sla/worker perf:baseline` (keep these — re-run after each phase and compare):
     | Surface | Wall ms | Queries | Query ms | Rows loaded (dominant) | JS evaluations |
     | --- | --- | --- | --- | --- | --- |
@@ -643,10 +1021,13 @@ Everything above is implemented and covered by the unit/real-Postgres suite (129
   - Lint: **blocked**, not done. `apps/web`'s `next lint` script is already broken (Next 16 removed the `next lint` subcommand). Tried to replace it with flat-config ESLint (`eslint` 10 + `eslint-config-next`), but `typescript-eslint` (which both `eslint-config-next` and its own `@typescript-eslint/parser` depend on) throws `typescript-eslint does not support TS 7.0` at import time — a hard version gate, not a config issue (tracked upstream: https://github.com/typescript-eslint/typescript-eslint/issues/10940) — and this repo is on `typescript@^7.0.2`. No working lint step exists until either typescript-eslint ships TS 7 support or the repo pins TypeScript back to 6.x for lint tooling; reverted the eslint install rather than ship a lint step that can't actually run.
 - [ ] **7.11** Final docs, answers on data retention and deletion, and an on-call note. `P1 · Docs · B`
 - [ ] **7.12** Pass the [Launch Gate](#launch-gate). `P0 · — · —`
+  - **Superseded (Rev 5, 2026-09-29):** the gate was meant to precede the first real customer; 10 customers are live. Left unchecked because it was never passed.
 
 ---
 
 ## Launch Gate
+
+> **Superseded as a gate (Rev 5, 2026-09-29).** This gate required every item to be ticked before the first real customer. The product now has 10 live customers and the gate was never formally ticked. It is kept **unedited** for traceability; do not tick items here retroactively. Items that still matter are tracked as Production Hygiene: engine spot-check → H-4; capacity limits → H-7; Sentry → H-6; security confirmations → H-10; unaided onboarding → H-9 / N5; Beta labels → D17.
 
 Tick each item at the end of Phase 7. Every item must be ticked, or recorded as an accepted exception, before the first real customer.
 
@@ -688,6 +1069,12 @@ Tick each item at the end of Phase 7. Every item must be ticked, or recorded as 
 
 The backlog. When the current roadmap is finished, promote items from here into new numbered phases.
 
+> **Rev 5 (2026-09-29):** the Rev 4 candidates below are absorbed into, or kept out of, the active roadmap as follows (items left unchecked; the N-phase owns them now):
+> - Candidate Phase 8 (Intercom out of Beta): engineering links for Intercom → N1.13; Customer/Requester separation for contact-only Intercom customers → N1.14 (`CustomerIdentity`); promotion out of Beta is a D17 decision. Intercom webhooks and deleted-conversation handling stay backlog.
+> - Candidate Phase 9: Linear/GitHub webhooks and Linear GraphQL rate limits stay backlog (polling is acceptable); GitHub pattern links stay backlog (D18: frozen); Jira issue keys in ticket fields stays backlog.
+> - Candidate Phase 10 (tier data source): stays backlog.
+> - Platform: shared rate limiting / multi-instance web → N8-S5; key rotation → N8-S7; folding the duplicated row→domain mappers → N2 (shared projector).
+
 **Candidate Phase 8 — Intercom out of Beta**
 
 - [ ] Intercom webhooks (replace polling) · I-11
@@ -718,9 +1105,11 @@ The backlog. When the current roadmap is finished, promote items from here into 
 - Service credits and financial calculations.
 - Automatic escalation or write-back into source systems.
 - Per-agent or team SLA scoring, blame scoring, or assignee analytics.
-- A generic connector framework.
+- A generic connector framework, plugin SDK or dynamic plugin loading (D16).
 - SSO/SAML and a public API (parked in [`ignored.md`](ignored.md)).
-- Horizontal scaling across multiple workers.
+- Horizontal scaling across multiple workers (only through an N8 trigger, D21).
+- Promoting a provider or pair out of Beta without an explicit decision (D17).
+- Reintroducing the obsolete `$299/$699` pilot pricing from `plans/05`.
 - Complex role management beyond owner and member.
 - Configurable pause states, or a rules engine.
 - An SLA policy engine specific to Intercom or Linear.
@@ -732,8 +1121,14 @@ The backlog. When the current roadmap is finished, promote items from here into 
 
 _Finished phases move here, with their completion date, when a roadmap cycle ends. Keep their task lists as the record._
 
+- **Phase 0 — Safe Foundation** — completed 2026-09-19. Record in [Phase 0](#phase-0--safe-foundation).
+- **Phase 1 — Correct SLA Commitments** — completed 2026-09-19 (13/13). Record in [Phase 1](#phase-1--correct-sla-commitments).
 - **Phase 2 — Reliable Zendesk + Jira Connections** — completed 2026-09-29; all 10 tasks completed, including live verification. Detailed task record remains in [Phase 2](#phase-2--reliable-zendesk--jira-connections).
 - **Phase 3 — Explainable Cases** — completed 2026-09-29; all 10 tasks completed and verified. Detailed task record remains in [Phase 3](#phase-3--explainable-cases).
+- **Phase 4 — SLA Policy & Calendar Management** — completed 2026-09-22 (8/8, PR #25). Record in [Phase 4](#phase-4--sla-policy--calendar-management).
+- **Phase 5 — Team & Account Management** — completed 2026-09-22 (9/9, PR #26). Record in [Phase 5](#phase-5--team--account-management).
+- **Phase 6 — SLA Health Dashboard & Guided Onboarding** — 📦 closed as historical 2026-09-29 (7/8, PR #27); 6.8 → H-9 / N5.8.
+- **Phase 7 — Production Launch** — 📦 closed as historical 2026-09-29 (7/12); open tasks → H-5 to H-8; 7.12 and the Launch Gate superseded.
 
 Earlier work (steps 0–44) is recorded in [`roadmap-completed.md`](roadmap-completed.md) and summarized in [Product Baseline](#product-baseline).
 
@@ -763,6 +1158,15 @@ What already exists as of 2026-09-19. This is the starting point for Phase 0. Th
 
 ## Changelog
 
+- **Rev 5 (2026-09-29):** Re-baselined after the provider-agnostic architecture audit and the move to 10 live customers.
+  - Closed D11 as superseded and marked the Launch Gate historical.
+  - Closed Phases 6 and 7 as historical; moved their open tasks to the new Production Hygiene list (H-1 to H-10).
+  - Added the active Provider-Neutral Roadmap (N1–N8), each phase with an implementation plan (`01-…` to `08-…`).
+  - Added decisions D13–D29; replaced the "Zendesk is the Case source of truth" rule and invariant (D19).
+  - Added Validation Metrics and Review Triggers, replacing the `plans/05` criteria.
+  - Kept the Rev 4 status board and phase overview in collapsed blocks.
+  - Fixed the `performance-plan.md` links, which pointed at a non-existent file.
+  - No completed work was removed.
 - **Rev 4 (2026-09-29):** Closed Phase 2 (Reliable Zendesk + Jira Connections) and Phase 3 (Explainable Cases) after all tasks and required verification were completed.
 - **Rev 3 (2026-09-19):** Restructured into the living product roadmap: status board, working rules, phases with checkbox tasks, backlog. Moved the audit into appendices.
 - **Rev 2 (2026-09-19):** Merged `RENEW_ROADMAP.md` (product-completion scope: policy and calendar UI, members and account, assignee) and made 27 corrections to it ([Appendix C](#appendix-c--review-of-renew_roadmapmd)).
@@ -1083,7 +1487,7 @@ The product-completion direction is right and has been adopted. Checked against 
 | Live provider behavior differs from the docs (Zendesk placeholder, Jira signatures, GitHub App)            | Silent ingestion failure            | W8 live checks. Failure visibility (W18, W21).                                                                                            |
 | Plaintext tokens before W6                                                                                 | Credential exposure                 | Do not connect any real customer account before W6.                                                                                       |
 | Webhook vs worker races before W2                                                                          | Corrupted status / duplicate events | W2 is the first engineering week after W1.                                                                                                |
-| Customer validation not started (`plans/05`)                                                               | Building for no buyer               | D11: run outreach in parallel with Phases 0–2.                                                                                            |
+| _(Historical, superseded by 10 live customers — D11 closed in Rev 5)_ Customer validation not started (`plans/05`) | Building for no buyer               | D11: run outreach in parallel with Phases 0–2.                                                                                            |
 | One developer at 10–15 h/week                                                                              | The timeline stretches              | Weeks are independent within a phase. P2 items can be dropped without blocking launch.                                                    |
 | Single web/worker instance                                                                                 | Limited scale and availability      | Documented limits (W22). Scaling is post-launch.                                                                                          |
 | The policy and calendar UI (W12–W15) is new surface area on engine semantics that were only just finalized | Editor bugs change live SLAs        | D1, D1b and D12 are decided first. Every edit is versioned. The golden scenarios gate CI (W23).                                           |
@@ -1099,13 +1503,31 @@ The product-completion direction is right and has been adopted. Checked against 
 3. **Versioned configuration:** editing a policy or calendar appends a version and never mutates one. Commitments reference versions.
 4. **Re-resolution updates only active commitments, in place.** It is audited in `CommitmentPolicyChange` and idempotent. A breach is final (D2). The exact trigger is pending D1 and D1b.
 5. **Per-kind clock rules:** First Response and Next Reply never pause. Resolution pauses on policy pause states.
-6. **Zendesk is the Case source of truth.** Engineering systems (Jira, Linear, GitHub) are the engineering leg only, linked by `certain` links.
+6. ~~**Zendesk is the Case source of truth.**~~ **Superseded (Rev 5, D19):** a case's own ticket-source integration (Zendesk or Intercom today) is its source of truth. Work trackers (Jira, Linear) and the code host (GitHub) are the engineering leg only, linked by `certain` links.
 7. **Read-only integrations.** The only outbound writes are Slack and email alerts.
 8. **Customer ≠ Requester.** Customer is the account (Zendesk org or Intercom company). The requester is a display field on the case.
 9. **Conversation ≠ Activity Timeline.** Messages vs system and SLA activity. They stay separate data paths and components.
 10. **Multi-tenant by `organizationId`**, taken from the session and never from the client.
-11. **A single worker** behind a Postgres advisory lock.
+11. **A single worker** behind a Postgres advisory lock (until an N8 trigger says otherwise, D21).
 12. **No AI, no blame language, no unnecessary architecture.**
+
+#### Decisions introduced by Rev 5
+
+See D16–D24 in [Product Decisions](#product-decisions). In short:
+- Provider knowledge belongs at the adapter boundary, behind one statically typed contract; no connector framework or plugins (D16).
+- Roles, not provider names, drive the core (N1).
+- Customer identity is normalized, and Case uniqueness includes the source integration (D23).
+- The case's ticket-source integration is its source of truth (D19).
+- Freshness is explicit (D22).
+- Replay/diff protects existing customers' numbers (D24).
+- Billing (D20) and scale (D21) are trigger-based.
+
+| Rev 5 risk | Impact | Mitigation |
+| --- | --- | --- |
+| The provider-boundary work changes live customers' numbers | Loss of trust | D24 replay gate; expand-only migrations in N1, contract step deferred to N2.10 |
+| A provider outage produces unlabelled alerts on stale data (until N3) | False at-risk/breach alerts | N3; D13 |
+| Pricing claims describe unbuilt features | Customer-facing inaccuracy | H-3 now; N6.6 |
+| Provider mix and plan of the 10 customers unknown in the repo | Wrong prioritisation | H-1, H-2, N4.7 |
 
 #### New decisions this roadmap introduces
 
@@ -1137,3 +1559,7 @@ These were **not changed** in this audit, per instructions. Fix them in W1 (curr
 | `apps/worker/src/index.ts:32`                                             | Refers to `@@unique([caseId, kind])`                       | The key is `@@unique([caseId, kind, cycleKey])`                      |
 | `packages/commitments/src/cycle-pipeline.ts:45-47`                        | Evaluation skips `next_reply`                              | `evaluate-pipeline.ts` evaluates `next_reply`                        |
 | `implementation-plans/roadmap-completed.md` "Explicitly deferred past v1" | Integrations beyond Zendesk + Jira are deferred            | Intercom, Linear and GitHub are built                                |
+| `plans/03-Product-and-MVP.md` Phase 18 vs `apps/web/src/modules/marketing/pricing/csr/PricingView.tsx` | Two different pricing models ($79/$149/$249 by escalations vs $49/$149/Custom by seats) | Neither is enforced; no billing code. Owner decision D14 (added Rev 5) |
+| `plans/04-Architecture-Sketch.md` "The adapter is the only provider-aware component" | A provider-agnostic core | The core decides by provider name; Jira/Linear correlate only Zendesk URLs; adapters write domain tables. See plan 01 §4 (fixed by N1/N2; added Rev 5) |
+| `plans/05-Validation-and-Kill-Criteria.md` | Validation plan and kill criteria for the first five customers | 10 customers are live; superseded by Validation Metrics / Review Triggers (added Rev 5) |
+| This roadmap, Rev 4 | Links to `plans/performance-plan.md` | The file is `plans/performance-plan.md`; links fixed in Rev 5 |
