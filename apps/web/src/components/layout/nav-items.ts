@@ -121,9 +121,3 @@ export function isNavItemActive(
 ): boolean {
   return pathname === href || (!exact && pathname.startsWith(`${href}/`));
 }
-
-export function hasActiveDescendant(pathname: string, item: NavItem): boolean {
-  return !!item.items?.some((child) =>
-    isNavItemActive(pathname, child.href, child.exact),
-  );
-}

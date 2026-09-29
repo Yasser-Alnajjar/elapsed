@@ -1,0 +1,26 @@
+{
+  "attribution": {
+    "commit": "Yasser Alnajjar",
+    "pr": "Yasser Alnajjar"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"^\\\\./\\(packages|apps\\)/[^/]+$\")",
+      "Bash(pnpm --filter web type-check)",
+      "Bash(awk '/^model Commitment /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(awk '/^model Evaluation /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(awk '/^model Case /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(awk '/^model WorkerSettings /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(awk '/^model NormalizedEvent /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(awk '/^model LegSpan /,/^}/' packages/db/prisma/schema.prisma)",
+      "Bash(echo \"EXIT: $?\")",
+      "Read(//tmp/**)",
+      "Bash(npx vitest *)",
+      "Bash(docker exec elapsed-dev-postgres-1 psql -U user -d elapsed_db -c ' *)",
+      "Bash(grep -rn '$queryRaw\\\\|Prisma\\\\.sql\\\\|Prisma\\\\.join' apps/web/src/lib packages/commitments/src packages/db/src)",
+      "Bash(docker exec *)",
+      "Bash(rm -f /tmp/live-events-debug.log *)",
+      "Bash(export TEST_DATABASE_URL=\"postgresql://user:password@localhost:5432/sla_test?schema=public\")"
+    ]
+  }
+}

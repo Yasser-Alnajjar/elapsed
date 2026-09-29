@@ -13,7 +13,6 @@
     "@sla/zendesk": "workspace:*"
   },
   "devDependencies": {
-    "@sla/db": "workspace:*",
     "@types/node": "^26.4.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",

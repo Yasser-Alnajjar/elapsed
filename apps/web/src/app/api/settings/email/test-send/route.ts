@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { getEmailSettings, getPrismaClient } from "@sla/db";
-import { sendEmail } from "@sla/email";
+import { getPrismaClient } from "@sla/db";
+import { SmtpDestinationNotAllowedError, sendEmail } from "@sla/email";
 import { DEFAULT_EMAIL_BRAND_NAME, renderNotificationEmailHtml } from "@sla/notifications";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
-import { emailSettingsInputSchema, smtpErrorMessage } from "@/lib/email-settings";
+import { emailSettingsInputSchema, resolveTestPassword, smtpErrorMessage } from "@/lib/email-settings";
 
 /**
  * Sends a real message through the SMTP server the request describes, to
@@ -31,17 +31,11 @@ export async function POST(request: Request) {
   }
 
   const prisma = getPrismaClient();
-  let password = parsed.data.password;
-  if (!password) {
-    const saved = await getEmailSettings(prisma, session.user.organizationId).catch(() => null);
-    password = saved?.password;
+  const resolved = await resolveTestPassword(prisma, session.user.organizationId, parsed.data);
+  if ("error" in resolved) {
+    return NextResponse.json({ ok: false, error: resolved.error }, { status: resolved.status });
   }
-  if (!password) {
-    return NextResponse.json(
-      { ok: false, error: "SMTP is not configured for this organization." },
-      { status: 400 },
-    );
-  }
+  const { password } = resolved;
 
   const config = {
     host: parsed.data.host,
@@ -69,8 +63,11 @@ export async function POST(request: Request) {
         detailLine:
           "This is a test email confirming your SMTP configuration is working correctly. If you received this, at-risk and breach alerts will be delivered to this organization's users with this same branding.",
       }),
-    });
+    }, { publicDestinationOnly: true });
   } catch (error) {
+    if (error instanceof SmtpDestinationNotAllowedError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ ok: false, error: smtpErrorMessage(error, password) }, { status: 502 });
   }
 

@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { privateSmtpHostsAllowed, resolvePublicSmtpAddress } from "./destination";
 import type { EmailConfig, EmailMessage } from "./types";
 
 /** Generous enough for a slow SMTP relay, short enough that a settings-form "Test Connection" click (or a misconfigured/unreachable host) fails fast instead of hanging the request. */
@@ -17,10 +18,13 @@ const CONNECTION_TIMEOUT_MS = 10_000;
  * see `EmailSecurity`'s doc comment for why the port is never used to infer
  * it.
  */
-function createTransporter(config: EmailConfig): Transporter {
+function createTransporter(config: EmailConfig, connectHost: string = config.host): Transporter {
   const base = {
-    host: config.host,
+    host: connectHost,
     port: config.port,
+    // Connecting to a resolved address (see `SendOptions.publicDestinationOnly`)
+    // must still validate the certificate against the name the customer typed.
+    ...(connectHost !== config.host ? { tls: { servername: config.host } } : {}),
     auth: { user: config.user, pass: config.password },
     connectionTimeout: CONNECTION_TIMEOUT_MS,
     greetingTimeout: CONNECTION_TIMEOUT_MS,
@@ -38,6 +42,23 @@ function createTransporter(config: EmailConfig): Transporter {
   }
 }
 
+export interface SendOptions {
+  /**
+   * Set for SMTP settings that an organization owner typed in. The host is
+   * resolved first and the connection is refused unless every address is a
+   * public one (throws `SmtpDestinationNotAllowedError`); the connection then
+   * goes to the resolved address. Leave unset for operator-configured SMTP
+   * (deployment env, ops alerts). `SMTP_ALLOW_PRIVATE_HOSTS=1` turns the check
+   * off for local development.
+   */
+  publicDestinationOnly?: boolean;
+}
+
+async function connectHostFor(config: EmailConfig, options: SendOptions): Promise<string> {
+  if (!options.publicDestinationOnly || privateSmtpHostsAllowed()) return config.host;
+  return resolvePublicSmtpAddress(config.host);
+}
+
 function fromHeader(config: EmailConfig): string {
   return config.fromName ? `"${config.fromName.replace(/"/g, "'")}" <${config.from}>` : config.from;
 }
@@ -50,13 +71,13 @@ function fromHeader(config: EmailConfig): string {
  * proof message delivery will (a relay can accept a login and still reject
  * or silently drop the actual send).
  */
-export async function verifyEmailConfig(config: EmailConfig): Promise<void> {
-  const transporter = createTransporter(config);
+export async function verifyEmailConfig(config: EmailConfig, options: SendOptions = {}): Promise<void> {
+  const transporter = createTransporter(config, await connectHostFor(config, options));
   await transporter.verify();
 }
 
-export async function sendEmail(config: EmailConfig, message: EmailMessage): Promise<void> {
-  const transporter = createTransporter(config);
+export async function sendEmail(config: EmailConfig, message: EmailMessage, options: SendOptions = {}): Promise<void> {
+  const transporter = createTransporter(config, await connectHostFor(config, options));
 
   await transporter.sendMail({
     from: fromHeader(config),

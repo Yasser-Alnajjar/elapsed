@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getEmailSettingsStatus, saveEmailSettings, getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
-import { emailSettingsInputSchema } from "@/lib/email-settings";
+import { destinationRefusal, emailSettingsInputSchema } from "@/lib/email-settings";
 
 /** Status only — the password is never read back, see `getEmailSettingsStatus`. */
 export async function GET() {
@@ -25,6 +25,9 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
+
+  const refused = await destinationRefusal(parsed.data.host);
+  if (refused) return refused;
 
   const prisma = getPrismaClient();
   try {

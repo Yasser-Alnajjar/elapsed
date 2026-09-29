@@ -49,6 +49,8 @@ const realDatabaseSuites = [
   "apps/web/test/notification-claim.test.ts",
   "apps/web/test/zendesk-incremental-normalization.test.ts",
   "apps/web/test/scoped-pipelines.test.ts",
+  "apps/worker/test/seed-test-customers.db.test.ts",
+  "apps/web/test/seeded-tenant-isolation.test.ts",
 ];
 
 export default defineConfig({

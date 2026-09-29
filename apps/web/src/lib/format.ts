@@ -253,25 +253,6 @@ export function formatNormalizedState(state: string): string {
   return NORMALIZED_STATE_LABELS[state] ?? state;
 }
 
-/**
- * These are the engine's own semantic states, not any provider's literal
- * status text — a Zendesk "Pending" and a Jira "Waiting on Customer" both
- * normalize to `pending_customer` (see packages/core/src/types.ts). Shown in
- * the case timeline's glossary popover so "Open → Pending customer" reads as
- * more than an opaque state code.
- */
-export const NORMALIZED_STATE_DESCRIPTIONS: Record<string, string> = {
-  new: "Case just created — no status update from the source system yet.",
-  open: "Actively open and owned by support or engineering.",
-  in_progress: "Being actively worked, per the linked engineering tracker.",
-  pending_customer:
-    'Waiting on the customer to respond. Whichever provider drives this, it puts the case on the "waiting on customer" leg.',
-  pending_internal: "Waiting on something internal — not the customer.",
-  escalated: "Flagged as escalated or high urgency.",
-  resolved: "Marked resolved by the team, ahead of a final close.",
-  closed: "Fully closed.",
-};
-
 const ACTOR_LABELS: Record<string, string> = {
   customer: "Customer",
   agent: "Agent",

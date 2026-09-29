@@ -225,6 +225,7 @@ describe("runNotificationPipeline", () => {
         subject: expect.stringContaining("#4821"),
         html: expect.stringContaining("#4821"),
       }),
+      { publicDestinationOnly: true },
     );
     expect(sendEmailMock).toHaveBeenNthCalledWith(
       2,
@@ -234,6 +235,7 @@ describe("runNotificationPipeline", () => {
         subject: expect.stringContaining("#4821"),
         html: expect.stringContaining("#4821"),
       }),
+      { publicDestinationOnly: true },
     );
     expect(result.notificationsSent).toBe(1);
     expect(prisma.notification.update).toHaveBeenCalledWith({ where: { id: "ntf_1" }, data: { channel: "slack,email" } });
@@ -269,6 +271,7 @@ describe("runNotificationPipeline", () => {
     expect(sendEmailMock).toHaveBeenCalledWith(
       expectedEmailConfig,
       expect.objectContaining({ html: expect.stringContaining("Payment webhook failing") }),
+      { publicDestinationOnly: true },
     );
   });
 
@@ -284,6 +287,7 @@ describe("runNotificationPipeline", () => {
     expect(sendEmailMock).toHaveBeenCalledWith(
       expectedEmailConfig,
       expect.objectContaining({ html: expect.stringContaining("https://app.example.com/cases/case_1") }),
+      { publicDestinationOnly: true },
     );
   });
 
@@ -295,6 +299,7 @@ describe("runNotificationPipeline", () => {
     expect(sendEmailMock).toHaveBeenCalledWith(
       expectedEmailConfig,
       expect.objectContaining({ html: expect.not.stringContaining("View ticket") }),
+      { publicDestinationOnly: true },
     );
   });
 
