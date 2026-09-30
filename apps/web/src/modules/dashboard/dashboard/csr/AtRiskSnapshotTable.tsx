@@ -48,19 +48,26 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
                 </span>
               </td>
               <td className="py-3.5 px-4 whitespace-nowrap">
-                <div className="flex items-center gap-1.5 font-mono text-xs">
-                  <span className="text-on-surface font-semibold">
-                    #{row.externalId}
-                  </span>
-                  {row.linkedIssue ? (
-                    <>
-                      <ArrowRightLeft className="text-outline size-3" />
-                      <span className="text-primary">
-                        {row.linkedIssue.externalId}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-outline">standalone</span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <span className="text-on-surface font-semibold">
+                      #{row.externalId}
+                    </span>
+                    {row.linkedIssue ? (
+                      <>
+                        <ArrowRightLeft className="text-outline size-3" />
+                        <span className="text-primary">
+                          {row.linkedIssue.externalId}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-outline">standalone</span>
+                    )}
+                  </div>
+                  {row.subject && (
+                    <span className="text-outline font-mono text-xxs">
+                      {row.subject ?? "—"}
+                    </span>
                   )}
                 </div>
               </td>

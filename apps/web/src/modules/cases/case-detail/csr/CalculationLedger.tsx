@@ -216,7 +216,7 @@ export function CalculationLedger({
       : `+${formatSeconds(-remainingSeconds)}`;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-card p-6 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low shadow-sm p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
