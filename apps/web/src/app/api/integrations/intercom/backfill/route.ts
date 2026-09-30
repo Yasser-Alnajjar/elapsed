@@ -27,7 +27,6 @@ export async function POST() {
       },
     },
   });
-  console.log(integration);
 
   if (!integration) {
     return NextResponse.json(
@@ -47,25 +46,10 @@ export async function POST() {
       commitments,
       evaluation,
       pendingProviders,
-      nextReplyCycles,
-      reResolution,
-      zendesk,
     } = await projectAndEvaluateSourceSyncs(
       prisma,
       session.user.organizationId,
     );
-    console.log(backfill);
-    console.log({
-      intercom,
-      jira,
-      linear,
-      commitments,
-      evaluation,
-      pendingProviders,
-      nextReplyCycles,
-      reResolution,
-      zendesk,
-    });
 
     return NextResponse.json({
       backfill,
@@ -78,7 +62,6 @@ export async function POST() {
     });
   } catch (error) {
     if (error instanceof IntercomReauthRequiredError) {
-      console.log(error);
       return NextResponse.json(
         { error: "Intercom needs to be reconnected", reauthRequired: true },
         { status: 409 },
