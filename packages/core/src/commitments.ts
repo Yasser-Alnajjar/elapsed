@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { computeDeadline } from "./calendar";
 import type {
   BusinessCalendarVersion,
+  CanonicalPriority,
   CaseAttributes,
   Commitment,
   CommitmentKind,
@@ -70,8 +71,8 @@ function includesValue(actual: unknown, expected: unknown): boolean {
   return false;
 }
 
-/** Zendesk's fixed priority ordering — the only field whose `less_than`/`greater_than` comparison isn't a plain numeric/date compare. */
-const PRIORITY_ORDER: Record<string, number> = {
+/** The ordering of Elapsed's own priority vocabulary (`CanonicalPriority`) — the only field whose `less_than`/`greater_than` comparison isn't a plain numeric/date compare. */
+const PRIORITY_ORDER: Record<CanonicalPriority, number> = {
   low: 0,
   normal: 1,
   high: 2,
@@ -91,8 +92,8 @@ function compareOrdinal(
   expected: unknown,
 ): number | null {
   if (field === "priority") {
-    const a = PRIORITY_ORDER[String(actual).toLowerCase()];
-    const b = PRIORITY_ORDER[String(expected).toLowerCase()];
+    const a = PRIORITY_ORDER[String(actual).toLowerCase() as CanonicalPriority] as number | undefined;
+    const b = PRIORITY_ORDER[String(expected).toLowerCase() as CanonicalPriority] as number | undefined;
     return a === undefined || b === undefined ? null : a - b;
   }
 

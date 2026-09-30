@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@sla/db";
-import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
+import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type {
   IntercomContact,
   IntercomConversationPart,
@@ -250,19 +250,19 @@ export function deriveCaseClosedAt(
 }
 
 /**
- * Intercom's binary conversation priority, mapped onto the Zendesk priority
- * vocabulary SLA policies match on (`{ priority: ["normal"] }`, etc.) — left
+ * Intercom's binary conversation priority, mapped onto `CanonicalPriority`
+ * (@sla/core), the vocabulary SLA policies match on (`{ priority: ["normal"] }`, etc.) — left
  * raw, "not_priority"/"priority" would match no policy, so an Intercom case
  * would never get commitments and never reach the dashboard.
  */
-const PRIORITY_TO_NORMALIZED_PRIORITY: Record<string, string> = {
+const PRIORITY_TO_CANONICAL_PRIORITY: Record<string, CanonicalPriority> = {
   priority: "high",
   not_priority: "normal",
 };
 
 export function normalizeIntercomPriority(priority: string | null | undefined): string | null {
   if (!priority) return null;
-  return PRIORITY_TO_NORMALIZED_PRIORITY[priority] ?? priority;
+  return PRIORITY_TO_CANONICAL_PRIORITY[priority] ?? priority;
 }
 
 const MAX_MESSAGE_SUBJECT_LENGTH = 120;

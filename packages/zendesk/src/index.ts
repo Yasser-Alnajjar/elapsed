@@ -5,6 +5,7 @@ export {
   isPublicCommentEvent,
   latestSnapshotById,
   NORMALIZATION_OVERLAP_MS,
+  normalizeZendeskPriority,
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,

@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from "@sla/db";
-import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
+import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
 import { ZENDESK_SOURCE_ROLE } from "./source-role";
 
@@ -76,6 +76,24 @@ function isStatusChangeEvent(
   );
 }
 
+/**
+ * Zendesk's ticket priorities are already Elapsed's vocabulary
+ * (`CanonicalPriority`), so this is the identity mapping; a value outside it
+ * (not something Zendesk sends) becomes `null` rather than leaking a raw
+ * provider string past the adapter.
+ */
+export function normalizeZendeskPriority(priority: string | null | undefined): CanonicalPriority | null {
+  switch (priority) {
+    case "low":
+    case "normal":
+    case "high":
+    case "urgent":
+      return priority;
+    default:
+      return null;
+  }
+}
+
 /** Unlike status, a priority can be unset (`null`) on either side of the change. */
 function isPriorityChangeEvent(
   event: ZendeskAudit["events"][number],
@@ -138,9 +156,9 @@ export interface DerivedNormalizedEvent {
   type: NormalizedEventType;
   occurredAt: string;
   actor: Actor;
-  /** A raw priority string, not a `NormalizedState`, on `priority_changed` — see `NormalizedEvent` (@sla/core). */
-  fromState: NormalizedState | string | null;
-  toState: NormalizedState | string | null;
+  /** A `CanonicalPriority`, not a `NormalizedState`, on `priority_changed` — see `NormalizedEvent` (@sla/core). */
+  fromState: NormalizedState | CanonicalPriority | null;
+  toState: NormalizedState | CanonicalPriority | null;
   sourceRawEventId: string;
   /**
    * Position in the ticket's own source order: 0 for the synthesized
@@ -293,8 +311,8 @@ export function deriveNormalizedEventsForTicket(
           type: "priority_changed",
           occurredAt: audit.created_at,
           actor: resolveActor(audit.via?.channel, audit.author_id, ticket, userRoles),
-          fromState: event.previous_value,
-          toState: event.value,
+          fromState: normalizeZendeskPriority(event.previous_value),
+          toState: normalizeZendeskPriority(event.value),
           sourceRawEventId: rawEventId,
           sourceSequence,
         });

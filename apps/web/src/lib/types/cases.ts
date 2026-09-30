@@ -1,4 +1,5 @@
 import type {
+  CanonicalPriority,
   ClockState,
   CommitmentKind,
   CommitmentStatus,
@@ -125,11 +126,11 @@ export interface TimelineEventDetail {
   type: NormalizedEventType | SyntheticTimelineEventType;
   /**
    * A `NormalizedState` for every real `NormalizedEvent`-backed type except
-   * `priority_changed`, which carries raw priority strings instead (see
+   * `priority_changed`, which carries a `CanonicalPriority` instead (see
    * `NormalizedEvent`, @sla/core). Always null for a synthetic row.
    */
-  fromState: NormalizedState | string | null;
-  toState: NormalizedState | string | null;
+  fromState: NormalizedState | CanonicalPriority | null;
+  toState: NormalizedState | CanonicalPriority | null;
   /** Set only on a synthetic row — which commitment it's about. */
   commitmentKind?: CommitmentKind;
   /** `policy_changed` only. */

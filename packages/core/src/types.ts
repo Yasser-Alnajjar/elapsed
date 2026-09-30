@@ -19,6 +19,13 @@ export type NormalizedState =
   | "resolved"
   | "closed";
 
+/**
+ * Elapsed's own priority vocabulary, in ascending order. Adapters map their
+ * provider's priorities onto it before a value reaches `Case.priority` or a
+ * `priority_changed` event; the engine never sees a provider's raw strings.
+ */
+export type CanonicalPriority = "low" | "normal" | "high" | "urgent";
+
 export type Actor = "customer" | "agent" | "system";
 
 /**
@@ -63,15 +70,14 @@ export interface NormalizedEvent {
   sourceRole: SourceRole;
   /**
    * A semantic ticket state for every type except `priority_changed`, which
-   * overloads these two fields to carry the ticket source's raw priority
-   * strings instead (e.g. "normal" -> "urgent") — display-only, so it's
-   * exempt from the `NormalizedState` vocabulary. Every engine fold that
-   * reads these for SLA math (`foldClockIntervals`, `deriveNextReplyCycles`,
-   * `legs.ts`) filters by `type` first, so a `priority_changed` event never
-   * reaches them.
+   * overloads these two fields to carry a `CanonicalPriority` instead (e.g.
+   * "normal" -> "urgent"; null when unset) — display-only. Every engine fold
+   * that reads these for SLA math (`foldClockIntervals`,
+   * `deriveNextReplyCycles`, `legs.ts`) filters by `type` first, so a
+   * `priority_changed` event never reaches them.
    */
-  fromState: NormalizedState | string | null;
-  toState: NormalizedState | string | null;
+  fromState: NormalizedState | CanonicalPriority | null;
+  toState: NormalizedState | CanonicalPriority | null;
   sourceRawEventId: string;
   /**
    * The event's position in its provider's own ordering (e.g. Zendesk audit

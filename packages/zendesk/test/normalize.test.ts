@@ -3,6 +3,7 @@ import { deriveNextReplyCycles, findFirstResponseEvent, resolveFirstResponseStar
 import {
   deriveCaseClosedAt,
   deriveNormalizedEventsForTicket,
+  normalizeZendeskPriority,
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,
@@ -48,6 +49,21 @@ function statusChange(value: string, previous_value: string) {
 function priorityChange(value: string | null, previous_value: string | null) {
   return { id: 2, type: "Change", field_name: "priority", value, previous_value };
 }
+
+describe("normalizeZendeskPriority", () => {
+  it("is the identity mapping onto CanonicalPriority", () => {
+    expect(normalizeZendeskPriority("low")).toBe("low");
+    expect(normalizeZendeskPriority("normal")).toBe("normal");
+    expect(normalizeZendeskPriority("high")).toBe("high");
+    expect(normalizeZendeskPriority("urgent")).toBe("urgent");
+  });
+
+  it("maps an unset or unrecognized priority to null instead of leaking a raw string", () => {
+    expect(normalizeZendeskPriority(null)).toBeNull();
+    expect(normalizeZendeskPriority(undefined)).toBeNull();
+    expect(normalizeZendeskPriority("bogus")).toBeNull();
+  });
+});
 
 describe("normalizeZendeskStatus", () => {
   it("maps every known Zendesk status", () => {
@@ -314,6 +330,20 @@ describe("deriveNormalizedEventsForTicket", () => {
     ];
     const events = deriveNormalizedEventsForTicket({ ...ticket, status: "new" }, audits, "raw_ticket_42");
     expect(events[1]).toMatchObject({ type: "priority_changed", fromState: "low", toState: null });
+  });
+
+  it("never carries a non-canonical priority string on priority_changed", () => {
+    const audits = [
+      audit({
+        id: 1,
+        created_at: "2026-01-01T09:05:00Z",
+        author_id: 501,
+        via: { channel: "web" },
+        events: [priorityChange("bogus", "normal")],
+      }),
+    ];
+    const events = deriveNormalizedEventsForTicket({ ...ticket, status: "new" }, audits, "raw_ticket_42");
+    expect(events[1]).toMatchObject({ type: "priority_changed", fromState: "normal", toState: null });
   });
 });
 
