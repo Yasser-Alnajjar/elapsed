@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { ZendeskJiraLink } from "./types";
+import { JIRA_LINK_EVENT_SOURCE_ROLE } from "./source-role";
 
 /**
  * Validates a Zendesk official Jira-link record's structured ids. Unlike
@@ -263,6 +264,7 @@ export async function runZendeskJiraLinkCorrelation(
                 occurredAt: firstObservedAt,
                 actor: "system" as const,
                 system: "jira" as const,
+                sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
                 fromState: null,
                 toState: null,
               },
@@ -282,6 +284,7 @@ export async function runZendeskJiraLinkCorrelation(
                   occurredAt: latestObservedAt,
                   actor: "system" as const,
                   system: "jira" as const,
+                  sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
                   fromState: null,
                   toState: null,
                 },
@@ -391,6 +394,7 @@ async function sweepUnlinkedOfficialLinks(
           occurredAt: manifest.fetchedAt,
           actor: "system" as const,
           system: "jira" as const,
+          sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
           fromState: null,
           toState: null,
         },

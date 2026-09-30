@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { Actor, NormalizedState } from "@sla/core";
 import type { GithubActor, GithubPullRequest, GithubTimelineItem, GithubTimelineItemType } from "./types";
+import { GITHUB_SOURCE_ROLE } from "./source-role";
 
 /**
  * GitHub's PR timeline events, mapped onto `NormalizedState`. Unlike Jira
@@ -232,6 +233,7 @@ export async function runGithubNormalization(
             occurredAt: new Date(event.occurredAt),
             actor: event.actor,
             system: "github" as const,
+            sourceRole: GITHUB_SOURCE_ROLE,
             fromState: event.fromState,
             toState: event.toState,
             sourceSequence,

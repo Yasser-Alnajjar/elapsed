@@ -43,3 +43,4 @@ export {
   recordIntercomWorkspaceId,
   IntercomReauthRequiredError,
 } from "./tokenLifecycle";
+export { INTERCOM_SOURCE_ROLE } from "./source-role";

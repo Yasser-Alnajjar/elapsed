@@ -21,12 +21,12 @@ export type NormalizedState =
 
 export type Actor = "customer" | "agent" | "system";
 
-export type SourceSystem =
-  | "zendesk"
-  | "jira"
-  | "linear"
-  | "intercom"
-  | "github";
+/**
+ * What a source plays in a case, whatever provider supplies it: the ticket
+ * source owns the case's lifecycle, a work tracker holds linked engineering
+ * issues, a code host holds linked code changes.
+ */
+export type SourceRole = "ticket_source" | "work_tracker" | "code_host";
 
 export type NormalizedEventType =
   | "case_created"
@@ -55,7 +55,12 @@ export interface NormalizedEvent {
   type: NormalizedEventType;
   occurredAt: string; // ISO 8601
   actor: Actor;
-  system: SourceSystem;
+  /**
+   * Opaque provenance: keys per-source state and breaks ordering ties, and
+   * never decides behaviour. Behaviour is decided by `sourceRole`.
+   */
+  system: string;
+  sourceRole: SourceRole;
   /**
    * A semantic ticket state for every type except `priority_changed`, which
    * overloads these two fields to carry the ticket source's raw priority
@@ -247,7 +252,8 @@ export type ClockState = "running" | "paused" | "stopped";
  */
 export interface EvaluationEventRef {
   sourceRawEventId: string;
-  system: SourceSystem;
+  /** Opaque provenance, as on `NormalizedEvent.system`. */
+  system: string;
   type: NormalizedEventType;
   occurredAt: string; // ISO 8601
   toState: NormalizedState | string | null;

@@ -82,3 +82,4 @@ export {
 export type { WebhookIngestResult } from "./webhook";
 export { parseJiraLinkRecord, runZendeskJiraLinkCorrelation } from "./correlate";
 export type { JiraLinkCorrelationResult } from "./correlate";
+export { JIRA_LINK_EVENT_SOURCE_ROLE, ZENDESK_SOURCE_ROLE } from "./source-role";

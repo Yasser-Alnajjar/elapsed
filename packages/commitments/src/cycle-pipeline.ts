@@ -174,6 +174,7 @@ export async function runNextReplyCyclePipeline(
         toState: true,
         sourceRawEventId: true,
         sourceSequence: true,
+        sourceRole: true,
       },
     });
     for (const row of eventRows) {

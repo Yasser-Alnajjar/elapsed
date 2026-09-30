@@ -392,6 +392,12 @@ _Filled in during the phase. Only aggregate counts; never customer data._
 |---|---|---|---|---|---|---|---|---|
 | — | — | — | — | — | — | — | — | — |
 
+### Drift log (class C)
+
+| Date | Task | Backup | `asOf` | Commitments | Status drift | `breachedAt` drift | Follow-up |
+|---|---|---|---|---|---|---|---|
+| 2026-09-30 | N1.2 | `sla-20260929T213644Z.dump` | 2026-09-29T21:36:44Z | 3,921 (12 orgs, 1,508 cases) | 0 | 10 | Roadmap H-13 (does not block N1) |
+
 ## 14. Out of scope for N1
 
 - Worker registry and dispatch, shared error types, shared projector, web rendering through adapters (→ N2).

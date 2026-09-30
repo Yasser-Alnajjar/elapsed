@@ -114,7 +114,12 @@ export interface Findings {
 
 type DerivedEvent = Pick<NormalizedEvent, "type" | "occurredAt" | "actor" | "fromState" | "toState" | "sourceRawEventId" | "sourceSequence">;
 
-function toDomainEvents(caseId: string, system: NormalizedEvent["system"], derived: DerivedEvent[]): NormalizedEvent[] {
+function toDomainEvents(
+  caseId: string,
+  system: NormalizedEvent["system"],
+  sourceRole: NormalizedEvent["sourceRole"],
+  derived: DerivedEvent[],
+): NormalizedEvent[] {
   return derived.map((event, index) => ({
     id: `${event.sourceRawEventId}#${index}`,
     caseId,
@@ -122,6 +127,7 @@ function toDomainEvents(caseId: string, system: NormalizedEvent["system"], deriv
     occurredAt: event.occurredAt,
     actor: event.actor,
     system,
+    sourceRole,
     fromState: event.fromState,
     toState: event.toState,
     sourceRawEventId: event.sourceRawEventId,
@@ -215,7 +221,7 @@ export function analyzeExport(parsed: ParsedExport, options: AnalysisOptions): F
     if (closedWithoutHistory) closedTicketsWithoutHistory.push(ticketId);
 
     const jiraKeys = keysByTicket.get(ticketId) ?? [];
-    const events = toDomainEvents(caseId, "zendesk", zendeskCase.events);
+    const events = toDomainEvents(caseId, "zendesk", "ticket_source", zendeskCase.events);
     for (const key of jiraKeys) {
       const issue = jira.issues.get(key)!;
       // Exports carry no link timestamp. The integration usually creates the
@@ -229,12 +235,13 @@ export function analyzeExport(parsed: ParsedExport, options: AnalysisOptions): F
         occurredAt: linkedAt,
         actor: "system",
         system: "jira",
+        sourceRole: "work_tracker",
         fromState: null,
         toState: null,
         sourceRawEventId: `jira-link:${ticketId}:${key}`,
       });
       events.push(
-        ...toDomainEvents(caseId, "jira", issue.events.map((e) => ({ ...e, type: "state_changed" as const }))),
+        ...toDomainEvents(caseId, "jira", "work_tracker", issue.events.map((e) => ({ ...e, type: "state_changed" as const }))),
       );
     }
     events.sort(compareNormalizedEvents);

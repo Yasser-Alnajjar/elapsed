@@ -11,7 +11,6 @@ import type {
   NormalizedEventType,
   NormalizedState,
   SLAPolicyVersion,
-  SourceSystem,
 } from "../src/types";
 
 const alwaysOpen: BusinessCalendarVersion = {
@@ -137,7 +136,7 @@ describe("compareNormalizedEvents", () => {
   });
 
   it("ranks systems before comparing sequences, since each system numbers its own", () => {
-    const systems: SourceSystem[] = ["github", "linear", "jira", "intercom", "zendesk"];
+    const systems: string[] = ["github", "linear", "jira", "intercom", "zendesk"];
     const events = systems.map((system, i) =>
       event(system, "09:00", "state_changed", { system, toState: "open", sourceSequence: i }),
     );

@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@sla/db";
 import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
+import { ZENDESK_SOURCE_ROLE } from "./source-role";
 
 /** Zendesk's closed set of ticket statuses, mapped to the provider-independent vocabulary. */
 const STATUS_TO_NORMALIZED_STATE: Record<string, NormalizedState> = {
@@ -460,6 +461,7 @@ function normalizedEventKey(event: {
   type: string;
   occurredAt: Date | string;
   actor: string;
+  sourceRole?: string | null;
   fromState: string | null;
   toState: string | null;
 }): string {
@@ -469,6 +471,9 @@ function normalizedEventKey(event: {
     event.type,
     new Date(event.occurredAt).getTime(),
     event.actor,
+    // A stored row with no role (written before N1.5's backfill) never matches
+    // its derived twin, so it is replaced by one that has it.
+    event.sourceRole ?? "",
     event.fromState ?? "",
     event.toState ?? "",
   ].join("|");
@@ -841,12 +846,16 @@ async function deriveTickets(
           type: true,
           occurredAt: true,
           actor: true,
+          sourceRole: true,
           fromState: true,
           toState: true,
           sourceSequence: true,
         },
       });
-      const { toCreate, toDeleteIds } = diffNormalizedEvents(stored, derived);
+      const { toCreate, toDeleteIds } = diffNormalizedEvents(
+        stored,
+        derived.map((event) => ({ ...event, sourceRole: ZENDESK_SOURCE_ROLE })),
+      );
       if (toDeleteIds.length > 0 || toCreate.length > 0) {
         await prisma.$transaction([
           prisma.normalizedEvent.deleteMany({ where: { id: { in: toDeleteIds } } }),
@@ -858,6 +867,7 @@ async function deriveTickets(
               occurredAt: new Date(event.occurredAt),
               actor: event.actor,
               system: "zendesk" as const,
+              sourceRole: ZENDESK_SOURCE_ROLE,
               fromState: event.fromState,
               toState: event.toState,
               sourceSequence: event.sourceSequence,

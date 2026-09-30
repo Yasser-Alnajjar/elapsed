@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { JiraRemoteLink } from "./types";
+import { JIRA_SOURCE_ROLE } from "./source-role";
 
 /**
  * Extracts a Zendesk ticket id from a URL, but only when the host is exactly
@@ -311,6 +312,7 @@ export async function runJiraCorrelation(
                 occurredAt: firstObservedAt,
                 actor: "system" as const,
                 system: "jira" as const,
+                sourceRole: JIRA_SOURCE_ROLE,
                 fromState: null,
                 toState: null,
               },
@@ -328,6 +330,7 @@ export async function runJiraCorrelation(
                   occurredAt: latestObservedAt,
                   actor: "system" as const,
                   system: "jira" as const,
+                  sourceRole: JIRA_SOURCE_ROLE,
                   fromState: null,
                   toState: null,
                 },
@@ -419,6 +422,7 @@ async function sweepUnlinkedRemoteLinks(
           occurredAt: manifest.fetchedAt,
           actor: "system" as const,
           system: "jira" as const,
+          sourceRole: JIRA_SOURCE_ROLE,
           fromState: null,
           toState: null,
         },

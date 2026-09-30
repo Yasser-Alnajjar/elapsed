@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { LinearAttachment, LinearIssue } from "./types";
+import { LINEAR_SOURCE_ROLE } from "./source-role";
 
 /**
  * Extracts a Zendesk ticket id from a URL, but only when the host is exactly
@@ -204,6 +205,7 @@ export async function runLinearCorrelation(prisma: PrismaClient, integrationId: 
           occurredAt: firstObservedAt,
           actor: "system",
           system: "linear",
+          sourceRole: LINEAR_SOURCE_ROLE,
           fromState: null,
           toState: null,
         },

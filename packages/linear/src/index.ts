@@ -20,3 +20,4 @@ export {
 export type { HistoryRecord, DerivedNormalizedEvent, LinearNormalizationResult } from "./normalize";
 export { parseZendeskTicketId, runLinearCorrelation } from "./correlate";
 export type { CorrelationResult } from "./correlate";
+export { LINEAR_SOURCE_ROLE } from "./source-role";

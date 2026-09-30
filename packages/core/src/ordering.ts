@@ -1,4 +1,4 @@
-import type { NormalizedEvent, SourceSystem } from "./types";
+import type { NormalizedEvent } from "./types";
 
 /**
  * Fixed rank that orders events from different systems landing on the same
@@ -6,13 +6,16 @@ import type { NormalizedEvent, SourceSystem } from "./types";
  * sequences are only comparable within one system; the rank itself carries
  * no meaning beyond being fixed. Ticket sources come first.
  */
-const SYSTEM_RANK: Record<SourceSystem, number> = {
+const SYSTEM_RANK: Record<string, number> = {
   zendesk: 0,
   intercom: 1,
   jira: 2,
   linear: 3,
   github: 4,
 };
+
+/** A system this table does not know sorts after every known one; ties then fall through to `sourceSequence` and content. */
+const rankOf = (system: string) => SYSTEM_RANK[system] ?? Number.MAX_SAFE_INTEGER;
 
 function compareStrings(a: string | null, b: string | null): number {
   if (a === b) return 0;
@@ -38,7 +41,7 @@ function compareStrings(a: string | null, b: string | null): number {
 export function compareNormalizedEvents(a: NormalizedEvent, b: NormalizedEvent): number {
   return (
     Date.parse(a.occurredAt) - Date.parse(b.occurredAt) ||
-    SYSTEM_RANK[a.system] - SYSTEM_RANK[b.system] ||
+    rankOf(a.system) - rankOf(b.system) ||
     (a.sourceSequence ?? 0) - (b.sourceSequence ?? 0) ||
     compareStrings(a.sourceRawEventId, b.sourceRawEventId) ||
     compareStrings(a.type, b.type) ||

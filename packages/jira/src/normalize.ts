@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { Actor, NormalizedState } from "@sla/core";
 import type { JiraChangelogHistory, JiraIssue, JiraStatus } from "./types";
+import { JIRA_SOURCE_ROLE } from "./source-role";
 
 /**
  * Jira's true fixed vocabulary — unlike the status itself (per-workflow,
@@ -366,6 +367,7 @@ export async function runJiraNormalization(
             occurredAt: new Date(event.occurredAt),
             actor: event.actor,
             system: "jira" as const,
+            sourceRole: JIRA_SOURCE_ROLE,
             fromState: event.fromState,
             toState: event.toState,
             sourceSequence,

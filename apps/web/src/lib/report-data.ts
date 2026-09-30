@@ -100,6 +100,7 @@ const NORMALIZED_EVENT_SELECT = {
   toState: true,
   sourceRawEventId: true,
   sourceSequence: true,
+  sourceRole: true,
 } satisfies Prisma.NormalizedEventSelect;
 
 interface ReportCursor {

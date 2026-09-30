@@ -6,6 +6,7 @@ import type {
   IntercomConversationState,
   IntercomConversationWithParts,
 } from "./types";
+import { INTERCOM_SOURCE_ROLE } from "./source-role";
 
 /**
  * Intercom's closed, three-value conversation lifecycle, mapped to the
@@ -509,6 +510,7 @@ export async function runIntercomNormalization(
             occurredAt: new Date(event.occurredAt),
             actor: event.actor,
             system: "intercom" as const,
+            sourceRole: INTERCOM_SOURCE_ROLE,
             fromState: event.fromState,
             toState: event.toState,
             sourceSequence: event.sourceSequence,
