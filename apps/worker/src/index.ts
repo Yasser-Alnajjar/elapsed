@@ -82,6 +82,9 @@ async function tick(kind: CycleKind): Promise<void> {
   // emitted per-organization/per-integration deep in `cycle.ts` — to one
   // run (roadmap 7.4).
   const cycleId = `${kind}:${startedAt}`;
+  // A cycle can run for tens of seconds across many organizations and only
+  // logs `cycle_finished` at the end — without this the worker looks idle.
+  logger.info("cycle_started", { kind, cycleId });
   try {
     const activePollMs = (await getOrCreateWorkerSettings(prisma)).activePollIntervalMs;
     const result = await runCycle(prisma, config, kind, cycleId, { activePollMs });
@@ -148,6 +151,11 @@ function startCycles(): void {
 void main();
 
 async function shutdown(signal: string, exitCode = 0): Promise<void> {
+  // Re-entry guard: `pnpm -r` and `tsx watch` each forward SIGINT, so this
+  // runs twice on one Ctrl+C; a second `healthServer.close()` rejects with
+  // ERR_SERVER_NOT_RUNNING, which `unhandledRejection` below turned into yet
+  // another shutdown.
+  if (shuttingDown) return;
   logger.info("worker_stopping", { signal });
   shuttingDown = true;
   for (const kind of Object.keys(timers) as CycleKind[]) {

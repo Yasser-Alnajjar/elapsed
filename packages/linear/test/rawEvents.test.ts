@@ -62,6 +62,16 @@ describe("mapHistoryEntryToRawEvent", () => {
     expect(after.providerEventId).not.toBe(before.providerEventId);
   });
 
+  it("keeps a state that returns to an earlier value distinct from its first occurrence (A → B → A)", () => {
+    const stateA = { id: "state-2", name: "In Progress", type: "started" };
+    const stateB = { id: "state-3", name: "Done", type: "completed" };
+    // Linear rewrites the one entry in place: id, createdAt and fromState stay, toState and updatedAt move.
+    const first = mapHistoryEntryToRawEvent("issue-1", { ...entry, toState: stateA, updatedAt: "2026-01-01T00:10:00.000Z" });
+    const second = mapHistoryEntryToRawEvent("issue-1", { ...entry, toState: stateB, updatedAt: "2026-01-01T00:20:00.000Z" });
+    const third = mapHistoryEntryToRawEvent("issue-1", { ...entry, toState: stateA, updatedAt: "2026-01-01T00:30:00.000Z" });
+    expect(new Set([first, second, third].map((r) => r.providerEventId)).size).toBe(3);
+  });
+
   it("produces the same provider event id for an unchanged re-fetch", () => {
     expect(mapHistoryEntryToRawEvent("issue-1", { ...entry }).providerEventId).toBe(
       mapHistoryEntryToRawEvent("issue-1", entry).providerEventId,

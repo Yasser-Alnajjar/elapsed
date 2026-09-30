@@ -54,9 +54,21 @@ export interface HistoryRecord {
   entry: LinearHistoryEntry;
 }
 
+/**
+ * When the entry's current state change actually happened. Linear rewrites a
+ * coalesced entry in place — `createdAt` stays at the first change while
+ * `toState` and `updatedAt` move on — so `createdAt` alone would date a later
+ * transition to the moment of the first one. Rows fetched before `updatedAt`
+ * was queried fall back to `createdAt`.
+ */
+export function historyEntryOccurredAt(entry: LinearHistoryEntry): string {
+  if (!entry.updatedAt) return entry.createdAt;
+  return Date.parse(entry.updatedAt) > Date.parse(entry.createdAt) ? entry.updatedAt : entry.createdAt;
+}
+
 export function sortHistoriesChronologically(histories: HistoryRecord[]): HistoryRecord[] {
   return [...histories].sort((a, b) => {
-    const byTime = Date.parse(a.entry.createdAt) - Date.parse(b.entry.createdAt);
+    const byTime = Date.parse(historyEntryOccurredAt(a.entry)) - Date.parse(historyEntryOccurredAt(b.entry));
     return byTime !== 0 ? byTime : a.entry.id.localeCompare(b.entry.id);
   });
 }
@@ -115,7 +127,7 @@ export function deriveNormalizedEventsForIssue(
 
   for (const { rawEventId, entry } of stateChanges) {
     events.push({
-      occurredAt: entry.createdAt,
+      occurredAt: historyEntryOccurredAt(entry),
       actor: resolveLinearActor(entry.actor, issue),
       fromState: normalizeLinearStateType(entry.fromState.type),
       toState: normalizeLinearStateType(entry.toState.type),
@@ -148,11 +160,29 @@ function latestIssueSnapshots(
 }
 
 /**
+ * Whether `candidate` is a later version of the same history entry than
+ * `existing`. Ranked by the entry's own `updatedAt`, not `fetchedAt`: Linear
+ * advances `updatedAt` on every in-place rewrite, whereas `fetchedAt` only
+ * orders first sightings. Rows with no `updatedAt` (fetched before it was
+ * queried) rank below any row that has one and tie among themselves on
+ * `fetchedAt`.
+ */
+function isNewerHistoryVersion(
+  candidate: { record: HistoryRecord; fetchedAt: Date },
+  existing: { record: HistoryRecord; fetchedAt: Date },
+): boolean {
+  const candidateUpdated = candidate.record.entry.updatedAt ? Date.parse(candidate.record.entry.updatedAt) : -Infinity;
+  const existingUpdated = existing.record.entry.updatedAt ? Date.parse(existing.record.entry.updatedAt) : -Infinity;
+  if (candidateUpdated !== existingUpdated) return candidateUpdated > existingUpdated;
+  return candidate.fetchedAt >= existing.fetchedAt;
+}
+
+/**
  * `issue_history:{issueId}:{entryId}:{hash}` — history entries carry no issue
  * id of their own. An entry can be rewritten in place by Linear, so the same
- * entry id may have several RawEvents; only the most recently fetched version
- * of each is kept. (Rows written before the hash was added have no hash
- * segment and are superseded the same way.)
+ * entry id may have several RawEvents; only the newest version of each is
+ * kept. (Rows written before the hash was added have no hash segment and are
+ * superseded the same way.)
  */
 function groupHistoriesByIssueId(
   rows: { id: string; providerEventId: string; payload: unknown; fetchedAt: Date }[],
@@ -162,13 +192,14 @@ function groupHistoriesByIssueId(
     const [, issueId, entryId] = row.providerEventId.split(":");
     if (!issueId || !entryId) continue;
     const key = `${issueId}:${entryId}`;
-    const existing = latestByEntry.get(key);
-    if (existing && existing.fetchedAt > row.fetchedAt) continue;
-    latestByEntry.set(key, {
+    const candidate = {
       issueId,
       record: { rawEventId: row.id, entry: row.payload as LinearHistoryEntry },
       fetchedAt: row.fetchedAt,
-    });
+    };
+    const existing = latestByEntry.get(key);
+    if (existing && !isNewerHistoryVersion(candidate, existing)) continue;
+    latestByEntry.set(key, candidate);
   }
 
   const byIssueId = new Map<string, HistoryRecord[]>();

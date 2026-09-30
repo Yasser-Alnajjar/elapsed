@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@sla/db";
 import {
   deriveNormalizedEventsForIssue,
+  historyEntryOccurredAt,
   normalizeLinearStateType,
   resolveLinearActor,
   runLinearNormalization,
@@ -85,7 +86,37 @@ describe("sortHistoriesChronologically", () => {
   });
 });
 
+describe("historyEntryOccurredAt", () => {
+  const base = historyRecord({ id: "1", createdAt: "2026-01-01T09:00:00.000Z" }).entry;
+
+  it("uses createdAt when the entry has no updatedAt (rows fetched before it was queried)", () => {
+    expect(historyEntryOccurredAt(base)).toBe("2026-01-01T09:00:00.000Z");
+  });
+
+  it("uses updatedAt for an entry Linear rewrote in place after it was created", () => {
+    expect(historyEntryOccurredAt({ ...base, updatedAt: "2026-01-01T10:30:00.000Z" })).toBe("2026-01-01T10:30:00.000Z");
+  });
+
+  it("never reports a time earlier than createdAt", () => {
+    expect(historyEntryOccurredAt({ ...base, updatedAt: "2026-01-01T08:00:00.000Z" })).toBe("2026-01-01T09:00:00.000Z");
+  });
+});
+
 describe("deriveNormalizedEventsForIssue", () => {
+  it("dates a coalesced transition to when the entry was last rewritten, not when it was created", () => {
+    const histories = [
+      historyRecord({
+        id: "1",
+        createdAt: "2026-01-01T09:05:00Z",
+        updatedAt: "2026-01-01T11:00:00Z",
+        fromState: backlogState,
+        toState: completedState,
+      }),
+    ];
+    const events = deriveNormalizedEventsForIssue(issue, histories, "raw_issue_42");
+    expect(events[1]?.occurredAt).toBe("2026-01-01T11:00:00Z");
+  });
+
   it("synthesizes the initial event from the issue snapshot when there are no state-changing histories", () => {
     const events = deriveNormalizedEventsForIssue(issue, [], "raw_issue_42");
     expect(events).toEqual([
@@ -248,5 +279,74 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       ["open", "resolved", 1],
     ]);
     expect(created[1]!.sourceRawEventId).toBe("raw_h1_new");
+  });
+
+  it("returns to the earlier state when an entry flips A → B → A (the third version must win)", async () => {
+    const entry = (toState: LinearWorkflowState, updatedAt: string): LinearHistoryEntry => ({
+      id: "h1",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt,
+      actor: { id: "user-agent", name: "Agent" },
+      fromState: backlogState,
+      toState,
+    });
+    const { prisma, created } = fakePrisma([
+      { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
+      { id: "raw_a1", providerEventId: `issue_history:${issue.id}:h1:a1`, payload: entry(startedState, "2026-01-01T10:10:00.000Z"), fetchedAt: new Date("2026-01-01T10:11:00Z") },
+      { id: "raw_b", providerEventId: `issue_history:${issue.id}:h1:b`, payload: entry(completedState, "2026-01-01T10:20:00.000Z"), fetchedAt: new Date("2026-01-01T10:21:00Z") },
+      { id: "raw_a2", providerEventId: `issue_history:${issue.id}:h1:a2`, payload: entry(startedState, "2026-01-01T10:30:00.000Z"), fetchedAt: new Date("2026-01-01T10:31:00Z") },
+    ]);
+
+    await runLinearNormalization(prisma, "integ-1");
+
+    expect(created.map((e) => [e.fromState, e.toState])).toEqual([
+      [null, "open"],
+      ["open", "in_progress"],
+    ]);
+    expect(created[1]!.sourceRawEventId).toBe("raw_a2");
+  });
+
+  it("ranks versions by the entry's updatedAt even when an older version was stored later", async () => {
+    const entry = (toState: LinearWorkflowState, updatedAt: string): LinearHistoryEntry => ({
+      id: "h1",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt,
+      actor: { id: "user-agent", name: "Agent" },
+      fromState: backlogState,
+      toState,
+    });
+    const { prisma, created } = fakePrisma([
+      { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
+      // Newer version stored first (e.g. the worker raced a manual backfill) ...
+      { id: "raw_new", providerEventId: `issue_history:${issue.id}:h1:new`, payload: entry(completedState, "2026-01-01T10:30:00.000Z"), fetchedAt: new Date("2026-01-01T10:31:00Z") },
+      // ... and a stale version landed afterwards.
+      { id: "raw_old", providerEventId: `issue_history:${issue.id}:h1:old`, payload: entry(startedState, "2026-01-01T10:10:00.000Z"), fetchedAt: new Date("2026-01-01T10:32:00Z") },
+    ]);
+
+    await runLinearNormalization(prisma, "integ-1");
+
+    expect(created[1]).toMatchObject({ toState: "resolved", sourceRawEventId: "raw_new" });
+  });
+
+  it("prefers a row carrying updatedAt over a legacy row without one, whatever their fetch order", async () => {
+    const { prisma, created } = fakePrisma([
+      { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
+      {
+        id: "raw_legacy",
+        providerEventId: `issue_history:${issue.id}:h1`,
+        payload: { id: "h1", createdAt: "2026-01-01T10:00:00.000Z", actor: null, fromState: backlogState, toState: completedState },
+        fetchedAt: new Date("2026-01-01T10:40:00Z"),
+      },
+      {
+        id: "raw_current",
+        providerEventId: `issue_history:${issue.id}:h1:cur`,
+        payload: { id: "h1", createdAt: "2026-01-01T10:00:00.000Z", updatedAt: "2026-01-01T10:30:00.000Z", actor: null, fromState: backlogState, toState: startedState },
+        fetchedAt: new Date("2026-01-01T10:31:00Z"),
+      },
+    ]);
+
+    await runLinearNormalization(prisma, "integ-1");
+
+    expect(created[1]).toMatchObject({ toState: "in_progress", sourceRawEventId: "raw_current" });
   });
 });

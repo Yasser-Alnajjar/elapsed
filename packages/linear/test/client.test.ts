@@ -91,4 +91,14 @@ describe("LinearClient empty sub-connections", () => {
 
     expect(result).toEqual({ nodes: [], pageInfo: { hasNextPage: false } });
   });
+
+  it("requests the history entry's updatedAt so an in-place rewrite changes the stored payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: { issue: null } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new LinearClient(baseCredentials).fetchIssueHistory("issue-1");
+
+    const { query } = JSON.parse(fetchMock.mock.calls[0]?.[1].body as string) as { query: string };
+    expect(query).toMatch(/history\([^)]*\)\s*\{\s*nodes\s*\{[^}]*\bupdatedAt\b/);
+  });
 });

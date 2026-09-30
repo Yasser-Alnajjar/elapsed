@@ -26,6 +26,11 @@ export function mapIssueToRawEvent(issue: LinearIssue): RawEventInput {
  * provider event id, letting an edited entry land as a new RawEvent instead of
  * being swallowed by skipDuplicates. The normalizer keeps the latest version
  * per entry id.
+ *
+ * The payload must include the entry's `updatedAt`: a rewrite advances it, so
+ * a state that returns to one seen before (A → B → A) still hashes differently
+ * from the first A. Without it the third version collides with the first, is
+ * skipped as a duplicate, and the normalizer keeps the stale B.
  */
 export function mapHistoryEntryToRawEvent(issueId: string, entry: LinearHistoryEntry): RawEventInput {
   const sourceHash = computeSourceHash(entry);

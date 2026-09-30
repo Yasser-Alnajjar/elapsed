@@ -181,6 +181,12 @@ export async function runCycle(
   for (const organization of organizations) {
     result.organizationsProcessed += 1;
     const orgLogger = cycleLogger.child({ organizationId: organization.id });
+    const orgStartedAt = Date.now();
+    const position = `${result.organizationsProcessed}/${organizations.length}`;
+    orgLogger.info("organization_started", {
+      position,
+      integrations: organization.integrations.length,
+    });
 
     const orderedIntegrations = [...organization.integrations].sort(
       (a, b) =>
@@ -202,6 +208,7 @@ export async function runCycle(
     >();
 
     for (const integration of orderedIntegrations) {
+      const integrationStartedAt = Date.now();
       let syncError: string | null = null;
       let reauthRequired = false;
       let permissionDenied = false;
@@ -318,6 +325,13 @@ export async function runCycle(
         }
       }
 
+      orgLogger.info("integration_ingested", {
+        position,
+        provider: integration.provider,
+        integrationId: integration.id,
+        durationMs: Date.now() - integrationStartedAt,
+        ok: syncError === null,
+      });
       ingestOutcomes.set(integration.id, {
         syncError,
         reauthRequired,
@@ -332,6 +346,7 @@ export async function runCycle(
     // on Case/NormalizedEvent/Commitment. Runs even for an integration whose
     // ingest just failed: normalization is DB-local and still has whatever
     // RawEvents an earlier successful cycle already stored.
+    const ingestMs = Date.now() - orgStartedAt;
     let slaPolicyImportResult: SlaPolicyImportResult | null = null;
     const notification: { claims: NotificationClaims | null } = { claims: null };
 
@@ -694,6 +709,14 @@ export async function runCycle(
         { organizationId: organization.id, kind },
       );
     }
+
+    orgLogger.info("organization_finished", {
+      position,
+      durationMs: Date.now() - orgStartedAt,
+      ingestMs,
+      pipelineMs: Date.now() - orgStartedAt - ingestMs,
+      integrations: organization.integrations.length,
+    });
   }
 
   return result;

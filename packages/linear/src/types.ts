@@ -55,6 +55,11 @@ export interface LinearIssueConnection {
  * rewritten in place (Linear coalesces rapid state changes by the same actor
  * into one entry), so the same id may be seen with different content; the
  * RawEvent key therefore carries a content hash.
+ * A rewrite keeps `id`, `createdAt` and `fromState` but advances `updatedAt`
+ * (and replaces `toState`), so `updatedAt` is what keeps the hash distinct when
+ * the state returns to one already seen (A → B → A) — without it the third
+ * version hashes identically to the first and is dropped as a duplicate.
+ * `updatedAt` is absent on rows fetched before it was queried.
  * `fromState`/`toState` embed the full workflow state (including `type`)
  * directly, unlike Jira's changelog which only gives a status name/id —
  * so, unlike the Jira adapter, there is no need for a separate site-wide
@@ -63,6 +68,7 @@ export interface LinearIssueConnection {
 export interface LinearHistoryEntry {
   id: string;
   createdAt: string;
+  updatedAt?: string;
   actor: { id: string; name: string } | null;
   fromState: LinearWorkflowState | null;
   toState: LinearWorkflowState | null;

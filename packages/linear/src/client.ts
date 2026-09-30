@@ -81,6 +81,7 @@ const ISSUE_HISTORY_QUERY = `
         nodes {
           id
           createdAt
+          updatedAt
           actor { id name }
           fromState { id name type }
           toState { id name type }
