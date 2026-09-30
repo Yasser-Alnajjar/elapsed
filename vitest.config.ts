@@ -54,6 +54,10 @@ const realDatabaseSuites = [
   "apps/web/test/zendesk-incremental-normalization.test.ts",
   "apps/web/test/scoped-pipelines.test.ts",
   "apps/worker/test/seed-test-customers.db.test.ts",
+  "packages/db/test/organization-work-state.db.test.ts",
+  "apps/worker/test/work-loop.db.test.ts",
+  "apps/worker/test/fenced-prisma.db.test.ts",
+  "apps/worker/test/not-configured.db.test.ts",
   "apps/web/test/seeded-tenant-isolation.test.ts",
 ];
 

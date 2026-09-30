@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PrismaClient } from "../generated/prisma/client";
 import {
   ACTIVE_POLL_SAFETY_DIVISOR,
+  clampReconciliationIntervalMs,
+  DEFAULT_RECONCILIATION_INTERVAL_MS,
   deriveWorkerStatus,
   getMinimumConfiguredSlaTargetMinutes,
   getOrCreateWorkerSettings,
@@ -9,8 +11,6 @@ import {
   MAX_RECONCILIATION_INTERVAL_MS,
   MIN_ACTIVE_POLL_INTERVAL_MS,
   MIN_RECONCILIATION_INTERVAL_MS,
-  recordWorkerCycleOutcome,
-  recordWorkerNextRun,
   saveWorkerSettings,
   validateWorkerSettingsInput,
   WorkerSettingsValidationError,
@@ -70,7 +70,7 @@ function createFakePrisma(slaVersions: { policyId: string; version: number; targ
 
 describe("validateWorkerSettingsInput", () => {
   it("accepts a value within bounds with no SLA policies configured", () => {
-    expect(validateWorkerSettingsInput({ activePollIntervalMs: 60_000, reconciliationIntervalMs: 3_600_000 }, null)).toBeNull();
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: 60_000, reconciliationIntervalMs: 1_800_000 }, null)).toBeNull();
   });
 
   it("rejects an active interval below the minimum", () => {
@@ -104,7 +104,7 @@ describe("validateWorkerSettingsInput", () => {
   });
 
   it("rejects a non-integer interval", () => {
-    expect(validateWorkerSettingsInput({ activePollIntervalMs: 1000.5, reconciliationIntervalMs: 3_600_000 }, null)).not.toBeNull();
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: 1000.5, reconciliationIntervalMs: 1_800_000 }, null)).not.toBeNull();
   });
 
   it("rejects an active interval too long for the shortest configured SLA target", () => {
@@ -112,17 +112,33 @@ describe("validateWorkerSettingsInput", () => {
     const minTargetMinutes = 15;
     const maxSafeMs = Math.floor((minTargetMinutes * 60_000) / ACTIVE_POLL_SAFETY_DIVISOR);
 
-    expect(validateWorkerSettingsInput({ activePollIntervalMs: maxSafeMs, reconciliationIntervalMs: 3_600_000 }, minTargetMinutes)).toBeNull();
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: maxSafeMs, reconciliationIntervalMs: 1_800_000 }, minTargetMinutes)).toBeNull();
     expect(
-      validateWorkerSettingsInput({ activePollIntervalMs: maxSafeMs + 1_000, reconciliationIntervalMs: 3_600_000 }, minTargetMinutes),
+      validateWorkerSettingsInput({ activePollIntervalMs: maxSafeMs + 1_000, reconciliationIntervalMs: 1_800_000 }, minTargetMinutes),
     ).toMatch(/too long for the shortest configured SLA target/);
+  });
+});
+
+describe("reconciliation interval ceiling", () => {
+  it("accepts exactly 30 minutes and rejects anything longer", () => {
+    expect(MAX_RECONCILIATION_INTERVAL_MS).toBe(30 * 60_000);
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: 10_000, reconciliationIntervalMs: 30 * 60_000 }, null)).toBeNull();
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: 10_000, reconciliationIntervalMs: 30 * 60_000 + 1 }, null)).toMatch(
+      /Reconciliation interval must be between 5m and 30m/,
+    );
+    expect(validateWorkerSettingsInput({ activePollIntervalMs: 10_000, reconciliationIntervalMs: 60 * 60_000 }, null)).not.toBeNull();
+  });
+
+  it("clamps larger values and leaves smaller ones alone", () => {
+    expect(clampReconciliationIntervalMs(24 * 3_600_000)).toBe(30 * 60_000);
+    expect(clampReconciliationIntervalMs(10 * 60_000)).toBe(10 * 60_000);
   });
 });
 
 describe("deriveWorkerStatus", () => {
   const base: WorkerSettingsRecord = {
     activePollIntervalMs: 60_000,
-    reconciliationIntervalMs: 3_600_000,
+    reconciliationIntervalMs: 1_800_000,
     lastHeartbeatAt: null,
     lastActivePollAt: null,
     lastActivePollFailures: null,
@@ -185,12 +201,32 @@ describe("getMinimumConfiguredSlaTargetMinutes", () => {
 describe("getOrCreateWorkerSettings", () => {
   it("seeds the row from WORKER_ACTIVE_POLL_MS/WORKER_RECONCILIATION_MS on first call", async () => {
     process.env.WORKER_ACTIVE_POLL_MS = "5000";
-    process.env.WORKER_RECONCILIATION_MS = "3600000";
+    process.env.WORKER_RECONCILIATION_MS = "900000";
     const prisma = createFakePrisma();
 
     const settings = await getOrCreateWorkerSettings(prisma);
     expect(settings.activePollIntervalMs).toBe(5000);
-    expect(settings.reconciliationIntervalMs).toBe(3_600_000);
+    expect(settings.reconciliationIntervalMs).toBe(900_000);
+  });
+
+  it("caps an env-seeded reconciliation interval above 30 minutes", async () => {
+    process.env.WORKER_RECONCILIATION_MS = "3600000";
+    const prisma = createFakePrisma();
+
+    expect((await getOrCreateWorkerSettings(prisma)).reconciliationIntervalMs).toBe(MAX_RECONCILIATION_INTERVAL_MS);
+  });
+
+  it("caps a persisted reconciliation interval above 30 minutes on every read, without rewriting it", async () => {
+    const prisma = createFakePrisma();
+    // A row saved back when the ceiling was 24 hours.
+    await prisma.workerSettings.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton", activePollIntervalMs: 60_000, reconciliationIntervalMs: 6 * 3_600_000 },
+      update: {},
+    });
+
+    const settings = await getOrCreateWorkerSettings(prisma);
+    expect(settings.reconciliationIntervalMs).toBe(MAX_RECONCILIATION_INTERVAL_MS);
   });
 
   it("falls back to hardcoded defaults when the env vars are unset or invalid", async () => {
@@ -199,7 +235,8 @@ describe("getOrCreateWorkerSettings", () => {
 
     const settings = await getOrCreateWorkerSettings(prisma);
     expect(settings.activePollIntervalMs).toBe(5 * 60_000);
-    expect(settings.reconciliationIntervalMs).toBe(60 * 60_000);
+    expect(settings.reconciliationIntervalMs).toBe(DEFAULT_RECONCILIATION_INTERVAL_MS);
+    expect(DEFAULT_RECONCILIATION_INTERVAL_MS).toBe(30 * 60_000);
   });
 });
 
@@ -221,59 +258,8 @@ describe("saveWorkerSettings", () => {
   it("rejects an active interval unsafe for the platform's shortest configured SLA target", async () => {
     const prisma = createFakePrisma([{ policyId: "p1", version: 1, targets: [{ kind: "first_response", minutes: 10 }] }]);
     // 10 minutes / 4 = 150,000ms max safe — 5 minutes is well above that.
-    await expect(saveWorkerSettings(prisma, { activePollIntervalMs: 300_000, reconciliationIntervalMs: 3_600_000 })).rejects.toThrow(
+    await expect(saveWorkerSettings(prisma, { activePollIntervalMs: 300_000, reconciliationIntervalMs: 1_800_000 })).rejects.toThrow(
       /too long for the shortest configured SLA target/,
     );
-  });
-});
-
-describe("recordWorkerCycleOutcome", () => {
-  it("advances the heartbeat and the per-kind run timestamp on a completed cycle", async () => {
-    const prisma = createFakePrisma();
-    await getOrCreateWorkerSettings(prisma);
-
-    await recordWorkerCycleOutcome(prisma, "active_set_poll", 0);
-    const settings = await getOrCreateWorkerSettings(prisma);
-
-    expect(settings.lastHeartbeatAt).not.toBeNull();
-    expect(settings.lastActivePollAt).not.toBeNull();
-    expect(settings.lastActivePollFailures).toBe(0);
-    expect(settings.lastReconciliationAt).toBeNull();
-  });
-
-  it("advances only the heartbeat when the cycle threw (failureCount null)", async () => {
-    const prisma = createFakePrisma();
-    await getOrCreateWorkerSettings(prisma);
-
-    await recordWorkerCycleOutcome(prisma, "reconciliation_sweep", null);
-    const settings = await getOrCreateWorkerSettings(prisma);
-
-    expect(settings.lastHeartbeatAt).not.toBeNull();
-    expect(settings.lastReconciliationAt).toBeNull();
-    expect(settings.lastReconciliationFailures).toBeNull();
-  });
-});
-
-describe("recordWorkerNextRun", () => {
-  it("persists the given time under the matching kind's field, leaving the other kind untouched", async () => {
-    const prisma = createFakePrisma();
-    const nextActive = new Date("2026-01-01T00:05:00Z");
-
-    await recordWorkerNextRun(prisma, "active_set_poll", nextActive);
-    const settings = await getOrCreateWorkerSettings(prisma);
-
-    expect(settings.nextActivePollAt).toEqual(nextActive);
-    expect(settings.nextReconciliationAt).toBeNull();
-  });
-
-  it("overwrites a previously recorded next-run time for the same kind", async () => {
-    const prisma = createFakePrisma();
-
-    await recordWorkerNextRun(prisma, "reconciliation_sweep", new Date("2026-01-01T01:00:00Z"));
-    const updated = new Date("2026-01-01T02:00:00Z");
-    await recordWorkerNextRun(prisma, "reconciliation_sweep", updated);
-
-    const settings = await getOrCreateWorkerSettings(prisma);
-    expect(settings.nextReconciliationAt).toEqual(updated);
   });
 });

@@ -2,8 +2,8 @@ import type { AdvisoryLockConnection } from "@sla/db";
 
 /**
  * "acquiring": no lock attempt has completed yet (typically the database is
- * unreachable). "standby": another instance holds the lock; this one retries
- * and runs no cycles. "active": this instance holds the lock and runs cycles.
+ * unreachable). "standby": another worker holds the election; this one
+ * retries. "active": this worker holds it (and runs the watchdog).
  */
 export type WorkerRole = "acquiring" | "standby" | "active";
 
@@ -14,7 +14,7 @@ export interface WorkerLeadershipOptions {
   /** How often the active instance round-trips its lock connection, so a silently dead one is noticed. */
   pingMs: number;
   onAcquired: () => void;
-  /** The lock is gone (connection died). Cycles must stop: another instance may already hold it. */
+  /** The lock is gone (connection died): another worker may already hold the election, so the holder's duty must stop. */
   onLost: (error: Error) => void;
 }
 
@@ -24,15 +24,18 @@ export interface WorkerLeadership {
 }
 
 /**
- * Roadmap step 42: the worker is only safe as one instance — two would race
- * on `Integration.cursor`. `index.ts`'s `inFlight` flag only serializes
- * cycles within a process; this serializes processes, via a Postgres
- * session-level advisory lock held for the process's whole lifetime. A
- * deploy that briefly overlaps two containers, or `--scale worker=2`, leaves
- * the newcomer in standby until the holder exits and Postgres releases the
- * lock with its session.
+ * Elects one worker process for duties that must happen exactly once across
+ * the fleet, via a Postgres session-level advisory lock held for as long as
+ * the process holds the election. Roadmap step 42 originally used this to
+ * make the whole worker a singleton (two would have raced on
+ * `Integration.cursor`); that protection now comes from per-organization
+ * leases (`@sla/db`'s `OrganizationWorkState`), so every worker processes
+ * organizations and this lock only decides who runs the stalled-work
+ * watchdog — the one duty that would page twice if every worker did it.
  *
- * Not horizontal scaling: a standby does nothing but retry.
+ * A process that doesn't win the election ("standby") just keeps retrying;
+ * if the holder's connection dies the lock is released with its session and
+ * another worker's next retry takes over.
  */
 export function startWorkerLeadership(options: WorkerLeadershipOptions): WorkerLeadership {
   let role: WorkerRole = "acquiring";

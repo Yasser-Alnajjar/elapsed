@@ -48,14 +48,17 @@ export {
   MAX_ACTIVE_POLL_INTERVAL_MS,
   MIN_RECONCILIATION_INTERVAL_MS,
   MAX_RECONCILIATION_INTERVAL_MS,
+  DEFAULT_RECONCILIATION_INTERVAL_MS,
+  clampReconciliationIntervalMs,
   ACTIVE_POLL_SAFETY_DIVISOR,
   getOrCreateWorkerSettings,
   getWorkerSettingsForRead,
   getMinimumConfiguredSlaTargetMinutes,
   validateWorkerSettingsInput,
   saveWorkerSettings,
-  recordWorkerCycleOutcome,
-  recordWorkerNextRun,
+  recordWorkerHeartbeat,
+  recordOrganizationRunOutcome,
+  getWorkStateNextRuns,
   deriveWorkerStatus,
   WorkerSettingsValidationError,
 } from "./worker-settings";
@@ -64,6 +67,25 @@ export type {
   WorkerSettingsRecord,
   WorkerStatus,
 } from "./worker-settings";
+
+export {
+  DEFAULT_LEASE_TTL_MS,
+  reconciliationSafetyMarginMs,
+  ensureOrganizationWorkStates,
+  claimDueOrganizations,
+  renewLease,
+  isLeaseHeld,
+  completeWork,
+  releaseLease,
+  msUntilNextClaimable,
+  getWorkStateSummary,
+} from "./organization-work-state";
+export type {
+  ClaimedWork,
+  OrganizationWorkKind,
+  WorkOutcome,
+  WorkStateSummary,
+} from "./organization-work-state";
 
 export {
   WORKER_ADVISORY_LOCK_KEY,

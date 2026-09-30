@@ -101,9 +101,9 @@ known performance problem; backups age out on the schedule above.
 There is one owner and no rota. Alerting that exists in code:
 
 - **Stalled worker cycle** (verified, `apps/worker/src/watchdog.ts`,
-  `ops-alert.ts`). The worker checks every 2 minutes. If the active-set poll or
-  the reconciliation sweep has not completed in more than 3x its interval
-  (minimum 60 s), it sends a Sentry message and, if configured, a Slack webhook
+  `ops-alert.ts`). One elected worker checks every 2 minutes. If any
+  organization's active-set poll or reconciliation is more than two intervals
+  overdue (i.e. last run more than 3x its interval ago; minimum 60 s), it sends a Sentry message and, if configured, a Slack webhook
   (`OPS_ALERT_SLACK_WEBHOOK_URL`) and/or an email (`OPS_ALERT_EMAIL`, sent
   through `DEPLOYMENT_SMTP_*`). It also sends one recovery notice. If none of
   those are configured, nothing is sent.

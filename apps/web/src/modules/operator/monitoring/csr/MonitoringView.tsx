@@ -56,8 +56,9 @@ interface MonitoringViewProps {
 /**
  * Operator Monitoring — the active-set poll and reconciliation sweep
  * intervals that drive `apps/worker`'s two-speed scheduler, plus its
- * observed run status. Global, not per-organization: one worker process
- * polls every organization on the platform on these same two timers (see
+ * observed run status. The intervals are global, not per-organization: every
+ * worker process applies these same two to every organization on the platform
+ * (each organization's own next-due times live in `OrganizationWorkState`; see
  * `@sla/db`'s `WorkerSettings` doc comment). Only reachable by platform
  * operators (`PLATFORM_ADMIN_EMAILS`) — see `WorkerSettingsActions.getMonitoringData`;
  * `data.canEdit` is still honored by the controls below.

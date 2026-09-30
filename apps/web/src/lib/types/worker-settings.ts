@@ -15,7 +15,7 @@ export type { WorkerStatus };
 const MIN_ACTIVE_POLL_INTERVAL_MS = 5_000;
 const MAX_ACTIVE_POLL_INTERVAL_MS = 30 * 60_000;
 const MIN_RECONCILIATION_INTERVAL_MS = 5 * 60_000;
-const MAX_RECONCILIATION_INTERVAL_MS = 24 * 60 * 60_000;
+const MAX_RECONCILIATION_INTERVAL_MS = 30 * 60_000;
 
 /** Mirrors the API's `WorkerSettings & WorkerStatus` response shape — see apps/web/src/app/api/settings/worker/route.ts. */
 export interface WorkerMonitoringData {

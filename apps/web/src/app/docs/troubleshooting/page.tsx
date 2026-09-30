@@ -185,7 +185,7 @@ const issues: Issue[] = [
     title: "Data appears stale",
     symptom: "A known recent change in Zendesk/Jira hasn't shown up yet.",
     resolution:
-      "Allow up to 5 minutes for an active case under normal polling, or up to 60 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).",
+      "Allow up to 5 minutes for an active case under normal polling, or up to 30 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).",
   },
   {
     id: "needs-reauth",

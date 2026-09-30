@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@sla/db";
 import { runCommitmentPipeline, runEvaluationPipeline, runNextReplyCyclePipeline } from "@sla/commitments";
-import { runCycle } from "../src/cycle";
+import { emptyCycleResult, processOrganization, runCycle, type OrganizationRunContext } from "../src/cycle";
+import { createLogger } from "@sla/logger";
+import { LeaseLostError, type LeaseGuard } from "../src/lease";
 import { captureException } from "../src/sentry";
 import type { WorkerConfig } from "../src/config";
 
@@ -167,8 +169,11 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     expect(row.credentials).toEqual({ accessToken: "token-1", tokenType: "Bearer", scope: "read" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(captureExceptionMock).toHaveBeenCalledTimes(1);
-    expect(result.failures).toEqual([
-      { organizationId: "org_1", stage: "ingest:linear", error: row.lastSyncError },
+    // Customer-side integration health (recorded on the Integration and in `integrationIssues`),
+    // not a failure of the worker: it must not make the run "failed".
+    expect(result.failures).toEqual([]);
+    expect(result.integrationIssues).toEqual([
+      { organizationId: "org_1", provider: "linear", issue: "permission_denied", message: row.lastSyncError },
     ]);
   });
 
@@ -176,10 +181,12 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     const { row, prisma } = fakeDb("connected");
     const fetchMock = stubFetch(() => jsonResponse(401, { errors: [{ message: "Authentication required" }] }));
 
-    await runCycle(prisma, config, "active_set_poll");
+    const result = await runCycle(prisma, config, "active_set_poll");
 
     expect(row.status).toBe("reauth_required");
     expect(row.lastSyncError).toBe("Linear needs to be reconnected");
+    expect(result.failures).toEqual([]);
+    expect(result.integrationIssues).toMatchObject([{ provider: "linear", issue: "reauth_required" }]);
     expect(row.credentials.reauthRequired).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(captureExceptionMock).not.toHaveBeenCalled();
@@ -449,5 +456,72 @@ describe("runCycle — bounded organization concurrency", () => {
     expect(result.evaluationsCreated).toBe(7);
     expect(overlap.calls).not.toContain("org_2");
     expect(overlap.calls).toHaveLength(7);
+  });
+});
+
+
+describe("processOrganization — lease handling (multi-worker)", () => {
+  function ctx(lease?: LeaseGuard): OrganizationRunContext {
+    return {
+      kind: "active_set_poll",
+      logger: createLogger(),
+      result: emptyCycleResult("active_set_poll"),
+      position: "1/1",
+      inFlight: () => 1,
+      lease,
+    };
+  }
+  const organization = (row: { id: string; provider: string; credentials: unknown; status: string }) => ({ id: "org_1", integrations: [row] });
+  const guard = (overrides: Partial<LeaseGuard> = {}): LeaseGuard => ({
+    isValid: () => true,
+    assertValid: () => undefined,
+    assertHeld: async () => undefined,
+    ...overrides,
+  });
+
+  it("with a valid lease behaves exactly like a cycle run", async () => {
+    const { row, prisma } = fakeDb("connected");
+    stubFetch(() => jsonResponse(200, emptyIssuesPage));
+    const context = ctx(guard());
+    await processOrganization(prisma, config, organization(row), context);
+    expect(context.result.failures).toEqual([]);
+    expect(row.lastSyncAt).not.toBeNull();
+  });
+
+  it("a lease lost before ingestion stops the run before any provider call or write", async () => {
+    const { row, prisma } = fakeDb("connected");
+    const fetchMock = stubFetch(() => jsonResponse(200, emptyIssuesPage));
+    const lost = guard({ assertValid: () => { throw new LeaseLostError("org_1", "taken over"); } });
+
+    await expect(processOrganization(prisma, config, organization(row), ctx(lost))).rejects.toThrow(LeaseLostError);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(row.lastSyncAt).toBeNull();
+  });
+
+  it("a LeaseLostError raised by a fenced cursor write during ingestion aborts the run — it is not recorded as a sync failure", async () => {
+    const { row, prisma } = fakeDb("connected");
+    stubFetch(() => jsonResponse(200, emptyIssuesPage));
+    // The fence rejects the cursor write the provider package makes mid-backfill.
+    vi.mocked(prisma.integration.update).mockImplementationOnce(async () => {
+      throw new LeaseLostError("org_1", "integration write rejected: lease no longer held");
+    });
+    const context = ctx(guard());
+
+    await expect(processOrganization(prisma, config, organization(row), context)).rejects.toThrow(LeaseLostError);
+    expect(context.result.failures).toEqual([]); // not an "ingest:linear" failure
+    expect(row.lastSyncError).toBeNull();
+    expect(captureExceptionMock).not.toHaveBeenCalled(); // and not a Sentry-worthy ingest error
+  });
+
+  it("a lease that cannot be confirmed in the database stops the run before the projection phase", async () => {
+    const { row, prisma } = fakeDb("connected");
+    vi.mocked(runCommitmentPipeline).mockClear();
+    stubFetch(() => jsonResponse(200, emptyIssuesPage));
+    const context = ctx(guard({ assertHeld: async () => { throw new LeaseLostError("org_1", "fenced out"); } }));
+
+    await expect(processOrganization(prisma, config, organization(row), context)).rejects.toThrow(LeaseLostError);
+    // Ingestion happened (it is covered by the per-write fence), but nothing after the check did.
+    expect(vi.mocked(runCommitmentPipeline)).not.toHaveBeenCalled();
+    expect(row.lastSyncAt).toBeNull();
   });
 });

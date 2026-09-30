@@ -2,170 +2,165 @@ import {
   connectAdvisoryLockConnection,
   getOrCreateWorkerSettings,
   getPrismaClient,
-  recordWorkerCycleOutcome,
-  recordWorkerNextRun,
+  recordOrganizationRunOutcome,
+  recordWorkerHeartbeat,
   WORKER_ADVISORY_LOCK_KEY,
 } from "@sla/db";
 import { createLogger } from "@sla/logger";
 import { loadWorkerConfig } from "./config";
-import { runCycle, type CycleKind } from "./cycle";
 import { startHealthServer, type WorkerHealthServer } from "./health-server";
 import { startWorkerLeadership, type WorkerLeadership } from "./leader-lock";
+import { createOrganizationProcessor } from "./organization-processor";
 import { captureException, flushSentry, initSentry } from "./sentry";
+import { createSettingsReader } from "./settings-reader";
 import { startStalledCycleWatchdog } from "./watchdog";
+import { startWorkLoop, type WorkLoop } from "./work-loop";
+import { createDbWorkStore } from "./work-store";
 
 // First, before anything else can throw — every capture call below is a
 // no-op until this runs, so it must run before `main()`'s own await points.
 initSentry();
 
 const logger = createLogger();
-const prisma = getPrismaClient();
 const config = loadWorkerConfig();
+// The pool is per process, so its size is part of the multi-worker
+// connection budget — sized from the concurrency unless the operator set it
+// (see `resolveDatabasePoolMax`). Must be in place before the client is built.
+process.env.DATABASE_POOL_MAX = String(config.databasePoolMax);
+const prisma = getPrismaClient();
+
 let healthServer: WorkerHealthServer | null = null;
 let watchdogTimer: NodeJS.Timeout | null = null;
 let leadership: WorkerLeadership | null = null;
-
-/**
- * Cycles are serialized: both kinds advance the same per-integration cursor,
- * so running two at once would race on it and double-fetch. A cycle requested
- * while another is in flight is skipped rather than queued — the next tick
- * picks up the same work, and skipping is harmless because every stage is
- * idempotent (`(integrationId, providerEventId)` on RawEvent, a deterministic
- * Evaluation id, `@@unique([caseId, kind])` on Commitment).
- */
-let inFlight = false;
+let workLoop: WorkLoop | null = null;
 let shuttingDown = false;
 
 /**
- * `setTimeout`, not `setInterval`: each kind reschedules only itself, only
- * after its own tick fully finishes, re-reading the current interval from
- * the database at that point. That's what makes an owner's change from the
- * Monitoring settings page take effect on the very next tick with no
- * restart, and it's structurally impossible to end up with two timers for
- * the same kind — the next one is never created until the current run (and
- * any reschedule from a previous change) is done.
+ * Scheduling is not done here any more. Every worker process runs the same
+ * loop (`work-loop.ts`): claim whichever organizations are due through the
+ * database (`@sla/db`'s `OrganizationWorkState`), process them under a lease,
+ * record the outcome and the next due time. Any number of workers can run at
+ * once; the claim is what keeps two from processing the same organization, and
+ * the lease's fencing token is what keeps a worker that lost one from
+ * publishing stale results.
+ *
+ * What that replaces: one global "cycle" loop gated by a process-wide
+ * advisory lock (one worker active, the rest standby), where an active cycle
+ * over every organization blocked the next and reconciliation could be
+ * skipped behind it.
  */
-const timers: Record<CycleKind, NodeJS.Timeout | null> = {
-  active_set_poll: null,
-  reconciliation_sweep: null,
-};
-
-async function currentIntervalMs(kind: CycleKind): Promise<number> {
-  const settings = await getOrCreateWorkerSettings(prisma);
-  return kind === "active_set_poll" ? settings.activePollIntervalMs : settings.reconciliationIntervalMs;
-}
-
-function scheduleNext(kind: CycleKind): void {
-  if (shuttingDown) return;
-  void currentIntervalMs(kind).then(async (intervalMs) => {
-    if (shuttingDown) return;
-    // Persisted here — the moment a timer is actually armed — rather than
-    // derived from `last*At + intervalMs` anywhere downstream: this is the
-    // one place that knows both the just-read interval and that a timer is
-    // really about to be set for it.
-    await recordWorkerNextRun(prisma, kind, new Date(Date.now() + intervalMs));
-    if (shuttingDown) return;
-    timers[kind] = setTimeout(() => void tick(kind), intervalMs);
-  });
-}
-
-async function tick(kind: CycleKind): Promise<void> {
-  if (inFlight) {
-    logger.info("cycle_skipped", { kind, reason: "another cycle in flight" });
-    scheduleNext(kind);
-    return;
-  }
-
-  inFlight = true;
-  const startedAt = Date.now();
-  // Ties every structured log line this cycle produces — including ones
-  // emitted per-organization/per-integration deep in `cycle.ts` — to one
-  // run (roadmap 7.4).
-  const cycleId = `${kind}:${startedAt}`;
-  // A cycle can run for tens of seconds across many organizations and only
-  // logs `cycle_finished` at the end — without this the worker looks idle.
-  logger.info("cycle_started", { kind, cycleId });
-  try {
-    const activePollMs = (await getOrCreateWorkerSettings(prisma)).activePollIntervalMs;
-    const result = await runCycle(prisma, config, kind, cycleId, { activePollMs });
-    await recordWorkerCycleOutcome(prisma, kind, result.failures.length);
-    logger.info("cycle_finished", { cycleId, durationMs: Date.now() - startedAt, ...result });
-  } catch (error) {
-    await recordWorkerCycleOutcome(prisma, kind, null);
-    captureException(error, { kind, stage: "cycle" });
-    logger.error("cycle_failed", {
-      kind,
-      cycleId,
-      durationMs: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  } finally {
-    inFlight = false;
-  }
-
-  scheduleNext(kind);
-}
-
 async function main(): Promise<void> {
   const settings = await getOrCreateWorkerSettings(prisma);
   logger.info("worker_started", {
+    workerId: config.workerId,
     activePollMs: settings.activePollIntervalMs,
     reconciliationMs: settings.reconciliationIntervalMs,
+    organizationConcurrency: config.organizationConcurrency,
+    leaseTtlMs: config.leaseTtlMs,
+    claimPollMs: config.claimPollMs,
+    databasePoolMax: config.databasePoolMax,
     appUrlConfigured: config.appUrl !== null,
     healthPort: config.healthPort,
     opsAlertConfigured: config.opsAlert !== null,
   });
 
-  // Leadership before the health server so the server can always ask for
-  // the current role; the health server itself still starts immediately, so
-  // a standby is probeable while it waits.
-  leadership = startWorkerLeadership({
+  healthServer = startHealthServer(prisma, config.healthPort, () => ({
+    workerId: config.workerId,
+    started: workLoop !== null,
+    watchdogLeader: leadership?.role() === "active",
+    msSinceLastTick: workLoop?.msSinceLastTick() ?? 0,
+    loop: workLoop?.stats() ?? null,
+    organizationConcurrency: config.organizationConcurrency,
+    databasePoolMax: config.databasePoolMax,
+  }));
+
+  const readSettings = createSettingsReader(prisma);
+  workLoop = startWorkLoop({
+    workerId: config.workerId,
+    capacity: config.organizationConcurrency,
+    leaseTtlMs: config.leaseTtlMs,
+    claimPollMs: config.claimPollMs,
+    logger,
+    store: createDbWorkStore(prisma, config.workerId),
+    process: createOrganizationProcessor({
+      prisma,
+      config,
+      logger,
+      activePollMs: async () => (await readSettings()).activePollIntervalMs,
+    }),
+    intervals: async () => {
+      const current = await readSettings();
+      return { activeIntervalMs: current.activePollIntervalMs, reconciliationIntervalMs: current.reconciliationIntervalMs };
+    },
+    heartbeat: () => recordWorkerHeartbeat(prisma),
+    onRunRecorded: (claim) => recordOrganizationRunOutcome(prisma, claim.kind, claim.startedAt),
+  });
+
+  startWatchdogLeadership();
+}
+
+/**
+ * The advisory lock is no longer a worker-wide leader lock that serializes
+ * all processing — it only elects which one worker runs the stalled-work
+ * watchdog, the one duty that would page twice if every worker did it. Losing
+ * the election is not fatal: the work loop carries on, this worker just stops
+ * watching, and tries to win the election back.
+ */
+function startWatchdogLeadership(): void {
+  if (shuttingDown) return;
+  const current = startWorkerLeadership({
     connect: () => connectAdvisoryLockConnection(),
     lockKey: WORKER_ADVISORY_LOCK_KEY,
     retryMs: config.lockRetryMs,
     pingMs: config.lockPingMs,
-    onAcquired: startCycles,
-    // Exit rather than try to recover in place: another instance may take
-    // the lock the moment this connection dropped, and every stage is
-    // idempotent, so a cycle cut off mid-way is safe. The restart policy
-    // brings this process back, into standby if the other one won.
-    onLost: () => void shutdown("advisory_lock_lost", 1),
+    onAcquired: () => {
+      if (shuttingDown) return;
+      logger.info("watchdog_leader_acquired", { workerId: config.workerId });
+      watchdogTimer = startStalledCycleWatchdog(prisma, config.opsAlert);
+    },
+    onLost: () => {
+      logger.warn("watchdog_leader_lost", { workerId: config.workerId });
+      if (watchdogTimer) clearInterval(watchdogTimer);
+      watchdogTimer = null;
+      void current.stop().finally(() => {
+        if (!shuttingDown) setTimeout(startWatchdogLeadership, config.lockRetryMs).unref();
+      });
+    },
   });
-  const currentLeadership = leadership;
-  healthServer = startHealthServer(prisma, config.healthPort, () => currentLeadership.role());
-}
-
-function startCycles(): void {
-  if (shuttingDown) return;
-  // Only the lock holder watches for stalls: a standby alerting too would
-  // just duplicate every page.
-  watchdogTimer = startStalledCycleWatchdog(prisma, config.opsAlert);
-
-  // Active-set poll runs immediately on boot; reconciliation only after its
-  // own interval first elapses — same startup order as before this file
-  // moved to dynamic scheduling.
-  void tick("active_set_poll");
-  scheduleNext("reconciliation_sweep");
+  leadership = current;
 }
 
 void main();
 
-async function shutdown(signal: string, exitCode = 0): Promise<void> {
+/**
+ * Graceful shutdown: stop claiming, let in-flight organizations finish and
+ * record themselves (up to `WORKER_SHUTDOWN_GRACE_MS`), then release whatever
+ * is still running so another worker can take it straight away instead of
+ * waiting for the lease to expire. Every stage is idempotent, so cutting a
+ * run off is safe; finishing it is just cheaper than redoing it. A fatal
+ * error skips the grace period — the process state is undefined.
+ */
+async function shutdown(signal: string, exitCode = 0, graceMs = config.shutdownGraceMs): Promise<void> {
   // Re-entry guard: `pnpm -r` and `tsx watch` each forward SIGINT, so this
   // runs twice on one Ctrl+C; a second `healthServer.close()` rejects with
   // ERR_SERVER_NOT_RUNNING, which `unhandledRejection` below turned into yet
   // another shutdown.
   if (shuttingDown) return;
-  logger.info("worker_stopping", { signal });
+  logger.info("worker_stopping", { signal, workerId: config.workerId, graceMs });
   shuttingDown = true;
-  for (const kind of Object.keys(timers) as CycleKind[]) {
-    if (timers[kind]) clearTimeout(timers[kind]);
-  }
   if (watchdogTimer) clearInterval(watchdogTimer);
-  if (healthServer) await healthServer.close();
-  if (leadership) await leadership.stop();
-  await flushSentry();
-  await prisma.$disconnect();
+  try {
+    if (workLoop) {
+      const { abandoned } = await workLoop.stop(graceMs);
+      logger.info("worker_drained", { workerId: config.workerId, abandoned, ...workLoop.stats() });
+    }
+    if (leadership) await leadership.stop();
+    if (healthServer) await healthServer.close();
+    await flushSentry();
+    await prisma.$disconnect();
+  } catch (error) {
+    logger.error("worker_shutdown_error", { error: error instanceof Error ? error.message : String(error) });
+  }
   process.exit(exitCode);
 }
 
@@ -174,17 +169,17 @@ process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
 // Node's own guidance: the process is in an undefined state after either of
 // these, so log/capture and exit non-zero rather than keep running — the
-// container's restart policy (docker-compose.prod.yml: `unless-stopped`) is
+// container's restart policy (docker-compose.yml: `unless-stopped`) is
 // what actually recovers, matching every other "fail loud, let the
 // supervisor restart it" choice already made in this file's shutdown path.
 process.on("uncaughtException", (error) => {
   captureException(error, { stage: "uncaughtException" });
   logger.error("uncaught_exception", { error: error.message });
-  void shutdown("uncaughtException", 1);
+  void shutdown("uncaughtException", 1, 0);
 });
 
 process.on("unhandledRejection", (reason) => {
   captureException(reason, { stage: "unhandledRejection" });
   logger.error("unhandled_rejection", { error: reason instanceof Error ? reason.message : String(reason) });
-  void shutdown("unhandledRejection", 1);
+  void shutdown("unhandledRejection", 1, 0);
 });

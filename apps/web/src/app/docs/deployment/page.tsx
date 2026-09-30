@@ -92,7 +92,7 @@ const environment = [
   {
     variable: "WORKER_RECONCILIATION_MS",
     usedBy: "worker",
-    notes: "Optional. Defaults to 3600000 ms (1 hour).",
+    notes: "Optional. Defaults to 1800000 ms (30 minutes), which is also the maximum: larger values are capped at 30 minutes.",
   },
 ];
 

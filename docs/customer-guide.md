@@ -157,7 +157,7 @@ Every connection shares the same shape:
 - **Data imported:** the specific resources listed in each provider's section below — never more.
 - **Data never modified:** every ticket-source and engineering-source integration is strictly read-only. The only two things this product ever writes to an external system are a Slack message and an outbound email — both are alerts, never a write-back into Zendesk, Jira, Intercom, Linear, or GitHub.
 - **Correlation:** how a case in one system is matched to a record in another — see [Section 15](#15-correlation-between-systems).
-- **Sync behavior:** a background worker polls each connected system on two schedules — an **active-set poll** (every 5 minutes by default) for open cases with a live commitment, and a **reconciliation sweep** (every 60 minutes by default) that re-checks everything, including closed cases, as a safety net against a missed poll. Zendesk and Jira additionally support a real-time webhook that closes the gap between polls for the one ticket/issue that just changed.
+- **Sync behavior:** a background worker polls each connected system on two schedules — an **active-set poll** (every 5 minutes by default) for open cases with a live commitment, and a **reconciliation sweep** (every 30 minutes by default, and never longer than 30 minutes) that re-checks everything, including closed cases, as a safety net against a missed poll. Zendesk and Jira additionally support a real-time webhook that closes the gap between polls for the one ticket/issue that just changed.
 - **Disconnecting:** always a soft disconnect. The connection stops syncing and its credentials are cleared, but every case, event, and evaluation already recorded stays exactly as it was — nothing is deleted.
 - **Reauthentication:** if a token expires, is revoked, or a refresh attempt fails, the integration is marked **"Needs reconnect"** on the Integrations page, and a banner with a one-click reconnect link appears wherever that provider's data would otherwise be shown (onboarding, the integration's own detail page).
 
@@ -198,7 +198,7 @@ Zendesk doesn't initiate correlation itself in this product — Jira and Linear 
 Nothing. No ticket, field, tag, or comment is ever created or changed in Zendesk.
 
 ### Sync behavior
-Polled every 5 minutes (active cases) and every 60 minutes (full reconciliation). A webhook is also available (Section 20) to close the last few minutes of latency on ticket status changes; it requires a one-time manual setup in Zendesk Admin Center (instructions are shown on the integration's detail page, with a copyable endpoint URL and bearer token). The trigger's request body must be `{"ticket_id": "{{ticket.id}}", "timestamp": "{{ticket.updated_at_with_timestamp}}"}`. The timestamp is required for replay protection, and plain `{{ticket.updated_at}}` won't work because Zendesk renders it as a date with no time (e.g. "May 18"), so those deliveries are rejected with `401`. Zendesk's **Test webhook** button sends a sample body with no `timestamp` and doesn't fill in placeholders, so it gets the same `401`. To test from there, replace the body with a real ticket id and the current UTC time, such as `{"ticket_id": "123", "timestamp": "2026-09-17T08:40Z"}`, and send it within 5 minutes of that time. SLA policies and business-hours schedules are re-imported every cycle, so a policy edit in Zendesk is picked up automatically without reconnecting.
+Polled every 5 minutes (active cases) and every 30 minutes (full reconciliation). A webhook is also available (Section 20) to close the last few minutes of latency on ticket status changes; it requires a one-time manual setup in Zendesk Admin Center (instructions are shown on the integration's detail page, with a copyable endpoint URL and bearer token). The trigger's request body must be `{"ticket_id": "{{ticket.id}}", "timestamp": "{{ticket.updated_at_with_timestamp}}"}`. The timestamp is required for replay protection, and plain `{{ticket.updated_at}}` won't work because Zendesk renders it as a date with no time (e.g. "May 18"), so those deliveries are rejected with `401`. Zendesk's **Test webhook** button sends a sample body with no `timestamp` and doesn't fill in placeholders, so it gets the same `401`. To test from there, replace the body with a real ticket id and the current UTC time, such as `{"ticket_id": "123", "timestamp": "2026-09-17T08:40Z"}`, and send it within 5 minutes of that time. SLA policies and business-hours schedules are re-imported every cycle, so a policy edit in Zendesk is picked up automatically without reconnecting.
 
 ### Known limitations
 - Only two Zendesk SLA metrics currently map to commitments: **First reply time** → first-response, and **resolution time** → resolution. Other Zendesk metrics (next-reply time, requester-wait time, agent-work time, periodic-update time) are not currently imported as separate commitments.
@@ -569,16 +569,16 @@ Every setting that exists in the product today, in one place.
 |---|---|---|
 | **Initial backfill** | Once per integration, at connect time | Last 90 days of history from that provider (fixed window) |
 | **Active-set poll** | Every 5 minutes by default | Open cases with a live commitment — the working set most likely to need a fresh evaluation |
-| **Reconciliation sweep** | Every 60 minutes by default | Every case, including closed ones — catches anything a webhook or an active-set poll might have missed |
+| **Reconciliation sweep** | Every 30 minutes by default (30 minutes is the maximum) | Every case, including closed ones — catches anything a webhook or an active-set poll might have missed |
 | **Webhook (Zendesk, Jira only)** | Real time, on delivery | The single ticket/issue the webhook fired for — re-fetches it, re-evaluates it, and can send an alert within moments, independent of the poll schedule |
 
-**Providers without webhook support** (Intercom, Linear, GitHub) rely entirely on the poll schedule above — expect data from those systems to be current as of the last successful 5-minute (or, worst case, 60-minute) sync, not instantaneous.
+**Providers without webhook support** (Intercom, Linear, GitHub) rely entirely on the poll schedule above — expect data from those systems to be current as of the last successful 5-minute (or, worst case, 30-minute) sync, not instantaneous.
 
 **When a provider is unavailable:** a failed sync for one integration does not block syncing for any other integration, or for any other organization on the platform. The last successfully synced state is kept, the failure is recorded, and the next scheduled sync attempt tries again automatically. If the failure is caused by an expired or revoked connection rather than a transient error, the integration is marked **"Needs reconnect"** and stays in that state until you reconnect it — it will not silently keep retrying a connection that requires your action.
 
 **When records are updated later** (e.g. a ticket's priority changes after the fact, or a status is corrected): the next sync picks up the change as a new event on the timeline and the engine recomputes forward from there. Because computed numbers are never stored as a mutable counter, correcting an underlying event's timing is reflected the next time the affected commitment is evaluated.
 
-**Realistic expectation:** this product does not promise real-time monitoring by default. It promises data that is, at most, one reconciliation cycle old (60 minutes, by default) for anything not covered by a webhook, and typically much fresher (5 minutes or less) for anything currently open. Zendesk and Jira additionally benefit from webhook-driven updates when configured.
+**Realistic expectation:** this product does not promise real-time monitoring by default. It promises data that is, at most, one reconciliation cycle old (30 minutes, by default and at most) for anything not covered by a webhook, and typically much fresher (5 minutes or less) for anything currently open. Zendesk and Jira additionally benefit from webhook-driven updates when configured.
 
 ---
 
@@ -676,7 +676,7 @@ When the product cannot confidently determine something — a link, a leg bounda
 
 ### Data appears stale
 - **Symptom:** a known recent change in Zendesk/Jira hasn't shown up yet.
-- **Expected behavior:** allow up to 5 minutes for an active case under normal polling, or up to 60 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).
+- **Expected behavior:** allow up to 5 minutes for an active case under normal polling, or up to 30 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).
 
 ### Integration needs reauthentication
 - **Symptom:** an integration shows "Needs reconnect" on the Integrations page, or a reconnect banner appears elsewhere.
@@ -705,7 +705,7 @@ No. No issue, status, comment, or field is ever created or changed.
 90 days from the date each integration was connected. This window is fixed and not currently adjustable.
 
 **How often is data refreshed?**
-Every 5 minutes for open cases, every 60 minutes for a full reconciliation sweep, and near-instantly for Zendesk/Jira when a webhook is configured. See [Section 20](#20-data-synchronization).
+Every 5 minutes for open cases, every 30 minutes for a full reconciliation sweep, and near-instantly for Zendesk/Jira when a webhook is configured. See [Section 20](#20-data-synchronization).
 
 **How is an SLA calculated?**
 As working time elapsed against a target, computed from the recorded event history under a specific policy and calendar version, pausing only where the policy says so: never for Zendesk-imported policies, on the "Pending customer" state for policies created in Elapsed. See [Section 13](#13-sla-calculation).

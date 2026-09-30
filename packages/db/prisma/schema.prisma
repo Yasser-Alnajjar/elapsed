@@ -48,6 +48,7 @@ model Organization {
   emailSettings     OrganizationEmailSettings?
   users             User[]
   invitations       OrganizationInvitation[]
+  workState         OrganizationWorkState?
 
   @@map("organizations")
 }
@@ -968,10 +969,11 @@ enum CommitmentStatus {
 /// Singleton row (`id` is always `"singleton"`) holding the worker's
 /// persisted polling configuration and last-observed run state — see
 /// `@sla/db`'s `worker-settings.ts`. There is exactly one worker process for
-/// the whole deployment: it polls every organization on the same two shared
-/// timers (`apps/worker/src/index.ts`), it is not per-organization
-/// scheduling, so this config is deliberately global rather than living on
-/// `Organization`. `activePollIntervalMs`/`reconciliationIntervalMs` start
+/// the whole deployment: the two intervals apply to every organization (each
+/// organization's own next-due times live in `OrganizationWorkState`), so this
+/// config is deliberately global rather than living on `Organization`.
+/// `reconciliationIntervalMs` is capped at 30 minutes wherever it is read,
+/// whatever value is stored here. `activePollIntervalMs`/`reconciliationIntervalMs` start
 /// out equal to the `WORKER_ACTIVE_POLL_MS`/`WORKER_RECONCILIATION_MS` env
 /// vars (bootstrap defaults for a fresh install); once a platform operator
 /// (see `PLATFORM_ADMIN_EMAILS`, `apps/web/src/lib/authz.ts`) saves a
@@ -981,28 +983,86 @@ model WorkerSettings {
   id                         String    @id @default("singleton")
   activePollIntervalMs       Int
   reconciliationIntervalMs   Int
-  /// Written by the worker at the end of every tick, success or failure —
-  /// proof the process is alive and looping, independent of whether a cycle
-  /// actually completed. Used to tell "stopped" apart from "degraded".
+  /// Written by every worker process from its claim loop and after each
+  /// organization run — proof that at least one process is alive and looping.
+  /// Used to tell "stopped" apart from "degraded".
   lastHeartbeatAt            DateTime?
-  /// Written only when an active-set-poll cycle actually completes (did not
-  /// throw); `lastActivePollFailures` is that cycle's per-organization
-  /// failure count (`CycleResult.failures.length`), not a retry counter.
+  /// The start time of the most recent organization run (of either kind)
+  /// that completed, only ever moving forward; `lastActivePollFailures` is
+  /// the number of organizations currently failing, read from
+  /// `OrganizationWorkState`, not a retry counter. Per-organization detail
+  /// lives there; these are the deployment-wide summary.
   lastActivePollAt           DateTime?
   lastActivePollFailures     Int?
   lastReconciliationAt       DateTime?
   lastReconciliationFailures Int?
-  /// The actual next execution time the worker's own scheduler has queued
-  /// (`apps/worker/src/index.ts`'s `scheduleNext`) — written at the moment a
-  /// `setTimeout` is armed, using whatever interval is persisted at that
-  /// instant. Deliberately NOT derived as `last*At + *IntervalMs` anywhere
-  /// (server read model or UI): a cycle can take time to run, and the
-  /// interval can change between the last completed run and the next
-  /// scheduling decision, so only the scheduler itself knows the true next
-  /// run time. Null until the scheduler has armed a timer for that kind at
-  /// least once (e.g. before the worker's first boot tick completes).
+  /// Legacy: written by the single-lane scheduler at the moment it armed a
+  /// timer. Workers no longer write these — with per-organization schedules
+  /// there is no single timer — and the Monitoring read model takes the
+  /// earliest `OrganizationWorkState.*NextDueAt` instead. Kept (not dropped)
+  /// so the column set stays backward compatible for a rolling deploy.
   nextActivePollAt           DateTime?
   nextReconciliationAt       DateTime?
 
   @@map("worker_settings")
+}
+
+/// Which of the two per-organization polling jobs a lease was claimed for.
+/// Reconciliation is a strict superset of active work (same ingestion, full
+/// re-derivation instead of incremental), which is why one lease covers both
+/// and a reconciliation run also satisfies the organization's active slot.
+enum OrganizationWorkKind {
+  active
+  reconciliation
+}
+
+/// Per-organization scheduling state and lease — the only coordination
+/// between worker processes (no Redis or external queue). One row per
+/// organization, claimed atomically by whichever worker finds it due
+/// (`FOR UPDATE SKIP LOCKED`, see `packages/db/src/organization-work-state.ts`).
+///
+/// The lease is what makes provider ingestion — which advances
+/// `Integration.cursor` — safe with several workers: only the lease holder
+/// touches an organization. `leaseToken` is a fencing token, incremented on
+/// every claim: completing, renewing or releasing work is a compare-and-set on
+/// (`leaseOwner`, `leaseToken`), so a worker whose lease expired and was
+/// re-claimed can no longer record results, and checks it against the row
+/// before its irreversible steps. The per-organization advisory lock
+/// (`withOrganizationSlaLock`) is kept as the backstop for the projection
+/// phase, where webhooks and onboarding also write.
+///
+/// All instants are compared against the database's own clock (`now()`), never
+/// a worker's, so skew between workers cannot make a lease look expired early.
+/// Due times are start-to-start: `activeNextDueAt` is the claim's start plus the
+/// active interval, so an overrun organization is simply due again on
+/// completion (one run, never a catch-up burst).
+model OrganizationWorkState {
+  organizationId               String                @id
+  /// When the next active poll for this organization is due.
+  activeNextDueAt              DateTime              @default(now()) @db.Timestamptz(3)
+  /// When the next reconciliation is due; never later than the configured
+  /// interval (max 30 minutes) after the previous one started.
+  reconciliationNextDueAt      DateTime              @default(now()) @db.Timestamptz(3)
+  /// Identity of the worker process holding the lease; null when unleased.
+  leaseOwner                   String?
+  leaseKind                    OrganizationWorkKind?
+  /// Fencing token: incremented on every successful claim.
+  leaseToken                   BigInt                @default(0)
+  /// The lease is reclaimable once this passes (a crashed holder's way out).
+  leaseExpiresAt               DateTime?             @db.Timestamptz(3)
+  lastStartedAt                DateTime?             @db.Timestamptz(3)
+  lastFinishedAt               DateTime?             @db.Timestamptz(3)
+  lastActiveFinishedAt         DateTime?             @db.Timestamptz(3)
+  lastReconciliationFinishedAt DateTime?             @db.Timestamptz(3)
+  /// Runs in a row that recorded a failure (a failed stage, a thrown error,
+  /// or an abandoned lease); reset by a clean run.
+  consecutiveFailures          Int                   @default(0)
+  lastFailureAt                DateTime?             @db.Timestamptz(3)
+  lastError                    String?
+  organization                 Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([activeNextDueAt])
+  @@index([reconciliationNextDueAt])
+  @@index([leaseExpiresAt])
+  @@map("organization_work_states")
 }

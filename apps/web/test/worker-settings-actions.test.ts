@@ -21,6 +21,7 @@ vi.mock("@sla/db", () => ({
   getPrismaClient: vi.fn(() => ({})),
   getWorkerSettingsForRead: db.getWorkerSettingsForRead,
   deriveWorkerStatus: vi.fn(() => "running"),
+  getWorkStateNextRuns: vi.fn(async () => ({ nextActivePollAt: null, nextReconciliationAt: null })),
 }));
 
 function sessionFor(email: string): Session {
@@ -33,7 +34,7 @@ describe("WorkerSettingsActions", () => {
     db.getWorkerSettingsForRead.mockReset();
     db.getWorkerSettingsForRead.mockResolvedValue({
       activePollIntervalMs: 300_000,
-      reconciliationIntervalMs: 3_600_000,
+      reconciliationIntervalMs: 1_800_000,
       lastActivePollAt: null,
       nextActivePollAt: null,
       lastReconciliationAt: null,
@@ -55,7 +56,7 @@ describe("WorkerSettingsActions", () => {
 
     await expect(WorkerSettingsActions.getMonitoringData()).resolves.toMatchObject({
       status: "running",
-      reconciliationIntervalMs: 3_600_000,
+      reconciliationIntervalMs: 1_800_000,
       canEdit: true,
     });
   });

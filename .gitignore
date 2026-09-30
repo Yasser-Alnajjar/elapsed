@@ -24,3 +24,6 @@ apps/concierge/data/
 # Local self-signed TLS certs for nginx (SSL_CERT_DIR in .env)
 apps/nginx/ssl/
 .env.docker
+
+# Multi-worker benchmark output (apps/worker/scripts/bench/run.ts)
+apps/worker/scripts/bench/out/

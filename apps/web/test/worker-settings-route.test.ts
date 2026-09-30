@@ -23,6 +23,7 @@ vi.mock("@sla/db", () => ({
   saveWorkerSettings: db.saveWorkerSettings,
   getWorkerSettingsForRead: db.getWorkerSettingsForRead,
   deriveWorkerStatus: vi.fn(() => "running"),
+  getWorkStateNextRuns: vi.fn(async () => ({ nextActivePollAt: null, nextReconciliationAt: null })),
   WorkerSettingsValidationError: class WorkerSettingsValidationError extends Error {},
 }));
 
@@ -46,7 +47,7 @@ function postRequest() {
   return new Request("http://localhost/api/settings/worker", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ activePollIntervalMs: 300_000, reconciliationIntervalMs: 3_600_000 }),
+    body: JSON.stringify({ activePollIntervalMs: 300_000, reconciliationIntervalMs: 1_800_000 }),
   });
 }
 
@@ -90,7 +91,7 @@ describe("POST /api/settings/worker", () => {
     auth.session = sessionFor("ops@watchtower.test", "member");
     db.saveWorkerSettings.mockResolvedValue({
       activePollIntervalMs: 300_000,
-      reconciliationIntervalMs: 3_600_000,
+      reconciliationIntervalMs: 1_800_000,
       lastActivePollAt: null,
       nextActivePollAt: null,
       lastReconciliationAt: null,
@@ -144,7 +145,7 @@ describe("GET /api/settings/worker", () => {
     auth.session = sessionFor("ops@watchtower.test", "member");
     db.getWorkerSettingsForRead.mockResolvedValue({
       activePollIntervalMs: 300_000,
-      reconciliationIntervalMs: 3_600_000,
+      reconciliationIntervalMs: 1_800_000,
       lastActivePollAt: null,
       nextActivePollAt: null,
       lastReconciliationAt: null,

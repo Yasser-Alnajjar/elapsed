@@ -26,7 +26,7 @@
 - Query counts stay tiny (8–17 per stage) after the Phase 3 batching; the cost is loading and evaluating events: 199k NormalizedEvents scanned by next-reply on every poll at 5k cases, and 4,710 of 10,000 commitments re-evaluated in the poll.
 - The poll's "active" scope narrows little on this seed (about 80% of seeded cases are open). A real tenant with a lower open ratio will do less; a tenant whose cases mostly stay open will not.
 - **The organization SLA lock is held for the whole tick** (evaluate included): 6.9 s at 5k cases, 17.6 s at 10k (sweep). While it is held, webhooks for that organization wait for it.
-- The default poll interval is 5 minutes and the sweep runs hourly (`packages/db/src/worker-settings.ts`), so a single 10k-case organization uses roughly 3.5% of each poll window and about 0.5% of the hour in sweeps, on this hardware.
+- The default poll interval is 5 minutes and the sweep runs every 30 minutes at most (`packages/db/src/worker-settings.ts`), so a single 10k-case organization uses roughly 3.5% of each poll window and about 1% of the half hour in sweeps, on this hardware. At a 10-second poll interval this organization's poll (10 s at 10k cases) would run back to back; with per-organization leases that only ever occupies one worker slot and no longer delays any other organization.
 
 ## Many organizations (10 organizations × 500 cases, ~40 events per case)
 
@@ -36,7 +36,7 @@ The shape of today's 10 live tenants if each were small. One worker run scoped t
 | --- | --- | --- | --- |
 | 10 orgs × 500 cases | 14.8 s | 0.5 s avg (max 0.75 s), 5.3 s total | 0.74 s avg (max 0.97 s), 7.4 s total |
 
-Organizations are cycled one after another, so tick time is the sum over organizations: about 0.5 s of poll work per 500-case organization here. The lock is per organization, so a large tenant does not block a small one's webhooks; it does lengthen the total tick.
+Those numbers are from one process cycling the organizations one after another, so tick time was the sum over organizations: about 0.5 s of poll work per 500-case organization here. Workers now process organizations independently (up to `ORGANIZATION_CONCURRENCY` at once per worker, and as many workers as you run), so that sum is the total work to spread rather than the time any one organization waits. The lock is per organization, so a large tenant does not block a small one's webhooks; it does lengthen the total tick.
 
 ## Stated limits (what the numbers support, and no more)
 

@@ -598,6 +598,12 @@ describe.skipIf(!TEST_DATABASE_URL)(
           opsAlert: null,
           lockRetryMs: 0,
           lockPingMs: 0,
+          organizationConcurrency: 1,
+          workerId: "source-sync-test",
+          leaseTtlMs: 60_000,
+          claimPollMs: 1_000,
+          shutdownGraceMs: 0,
+          databasePoolMax: 4,
         };
         const active = await runCycle(prisma, config, "active_set_poll");
         const sweep = await runCycle(prisma, config, "reconciliation_sweep");

@@ -80,12 +80,23 @@ services:
       DEPLOYMENT_SMTP_PASSWORD: ${DEPLOYMENT_SMTP_PASSWORD:-}
       DEPLOYMENT_SMTP_FROM: ${DEPLOYMENT_SMTP_FROM:-}
 
+  # Any number of identical worker containers can run side by side; they split
+  # the organizations between them through per-organization leases in
+  # Postgres (docs/deployment.md, "Running multiple workers"). Scale with
+  #   WORKER_REPLICAS=3 docker compose up -d
+  # (or `docker compose up -d --scale worker=3`). No `container_name` and no
+  # host port: both would make a second replica fail to start.
   worker:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
-    container_name: worker
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
+    # A stopping worker drains its in-flight organizations for up to
+    # WORKER_SHUTDOWN_GRACE_MS (default 30s) before releasing their leases;
+    # Docker's default 10s would SIGKILL it mid-drain.
+    stop_grace_period: 45s
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,14 +116,24 @@ services:
       SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:?SMTP_ENCRYPTION_KEY is required}
       INTEGRATION_TOKEN_ENCRYPTION_KEY: ${INTEGRATION_TOKEN_ENCRYPTION_KEY:?INTEGRATION_TOKEN_ENCRYPTION_KEY is required}
       WORKER_ACTIVE_POLL_MS: ${WORKER_ACTIVE_POLL_MS:-300000}
-      WORKER_RECONCILIATION_MS: ${WORKER_RECONCILIATION_MS:-3600000}
+      WORKER_RECONCILIATION_MS: ${WORKER_RECONCILIATION_MS:-1800000}
       # All optional (roadmap step 29) — see .env.example's "Observability"
       # section and docs/deployment.md's "Health checks and observability".
       WORKER_HEALTH_PORT: ${WORKER_HEALTH_PORT:-8081}
-      # Single-instance advisory lock (roadmap step 42). See docs/deployment.md.
+      # Watchdog election lock (roadmap step 42; it no longer serializes the
+      # worker). See docs/deployment.md.
       WORKER_LOCK_RETRY_MS: ${WORKER_LOCK_RETRY_MS:-15000}
       WORKER_LOCK_PING_MS: ${WORKER_LOCK_PING_MS:-30000}
+      # Organizations processed at once, per worker container.
       ORGANIZATION_CONCURRENCY: ${ORGANIZATION_CONCURRENCY:-3}
+      # Multi-worker leases. A crashed worker's organizations are taken over
+      # by another worker WORKER_LEASE_TTL_MS after its last renewal.
+      WORKER_LEASE_TTL_MS: ${WORKER_LEASE_TTL_MS:-60000}
+      WORKER_CLAIM_POLL_MS: ${WORKER_CLAIM_POLL_MS:-1000}
+      WORKER_SHUTDOWN_GRACE_MS: ${WORKER_SHUTDOWN_GRACE_MS:-30000}
+      # Per-worker Prisma pool. Unset = 2 x ORGANIZATION_CONCURRENCY + 4 (10 at
+      # the default 3); see "Connection budget" in docs/deployment.md.
+      DATABASE_POOL_MAX: ${WORKER_DATABASE_POOL_MAX:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       OPS_ALERT_SLACK_WEBHOOK_URL: ${OPS_ALERT_SLACK_WEBHOOK_URL:-}
       # The email channel's recipient — sent through the shared

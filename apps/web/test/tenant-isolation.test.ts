@@ -347,6 +347,8 @@ async function seedExtras(
       clientSecret: "unused",
     },
   });
+  // Worker scheduling state (multi-worker leases): never served to a tenant, but keyed per organization.
+  await prisma.organizationWorkState.create({ data: { organizationId: org.organizationId } });
 
   const commitments = await prisma.commitment.findMany({
     where: { caseId: org.caseId },
@@ -808,6 +810,37 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       const text = JSON.stringify(detail).toLowerCase();
       expect(text).toContain("alpha changed the target");
       expect(text).not.toContain("bravo");
+    });
+
+    it("work-state leases are per organization: claiming, renewing and completing one organization's row never touches another's", async () => {
+      const dbModule = await import("@sla/db");
+      // Only A is due, so only A is leased; B's row stays untouched and unleased.
+      const later = new Date(Date.now() + 3_600_000);
+      await prisma.organizationWorkState.update({
+        where: { organizationId: orgB.organizationId },
+        data: { activeNextDueAt: later, reconciliationNextDueAt: later },
+      });
+      const claims = await dbModule.claimDueOrganizations(prisma, { owner: "tenant-test-worker", limit: 10 });
+      expect(claims.map((claim) => claim.organizationId)).toEqual([orgA.organizationId]);
+      const mine = claims[0]!;
+
+      // A claim for A, re-pointed at B, opens nothing on B's row.
+      const forged = { ...mine, organizationId: orgB.organizationId };
+      expect(await dbModule.renewLease(prisma, forged)).toBe(false);
+      expect(await dbModule.releaseLease(prisma, forged)).toBe(false);
+      expect(
+        await dbModule.completeWork(prisma, forged, { failed: false, activeIntervalMs: 10_000, reconciliationIntervalMs: 1_800_000 }),
+      ).toBe(false);
+
+      // Completing A leaves B's schedule and lease exactly as they were.
+      const beforeB = await prisma.organizationWorkState.findUniqueOrThrow({ where: { organizationId: orgB.organizationId } });
+      expect(
+        await dbModule.completeWork(prisma, mine, { failed: true, error: "alpha only", activeIntervalMs: 10_000, reconciliationIntervalMs: 1_800_000 }),
+      ).toBe(true);
+      const afterB = await prisma.organizationWorkState.findUniqueOrThrow({ where: { organizationId: orgB.organizationId } });
+      expect(afterB.lastError).toBeNull();
+      expect(afterB.consecutiveFailures).toBe(0);
+      expect(afterB.activeNextDueAt).toEqual(beforeB.activeNextDueAt);
     });
 
     it("dashboard failed-alert list carries this org's NotificationFailure only", async () => {

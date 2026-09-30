@@ -54,7 +54,7 @@ hand.
 | `INTEGRATION_CONFIG_ENCRYPTION_KEY` | web, worker | Encrypts each org's Zendesk/Jira/Slack OAuth client secrets at rest. Generate with `openssl rand -base64 32`. Rotating it invalidates every saved integration config. |
 | `SMTP_ENCRYPTION_KEY` | web, worker | Encrypts each org's saved SMTP password at rest. Generate with `openssl rand -base64 32`, keep distinct from the other encryption keys so rotating one doesn't invalidate the others. |
 | `INTEGRATION_TOKEN_ENCRYPTION_KEY` | web, worker | Encrypts each connected integration's OAuth access/refresh tokens at rest. Generate with `openssl rand -base64 32`, keep distinct from the other encryption keys. Rotating it makes every connected integration's tokens unreadable — each organization must reconnect. Existing plaintext rows from before this key was introduced are migrated with `pnpm db:encrypt-tokens`. |
-| `WORKER_ACTIVE_POLL_MS`, `WORKER_RECONCILIATION_MS` | web, worker | Optional; bootstrap defaults are 300000 (5 min) and 3600000 (1 hour), used only to seed the database on a fresh install. Once a platform operator changes either interval from the Monitoring settings page, the saved database value is authoritative and these env vars are no longer read. |
+| `WORKER_ACTIVE_POLL_MS`, `WORKER_RECONCILIATION_MS` | web, worker | Optional; bootstrap defaults are 300000 (5 min) and 1800000 (30 min — also the maximum for reconciliation; a larger saved or env value is capped at 30 min), used only to seed the database on a fresh install. Once a platform operator changes either interval from the Monitoring settings page, the saved database value is authoritative and these env vars are no longer read. |
 | `SENTRY_DSN` | web, worker | Optional. Enables error tracking in both apps when set; omit it and the SDK stays disabled with no other effect. See [Health checks and observability](#health-checks-and-observability). |
 | `SMTP_ALLOW_PRIVATE_HOSTS` | web, worker | Optional. Set to `1` to let an **organization's** own SMTP settings (Settings → Notifications) point at a private, loopback or link-local address, for example a Mailpit container in local development or an intranet relay. Unset (the default) refuses those destinations on save, on Test Connection / Send Test Email and on every alert send. Deployment-wide SMTP and ops-alert SMTP are operator-configured and are not affected. |
 | `WORKER_HEALTH_PORT` | worker | Optional, defaults to `8081`. The port `GET /health` listens on inside the worker container. |
@@ -328,22 +328,93 @@ their provider, then edit `.env.prod`: `DEPLOYMENT_SMTP_PASSWORD` (for Gmail,
 delete the app password in your Google account and create a new one),
 `OPS_ALERT_SLACK_WEBHOOK_URL`, and `SENTRY_DSN`.
 
-## Single worker instance
+## Running multiple workers
 
-Run exactly one active worker per database. Two workers running cycles at
-once would race on each integration's sync cursor. The worker enforces
-this itself: at startup it takes a Postgres advisory lock
-(`pg_try_advisory_lock`) on a dedicated connection and holds it for its
-whole lifetime. A second worker, whether from a deploy that briefly
-overlaps two containers or from `docker compose up --scale worker=2`, logs
-`worker_standby`, runs no cycles, reports `standby` on `/health`, and
-retries every `WORKER_LOCK_RETRY_MS`. It takes over once the holder exits
-and Postgres releases the lock with its session.
+Any number of worker containers can run against one database. They do not
+elect a leader or take turns: every worker processes organizations, and they
+split the organizations between them through the database.
 
-If the active worker's lock connection drops, it logs `worker_lock_lost`
-and exits with code 1 rather than keep running without the lock;
-`restart: unless-stopped` brings it back. This is not horizontal scaling.
-A standby only waits.
+Scale with the `worker` service's replica count:
+
+```bash
+WORKER_REPLICAS=3 docker compose --env-file .env.prod up -d
+# or, equivalently for a running stack:
+docker compose --env-file .env.prod up -d --scale worker=3
+```
+
+Add a container (or roll a new image) at any time; nothing needs to be
+reconfigured or stopped. Each replica takes a unique `WORKER_ID` automatically
+(`hostname:pid:random`), which is what appears in logs and in
+`organization_work_states.leaseOwner`. The service intentionally has no
+`container_name` and no published port, since either would stop a second
+replica from starting.
+
+**How work is divided.** Every organization has one row in
+`organization_work_states` holding when its next active poll and its next
+reconciliation are due. A worker claims due organizations in a single
+statement (`FOR UPDATE SKIP LOCKED`), so two workers can never be handed the
+same organization. The claim is a *lease* with a fencing token:
+
+- the holder renews it while it works (every `WORKER_LEASE_TTL_MS / 3`);
+- it is the only process that ingests that organization's provider data, which
+  is what keeps two workers from racing on an integration's sync cursor;
+- before publishing results and before sending notifications it checks, against
+  the database row, that it still holds the current token, so a worker that
+  stalled past its lease and was replaced stops instead of writing stale
+  results (and its completion is rejected by the database);
+- if a worker crashes, its leases lapse after `WORKER_LEASE_TTL_MS` (default
+  60 s) and other workers take the organizations over; a graceful stop releases
+  them immediately.
+
+Organization-level processing is still serialized per organization by the
+existing advisory lock, so webhook deliveries and the onboarding backfill keep
+working exactly as before.
+
+**Cadence.** Active polling is scheduled start-to-start per organization
+(`WORKER_ACTIVE_POLL_MS` or the Monitoring setting): an organization is due one
+interval after its last run *started*; a run that takes longer than the
+interval is followed immediately by the next, never by a burst. A
+reconciliation pass is due at most 30 minutes after the previous one started
+(30 minutes is the maximum; a larger saved value is capped), it is claimed ahead
+of an active poll when both are due, and a reconciliation that falls due while
+an active run is in progress runs as soon as that run finishes. More workers
+raise throughput across organizations; they do not make a single slow provider
+request faster.
+
+**Settings.**
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `WORKER_REPLICAS` | `1` | Compose only: number of worker containers. |
+| `ORGANIZATION_CONCURRENCY` | `3` | Organizations one worker processes at once. Total parallelism is this times the replica count. |
+| `WORKER_LEASE_TTL_MS` | `60000` | How long a crashed worker's organizations stay unavailable. Shorter recovers faster but tolerates less pause (GC, network blip) before a healthy worker is considered gone. |
+| `WORKER_CLAIM_POLL_MS` | `1000` | Longest an idle worker sleeps between claim attempts; also how quickly a brand-new organization is picked up. |
+| `WORKER_SHUTDOWN_GRACE_MS` | `30000` | How long a stopping worker lets in-flight organizations finish before releasing their leases. Keep `stop_grace_period` in `docker-compose.yml` above it. |
+| `WORKER_DATABASE_POOL_MAX` | `2 × concurrency + 4` | Compose name for the per-worker `DATABASE_POOL_MAX`. |
+| `WORKER_LOCK_RETRY_MS`, `WORKER_LOCK_PING_MS` | `15000`, `30000` | Only the watchdog election (below). |
+
+**Connection budget.** The Prisma pool is per process, so connections add up
+across replicas. Per worker: the pool (`2 × ORGANIZATION_CONCURRENCY + 4`,
+10 at the default) plus one held for the watchdog election plus one short-lived
+connection per organization in flight (`ORGANIZATION_CONCURRENCY`) — 14 at the
+defaults. Add the web app's pool (20 by default). Postgres's default
+`max_connections` is 100, which fits roughly five workers next to the web app;
+raise `max_connections` (or lower the pool sizes) before going beyond that. The
+health endpoint reports each worker's pool size.
+
+**What is still a singleton.** A session-level Postgres advisory lock now only
+elects the one worker that runs the stalled-work watchdog (which would
+otherwise page twice). Losing that election is harmless to processing: the
+worker keeps working and retries every `WORKER_LOCK_RETRY_MS`; if the holder
+dies, another worker's next retry takes it.
+
+**Known limits.** A manual *Sync now* / onboarding backfill started from the web
+app ingests a provider outside the worker lease, exactly as before, so it can
+still overlap a worker's poll of the same organization; both paths are
+idempotent, and the window is a single user-initiated run. A lease protects
+against a *stalled* worker, not one that keeps running after its lease was
+taken: it is stopped at the next check (between stages, and before anything
+irreversible), so at most the provider call in flight at that moment completes.
 
 ## Health checks and observability
 
@@ -356,18 +427,22 @@ A standby only waits.
   plain `node:http` listener — the worker had no HTTP surface at all before
   this. Returns the same `running`/`degraded`/`stopped` status the
   Monitoring settings page already derives from `WorkerSettings`
-  (`degraded` means the process is alive but a recent cycle recorded
-  per-organization failures; `stopped` means no heartbeat at all, i.e. the
-  process itself looks wedged), plus `lastSuccessfulCycleAt` and an
+  (`degraded` means the process is alive but an organization's latest run
+  recorded failures; `stopped` means no heartbeat at all, i.e. the worker
+  cannot reach the database), plus this worker's own state (`worker.id`,
+  `worker.loop` claim/completion/lease-loss counters, pool size), the
+  deployment-wide per-organization schedule (`workState`: organizations,
+  leased, expired leases, overdue active/reconciliation counts and the lag of
+  the most overdue one), `lastSuccessfulCycleAt` and an
   aggregate `integrations.mostRecentSyncAt`/`withErrors` across every
   connected integration. Responds `503` only for `stopped`, since that's
   the one case an orchestrator restart can actually fix. Not published to
   the host by `docker-compose.prod.yml` — only the container's own
   `HEALTHCHECK` (and Docker's resulting restart-on-unhealthy behavior with
   `restart: unless-stopped`) uses it; add your own `ports:` mapping if an
-  external monitor should poll it directly. A standby worker (see below)
-  answers `200 {"status":"standby"}` instead; `503 {"status":"starting"}`
-  means it hasn't reached the database to try the lock yet.
+  external monitor should poll it directly. Every worker answers for itself
+  (there is no standby): `503 {"status":"starting"}` until its work loop is
+  running and `503 {"status":"stalled"}` if that loop stops making progress.
 - **Error tracking**: set `SENTRY_DSN` to enable
   [Sentry](https://sentry.io) (or any Sentry-protocol-compatible service)
   in both apps — unhandled exceptions in either app, every per-integration
@@ -386,10 +461,11 @@ A standby only waits.
   the token is not in the final image (it does appear in the build cache's
   metadata on the build host — treat that host accordingly). The worker's
   stack traces are not source-mapped.
-- **Stalled-cycle alerting**: the worker checks its own `WorkerSettings`
-  every two minutes and, if either the active-set poll or the
-  reconciliation sweep hasn't completed successfully in over 3x its
-  configured interval, sends an alert — to you, the deployment owner, not
+- **Stalled-cycle alerting**: the worker elected as watchdog checks the
+  per-organization schedule every two minutes and, if any organization's
+  active poll or reconciliation is more than two intervals overdue (the
+  same "3x its configured interval" threshold, now per organization), sends
+  an alert — to you, the deployment owner, not
   your customers — through whichever of `OPS_ALERT_SLACK_WEBHOOK_URL`
   (a plain Slack incoming-webhook URL) or `OPS_ALERT_EMAIL` (sent through
   the shared `DEPLOYMENT_SMTP_*`) is configured; both, either, or neither is

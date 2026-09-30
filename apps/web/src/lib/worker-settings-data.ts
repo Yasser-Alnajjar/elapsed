@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { deriveWorkerStatus, getWorkerSettingsForRead, type PrismaClient } from "@sla/db";
+import { deriveWorkerStatus, getWorkerSettingsForRead, getWorkStateNextRuns, type PrismaClient } from "@sla/db";
 import type { WorkerMonitoringData } from "./types/worker-settings";
 
 /**
@@ -30,16 +30,18 @@ export const getWorkerMonitoringData = cache(async function getWorkerMonitoringD
   prisma: PrismaClient,
   canEdit: boolean,
 ): Promise<WorkerMonitoringData> {
-  const settings = await getWorkerSettingsForRead(prisma);
+  const [settings, nextRuns] = await Promise.all([getWorkerSettingsForRead(prisma), getWorkStateNextRuns(prisma)]);
 
   return {
     activePollIntervalMs: settings.activePollIntervalMs,
     reconciliationIntervalMs: settings.reconciliationIntervalMs,
     status: deriveWorkerStatus(settings),
     lastActivePollAt: settings.lastActivePollAt?.toISOString() ?? null,
-    nextActivePollAt: settings.nextActivePollAt?.toISOString() ?? null,
+    // From the per-organization work state: the earliest due time anywhere.
+    // There is no longer a single armed timer to read this from.
+    nextActivePollAt: nextRuns.nextActivePollAt?.toISOString() ?? null,
     lastReconciliationAt: settings.lastReconciliationAt?.toISOString() ?? null,
-    nextReconciliationAt: settings.nextReconciliationAt?.toISOString() ?? null,
+    nextReconciliationAt: nextRuns.nextReconciliationAt?.toISOString() ?? null,
     canEdit,
   };
 });

@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     q: "How often is data refreshed?",
-    a: "Every 5 minutes for open cases, every 60 minutes for a full reconciliation sweep, and near-instantly for Zendesk/Jira when a webhook is configured.",
+    a: "Every 5 minutes for open cases, every 30 minutes for a full reconciliation sweep, and near-instantly for Zendesk/Jira when a webhook is configured.",
   },
   {
     q: "How is an SLA calculated?",

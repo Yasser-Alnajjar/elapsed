@@ -1,6 +1,12 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { deriveWorkerStatus, getPrismaClient, saveWorkerSettings, WorkerSettingsValidationError } from "@sla/db";
+import {
+  deriveWorkerStatus,
+  getPrismaClient,
+  getWorkStateNextRuns,
+  saveWorkerSettings,
+  WorkerSettingsValidationError,
+} from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requirePlatformOperator } from "@/lib/authz";
 import { getWorkerMonitoringData } from "@/lib/worker-settings-data";
@@ -38,14 +44,15 @@ export async function POST(request: Request) {
       activePollIntervalMs: body.activePollIntervalMs,
       reconciliationIntervalMs: body.reconciliationIntervalMs,
     });
+    const nextRuns = await getWorkStateNextRuns(prisma);
     return NextResponse.json({
       activePollIntervalMs: settings.activePollIntervalMs,
       reconciliationIntervalMs: settings.reconciliationIntervalMs,
       status: deriveWorkerStatus(settings),
       lastActivePollAt: settings.lastActivePollAt?.toISOString() ?? null,
-      nextActivePollAt: settings.nextActivePollAt?.toISOString() ?? null,
+      nextActivePollAt: nextRuns.nextActivePollAt?.toISOString() ?? null,
       lastReconciliationAt: settings.lastReconciliationAt?.toISOString() ?? null,
-      nextReconciliationAt: settings.nextReconciliationAt?.toISOString() ?? null,
+      nextReconciliationAt: nextRuns.nextReconciliationAt?.toISOString() ?? null,
       canEdit: true,
     });
   } catch (error) {
