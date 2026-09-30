@@ -375,3 +375,79 @@ describe("runCycle — Next Reply cycle pipeline wiring (Step 7)", () => {
     expect(runEvaluationPipeline).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("runCycle — bounded organization concurrency", () => {
+  const orgIds = Array.from({ length: 8 }, (_, i) => `org_${i + 1}`);
+  const multiOrgDb = () =>
+    ({
+      organization: { findMany: vi.fn(async () => orgIds.map((id) => ({ id, integrations: [] }))) },
+    }) as unknown as PrismaClient;
+
+  /** Makes each org's evaluation stage take a while and records how many overlap. */
+  function trackEvaluationOverlap() {
+    const state = { inFlight: 0, max: 0, calls: [] as string[] };
+    vi.mocked(runEvaluationPipeline).mockImplementation((async (_prisma: unknown, organizationId: string) => {
+      state.calls.push(organizationId);
+      state.inFlight += 1;
+      state.max = Math.max(state.max, state.inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      state.inFlight -= 1;
+      return {
+        commitmentsConsidered: 2,
+        evaluationsCreated: 1,
+        commitmentsFinalized: 0,
+        notificationCandidates: [],
+      };
+    }) as never);
+    return state;
+  }
+
+  afterEach(() => {
+    vi.mocked(runEvaluationPipeline).mockReset();
+    vi.mocked(runEvaluationPipeline).mockResolvedValue({
+      commitmentsConsidered: 0,
+      evaluationsCreated: 0,
+      commitmentsFinalized: 0,
+      notificationCandidates: [],
+    });
+  });
+
+  it("never exceeds the configured limit, processes every organization exactly once, and sums counters without loss", async () => {
+    const overlap = trackEvaluationOverlap();
+
+    const result = await runCycle(multiOrgDb(), { ...config, organizationConcurrency: 3 }, "active_set_poll");
+
+    expect(overlap.max).toBe(3);
+    expect([...overlap.calls].sort()).toEqual([...orgIds].sort());
+    expect(result.organizationsProcessed).toBe(8);
+    expect(result.commitmentsConsidered).toBe(16);
+    expect(result.evaluationsCreated).toBe(8);
+    expect(result.failures).toEqual([]);
+  });
+
+  it("concurrency 1 reproduces the sequential behaviour", async () => {
+    const overlap = trackEvaluationOverlap();
+
+    await runCycle(multiOrgDb(), { ...config, organizationConcurrency: 1 }, "active_set_poll");
+
+    expect(overlap.max).toBe(1);
+    expect(overlap.calls).toEqual(orgIds);
+  });
+
+  it("a failing organization is recorded against itself and does not stop the others", async () => {
+    const overlap = trackEvaluationOverlap();
+    const tracked = vi.mocked(runEvaluationPipeline).getMockImplementation()!;
+    vi.mocked(runEvaluationPipeline).mockImplementation((async (prisma: unknown, organizationId: string, opts: unknown) => {
+      if (organizationId === "org_2") throw new Error("eval boom");
+      return tracked(prisma as never, organizationId, opts as never);
+    }) as never);
+
+    const result = await runCycle(multiOrgDb(), { ...config, organizationConcurrency: 3 }, "active_set_poll");
+
+    expect(result.failures).toEqual([{ organizationId: "org_2", stage: "evaluation", error: "eval boom" }]);
+    expect(result.organizationsProcessed).toBe(8);
+    expect(result.evaluationsCreated).toBe(7);
+    expect(overlap.calls).not.toContain("org_2");
+    expect(overlap.calls).toHaveLength(7);
+  });
+});

@@ -59,6 +59,7 @@ import {
   type SlaPolicyImportResult,
 } from "@sla/zendesk";
 import { caseRefResolverFor } from "./case-ref";
+import { forEachWithConcurrency, normalizeConcurrency } from "./concurrency";
 import type { WorkerConfig } from "./config";
 import { captureException } from "./sentry";
 
@@ -144,6 +145,8 @@ export async function runCycle(
     activePollMs?: number;
     /** Restrict the cycle to these organizations — used by the perf-baseline script so a measurement run never touches unrelated organizations' live integrations. Omit for every organization. */
     organizationIds?: string[];
+    /** Overrides `config.organizationConcurrency` — how many organizations are processed at once. */
+    organizationConcurrency?: number;
   } = {},
 ): Promise<CycleResult> {
   const cycleLogger = createLogger({ cycleId, kind });
@@ -178,14 +181,31 @@ export async function runCycle(
     },
   });
 
-  for (const organization of organizations) {
+  // Organizations run concurrently (bounded — see `forEachWithConcurrency`);
+  // integrations within one organization stay sequential. Everything below
+  // that is per-organization (`ingestOutcomes`, `slaPolicyImportResult`,
+  // `notification`, the loggers) is declared inside this function, so
+  // concurrent organizations share nothing but `result`, and every update to
+  // that is a synchronous `+=` / `push` with no `await` between its read and
+  // write — it can't interleave with another organization's update.
+  const organizationConcurrency = normalizeConcurrency(
+    options.organizationConcurrency ?? config.organizationConcurrency,
+  );
+  let organizationsInFlight = 0;
+
+  const processOrganization = async (
+    organization: (typeof organizations)[number],
+    index: number,
+  ): Promise<void> => {
     result.organizationsProcessed += 1;
+    organizationsInFlight += 1;
     const orgLogger = cycleLogger.child({ organizationId: organization.id });
     const orgStartedAt = Date.now();
-    const position = `${result.organizationsProcessed}/${organizations.length}`;
+    const position = `${index + 1}/${organizations.length}`;
     orgLogger.info("organization_started", {
       position,
       integrations: organization.integrations.length,
+      organizationsInFlight,
     });
 
     const orderedIntegrations = [...organization.integrations].sort(
@@ -710,6 +730,7 @@ export async function runCycle(
       );
     }
 
+    organizationsInFlight -= 1;
     orgLogger.info("organization_finished", {
       position,
       durationMs: Date.now() - orgStartedAt,
@@ -717,7 +738,9 @@ export async function runCycle(
       pipelineMs: Date.now() - orgStartedAt - ingestMs,
       integrations: organization.integrations.length,
     });
-  }
+  };
+
+  await forEachWithConcurrency(organizations, organizationConcurrency, processOrganization);
 
   return result;
 }

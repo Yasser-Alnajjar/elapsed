@@ -112,6 +112,7 @@ services:
       # Single-instance advisory lock (roadmap step 42). See docs/deployment.md.
       WORKER_LOCK_RETRY_MS: ${WORKER_LOCK_RETRY_MS:-15000}
       WORKER_LOCK_PING_MS: ${WORKER_LOCK_PING_MS:-30000}
+      ORGANIZATION_CONCURRENCY: ${ORGANIZATION_CONCURRENCY:-3}
       SENTRY_DSN: ${SENTRY_DSN:-}
       OPS_ALERT_SLACK_WEBHOOK_URL: ${OPS_ALERT_SLACK_WEBHOOK_URL:-}
       # The email channel's recipient — sent through the shared

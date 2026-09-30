@@ -31,7 +31,12 @@ import * as Sentry from "@sentry/node";
  * deployment-level knob: how often a standby retries the single-instance
  * advisory lock, and how often the holder checks its lock connection is
  * still alive.
+ *
+ * `organizationConcurrency` is the same kind of knob: how many organizations
+ * one cycle processes at once (integrations within an organization stay
+ * sequential).
  */
+import { DEFAULT_ORGANIZATION_CONCURRENCY, normalizeConcurrency } from "./concurrency";
 import { loadOpsAlertConfig, type OpsAlertConfig } from "./ops-alert";
 
 export interface WorkerConfig {
@@ -40,6 +45,7 @@ export interface WorkerConfig {
   opsAlert: OpsAlertConfig | null;
   lockRetryMs: number;
   lockPingMs: number;
+  organizationConcurrency: number;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -49,6 +55,11 @@ export function loadWorkerConfig(): WorkerConfig {
     opsAlert: loadOpsAlertConfig(),
     lockRetryMs: Number(process.env.WORKER_LOCK_RETRY_MS ?? 15_000),
     lockPingMs: Number(process.env.WORKER_LOCK_PING_MS ?? 30_000),
+    organizationConcurrency: normalizeConcurrency(
+      process.env.ORGANIZATION_CONCURRENCY === undefined
+        ? DEFAULT_ORGANIZATION_CONCURRENCY
+        : Number(process.env.ORGANIZATION_CONCURRENCY),
+    ),
   };
 }
 

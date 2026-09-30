@@ -93,6 +93,20 @@ export async function GET(request: NextRequest) {
     unsubscribe?.();
     unsubscribeStatus?.();
   });
+  console.log(
+    "Live",
+    new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        // Disables response buffering on nginx specifically (docs/deployment's
+        // reverse proxy), belt-and-braces alongside the dedicated location
+        // block in apps/nginx/nginx.conf.
+        "X-Accel-Buffering": "no",
+      },
+    }),
+  );
 
   return new Response(stream, {
     headers: {

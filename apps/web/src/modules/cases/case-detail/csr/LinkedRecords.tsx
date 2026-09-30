@@ -10,24 +10,9 @@ import {
 } from "@/lib/format";
 import type { CaseDetailData, CaseLinkDetail } from "@/lib/types/cases";
 
-function systemLabel(s: CaseLinkDetail["system"] | string): string {
-  switch (s) {
-    case "zendesk":
-      return "Zendesk";
-    case "jira":
-      return "Jira Software";
-    case "linear":
-      return "Linear";
-    case "github":
-      return "GitHub";
-    default:
-      return s;
-  }
-}
-
 export function LinkedRecords({ data }: { data: CaseDetailData }) {
-  const primaryJira = data.links.find((l) => l.system === "jira") ?? null;
-  const extraLinks = data.links.filter((l) => l !== primaryJira);
+  const primaryLink = data.links.at(0) ?? null;
+  const extraLinks = data.links.slice(1);
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
@@ -35,15 +20,16 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link2 size={16} className="text-leg-engineering-text" />
+
           <h2 className="text-xl font-semibold tracking-tight text-on-surface">
             Deterministic Correlation &amp; Linked Records
           </h2>
         </div>
 
-        {primaryJira ? (
+        {primaryLink ? (
           <span className="inline-flex items-center gap-1.5 rounded bg-tertiary-container px-2.5 py-1 font-mono text-xxs font-semibold uppercase tracking-wider text-on-tertiary-container">
             <span className="size-1.5 rounded-full bg-on-tertiary-container" />
-            LINK {primaryJira.confidence.toUpperCase()}
+            LINK {primaryLink.confidence.toUpperCase()}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded bg-surface-container-highest px-2.5 py-1 font-mono text-xxs text-outline">
@@ -52,14 +38,15 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
         )}
       </div>
 
-      {/* Side-by-side ZD ↔ Jira cards */}
+      {/* Customer ↔ Engineering */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Zendesk card */}
+        {/* Customer Ticket */}
         <div className="flex flex-col gap-2 rounded-lg bg-surface-container p-4">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
               Primary Customer Ticket
             </span>
+
             <span className="rounded bg-primary-container/20 px-2 py-0.5 font-mono text-xxs text-primary">
               {formatTicketSource(data.case.system)}
             </span>
@@ -75,6 +62,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
               <span className="font-mono text-base font-semibold">
                 #{data.case.externalId}
               </span>
+
               <ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
             </a>
           ) : (
@@ -91,6 +79,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
 
           <div className="mt-2 flex justify-between border-t border-surface-container-high/40 pt-2 font-mono text-xxs text-outline">
             {data.case.priority && <span>Priority: {data.case.priority}</span>}
+
             {data.case.status && (
               <span className="text-on-surface">
                 Status: {formatNormalizedState(data.case.status)}
@@ -99,47 +88,50 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
           </div>
         </div>
 
-        {/* Engineering / Jira card */}
-        {primaryJira ? (
+        {/* Engineering Record */}
+        {primaryLink ? (
           <div className="flex flex-col gap-2 rounded-lg bg-surface-container p-4">
             <div className="flex items-center justify-between">
               <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
-                Linked Engineering Issue
+                Linked Engineering Record
               </span>
+
               <span className="rounded bg-leg-engineering/20 px-2 py-0.5 font-mono text-xxs text-leg-engineering-text">
-                {systemLabel(primaryJira.system)}
+                {primaryLink.system}
               </span>
             </div>
 
-            {primaryJira.url ? (
+            {primaryLink.url ? (
               <a
-                href={primaryJira.url}
+                href={primaryLink.url}
                 target="_blank"
                 rel="noreferrer"
                 className="group inline-flex items-center gap-1 text-on-surface hover:text-primary"
               >
                 <span className="font-mono text-base font-semibold">
-                  {primaryJira.externalId}
+                  {primaryLink.externalId}
                 </span>
+
                 <ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
               </a>
             ) : (
               <span className="font-mono text-base font-semibold text-on-surface">
-                {primaryJira.externalId}
+                {primaryLink.externalId}
               </span>
             )}
 
             <span className="text-sm text-outline">
-              Method: {formatCaseLinkMethod(primaryJira.method)}
+              Method: {formatCaseLinkMethod(primaryLink.method)}
             </span>
 
             <div className="mt-2 flex justify-between border-t border-surface-container-high/40 pt-2 font-mono text-xxs">
               <span className="text-outline">
-                Confidence: {primaryJira.confidence}
+                Confidence: {primaryLink.confidence}
               </span>
-              {primaryJira.statusName && (
+
+              {primaryLink.statusName && (
                 <span className="font-medium text-on-surface">
-                  Status: {primaryJira.statusName}
+                  Status: {primaryLink.statusName}
                 </span>
               )}
             </div>
@@ -150,36 +142,39 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
               <span className="block font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
                 Engineering
               </span>
+
               <span className="mt-2 block text-sm text-on-surface-variant">
-                No linked issue
+                No linked record
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Link method footer */}
-      {primaryJira && (
+      {/* Link Method */}
+      {primaryLink && (
         <div className="flex flex-col gap-1 rounded-lg bg-surface-container px-4 py-3 text-sm text-outline">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs text-on-surface">
-              Link Method: {formatCaseLinkMethod(primaryJira.method)}
+              Link Method: {formatCaseLinkMethod(primaryLink.method)}
             </span>
           </div>
+
           <p className="font-mono text-xxs text-muted-foreground">
-            {primaryJira.externalId} correlated to #{data.case.externalId} via{" "}
-            {formatCaseLinkMethod(primaryJira.method)}. Confidence:{" "}
-            <span className="text-on-surface">{primaryJira.confidence}</span>.
+            {primaryLink.externalId} correlated to #{data.case.externalId} via{" "}
+            {formatCaseLinkMethod(primaryLink.method)}. Confidence:{" "}
+            <span className="text-on-surface">{primaryLink.confidence}</span>.
           </p>
         </div>
       )}
 
-      {/* Extra links */}
+      {/* Additional Links */}
       {extraLinks.length > 0 && (
         <div>
           <p className="mb-2 font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
             Additional Links
           </p>
+
           <ul className="space-y-2">
             {extraLinks.map((link, i) => (
               <li
@@ -189,18 +184,22 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <span className="block font-mono text-xxs text-outline">
-                      {systemLabel(link.system)}
+                      {link.system}
                     </span>
+
                     <span className="block font-mono text-sm font-semibold text-on-surface">
                       {link.externalId}
                     </span>
+
                     <div className="mt-1 flex flex-wrap gap-1">
                       <span className="rounded bg-surface-container-high px-1.5 py-0.5 font-mono text-xxs text-outline">
                         {formatCaseLinkMethod(link.method)}
                       </span>
+
                       <span className="rounded bg-surface-container-high px-1.5 py-0.5 font-mono text-xxs text-outline">
                         {link.confidence}
                       </span>
+
                       {link.statusName && (
                         <span className="rounded bg-surface-container-high px-1.5 py-0.5 font-mono text-xxs text-outline">
                           {link.statusName}
@@ -208,8 +207,14 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
                       )}
                     </div>
                   </div>
+
                   {link.url && (
-                    <a href={link.url} target="_blank" rel="noreferrer">
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${link.system} ${link.externalId}`}
+                    >
                       <ExternalLink className="size-3.5 text-outline hover:text-on-surface" />
                     </a>
                   )}
@@ -220,7 +225,8 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
         </div>
       )}
 
-      {!primaryJira && data.links.length === 0 && !data.case.ticketUrl && (
+      {/* Empty State */}
+      {!primaryLink && data.links.length === 0 && !data.case.ticketUrl && (
         <p className="py-4 text-center text-sm text-on-surface-variant">
           No linked records.
         </p>
