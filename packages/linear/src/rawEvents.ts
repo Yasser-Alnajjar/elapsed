@@ -20,13 +20,18 @@ export function mapIssueToRawEvent(issue: LinearIssue): RawEventInput {
 }
 
 /**
- * History entries are Linear's immutable event log — each entry id occurs
- * exactly once, ever, so no hash suffix is needed for dedup.
+ * History entries are NOT immutable: Linear coalesces rapid state changes by
+ * the same actor into a single entry, rewriting its `toState` in place under
+ * the same id. So — like issues and attachments — the hash is folded into the
+ * provider event id, letting an edited entry land as a new RawEvent instead of
+ * being swallowed by skipDuplicates. The normalizer keeps the latest version
+ * per entry id.
  */
 export function mapHistoryEntryToRawEvent(issueId: string, entry: LinearHistoryEntry): RawEventInput {
+  const sourceHash = computeSourceHash(entry);
   return {
-    providerEventId: `issue_history:${issueId}:${entry.id}`,
-    sourceHash: computeSourceHash(entry),
+    providerEventId: `issue_history:${issueId}:${entry.id}:${sourceHash}`,
+    sourceHash,
     payload: entry,
   };
 }

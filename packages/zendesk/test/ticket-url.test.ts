@@ -6,6 +6,14 @@ describe("parseZendeskTicketId", () => {
     expect(parseZendeskTicketId("https://acme.zendesk.com/agent/tickets/42", "acme")).toBe("42");
   });
 
+  it("matches the bare /tickets/<id> URL that Zendesk's Linear integration stores on the issue", () => {
+    expect(parseZendeskTicketId("https://acme.zendesk.com/tickets/42", "acme")).toBe("42");
+  });
+
+  it("returns null for a bare /tickets/<id> URL on another subdomain", () => {
+    expect(parseZendeskTicketId("https://someoneelse.zendesk.com/tickets/42", "acme")).toBeNull();
+  });
+
   it("matches the end-user request view URL", () => {
     expect(parseZendeskTicketId("https://acme.zendesk.com/requests/42", "acme")).toBe("42");
   });

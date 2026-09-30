@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { PrismaClient } from "@sla/db";
 import {
   deriveNormalizedEventsForIssue,
   normalizeLinearStateType,
   resolveLinearActor,
+  runLinearNormalization,
   sortHistoriesChronologically,
   UnknownLinearStateTypeError,
   type HistoryRecord,
@@ -177,5 +179,74 @@ describe("deriveNormalizedEventsForIssue", () => {
     expect(() => deriveNormalizedEventsForIssue(issue, histories, "raw_issue_42")).toThrow(
       UnknownLinearStateTypeError,
     );
+  });
+});
+
+describe("runLinearNormalization — history entries rewritten in place", () => {
+  interface FakeRawEvent {
+    id: string;
+    providerEventId: string;
+    payload: unknown;
+    fetchedAt: Date;
+  }
+
+  function fakePrisma(rawEvents: FakeRawEvent[]) {
+    const created: { sourceRawEventId: string; fromState: string | null; toState: string; sourceSequence: number }[] = [];
+    const prisma = {
+      integration: { findUniqueOrThrow: async () => ({ id: "integ-1", organizationId: "org-1" }) },
+      rawEvent: {
+        findMany: async ({ where }: { where: { providerEventId?: { startsWith: string }; OR?: unknown[] } }) => {
+          if (where.OR) return rawEvents.map(({ id }) => ({ id }));
+          const prefix = where.providerEventId!.startsWith;
+          return rawEvents.filter((row) => row.providerEventId.startsWith(prefix));
+        },
+      },
+      caseLink: { findMany: async () => [{ caseId: "case-1", externalId: issue.identifier }] },
+      normalizedEvent: {
+        deleteMany: () => "delete",
+        createMany: ({ data }: { data: typeof created }) => {
+          created.push(...data);
+          return "create";
+        },
+      },
+      $transaction: async (ops: unknown[]) => ops,
+    } as unknown as PrismaClient;
+    return { prisma, created };
+  }
+
+  it("projects the latest version of a rewritten entry, not the stale first fetch", async () => {
+    const entry = (toState: LinearWorkflowState): LinearHistoryEntry => ({
+      id: "h1",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      actor: { id: "user-agent", name: "Agent" },
+      fromState: backlogState,
+      toState,
+    });
+    const { prisma, created } = fakePrisma([
+      { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
+      // First fetch (a row written before the hash suffix existed): Backlog -> Started.
+      {
+        id: "raw_h1_old",
+        providerEventId: `issue_history:${issue.id}:h1`,
+        payload: entry(startedState),
+        fetchedAt: new Date("2026-01-01T10:01:00Z"),
+      },
+      // Linear later rewrote the same entry in place: Backlog -> Completed.
+      {
+        id: "raw_h1_new",
+        providerEventId: `issue_history:${issue.id}:h1:newhash`,
+        payload: entry(completedState),
+        fetchedAt: new Date("2026-01-01T10:05:00Z"),
+      },
+    ]);
+
+    const result = await runLinearNormalization(prisma, "integ-1");
+
+    expect(result.issuesProcessed).toBe(1);
+    expect(created.map((e) => [e.fromState, e.toState, e.sourceSequence])).toEqual([
+      [null, "open", 0],
+      ["open", "resolved", 1],
+    ]);
+    expect(created[1]!.sourceRawEventId).toBe("raw_h1_new");
   });
 });

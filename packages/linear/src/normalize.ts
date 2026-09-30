@@ -147,15 +147,32 @@ function latestIssueSnapshots(
   return byId;
 }
 
-/** `issue_history:{issueId}:{entryId}` — history entries carry no issue id of their own. */
+/**
+ * `issue_history:{issueId}:{entryId}:{hash}` — history entries carry no issue
+ * id of their own. An entry can be rewritten in place by Linear, so the same
+ * entry id may have several RawEvents; only the most recently fetched version
+ * of each is kept. (Rows written before the hash was added have no hash
+ * segment and are superseded the same way.)
+ */
 function groupHistoriesByIssueId(
-  rows: { id: string; providerEventId: string; payload: unknown }[],
+  rows: { id: string; providerEventId: string; payload: unknown; fetchedAt: Date }[],
 ): Map<string, HistoryRecord[]> {
-  const byIssueId = new Map<string, HistoryRecord[]>();
+  const latestByEntry = new Map<string, { issueId: string; record: HistoryRecord; fetchedAt: Date }>();
   for (const row of rows) {
-    const issueId = row.providerEventId.split(":")[1];
-    if (!issueId) continue;
-    const record: HistoryRecord = { rawEventId: row.id, entry: row.payload as LinearHistoryEntry };
+    const [, issueId, entryId] = row.providerEventId.split(":");
+    if (!issueId || !entryId) continue;
+    const key = `${issueId}:${entryId}`;
+    const existing = latestByEntry.get(key);
+    if (existing && existing.fetchedAt > row.fetchedAt) continue;
+    latestByEntry.set(key, {
+      issueId,
+      record: { rawEventId: row.id, entry: row.payload as LinearHistoryEntry },
+      fetchedAt: row.fetchedAt,
+    });
+  }
+
+  const byIssueId = new Map<string, HistoryRecord[]>();
+  for (const { issueId, record } of latestByEntry.values()) {
     const group = byIssueId.get(issueId);
     if (group) group.push(record);
     else byIssueId.set(issueId, [record]);
@@ -196,7 +213,7 @@ export async function runLinearNormalization(
     }),
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "issue_history:" } },
-      select: { id: true, providerEventId: true, payload: true },
+      select: { id: true, providerEventId: true, payload: true, fetchedAt: true },
     }),
     prisma.caseLink.findMany({
       where: { system: "linear", confidence: "certain", case: { organizationId } },

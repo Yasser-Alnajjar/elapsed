@@ -51,8 +51,10 @@ export interface LinearIssueConnection {
 }
 
 /**
- * One entry in an issue's history — Linear's immutable event log. Each entry
- * id occurs exactly once, ever, so no hash suffix is needed for dedup.
+ * One entry in an issue's history — Linear's event log. An entry can be
+ * rewritten in place (Linear coalesces rapid state changes by the same actor
+ * into one entry), so the same id may be seen with different content; the
+ * RawEvent key therefore carries a content hash.
  * `fromState`/`toState` embed the full workflow state (including `type`)
  * directly, unlike Jira's changelog which only gives a status name/id —
  * so, unlike the Jira adapter, there is no need for a separate site-wide

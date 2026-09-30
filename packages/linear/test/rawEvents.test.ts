@@ -39,17 +39,33 @@ describe("mapIssueToRawEvent", () => {
 });
 
 describe("mapHistoryEntryToRawEvent", () => {
-  it("keys by issue id and entry id alone — history is immutable, never re-hashed", () => {
-    const entry: LinearHistoryEntry = {
-      id: "history-1",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      actor: { id: "user-1", name: "Alice" },
-      fromState: { id: "state-1", name: "Todo", type: "unstarted" },
-      toState: { id: "state-2", name: "In Progress", type: "started" },
-    };
+  const entry: LinearHistoryEntry = {
+    id: "history-1",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    actor: { id: "user-1", name: "Alice" },
+    fromState: { id: "state-1", name: "Todo", type: "unstarted" },
+    toState: { id: "state-2", name: "In Progress", type: "started" },
+  };
+
+  it("keys by issue id, entry id, and content hash", () => {
     const result = mapHistoryEntryToRawEvent("issue-1", entry);
-    expect(result.providerEventId).toBe("issue_history:issue-1:history-1");
+    expect(result.providerEventId).toBe(`issue_history:issue-1:history-1:${result.sourceHash}`);
     expect(result.payload).toBe(entry);
+  });
+
+  it("produces a distinct provider event id when Linear rewrites an entry in place", () => {
+    const before = mapHistoryEntryToRawEvent("issue-1", entry);
+    const after = mapHistoryEntryToRawEvent("issue-1", {
+      ...entry,
+      toState: { id: "state-3", name: "Done", type: "completed" },
+    });
+    expect(after.providerEventId).not.toBe(before.providerEventId);
+  });
+
+  it("produces the same provider event id for an unchanged re-fetch", () => {
+    expect(mapHistoryEntryToRawEvent("issue-1", { ...entry }).providerEventId).toBe(
+      mapHistoryEntryToRawEvent("issue-1", entry).providerEventId,
+    );
   });
 });
 

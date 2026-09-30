@@ -13,7 +13,7 @@ export function parseZendeskTicketId(url: string, subdomain: string): string | n
   }
   if (parsed.hostname.toLowerCase() !== `${subdomain.toLowerCase()}.zendesk.com`) return null;
 
-  const match = parsed.pathname.match(/\/(?:agent\/tickets|requests|api\/v2\/tickets)\/(\d+)(?:\.json)?\/?$/);
+  const match = parsed.pathname.match(/\/(?:agent\/tickets|tickets|requests|api\/v2\/tickets)\/(\d+)(?:\.json)?\/?$/);
   return match ? match[1]! : null;
 }
 
