@@ -12,6 +12,7 @@ import type {
   NormalizedEventType,
   NormalizedState,
   SLAPolicyVersion,
+  SourceRole,
 } from "../src/types";
 
 const alwaysOpen: BusinessCalendarVersion = {
@@ -136,12 +137,44 @@ describe("compareNormalizedEvents", () => {
     expect(sortNormalizedEvents([reply, status]).map((e) => e.id)).toEqual(["reply", "status"]);
   });
 
-  it("ranks systems before comparing sequences, since each system numbers its own", () => {
+  it("ranks source roles before comparing sequences, since each source numbers its own", () => {
     const systems: string[] = ["github", "linear", "jira", "intercom", "zendesk"];
     const events = systems.map((system, i) =>
       event(system, "09:00", "state_changed", { system, toState: "open", sourceSequence: i }),
     );
-    expect(sortNormalizedEvents(events).map((e) => e.system)).toEqual(["zendesk", "intercom", "jira", "linear", "github"]);
+    // Ticket sources, then trackers (jira < linear as strings, as under the old rank), then code hosts.
+    // Zendesk and Intercom swap: alphabetical, not the old rank. They only meet on one case through
+    // the externalId collision (N1.15 removes it), so replay reports it as the one expected difference.
+    expect(sortNormalizedEvents(events).map((e) => e.system)).toEqual(["intercom", "zendesk", "jira", "linear", "github"]);
+  });
+
+  it("orders every co-occurring pair of roles the same way as before, whatever the system names", () => {
+    const roles: SourceRole[] = ["ticket_source", "work_tracker", "code_host"];
+    // Lower sourceSequence on the later role, and system names that sort the opposite way, so only the role can decide.
+    const names: Record<SourceRole, string> = { ticket_source: "zzz-ticket", work_tracker: "mmm-tracker", code_host: "aaa-host" };
+    for (let i = 0; i < roles.length; i++) {
+      for (let j = i + 1; j < roles.length; j++) {
+        const first = event("first", "09:00", "state_changed", { system: names[roles[i]!], sourceRole: roles[i]!, toState: "open", sourceSequence: 9 });
+        const second = event("second", "09:00", "state_changed", { system: names[roles[j]!], sourceRole: roles[j]!, toState: "open", sourceSequence: 0 });
+        expect(sortNormalizedEvents([second, first]).map((e) => e.id)).toEqual(["first", "second"]);
+        expect(sortNormalizedEvents([first, second]).map((e) => e.id)).toEqual(["first", "second"]);
+      }
+    }
+  });
+
+  it("within one role, orders by system name and then by that system's own sequence", () => {
+    const a = event("a", "09:00", "state_changed", { system: "tracker-b", sourceRole: "work_tracker", toState: "open", sourceSequence: 0 });
+    const b = event("b", "09:00", "state_changed", { system: "tracker-a", sourceRole: "work_tracker", toState: "open", sourceSequence: 5 });
+    const c = event("c", "09:00", "state_changed", { system: "tracker-a", sourceRole: "work_tracker", toState: "open", sourceSequence: 6 });
+    for (const order of permutations([a, b, c])) {
+      expect(sortNormalizedEvents(order).map((e) => e.id)).toEqual(["b", "c", "a"]);
+    }
+  });
+
+  it("puts an event with no known role after every known role", () => {
+    const unknown = { ...event("unknown", "09:00", "state_changed", { toState: "open" }), sourceRole: undefined as unknown as SourceRole };
+    const host = event("host", "09:00", "state_changed", { system: "github", sourceRole: "code_host", toState: "open" });
+    expect(sortNormalizedEvents([unknown, host]).map((e) => e.id)).toEqual(["host", "unknown"]);
   });
 
   it("orders legacy rows without a sequence deterministically by content, never by id", () => {
