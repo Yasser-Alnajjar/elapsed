@@ -12,6 +12,7 @@ import {
 } from "@sla/core";
 import { persistNextReplyCommitments, planCycleCommitments } from "./cycle-commitments";
 import { ACTIVE_COMMITMENT_WHERE } from "./active-commitment";
+import { toPolicyVersionDomain } from "./policy-domain";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
 import { COMMITMENT_KINDS, latestVersionPerPolicy, pickAnchorCommitment } from "./pipeline";
@@ -87,20 +88,7 @@ export async function runNextReplyCyclePipeline(
   const { policyVersionRows } = options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
-  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map((row) => ({
-    id: row.id,
-    policyId: row.policyId,
-    version: row.version,
-    match: row.match as SLAPolicyMatch,
-    targets: row.targets as { kind: CommitmentKind; minutes: number }[],
-    pauseOnStates: row.pauseOnStates as NormalizedState[],
-    calendarVersionId: row.calendarVersionId,
-    warnAtPercent: row.warnAtPercent,
-    effectiveFrom: row.effectiveFrom.toISOString(),
-    policyPosition: row.policy.position,
-    policySource: row.policy.source,
-    calendarIsExplicit: row.calendarIsExplicit,
-  }));
+  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map(toPolicyVersionDomain);
   const policyVersionsById = new Map(allPolicyVersions.map((pv) => [pv.id, pv]));
   const activePolicyVersions = latestVersionPerPolicy(allPolicyVersions);
 

@@ -159,6 +159,16 @@ export interface SLAPolicyVersion {
    */
   policySource?: "imported" | "native" | null;
   /**
+   * Opaque key of the source an *imported* policy came from (N1.11) —
+   * compared for equality with `CaseAttributes.sourceKey`, never
+   * interpreted. An imported policy that carries a key is a candidate only
+   * for cases of that same source, so a policy imported from one ticket
+   * source never prices another source's cases. Absent/`null` means
+   * unscoped (legacy behaviour: candidate for every case). Ignored for a
+   * native policy, which is a candidate for every case.
+   */
+  sourceKey?: string | null;
+  /**
    * Whether a calendar was explicitly chosen for this policy version (4i).
    * `calendarVersionId` above always holds a concrete, usable version either
    * way (an explicit pin, or a snapshot resolved at save time), but only
@@ -178,6 +188,13 @@ export interface SLAPolicyVersion {
 
 export interface CaseAttributes {
   caseId: string;
+
+  /**
+   * Opaque key of the source this case came from (N1.11), matched against
+   * `SLAPolicyVersion.sourceKey`. Absent means the source is unknown, in
+   * which case a source-scoped imported policy is not a candidate.
+   */
+  sourceKey?: string;
 
   /**
    * Canonical internal attributes used by generic policy matching.

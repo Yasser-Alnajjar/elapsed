@@ -29,6 +29,7 @@ const realDatabaseSuites = [
   "apps/web/test/zendesk-sla-policy-archive.test.ts",
   "apps/web/test/sla-import-summary.test.ts",
   "apps/web/test/zendesk-sla-policy-position.test.ts",
+  "apps/web/test/imported-policy-source-scope.test.ts",
   "apps/web/test/sla-golden-scenarios.test.ts",
   "apps/web/test/first-response-creation-actor.test.ts",
   "apps/web/test/imported-policy-pending-parity.test.ts",

@@ -471,6 +471,10 @@ model SLAPolicy {
   /// Imported vs native (D12, Phase 4). Backfilled from `externalId` for
   /// every pre-Phase-4 row: non-null externalId -> imported.
   source         PolicySource       @default(native)
+  /// Which provider an imported policy came from (N1.11), so it prices only
+  /// that provider's cases (`matchPolicyVersion`). Null for a native policy,
+  /// which is a candidate for every case.
+  sourceProvider IntegrationProvider?
   /// An owner's own pause/resume of a native policy (Phase 4 task 4.4).
   /// Distinct from `archivedAt`, which means "gone from Zendesk" and never
   /// applies to a native policy.

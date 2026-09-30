@@ -150,6 +150,12 @@ describe("toCaseAttributes", () => {
     });
   });
 
+  it("passes the case's source provider through as the opaque `sourceKey` (N1.11)", () => {
+    const base = { id: "case_1", priority: null, customerId: null, tier: null, openedAt: new Date() };
+    expect(toCaseAttributes({ ...base, system: "some-source" }).sourceKey).toBe("some-source");
+    expect(toCaseAttributes(base)).not.toHaveProperty("sourceKey");
+  });
+
   it("merges the generic `attributes` JSON bag in as-is (Zendesk fields with no dedicated column: status, type, group_id, ...)", () => {
     expect(
       toCaseAttributes({

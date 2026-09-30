@@ -328,8 +328,11 @@ export async function upsertPolicyVersion(
   // stay permanently excluded from matching even though it's live again.
   const policy = await prisma.sLAPolicy.upsert({
     where: { organizationId_externalId: { organizationId, externalId } },
-    update: { name, position, archivedAt: null },
-    create: { organizationId, externalId, name, position, source: "imported" },
+    // `sourceProvider` scopes the policy to Zendesk cases (N1.11); set on
+    // update too, so a row written before the column existed heals on the
+    // next import instead of staying unscoped.
+    update: { name, position, archivedAt: null, sourceProvider: "zendesk" },
+    create: { organizationId, externalId, name, position, source: "imported", sourceProvider: "zendesk" },
   });
 
   const [latestVersion, latestImportedVersion] = await Promise.all([

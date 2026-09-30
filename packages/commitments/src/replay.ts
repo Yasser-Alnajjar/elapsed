@@ -21,7 +21,8 @@ import {
   type NormalizedEventRecord,
 } from "./evaluate-pipeline";
 import { latestVersionPerPolicy, toCaseAttributes, type CaseRecord } from "./pipeline";
-import { chunk, loadPolicyContext } from "./tick-context";
+import { toPolicyVersionDomain } from "./policy-domain";
+import { POLICY_SELECT, chunk, loadPolicyContext } from "./tick-context";
 
 /**
  * L1 (evaluation) replay for the provider-neutral core work (N1): re-runs the
@@ -373,6 +374,7 @@ export async function loadOrgReplayInput(
       tier: true,
       tags: true,
       channel: true,
+      system: true,
       attributes: true,
       openedAt: true,
     },
@@ -391,7 +393,7 @@ export async function loadOrgReplayInput(
     where: {
       id: { in: policyVersionIds.filter((id) => !policyContext.policyVersionRows.some((r) => r.id === id)) },
     },
-    include: { policy: { select: { position: true, source: true } }, calendarVersion: true },
+    include: { policy: { select: POLICY_SELECT }, calendarVersion: true },
   });
   const policyRows = [...policyContext.policyVersionRows, ...extraPolicyRows];
   const activePolicyIds = new Set(policyContext.policyVersionRows.map((r) => r.policyId));
@@ -427,20 +429,7 @@ export async function loadOrgReplayInput(
     for (const g of groups) certainLinkCountByCaseId.set(g.caseId, g._count._all);
   }
 
-  const policyVersions: SLAPolicyVersion[] = policyRows.map((row) => ({
-      id: row.id,
-      policyId: row.policyId,
-      version: row.version,
-      match: row.match as SLAPolicyMatch,
-      targets: row.targets as { kind: CommitmentKind; minutes: number }[],
-      pauseOnStates: row.pauseOnStates as NormalizedState[],
-      calendarVersionId: row.calendarVersionId,
-      warnAtPercent: row.warnAtPercent,
-      effectiveFrom: row.effectiveFrom.toISOString(),
-      policyPosition: row.policy.position,
-      policySource: row.policy.source,
-      calendarIsExplicit: row.calendarIsExplicit,
-  }));
+  const policyVersions: SLAPolicyVersion[] = policyRows.map(toPolicyVersionDomain);
 
   return {
     organizationId,
