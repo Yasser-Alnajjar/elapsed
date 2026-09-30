@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -7,7 +6,6 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionProvider } from "@/providers/session-provider";
 import { GoToTop } from "@/components/ui/go-to-top";
-import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
 
 const hankenGrotesk = localFont({
   src: [
@@ -67,7 +65,6 @@ export default async function RootLayout({
           <ThemeProvider>
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
             <GoToTop />
-            <LiveDataProvider />
           </ThemeProvider>
         </SessionProvider>
       </body>

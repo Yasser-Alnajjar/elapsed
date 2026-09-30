@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCommitmentKind,
+  formatNextCycle,
   latestCommitmentOfKind,
   nextReplyCycleNumbers,
 } from "../src/lib/format";
@@ -77,5 +78,25 @@ describe("latestCommitmentOfKind", () => {
       { id: "fr", kind: "first_response" as const, startedAt: "2026-09-17T09:00:00.000Z" },
     ];
     expect(latestCommitmentOfKind(commitments, "next_reply")).toBeUndefined();
+  });
+});
+
+describe("formatNextCycle", () => {
+  const now = Date.parse("2026-10-01T01:00:00Z");
+  const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
+
+  it("reads pending when the worker has not armed a timer yet", () => {
+    expect(formatNextCycle(null, now)).toBe("Pending first cycle");
+  });
+
+  it("rounds to seconds, minutes, then hours", () => {
+    expect(formatNextCycle(at(13_400), now)).toBe("Next cycle in ~13 seconds");
+    expect(formatNextCycle(at(800), now)).toBe("Next cycle in ~1 second");
+    expect(formatNextCycle(at(13 * 60_000), now)).toBe("Next cycle in ~13 minutes");
+    expect(formatNextCycle(at(2 * 3_600_000), now)).toBe("Next cycle in ~2 hours");
+  });
+
+  it("reads due now once the time has passed", () => {
+    expect(formatNextCycle(at(-5_000), now)).toBe("Next cycle due now");
   });
 });

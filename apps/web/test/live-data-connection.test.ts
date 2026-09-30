@@ -3,7 +3,9 @@
  * extracted so it can be unit-tested without jsdom or a real `EventSource`
  * (this repo has neither as a dependency). Covers: no timer-based refresh
  * exists here at all (only event-triggered coalescing), bursts of events
- * collapse into one refresh, and cleanup closes the source exactly once.
+ * collapse into one refresh, and cleanup closes the source exactly once. Also
+ * covers recovery: re-creating a permanently closed `EventSource` with bounded
+ * backoff, and exactly one catch-up refresh after a successful reconnect.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -16,6 +18,8 @@ class FakeEventSource implements EventSourceLike {
   static instances: FakeEventSource[] = [];
   readonly url: string;
   closed = false;
+  /** 0 CONNECTING, 1 OPEN, 2 CLOSED — mirrors the real `EventSource`. */
+  readyState = 0;
   private listeners = new Map<string, Set<(event: { data?: string }) => void>>();
 
   constructor(url: string) {
@@ -36,10 +40,19 @@ class FakeEventSource implements EventSourceLike {
     for (const listener of this.listeners.get(type) ?? []) listener({ data });
   }
 
+  /** The browser giving up for good (e.g. a 401/5xx response): CLOSED, then `error`. */
+  failPermanently(): void {
+    this.readyState = 2;
+    this.emit("error");
+  }
+
   close(): void {
     this.closed = true;
+    this.readyState = 2;
   }
 }
+
+const fake = (url: string) => new FakeEventSource(url);
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -143,6 +156,198 @@ describe("connectLiveData", () => {
 
     expect(source.closed).toBe(true);
     expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  describe("recovery", () => {
+    const connect = (extra: Partial<Parameters<typeof connectLiveData>[0]> = {}) => {
+      const onRefresh = vi.fn();
+      const onStatusChange = vi.fn();
+      const onTransportChange = vi.fn();
+      const connection = connectLiveData({
+        url: "/api/live",
+        onRefresh,
+        onStatusChange,
+        onTransportChange,
+        coalesceMs: 500,
+        reconnectBaseMs: 1_000,
+        reconnectMaxMs: 8_000,
+        createEventSource: fake,
+        ...extra,
+      });
+      return { connection, onRefresh, onStatusChange, onTransportChange };
+    };
+
+    it("does not refresh on the initial successful open", () => {
+      const { onRefresh } = connect();
+      FakeEventSource.instances[0]!.emit("open");
+
+      vi.advanceTimersByTime(60_000);
+      expect(onRefresh).not.toHaveBeenCalled();
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+
+    it("re-creates a permanently closed EventSource after the backoff, closing the old one", () => {
+      const { onStatusChange, onTransportChange } = connect();
+      const first = FakeEventSource.instances[0]!;
+      first.emit("open");
+
+      first.failPermanently();
+      expect(first.closed).toBe(true);
+      expect(onTransportChange).toHaveBeenLastCalledWith(false);
+      expect(onStatusChange).toHaveBeenLastCalledWith("reconnecting");
+      expect(FakeEventSource.instances).toHaveLength(1);
+
+      vi.advanceTimersByTime(999);
+      expect(FakeEventSource.instances).toHaveLength(1);
+      vi.advanceTimersByTime(1);
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect(FakeEventSource.instances[1]!.url).toBe("/api/live");
+    });
+
+    it("does not re-create a source the browser is still retrying natively", () => {
+      const { onRefresh } = connect();
+      const first = FakeEventSource.instances[0]!;
+      first.emit("open");
+
+      first.readyState = 0; // network blip: CONNECTING, native retry in flight
+      first.emit("error");
+      vi.advanceTimersByTime(60_000);
+
+      expect(FakeEventSource.instances).toHaveLength(1);
+      expect(first.closed).toBe(false);
+
+      first.readyState = 1;
+      first.emit("open"); // native reconnect succeeded
+      vi.advanceTimersByTime(500);
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("backs off exponentially up to the cap while the server stays down, and resets after a successful open", () => {
+      connect();
+      const delays: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const before = FakeEventSource.instances.length;
+        FakeEventSource.instances.at(-1)!.failPermanently();
+        let waited = 0;
+        while (FakeEventSource.instances.length === before) {
+          vi.advanceTimersByTime(1_000);
+          waited += 1_000;
+        }
+        delays.push(waited);
+      }
+      expect(delays).toEqual([1_000, 2_000, 4_000, 8_000, 8_000]);
+
+      FakeEventSource.instances.at(-1)!.emit("open");
+      const before = FakeEventSource.instances.length;
+      FakeEventSource.instances.at(-1)!.failPermanently();
+      vi.advanceTimersByTime(1_000);
+      expect(FakeEventSource.instances).toHaveLength(before + 1);
+    });
+
+    it("triggers exactly one catch-up refresh on a successful reconnect, through the coalescing window", () => {
+      const { onRefresh } = connect();
+      FakeEventSource.instances[0]!.emit("open");
+      FakeEventSource.instances[0]!.failPermanently();
+      vi.advanceTimersByTime(1_000);
+      const second = FakeEventSource.instances[1]!;
+
+      second.emit("open");
+      expect(onRefresh).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(500);
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(60_000);
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("costs a single refresh when a data.updated lands together with the recovery", () => {
+      const { onRefresh } = connect();
+      FakeEventSource.instances[0]!.failPermanently();
+      vi.advanceTimersByTime(1_000);
+      const second = FakeEventSource.instances[1]!;
+
+      second.emit("open");
+      second.emit("data.updated");
+      vi.advanceTimersByTime(500);
+
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("catches up only once per interruption, not on every later open", () => {
+      const { onRefresh } = connect();
+      const first = FakeEventSource.instances[0]!;
+      first.emit("open");
+      first.emit("error");
+      first.emit("open");
+      vi.advanceTimersByTime(500);
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+
+      first.emit("open"); // spurious duplicate open, no error in between
+      vi.advanceTimersByTime(500);
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not start concurrent reconnect loops when errors repeat", () => {
+      connect();
+      const first = FakeEventSource.instances[0]!;
+
+      first.failPermanently();
+      first.emit("error");
+      first.emit("error");
+      vi.advanceTimersByTime(1_000);
+      expect(FakeEventSource.instances).toHaveLength(2);
+
+      vi.advanceTimersByTime(60_000);
+      expect(FakeEventSource.instances).toHaveLength(2);
+    });
+
+    it("ignores late events and errors from a replaced EventSource", () => {
+      const { onRefresh, onTransportChange, onStatusChange } = connect();
+      const first = FakeEventSource.instances[0]!;
+      first.failPermanently();
+      vi.advanceTimersByTime(1_000);
+      const second = FakeEventSource.instances[1]!;
+      second.emit("open");
+      second.emit("listener.status", JSON.stringify({ state: "connected" }));
+      vi.advanceTimersByTime(500);
+      onRefresh.mockClear();
+      onTransportChange.mockClear();
+      onStatusChange.mockClear();
+
+      first.emit("data.updated");
+      first.emit("error");
+      first.emit("open");
+      first.emit("listener.status", JSON.stringify({ state: "offline" }));
+      vi.advanceTimersByTime(60_000);
+
+      expect(onRefresh).not.toHaveBeenCalled();
+      expect(onTransportChange).not.toHaveBeenCalled();
+      expect(onStatusChange).not.toHaveBeenCalled();
+      expect(FakeEventSource.instances).toHaveLength(2);
+    });
+
+    it("close() cancels a pending reconnect so no further EventSource is ever created", () => {
+      const { connection } = connect();
+      FakeEventSource.instances[0]!.failPermanently();
+
+      connection.close();
+      vi.advanceTimersByTime(120_000);
+
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+
+    it("close() also cancels a pending catch-up refresh and silences the open source", () => {
+      const { connection, onRefresh } = connect();
+      const first = FakeEventSource.instances[0]!;
+      first.emit("error");
+      first.emit("open");
+
+      connection.close();
+      vi.advanceTimersByTime(60_000);
+
+      expect(first.closed).toBe(true);
+      expect(onRefresh).not.toHaveBeenCalled();
+    });
   });
 
   describe("status", () => {

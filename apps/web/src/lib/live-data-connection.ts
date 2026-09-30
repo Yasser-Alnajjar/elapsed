@@ -6,7 +6,12 @@
 export interface EventSourceLike {
   addEventListener(type: string, listener: (event: { data?: string }) => void): void;
   close(): void;
+  /** 0 CONNECTING, 1 OPEN, 2 CLOSED. Optional so test fakes needn't model it; absent is treated as "still retrying natively". */
+  readonly readyState?: number;
 }
+
+/** `EventSource.CLOSED`: the browser has given up (non-200 / wrong content type) and will never retry on its own. */
+const EVENT_SOURCE_CLOSED = 2;
 
 /**
  * What the header badge and the Monitoring page's "SSE connection" line
@@ -38,6 +43,13 @@ export interface LiveDataConnectionOptions {
    * `router.refresh()` calls.
    */
   coalesceMs?: number;
+  /**
+   * Backoff for re-creating an `EventSource` the browser has permanently
+   * closed (e.g. `/api/live` answered 401/5xx): doubles from `reconnectBaseMs`
+   * up to `reconnectMaxMs`, reset by a successful open.
+   */
+  reconnectBaseMs?: number;
+  reconnectMaxMs?: number;
 }
 
 export interface LiveDataConnection {
@@ -45,6 +57,8 @@ export interface LiveDataConnection {
 }
 
 const DEFAULT_COALESCE_MS = 500;
+const DEFAULT_RECONNECT_BASE_MS = 1_000;
+const DEFAULT_RECONNECT_MAX_MS = 30_000;
 
 function defaultCreateEventSource(url: string): EventSourceLike {
   return new EventSource(url);
@@ -72,20 +86,34 @@ export function deriveLiveStatus(
 }
 
 /**
- * Owns exactly one SSE connection and turns its `data.updated` events into
- * coalesced `onRefresh()` calls. No polling, no timers beyond the one
- * short-lived coalescing timeout per burst — reconnection after a dropped
- * connection is `EventSource`'s own native behavior, not reimplemented here.
+ * Owns exactly one SSE connection at a time and turns its `data.updated`
+ * events into coalesced `onRefresh()` calls. No polling: a dropped connection
+ * is retried by `EventSource` itself, and only when the browser gives up on it
+ * for good (`readyState === CLOSED`, e.g. a 401/5xx response, which it never
+ * retries) is a fresh one created, after a bounded exponential backoff.
+ *
+ * Events can be missed while disconnected, so the first successful `open`
+ * after any error requests one catch-up refresh — through the same coalescing
+ * as `data.updated`, so a recovery and an event landing together still cost a
+ * single `onRefresh()`. The database stays the source of truth; nothing is
+ * replayed.
  */
 export function connectLiveData(
   options: LiveDataConnectionOptions,
 ): LiveDataConnection {
   const coalesceMs = options.coalesceMs ?? DEFAULT_COALESCE_MS;
+  const reconnectBaseMs = options.reconnectBaseMs ?? DEFAULT_RECONNECT_BASE_MS;
+  const reconnectMaxMs = options.reconnectMaxMs ?? DEFAULT_RECONNECT_MAX_MS;
   const createEventSource = options.createEventSource ?? defaultCreateEventSource;
 
   let coalesceTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let current: EventSourceLike | null = null;
+  let closed = false;
   let sseOpen = false;
   let serverState: LiveConnectionStatus | null = null;
+  let needsCatchUp = false;
+  let failedAttempts = 0;
 
   const scheduleRefresh = () => {
     if (coalesceTimer) return;
@@ -99,34 +127,77 @@ export function connectLiveData(
     options.onStatusChange?.(deriveLiveStatus(sseOpen, serverState));
   };
 
-  const source = createEventSource(options.url);
-  source.addEventListener("data.updated", scheduleRefresh);
-  source.addEventListener("open", () => {
-    sseOpen = true;
-    options.onTransportChange?.(true);
-    emitStatus();
-  });
-  source.addEventListener("error", () => {
-    sseOpen = false;
-    options.onTransportChange?.(false);
-    emitStatus();
-  });
-  source.addEventListener("listener.status", (event) => {
-    try {
-      const parsed = JSON.parse(event.data ?? "") as { state?: unknown };
-      if (
-        parsed.state === "connected" ||
-        parsed.state === "reconnecting" ||
-        parsed.state === "offline"
-      ) {
-        serverState = parsed.state;
-      }
-    } catch {
-      // Malformed payload: keep the last known server state rather than
-      // guessing.
-    }
-    emitStatus();
-  });
+  const scheduleReconnect = () => {
+    if (closed || reconnectTimer) return;
+    const delay = Math.min(reconnectMaxMs, reconnectBaseMs * 2 ** failedAttempts);
+    failedAttempts += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      open();
+    }, delay);
+  };
+
+  function open(): void {
+    if (closed || current) return;
+    const source = createEventSource(options.url);
+    current = source;
+    // A source that has been replaced or closed must never affect the live
+    // one: every handler checks it is still the current source.
+    const live = (handler: (event: { data?: string }) => void) => (event: { data?: string }) => {
+      if (current === source) handler(event);
+    };
+
+    source.addEventListener("data.updated", live(scheduleRefresh));
+    source.addEventListener(
+      "open",
+      live(() => {
+        sseOpen = true;
+        failedAttempts = 0;
+        options.onTransportChange?.(true);
+        emitStatus();
+        if (needsCatchUp) {
+          needsCatchUp = false;
+          scheduleRefresh();
+        }
+      }),
+    );
+    source.addEventListener(
+      "error",
+      live(() => {
+        sseOpen = false;
+        needsCatchUp = true;
+        options.onTransportChange?.(false);
+        emitStatus();
+        if (source.readyState === EVENT_SOURCE_CLOSED) {
+          // The browser will not retry this one: replace it ourselves.
+          source.close();
+          current = null;
+          scheduleReconnect();
+        }
+      }),
+    );
+    source.addEventListener(
+      "listener.status",
+      live((event) => {
+        try {
+          const parsed = JSON.parse(event.data ?? "") as { state?: unknown };
+          if (
+            parsed.state === "connected" ||
+            parsed.state === "reconnecting" ||
+            parsed.state === "offline"
+          ) {
+            serverState = parsed.state;
+          }
+        } catch {
+          // Malformed payload: keep the last known server state rather than
+          // guessing.
+        }
+        emitStatus();
+      }),
+    );
+  }
+
+  open();
 
   // Report the initial state synchronously — "reconnecting" (via `!sseOpen`)
   // until the transport actually opens, never a fabricated "connected".
@@ -134,8 +205,14 @@ export function connectLiveData(
 
   return {
     close() {
+      closed = true;
       if (coalesceTimer) clearTimeout(coalesceTimer);
-      source.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      coalesceTimer = null;
+      reconnectTimer = null;
+      const source = current;
+      current = null;
+      source?.close();
     },
   };
 }

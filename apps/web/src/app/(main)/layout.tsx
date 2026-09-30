@@ -16,6 +16,7 @@ import { LiveStatusBadge } from "@/components/shared/LiveStatusBadge";
 import { AlertsPopover } from "@/components/layout/alerts-popover";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Input } from "@/components/ui/input";
+import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -35,16 +36,15 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, activePollIntervalMs, alertSummary] = await withPerfScope(
-    "layout",
-    () =>
+  const [user, integrations, activePollIntervalMs, alertSummary] =
+    await withPerfScope("layout", () =>
       Promise.all([
         Actions.Profile.getData(),
         Actions.Integrations.getData(),
         Actions.WorkerSettings.getActivePollIntervalMs(),
         getAlertSummary(getPrismaClient(), organizationId),
       ]),
-  );
+    );
 
   const alerts = alertSummary.rows;
 
@@ -118,6 +118,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         </header>
         <main className="mx-auto min-w-0 w-full flex-1 px-4 py-4">
           {children}
+          <LiveDataProvider />
         </main>
       </SidebarInset>
     </SidebarProvider>

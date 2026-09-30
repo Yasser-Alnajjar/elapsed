@@ -281,6 +281,27 @@ export function formatIntervalMs(ms: number): string {
   return `${Math.round(ms / 1000)} seconds`;
 }
 
+/**
+ * "Next cycle in ~13 seconds" / "~13 minutes" countdown text for a worker-
+ * reported next-run time, relative to `nowMs`. Rounds to the nearest whole
+ * unit (seconds under a minute, minutes under an hour, hours beyond);
+ * a time that has already passed reads "due now" — the worker's own
+ * timer may simply not have fired yet — and null (never armed) reads
+ * "pending first cycle".
+ */
+export function formatNextCycle(nextIso: string | null, nowMs: number): string {
+  if (!nextIso) return "Pending first cycle";
+  const diffMs = new Date(nextIso).getTime() - nowMs;
+  if (diffMs <= 0) return "Next cycle due now";
+
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  const seconds = Math.round(diffMs / 1_000);
+  if (seconds < 60) return `Next cycle in ~${plural(Math.max(seconds, 1), "second")}`;
+  const minutes = Math.round(diffMs / 60_000);
+  if (minutes < 60) return `Next cycle in ~${plural(minutes, "minute")}`;
+  return `Next cycle in ~${plural(Math.round(diffMs / 3_600_000), "hour")}`;
+}
+
 /** e.g. "Sep 14, 2026, 07:05:32" / "Never" for a null timestamp — a static, second-precision rendering of a worker-reported time. Deliberately not relative: it must not drift or need a client-side tick to stay correct. */
 export function formatExactTimestamp(iso: string | null): string {
   if (!iso) return "Never";

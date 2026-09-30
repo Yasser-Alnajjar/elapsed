@@ -123,7 +123,7 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
               </span>
               <div>
                 <CardTitle className="text-on-surface text-xl font-semibold tracking-tight">
-                  Polling intervals
+                  Worker cycles
                 </CardTitle>
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {settings.canEdit
@@ -139,6 +139,8 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
               label="Active monitoring"
               description="Checks active cases with live SLA commitments."
               valueMs={settings.activePollIntervalMs}
+              lastCycleAt={settings.lastActivePollAt}
+              nextCycleAt={settings.nextActivePollAt}
               options={ACTIVE_POLL_OPTIONS}
               canEdit={settings.canEdit}
               onSave={saveActivePoll}
@@ -147,6 +149,8 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
               label="Reconciliation"
               description="Periodically verifies recent changes and catches missed updates."
               valueMs={settings.reconciliationIntervalMs}
+              lastCycleAt={settings.lastReconciliationAt}
+              nextCycleAt={settings.nextReconciliationAt}
               options={RECONCILIATION_OPTIONS}
               canEdit={settings.canEdit}
               onSave={saveReconciliation}
@@ -181,22 +185,22 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
               </Badge>
             </div>
             <div>
-              <p className="text-xs text-on-surface-variant">Last active check</p>
+              <p className="text-xs text-on-surface-variant">Last active cycle</p>
               <p className="mt-1.5 text-sm font-medium">
                 {formatExactTimestamp(settings.lastActivePollAt)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-on-surface-variant">Next active check</p>
+              <p className="text-xs text-on-surface-variant">Next active cycle</p>
               <p className="mt-1.5 text-sm font-medium">
                 {settings.nextActivePollAt
                   ? formatExactTimestamp(settings.nextActivePollAt)
-                  : "Pending first check"}
+                  : "Pending first cycle"}
               </p>
             </div>
             <div>
               <p className="text-xs text-on-surface-variant">
-                Last reconciliation
+                Last reconciliation cycle
               </p>
               <p className="mt-1.5 text-sm font-medium">
                 {formatExactTimestamp(settings.lastReconciliationAt)}
@@ -204,12 +208,12 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
             </div>
             <div>
               <p className="text-xs text-on-surface-variant">
-                Next reconciliation
+                Next reconciliation cycle
               </p>
               <p className="mt-1.5 text-sm font-medium">
                 {settings.nextReconciliationAt
                   ? formatExactTimestamp(settings.nextReconciliationAt)
-                  : "Pending first check"}
+                  : "Pending first cycle"}
               </p>
             </div>
           </CardContent>
