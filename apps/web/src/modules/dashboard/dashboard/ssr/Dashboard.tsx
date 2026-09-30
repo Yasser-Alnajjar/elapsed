@@ -20,8 +20,16 @@ export const Dashboard = async () => {
         data={data}
         autoSyncSeconds={5}
         sourceStatus={{
-          zendesk: integrations.zendesk.connected,
-          jira: integrations.jira.connected,
+          // Name whichever ticket source / tracker is actually connected
+          // (Intercom and Linear are alternatives, not add-ons).
+          ticketSource:
+            !integrations.zendesk.connected && integrations.intercom.connected
+              ? { label: "Intercom", connected: true }
+              : { label: "Zendesk", connected: integrations.zendesk.connected },
+          tracker:
+            !integrations.jira.connected && integrations.linear.connected
+              ? { label: "Linear", connected: true }
+              : { label: "Jira", connected: integrations.jira.connected },
         }}
       />
     </>

@@ -36,7 +36,10 @@ import Link from "next/link";
 interface DashboardViewProps {
   data: DashboardData;
   autoSyncSeconds: number;
-  sourceStatus: { zendesk: boolean; jira: boolean };
+  sourceStatus: {
+    ticketSource: { label: string; connected: boolean };
+    tracker: { label: string; connected: boolean };
+  };
 }
 
 /**
@@ -112,22 +115,28 @@ export const DashboardView = ({
               <span className="text-outline">Read-only sync active:</span>
               <span
                 className={
-                  sourceStatus.zendesk
+                  sourceStatus.ticketSource.connected
                     ? "text-tertiary font-mono text-xs"
                     : "text-outline font-mono text-xs"
                 }
               >
-                Zendesk ({sourceStatus.zendesk ? "Connected" : "Not connected"})
+                {sourceStatus.ticketSource.label} (
+                {sourceStatus.ticketSource.connected
+                  ? "Connected"
+                  : "Not connected"}
+                )
               </span>
               <span className="text-muted-foreground text-xxs">•</span>
               <span
                 className={
-                  sourceStatus.jira
+                  sourceStatus.tracker.connected
                     ? "text-primary font-mono text-xs"
                     : "text-outline font-mono text-xs"
                 }
               >
-                Jira ({sourceStatus.jira ? "Connected" : "Not connected"})
+                {sourceStatus.tracker.label} (
+                {sourceStatus.tracker.connected ? "Connected" : "Not connected"}
+                )
               </span>
             </div>
           </div>

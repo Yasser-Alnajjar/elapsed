@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
 const NAV_STEPS = [
-  { number: "01", label: "Connect Zendesk" },
+  { number: "01", label: "Connect Helpdesk" },
   { number: "02", label: "Run 90d Ingestion" },
-  { number: "03", label: "Connect Jira" },
+  { number: "03", label: "Connect Tracker" },
   { number: "04", label: "SLA Live" },
 ] as const;
 

@@ -70,7 +70,8 @@ export async function GET(request: Request) {
     },
   });
 
-  const response = NextResponse.redirect(new URL("/settings/integrations", getAppUrl()));
+  const destination = state.returnTo === "onboarding" ? "/onboarding?connected=intercom" : "/settings/integrations";
+  const response = NextResponse.redirect(new URL(destination, getAppUrl()));
   response.cookies.delete(INTERCOM_STATE_COOKIE);
   return response;
 }

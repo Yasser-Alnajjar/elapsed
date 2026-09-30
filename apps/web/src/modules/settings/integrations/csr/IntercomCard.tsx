@@ -9,9 +9,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { IntercomBackfillResult } from "@/lib/types/integrations";
 
-export function IntercomConnectButton() {
+/** `returnTo="onboarding"` makes the OAuth callback land back in the guided flow instead of the settings page. */
+export function IntercomConnectButton({ returnTo }: { returnTo?: "onboarding" }) {
+  const href = `/api/integrations/intercom/connect${returnTo ? `?returnTo=${returnTo}` : ""}`;
   return (
-    <Button type="button" size="sm" onClick={() => (window.location.href = "/api/integrations/intercom/connect")}>
+    <Button type="button" size="sm" onClick={() => (window.location.href = href)}>
       Connect Intercom
     </Button>
   );
