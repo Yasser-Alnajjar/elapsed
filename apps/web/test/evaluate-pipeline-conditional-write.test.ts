@@ -150,6 +150,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
           occurredAt: OPENED,
           actor: "customer",
           system: "zendesk",
+          sourceRole: "ticket_source",
           toState: "open",
         },
       });

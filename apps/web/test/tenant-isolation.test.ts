@@ -197,6 +197,7 @@ async function seedOrg(
             occurredAt: openedAt,
             actor: `${label} agent`,
             system: "zendesk",
+            sourceRole: "ticket_source",
             toState: "new",
           },
           {
@@ -205,6 +206,7 @@ async function seedOrg(
             occurredAt: new Date(openedAt.getTime() + 60_000),
             actor: `${label} agent`,
             system: "zendesk",
+            sourceRole: "ticket_source",
             fromState: "new",
             toState: "escalated",
           },

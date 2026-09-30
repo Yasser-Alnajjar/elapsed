@@ -272,9 +272,8 @@ model NormalizedEvent {
   system           IntegrationProvider
   /// What this event's source plays in the case: `ticket_source`,
   /// `work_tracker` or `code_host`. The engine decides by this, not by
-  /// `system` (N1.5). Nullable until every writer sets it; a later migration
-  /// makes it NOT NULL. Derived data: the backfill equals re-derivation.
-  sourceRole       String?
+  /// `system` (N1.5). Derived data: the backfill equals re-derivation.
+  sourceRole       String
   fromState        String?
   toState          String?
   /// Position in the provider's own source order (Zendesk audit order, then

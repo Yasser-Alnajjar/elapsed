@@ -155,7 +155,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       data: { integrationId: zendeskIntegrationId, providerEventId: `ticket:${caseId}:seed`, sourceHash: "seed", payload: {} },
     });
     await prisma.normalizedEvent.create({
-      data: { caseId, sourceRawEventId: rawEvent.id, type: "case_created", occurredAt: new Date(occurredAt), actor: "customer", system: "zendesk", toState: "new" },
+      data: { caseId, sourceRawEventId: rawEvent.id, type: "case_created", occurredAt: new Date(occurredAt), actor: "customer", system: "zendesk", sourceRole: "ticket_source", toState: "new" },
     });
   }
 
