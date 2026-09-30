@@ -63,7 +63,7 @@ describe.skipIf(!TEST_DATABASE_URL)("multiple commitments per case (real Postgre
     calendarVersionId = calendar.versions[0]!.id;
     caseId = (
       await prisma.case.create({
-        data: { organizationId, externalId: "7", priority: "urgent", openedAt: at("10:00") },
+        data: { organizationId, system: "zendesk", externalId: "7", priority: "urgent", openedAt: at("10:00") },
       })
     ).id;
   });

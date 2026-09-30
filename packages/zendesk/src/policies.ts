@@ -479,12 +479,12 @@ export async function runZendeskSlaPolicyImport(
 
   if (latestPolicies.size === 0) return result;
 
-  const customers = await prisma.customer.findMany({
-    where: { organizationId, zendeskOrgId: { not: null } },
-    select: { id: true, zendeskOrgId: true },
+  const identities = await prisma.customerIdentity.findMany({
+    where: { organizationId, provider: "zendesk", kind: "organization" },
+    select: { customerId: true, externalId: true },
   });
   const customerIdsByZendeskOrgId = new Map(
-    customers.map((c) => [c.zendeskOrgId as string, c.id]),
+    identities.map((i) => [i.externalId, i.customerId]),
   );
 
   const defaultCalendarVersion = await ensureDefaultCalendar(organizationId);

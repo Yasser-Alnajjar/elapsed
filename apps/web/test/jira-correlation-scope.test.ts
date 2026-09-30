@@ -43,7 +43,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraCorrelation issue scoping (real Post
 
     const organization = await prisma.organization.create({ data: { name: "Scope Org" } });
     organizationId = organization.id;
-    await prisma.integration.create({
+    const zendeskIntegration = await prisma.integration.create({
       data: { organizationId, provider: "zendesk", credentials: { subdomain: "acme" } },
     });
     const jiraIntegration = await prisma.integration.create({
@@ -56,10 +56,10 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraCorrelation issue scoping (real Post
     jiraIntegrationId = jiraIntegration.id;
 
     await prisma.case.create({
-      data: { organizationId, externalId: "1", system: "zendesk", subject: "Ticket 1", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "1", system: "zendesk", sourceIntegrationId: zendeskIntegration.id, subject: "Ticket 1", openedAt: new Date("2026-03-01") },
     });
     await prisma.case.create({
-      data: { organizationId, externalId: "2", system: "zendesk", subject: "Ticket 2", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "2", system: "zendesk", sourceIntegrationId: zendeskIntegration.id, subject: "Ticket 2", openedAt: new Date("2026-03-01") },
     });
   });
 

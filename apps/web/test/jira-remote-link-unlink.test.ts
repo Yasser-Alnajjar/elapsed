@@ -86,7 +86,13 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
 
   async function seedCase(ticketId: string): Promise<string> {
     const row = await prisma.case.create({
-      data: { organizationId, externalId: ticketId, openedAt: new Date("2026-03-01T00:00:00.000Z") },
+      data: {
+        organizationId,
+        system: "zendesk",
+        sourceIntegrationId: zendeskIntegrationId,
+        externalId: ticketId,
+        openedAt: new Date("2026-03-01T00:00:00.000Z"),
+      },
     });
     return row.id;
   }
@@ -266,7 +272,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     // own connected subdomain — without it, org B's correlation bails out
     // before ever creating a CaseLink, and this test would be proving
     // nothing.
-    await prisma.integration.create({
+    const zendeskB = await prisma.integration.create({
       data: { organizationId: orgB.id, provider: "zendesk", credentials: { subdomain: "acme", accessToken: "token", tokenType: "bearer", scope: "read" } },
     });
     const jiraB = await prisma.integration.create({
@@ -274,7 +280,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     });
     const caseA = await seedCase("7");
     const caseB = await prisma.case.create({
-      data: { organizationId: orgB.id, externalId: "7", openedAt: new Date("2026-03-01T00:00:00.000Z") },
+      data: { organizationId: orgB.id, system: "zendesk", sourceIntegrationId: zendeskB.id, externalId: "7", openedAt: new Date("2026-03-01T00:00:00.000Z") },
     });
 
     // Both organizations independently link the same-shaped (issue KAN-7, ticket 7) pair.

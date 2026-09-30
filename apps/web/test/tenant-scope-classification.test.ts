@@ -30,6 +30,7 @@ const SCOPES: Record<string, Scope> = {
   OrganizationInvitation: { kind: "direct" },
   Integration: { kind: "direct" },
   Customer: { kind: "direct" },
+  CustomerIdentity: { kind: "direct" },
   Case: { kind: "direct" },
   SLAPolicy: { kind: "direct" },
   SlaImportSummary: { kind: "direct" },
@@ -78,6 +79,7 @@ const accessor = (model: string) => model[0]!.toLowerCase() + model.slice(1);
 const NESTED_SEED: Record<string, string[]> = {
   NormalizedEvent: ["normalizedEvents: {"],
   CaseLink: ["caseLinks: {"],
+  CustomerIdentity: ["identities: {"],
   BusinessCalendarVersion: ["versions: {"],
 };
 

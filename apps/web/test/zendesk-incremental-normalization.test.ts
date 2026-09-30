@@ -150,6 +150,21 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization incremental mode (r
     expect(after.normalizedThroughId).not.toBeNull();
   });
 
+  it("names each case by the integration that created it (N1.15)", async () => {
+    await seedTicket(1, "A", 1, OLD);
+    await incremental();
+    await full();
+
+    expect((await caseFor("1")).sourceIntegrationId).toBe(integrationId);
+    expect(
+      await prisma.case.findUnique({
+        where: {
+          organizationId_sourceIntegrationId_externalId: { organizationId, sourceIntegrationId: integrationId, externalId: "1" },
+        },
+      }),
+    ).not.toBeNull();
+  });
+
   it("re-derives only the ticket with a new snapshot, leaving the others untouched", async () => {
     await seedTicket(1, "A", 1, OLD);
     await seedTicket(2, "B", 1, OLD);

@@ -1,6 +1,7 @@
-import { Prisma, type PrismaClient } from "@sla/db";
+import { Prisma, findCustomerByIdentity, upsertCustomerByIdentity, type PrismaClient } from "@sla/db";
 import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
+import { zendeskOrganizationIdentity } from "./customer-identity";
 import { ZENDESK_SOURCE_ROLE } from "./source-role";
 
 /** Zendesk's closed set of ticket statuses, mapped to the provider-independent vocabulary. */
@@ -728,11 +729,7 @@ async function normalizeTickets(
 
   const latestOrgs = latestSnapshotById<ZendeskOrganization>(orgRows);
   for (const { value: org } of latestOrgs.values()) {
-    await prisma.customer.upsert({
-      where: { organizationId_zendeskOrgId: { organizationId, zendeskOrgId: String(org.id) } },
-      update: { name: org.name },
-      create: { organizationId, name: org.name, zendeskOrgId: String(org.id) },
-    });
+    await upsertCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, org.id), org.name);
     result.customersUpserted += 1;
   }
 
@@ -771,7 +768,7 @@ async function normalizeTickets(
     const latestTickets = latestSnapshotById<ZendeskTicket>(ticketRows);
     const auditsByTicketId = groupAuditsByTicketId(auditRows);
 
-    await deriveTickets(prisma, organizationId, latestTickets, auditsByTicketId, userRoles, result);
+    await deriveTickets(prisma, organizationId, integrationId, latestTickets, auditsByTicketId, userRoles, result);
   }
 
   return result;
@@ -780,6 +777,7 @@ async function normalizeTickets(
 async function deriveTickets(
   prisma: PrismaClient,
   organizationId: string,
+  integrationId: string,
   latestTickets: ReturnType<typeof latestSnapshotById<ZendeskTicket>>,
   auditsByTicketId: Map<number, AuditRecord[]>,
   userRoles: ZendeskUserRoles,
@@ -801,11 +799,7 @@ async function deriveTickets(
 
       const customer =
         ticket.organization_id != null
-          ? await prisma.customer.findUnique({
-              where: {
-                organizationId_zendeskOrgId: { organizationId, zendeskOrgId: String(ticket.organization_id) },
-              },
-            })
+          ? await findCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, ticket.organization_id))
           : null;
 
       const auditsForTicket = auditsByTicketId.get(ticket.id) ?? [];
@@ -821,8 +815,15 @@ async function deriveTickets(
       const ownRawEventIds = [...ticketSnapshotRawEventIds, ...auditsForTicket.map((a) => a.rawEventId)];
 
       const caseRow = await prisma.case.upsert({
-        where: { organizationId_externalId: { organizationId, externalId: String(ticket.id) } },
+        where: {
+          organizationId_sourceIntegrationId_externalId: {
+            organizationId,
+            sourceIntegrationId: integrationId,
+            externalId: String(ticket.id),
+          },
+        },
         update: {
+          sourceIntegrationId: integrationId,
           customerId: customer?.id ?? null,
           subject: ticket.subject,
           priority: ticket.priority,
@@ -846,6 +847,7 @@ async function deriveTickets(
           customerId: customer?.id ?? null,
           externalId: String(ticket.id),
           system: "zendesk",
+          sourceIntegrationId: integrationId,
           subject: ticket.subject,
           priority: ticket.priority,
           channel: ticket.via?.channel ?? null,

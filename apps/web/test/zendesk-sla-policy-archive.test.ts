@@ -145,7 +145,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     // (no other policy's match criteria fit) now matches nothing at all,
     // rather than silently keying off a deleted policy.
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-1", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-1", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     const pipelineResult = await commitments.runCommitmentPipeline(prisma, organizationId);
     expect(pipelineResult.casesWithNoMatchingPolicy).toBe(0); // "Standard" (unrestricted match) still applies
@@ -241,7 +241,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
       include: { calendarVersion: true },
     });
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-historical", openedAt: new Date("2026-09-01T00:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-historical", openedAt: new Date("2026-09-01T00:00:00.000Z") },
     });
     const commitment = await prisma.commitment.create({
       data: {
@@ -282,7 +282,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-no-match", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-no-match", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     // With every SLAPolicy in the org archived, `runCommitmentPipeline`
     // short-circuits before loading any case at all (no active policy
@@ -316,7 +316,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     expect(recreated.archivedAt).toBeNull();
 
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-recreated", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-recreated", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     const pipelineResult = await commitments.runCommitmentPipeline(prisma, organizationId);
     expect(pipelineResult.casesWithNoMatchingPolicy).toBe(0);

@@ -63,7 +63,7 @@ describe.skipIf(!TEST_DATABASE_URL)("native policy calendar resolution (real Pos
 
   async function createCase(externalId: string, overrides: Record<string, unknown> = {}) {
     return prisma.case.create({
-      data: { organizationId, externalId, openedAt: at("09:00"), ...overrides },
+      data: { organizationId, system: "zendesk", externalId, openedAt: at("09:00"), ...overrides },
     });
   }
 

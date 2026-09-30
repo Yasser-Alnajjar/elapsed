@@ -92,7 +92,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seed-test-customers: 11 independent organiz
     const other = await prisma.organization.create({ data: { name: "Unrelated Tenant" } });
     bystanderId = other.id;
     const customer = await prisma.customer.create({ data: { organizationId: other.id, name: "Bystander Inc", zendeskOrgId: "7100000001" } });
-    await prisma.case.create({ data: { organizationId: other.id, customerId: customer.id, externalId: "41001", openedAt: new Date("2026-09-01T00:00:00Z") } });
+    await prisma.case.create({ data: { organizationId: other.id, customerId: customer.id, externalId: "41001", system: "zendesk", openedAt: new Date("2026-09-01T00:00:00Z") } });
     await m.seed.seedTestCustomers(prisma, { reset: true });
   }, 300_000);
 

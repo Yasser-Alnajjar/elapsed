@@ -23,10 +23,9 @@ export type CaseRefResolver = (url: string) => Promise<CaseRefResolution>;
  * Builds, for one organization, the function that turns an external URL into
  * one of its cases (N1.13). `recognizers` maps a provider name to that
  * provider's `TicketUrlRecognizer`; only organizations' integrations whose
- * provider has an entry take part. A recognized id resolves to a case only
- * when the case was created by that same provider (`Case.system`), so a
- * Zendesk ticket id can never land on an Intercom conversation that happens
- * to share it.
+ * provider has an entry take part. A recognized id resolves to a case of that
+ * same integration (`Case.sourceIntegrationId`, N1.15), so a Zendesk ticket id
+ * can never land on an Intercom conversation that happens to share it.
  *
  * Returns `null` when the organization has no such integration, so the
  * trackers can skip correlation outright, as they did without a Zendesk
@@ -39,20 +38,20 @@ export async function buildCaseRefResolver(
 ): Promise<CaseRefResolver | null> {
   const integrations = await prisma.integration.findMany({
     where: { organizationId, provider: { in: Object.keys(recognizers) as IntegrationProvider[] } },
-    select: { provider: true, credentials: true },
+    select: { id: true, provider: true, credentials: true },
   });
   if (integrations.length === 0) return null;
 
   return async (url) => {
-    for (const { provider, credentials } of integrations) {
+    for (const { id: sourceIntegrationId, provider, credentials } of integrations) {
       const externalId = recognizers[provider]?.(url, credentials);
       if (externalId == null) continue;
 
       const caseRow = await prisma.case.findUnique({
-        where: { organizationId_externalId: { organizationId, externalId } },
-        select: { id: true, system: true, deletedAt: true },
+        where: { organizationId_sourceIntegrationId_externalId: { organizationId, sourceIntegrationId, externalId } },
+        select: { id: true, deletedAt: true },
       });
-      if (!caseRow || caseRow.deletedAt || caseRow.system !== provider) return { kind: "no_case" };
+      if (!caseRow || caseRow.deletedAt) return { kind: "no_case" };
       return { kind: "case", caseId: caseRow.id };
     }
     return { kind: "unrecognized" };

@@ -89,7 +89,7 @@ describe.skipIf(!TEST_DATABASE_URL)("scoped pipelines (real Postgres)", () => {
 
   async function createCases(n: number): Promise<string[]> {
     await prisma.case.createMany({
-      data: Array.from({ length: n }, (_, i) => ({ organizationId, externalId: `t-${i}`, openedAt: OPENED })),
+      data: Array.from({ length: n }, (_, i) => ({ organizationId, system: "zendesk", externalId: `t-${i}`, openedAt: OPENED })),
     });
     const rows = await prisma.case.findMany({ where: { organizationId }, orderBy: { externalId: "asc" }, select: { id: true } });
     await prisma.normalizedEvent.createMany({

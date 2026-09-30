@@ -2,6 +2,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { withPerfMetrics } from "./perf-metrics";
 export * from "../generated/prisma/client";
+export { findCustomerByIdentity, upsertCustomerByIdentity } from "./customer-identity";
+export type { CustomerIdentityRef } from "./customer-identity";
 export { deriveEncryptionKey, aesGcmEncrypt, aesGcmDecrypt } from "./crypto";
 export {
   isConfigurableIntegrationProvider,

@@ -65,8 +65,12 @@ describe.skipIf(!TEST_DATABASE_URL)("tracker link resolution (real Postgres)", (
     prisma.integration.create({ data: { organizationId, provider: "intercom", credentials: { workspaceId: "ws1" } } });
   const connectZendesk = () =>
     prisma.integration.create({ data: { organizationId, provider: "zendesk", credentials: { subdomain: "acme" } } });
-  const seedCase = (externalId: string, system: "zendesk" | "intercom", deletedAt: Date | null = null) =>
-    prisma.case.create({ data: { organizationId, externalId, system, openedAt: new Date("2026-09-01T00:00:00Z"), deletedAt } });
+  const seedCase = async (externalId: string, system: "zendesk" | "intercom", deletedAt: Date | null = null) => {
+    const source = await prisma.integration.findUniqueOrThrow({ where: { organizationId_provider: { organizationId, provider: system } } });
+    return prisma.case.create({
+      data: { organizationId, externalId, system, sourceIntegrationId: source.id, openedAt: new Date("2026-09-01T00:00:00Z"), deletedAt },
+    });
+  };
 
   describe("buildCaseRefResolver", () => {
     it("is null when the organization has no connected ticket source", async () => {
@@ -97,6 +101,7 @@ describe.skipIf(!TEST_DATABASE_URL)("tracker link resolution (real Postgres)", (
 
     it("never lets one source's id land on another source's case that shares the externalId", async () => {
       await connectZendesk();
+      await connectIntercom();
       await seedCase("77", "intercom");
       const resolve = (await resolver())!;
 

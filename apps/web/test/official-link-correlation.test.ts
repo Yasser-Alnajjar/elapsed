@@ -89,7 +89,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
   });
 
   async function seedCase(ticketId: string, openedAt = new Date("2026-03-01T00:00:00.000Z")): Promise<string> {
-    const row = await prisma.case.create({ data: { organizationId, externalId: ticketId, openedAt } });
+    const row = await prisma.case.create({
+      data: { organizationId, system: "zendesk", sourceIntegrationId: zendeskIntegrationId, externalId: ticketId, openedAt },
+    });
     return row.id;
   }
 
@@ -310,7 +312,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     // Same externalId as org A's case, deliberately, to prove no cross-tenant collision.
     const caseA = await seedCase("123");
     const caseB = await prisma.case.create({
-      data: { organizationId: orgB.id, externalId: "123", openedAt: new Date("2026-03-01T00:00:00.000Z") },
+      data: { organizationId: orgB.id, system: "zendesk", sourceIntegrationId: zendeskB.id, externalId: "123", openedAt: new Date("2026-03-01T00:00:00.000Z") },
     });
 
     // Only org A's Zendesk integration has an official-link RawEvent.
@@ -496,7 +498,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       });
       const caseA = await seedCase("13");
       const caseB = await prisma.case.create({
-        data: { organizationId: orgB.id, externalId: "13", openedAt: new Date("2026-03-01T00:00:00.000Z") },
+        data: { organizationId: orgB.id, system: "zendesk", sourceIntegrationId: zendeskB.id, externalId: "13", openedAt: new Date("2026-03-01T00:00:00.000Z") },
       });
 
       // Both organizations independently link the same-shaped (ticket 13, KAN-40) pair.

@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Next Reply commitment persistence (real Pos
       effectiveFrom: at("00:00").toISOString(),
     };
     caseId = (
-      await prisma.case.create({ data: { organizationId, externalId: "7", openedAt: at("09:00") } })
+      await prisma.case.create({ data: { organizationId, system: "zendesk", externalId: "7", openedAt: at("09:00") } })
     ).id;
   });
 

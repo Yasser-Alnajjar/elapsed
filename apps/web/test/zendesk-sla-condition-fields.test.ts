@@ -240,7 +240,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
    */
   it("D6 regression: ticket #2 (D6 Test Company, tag 'd6', normal priority) matches 'D6-Org Ticket Tag - d6' at 18m/26m", async () => {
     const customer = await prisma.customer.create({
-      data: { organizationId, name: "D6 Test Company", zendeskOrgId: "555" },
+      data: {
+        organizationId,
+        name: "D6 Test Company",
+        zendeskOrgId: "555",
+        identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "555" } },
+      },
     });
 
     await writePolicySnapshot(

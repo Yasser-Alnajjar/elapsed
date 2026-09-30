@@ -170,12 +170,16 @@ async function seedOrg(
       organizationId,
       name: `${label} Customer`,
       zendeskOrgId: `${label}-zd-org`,
+      identities: {
+        create: { organizationId, provider: "zendesk", kind: "organization", externalId: `${label}-zd-org` },
+      },
     },
   });
 
   const caseRow = await prisma.case.create({
     data: {
       organizationId,
+      system: "zendesk",
       customerId: customer.id,
       externalId: `${label}-ticket-1`,
       subject: `${label} subject`,
@@ -615,6 +619,34 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       expectOnlyOrgA(
         await lib.getIntegrationsData(prisma, orgA.organizationId),
       );
+    });
+  });
+
+  describe("customer identities are scoped to their organization", () => {
+    const ref = (organizationId: string, externalId: string) => ({
+      organizationId,
+      provider: "zendesk" as const,
+      kind: "organization",
+      externalId,
+      legacy: { zendeskOrgId: externalId },
+    });
+
+    it("resolves an identity only inside its own organization", async () => {
+      const { findCustomerByIdentity } = await import("@sla/db");
+      const own = await findCustomerByIdentity(prisma, ref(orgA.organizationId, `${A}-zd-org`));
+      expect(own?.id).toBe(orgA.customerId);
+      // B's external id, asked for as org A, is not visible.
+      expect(await findCustomerByIdentity(prisma, ref(orgA.organizationId, `${B}-zd-org`))).toBeNull();
+    });
+
+    it("the same provider id in two organizations names two customers", async () => {
+      const { upsertCustomerByIdentity } = await import("@sla/db");
+      const inA = await upsertCustomerByIdentity(prisma, ref(orgA.organizationId, "shared-id"), "Shared A");
+      const inB = await upsertCustomerByIdentity(prisma, ref(orgB.organizationId, "shared-id"), "Shared B");
+      expect(inA.id).not.toBe(inB.id);
+      expect(inA.organizationId).toBe(orgA.organizationId);
+      expect(inB.organizationId).toBe(orgB.organizationId);
+      expect(await prisma.customerIdentity.count({ where: { externalId: "shared-id" } })).toBe(2);
     });
   });
 

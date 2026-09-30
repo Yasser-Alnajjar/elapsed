@@ -105,7 +105,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
     await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     await commitments.runCommitmentPipeline(prisma, organizationId);
 
@@ -141,7 +141,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
    */
   it("matches a tag-filtered policy over an organization-filtered policy and a catch-all, by position", async () => {
     const customer = await prisma.customer.create({
-      data: { organizationId, name: "Acme", zendeskOrgId: "555" },
+      data: {
+        organizationId,
+        name: "Acme",
+        zendeskOrgId: "555",
+        identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "555" } },
+      },
     });
 
     await writePolicySnapshot(1, "D6-Org Ticket Tag - d6", 1, {
@@ -156,6 +161,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
     const zCase = await prisma.case.create({
       data: {
         organizationId,
+        system: "zendesk",
         externalId: "ticket-2",
         customerId: customer.id,
         tags: ["d6", "customer-visible"],

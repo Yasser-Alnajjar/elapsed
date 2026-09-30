@@ -223,7 +223,9 @@ export async function runZendeskJiraLinkCorrelation(
     const { ticketId, issueKey } = parsed;
 
     const zendeskCase = await prisma.case.findUnique({
-      where: { organizationId_externalId: { organizationId, externalId: ticketId } },
+      where: {
+        organizationId_sourceIntegrationId_externalId: { organizationId, sourceIntegrationId: integrationId, externalId: ticketId },
+      },
     });
     if (!zendeskCase || zendeskCase.deletedAt) {
       result.unmatchedNoCase += 1;
