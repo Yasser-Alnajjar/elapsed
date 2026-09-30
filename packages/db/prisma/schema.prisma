@@ -392,6 +392,9 @@ model Case {
   /// Canonical fields that already have a dedicated column (priority, tags,
   /// channel, customerId, tier) are NOT duplicated in here; `toCaseAttributes`
   /// (packages/commitments) merges both into one match input at read time.
+  /// The exception is a provider's own field-name aliases of those columns
+  /// (Zendesk's `current_tags`, `via_id`, `current_via_id`): the adapter
+  /// writes them here (N1.10), so the commitments layer knows none of them.
   /// Null for cases from a source/normalizer that doesn't populate it.
   attributes       Json?
   openedAt         DateTime

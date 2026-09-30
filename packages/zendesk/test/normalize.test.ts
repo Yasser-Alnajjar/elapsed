@@ -1150,6 +1150,7 @@ describe("zendeskConditionAttributes", () => {
     });
 
     expect(result).toEqual({
+      current_tags: [],
       status: "pending",
       type: "incident",
       group_id: 42,
@@ -1171,6 +1172,7 @@ describe("zendeskConditionAttributes", () => {
     const result = zendeskConditionAttributes(ticket);
 
     expect(result).toEqual({
+      current_tags: [],
       status: "closed",
       requester_id: 501,
       via_id: "web",
@@ -1194,6 +1196,20 @@ describe("zendeskConditionAttributes", () => {
     expect(result.custom_fields_1).toBe("a");
     expect(result.custom_fields_2).toBe(5);
     expect(result.custom_fields_3).toBeNull();
+  });
+
+  it("writes the Zendesk aliases `current_tags`, `via_id` and `current_via_id` (N1.10), from the same ticket fields as the canonical Case columns", () => {
+    const tagged = zendeskConditionAttributes({ ...ticket, tags: ["vip", "escalated"], via: { channel: "chat" } });
+
+    expect(tagged.current_tags).toEqual(["vip", "escalated"]);
+    expect(tagged.via_id).toBe("chat");
+    expect(tagged.current_via_id).toBe("chat");
+    // A ticket with no tags stores `[]` on Case.tags, so the alias is `[]` too.
+    expect(zendeskConditionAttributes(ticket).current_tags).toEqual([]);
+    // No channel, no channel aliases (Case.channel is null too).
+    const noChannel = zendeskConditionAttributes({ ...ticket, via: undefined });
+    expect(noChannel).not.toHaveProperty("via_id");
+    expect(noChannel).not.toHaveProperty("current_via_id");
   });
 
   it("never emits organization_id, priority, or tags — those are resolved as canonical Case columns / match.customerIds elsewhere, never duplicated into the generic attributes bag", () => {

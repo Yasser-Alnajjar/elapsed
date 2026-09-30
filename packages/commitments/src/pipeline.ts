@@ -30,9 +30,9 @@ export interface CaseRecord {
   customerId: string | null;
   tier: string | null;
   openedAt: Date;
-  /** Source ticket's tags (e.g. a Zendesk ticket's `tags`) — a generic SLA policy match input, mirrored into `attributes.tags`/`attributes.current_tags` below so a `match.conditions` entry on field `"tags"` or `"current_tags"` (see `extractMatchFromFilter`, packages/zendesk) can actually be evaluated. */
+  /** Source ticket's tags (e.g. a Zendesk ticket's `tags`) — a generic SLA policy match input, mirrored into `attributes.tags` below. Provider-specific aliases of it (Zendesk's `current_tags`) are written by that provider's adapter into `attributes`. */
   tags?: string[];
-  /** Source ticket's channel (e.g. a Zendesk ticket's `via.channel`) — mirrored into `attributes.channel`/`attributes.via_id`/`attributes.current_via_id` below, the same string-based match `zendeskConditionAttributes` (packages/zendesk) documents for those fields. */
+  /** Source ticket's channel (e.g. a Zendesk ticket's `via.channel`) — mirrored into `attributes.channel` below. Provider-specific aliases of it (Zendesk's `via_id`/`current_via_id`) are written by that provider's adapter into `attributes`. */
   channel?: string | null;
   /**
    * Every other generic, source-specific SLA policy match input (Zendesk's
@@ -61,16 +61,8 @@ export function toCaseAttributes(caseRow: CaseRecord): CaseAttributes {
       ...(caseRow.priority != null ? { priority: caseRow.priority } : {}),
       ...(caseRow.customerId != null ? { customerId: caseRow.customerId } : {}),
       ...(caseRow.tier != null ? { tier: caseRow.tier } : {}),
-      ...(caseRow.tags != null
-        ? { tags: caseRow.tags, current_tags: caseRow.tags }
-        : {}),
-      ...(caseRow.channel != null
-        ? {
-            channel: caseRow.channel,
-            via_id: caseRow.channel,
-            current_via_id: caseRow.channel,
-          }
-        : {}),
+      ...(caseRow.tags != null ? { tags: caseRow.tags } : {}),
+      ...(caseRow.channel != null ? { channel: caseRow.channel } : {}),
     },
     priority: caseRow.priority ?? undefined,
     customerId: caseRow.customerId ?? undefined,

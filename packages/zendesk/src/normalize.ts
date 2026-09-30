@@ -386,6 +386,9 @@ function customFieldAttributes(ticket: ZendeskTicket): Record<string, unknown> {
  * which have no Zendesk ticket source) are set directly on `Case` and merged
  * into the match input separately by `toCaseAttributes`
  * (packages/commitments), so they are deliberately not duplicated here.
+ * What IS written here are Zendesk's own field-name aliases of those
+ * canonical columns: `current_tags` (of `tags`) and `via_id` /
+ * `current_via_id` (of `channel`), which only Zendesk SLA conditions use.
  *
  * See the field -> Case/attributes mapping table on `ZendeskSlaPolicyCondition`
  * (./types) for the full picture, including which condition fields this
@@ -395,6 +398,10 @@ export function zendeskConditionAttributes(
   ticket: ZendeskTicket,
 ): Record<string, unknown> {
   return {
+    // Alias of the canonical `Case.tags` column: same value the Case row
+    // gets (`ticket.tags ?? []`), so a `current_tags` condition sees exactly
+    // what a `tags` condition does.
+    current_tags: ticket.tags ?? [],
     // Zendesk's raw ticket status (e.g. "pending", "hold") — distinct from
     // this system's own NormalizedState vocabulary, which an SLA condition
     // imported from Zendesk was never written against.
