@@ -766,18 +766,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
   const all = [zendesk, jira, linear, intercom, github, slack];
   const connectedCount = all.filter((v) => v.connected).length;
 
-  const [showAll, setShowAll] = useState(false);
-  const availableProviders: ConfigurableIntegrationProvider[] = [
-    "zendesk",
-    "jira",
-    "slack",
-  ];
-  const visible = (
-    showAll
-      ? integrations
-      : integrations.filter((i) => availableProviders.includes(i.provider))
-  ).sort((a, b) => Number(b.connected) - Number(a.connected));
-
   const metrics = [
     {
       label: "Streaming ingress",
@@ -866,45 +854,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               MUTATION LOCK: ACTIVE
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-surface-container-lowest border-outline-variant/30 inline-flex items-center rounded-lg border p-0.5">
-              <button
-                type="button"
-                onClick={() => setShowAll(false)}
-                className={cn(
-                  "cursor-pointer rounded px-2.5 py-1 font-mono text-xxs transition-colors",
-                  !showAll
-                    ? "bg-primary text-on-primary font-semibold shadow-sm"
-                    : "text-outline hover:text-on-surface",
-                )}
-              >
-                Available Only ({availableProviders.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className={cn(
-                  "cursor-pointer rounded px-2.5 py-1 font-mono text-xxs transition-colors",
-                  showAll
-                    ? "bg-primary text-on-primary font-semibold shadow-sm"
-                    : "text-outline hover:text-on-surface",
-                )}
-              >
-                All Providers ({integrations.length})
-              </button>
-            </div>
-            <span className="bg-success/10 text-success border-success/20 flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xxs font-semibold uppercase tracking-wider">
-              <Lock className="size-3.5" />
-              Zero write tokens
-            </span>
-            <Link
-              href="/docs/integrations/zendesk"
-              className="bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface border-outline-variant/30 flex items-center gap-1 rounded border px-2.5 py-1 font-mono text-xs transition-colors"
-            >
-              Audit Spec
-              <ArrowUpRight className="size-3" />
-            </Link>
-          </div>
         </div>
         <div className="max-w-4xl space-y-1">
           <h2 className="text-on-surface font-display text-xl font-semibold tracking-tight">
@@ -959,7 +908,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
 
       {/* Integration cards */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 md:grid-cols-2">
-        {visible.map((integration, index) => (
+        {integrations.map((integration, index) => (
           <IntegrationCard
             key={integration.provider}
             delay={index * 0.05}
