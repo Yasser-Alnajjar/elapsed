@@ -122,9 +122,7 @@ export function NativePolicyDialog({
   onOpenChange,
   onSaved,
 }: NativePolicyDialogProps) {
-  const [state, setState] = useState<FormState>(() =>
-    initialState(policy),
-  );
+  const [state, setState] = useState<FormState>(() => initialState(policy));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -474,7 +472,7 @@ export function NativePolicyDialog({
           )}
 
           {/* Footer */}
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="surface"
