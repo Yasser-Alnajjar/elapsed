@@ -4,6 +4,7 @@ import { LinearReauthRequiredError, runLinearBackfill, runLinearCorrelation, run
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { caseRefResolverFor } from "@/lib/case-ref";
 
 export const maxDuration = 300;
 
@@ -26,7 +27,11 @@ export async function POST() {
 
   try {
     const backfill = await runLinearBackfill(prisma, integration.id);
-    const correlation = await runLinearCorrelation(prisma, integration.id);
+    const correlation = await runLinearCorrelation(
+      prisma,
+      integration.id,
+      await caseRefResolverFor(prisma, integration.organizationId),
+    );
     const normalization = await runLinearNormalization(prisma, integration.id);
     return NextResponse.json({ backfill, correlation, normalization });
   } catch (error) {

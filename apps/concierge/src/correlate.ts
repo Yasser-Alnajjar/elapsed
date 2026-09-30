@@ -1,4 +1,4 @@
-import { parseZendeskTicketId } from "@sla/jira/src/correlate";
+import { parseZendeskTicketId } from "@sla/zendesk/src/ticket-url";
 import type { JiraIssueRecord } from "./jira";
 import type { ZendeskCase } from "./zendesk";
 

@@ -28,6 +28,7 @@ import {
   type JiraCursor,
   type JiraNormalizationResult,
 } from "@sla/jira";
+import { caseRefResolverFor } from "@/lib/case-ref";
 
 /**
  * The sources the onboarding backfill routes pull from. Their event sets
@@ -121,7 +122,7 @@ export async function projectAndEvaluateSourceSyncs(
     const jiraResult =
       jira && jiraReady
         ? {
-            correlation: await runJiraCorrelation(prisma, jira.id),
+            correlation: await runJiraCorrelation(prisma, jira.id, await caseRefResolverFor(prisma, organizationId)),
             normalization: await runJiraNormalization(prisma, jira.id),
           }
         : null;

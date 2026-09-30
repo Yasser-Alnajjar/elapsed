@@ -58,6 +58,7 @@ import {
   ZendeskReauthRequiredError,
   type SlaPolicyImportResult,
 } from "@sla/zendesk";
+import { caseRefResolverFor } from "./case-ref";
 import type { WorkerConfig } from "./config";
 import { captureException } from "./sentry";
 
@@ -364,10 +365,10 @@ export async function runCycle(
                   (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
                 );
               } else if (integration.provider === "jira") {
-                await runJiraCorrelation(prisma, integration.id);
+                await runJiraCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, organization.id));
                 await runJiraNormalization(prisma, integration.id);
               } else if (integration.provider === "linear") {
-                await runLinearCorrelation(prisma, integration.id);
+                await runLinearCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, organization.id));
                 await runLinearNormalization(prisma, integration.id);
               } else if (integration.provider === "intercom") {
                 // No correlation step: Intercom is a ticket source that creates

@@ -12,6 +12,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { correlateJira } from "./correlate-helper";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -83,7 +84,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraCorrelation issue scoping (real Post
     await seedRemoteLink("PROJ-1", "1", "remote_link:PROJ-1:link-1:hash-1");
     await seedRemoteLink("PROJ-2", "2", "remote_link:PROJ-2:link-2:hash-1");
 
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId, { issueKey: "PROJ-1" });
+    await correlateJira(prisma, jiraIntegrationId, { issueKey: "PROJ-1" });
 
     const linkA = await prisma.caseLink.findFirst({ where: { externalId: "PROJ-1" } });
     const linkB = await prisma.caseLink.findFirst({ where: { externalId: "PROJ-2" } });
@@ -95,7 +96,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraCorrelation issue scoping (real Post
     await seedRemoteLink("PROJ-1", "1", "remote_link:PROJ-1:link-1:hash-1");
     await seedRemoteLink("PROJ-2", "2", "remote_link:PROJ-2:link-2:hash-1");
 
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
 
     const linkA = await prisma.caseLink.findFirst({ where: { externalId: "PROJ-1" } });
     const linkB = await prisma.caseLink.findFirst({ where: { externalId: "PROJ-2" } });

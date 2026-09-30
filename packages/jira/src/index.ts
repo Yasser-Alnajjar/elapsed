@@ -41,8 +41,8 @@ export type {
   JiraNormalizationResult,
   JiraNormalizationScope,
 } from "./normalize";
-export { parseZendeskTicketId, runJiraCorrelation } from "./correlate";
-export type { CorrelationResult, JiraCorrelationScope } from "./correlate";
+export { runJiraCorrelation } from "./correlate";
+export type { CaseRefResolution, CaseRefResolver, CorrelationResult, JiraCorrelationScope } from "./correlate";
 export {
   extractJiraWebhookIssueKey,
   generateWebhookSecret,

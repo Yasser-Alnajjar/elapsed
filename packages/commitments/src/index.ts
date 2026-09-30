@@ -6,6 +6,8 @@ export {
   toCaseAttributes,
 } from "./pipeline";
 export type { CaseRecord, CommitmentPipelineOptions, CommitmentPipelineResult, PolicyVersionRecord } from "./pipeline";
+export { buildCaseRefResolver } from "./case-ref";
+export type { CaseRefResolution, CaseRefResolver, TicketUrlRecognizer } from "./case-ref";
 export { chunk, IN_LIST_CHUNK_SIZE, loadPolicyContext } from "./tick-context";
 export type { PolicyContext } from "./tick-context";
 export {

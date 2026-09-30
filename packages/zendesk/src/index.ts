@@ -42,6 +42,7 @@ export {
   runZendeskSlaPolicyImport,
   WARN_AT_PERCENT,
 } from "./policies";
+export { parseZendeskTicketId, recognizeZendeskTicketUrl } from "./ticket-url";
 export type {
   EnsureDefaultCalendar,
   ExtractedMatch,

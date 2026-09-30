@@ -36,6 +36,7 @@ const realDatabaseSuites = [
   "apps/web/test/zendesk-normalization-scope.test.ts",
   "apps/web/test/jira-normalization-scope.test.ts",
   "apps/web/test/jira-correlation-scope.test.ts",
+  "apps/web/test/tracker-link-resolution.test.ts",
   "apps/web/test/jira-remote-link-unlink.test.ts",
   "apps/web/test/zendesk-webhook-route.test.ts",
   "apps/web/test/jira-webhook-route.test.ts",

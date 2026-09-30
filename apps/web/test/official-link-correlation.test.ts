@@ -24,6 +24,7 @@ import type { Prisma, PrismaClient } from "@sla/db";
 import { deriveLegSpans } from "@sla/core";
 import { toNormalizedEventDomain } from "@sla/commitments";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { correlateJira } from "./correlate-helper";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -234,9 +235,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
 
       if (officialFirst) {
         await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
-        await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+        await correlateJira(prisma, jiraIntegrationId);
       } else {
-        await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+        await correlateJira(prisma, jiraIntegrationId);
         await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
       }
 
@@ -261,9 +262,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       object: { url: "https://old-subdomain.zendesk.com/agent/tickets/127", title: "Ticket 127" },
     });
 
-    const result = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const result = await correlateJira(prisma, jiraIntegrationId);
 
-    expect(result).toMatchObject({ caseLinksCreated: 0, unmatchedNotZendeskUrl: 1 });
+    expect(result).toMatchObject({ caseLinksCreated: 0, unmatchedUnrecognizedUrl: 1 });
     expect(await prisma.caseLink.count({ where: { caseId } })).toBe(0);
   });
 
@@ -277,10 +278,10 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     });
 
     const officialResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
-    const remoteResult = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const remoteResult = await correlateJira(prisma, jiraIntegrationId);
 
     expect(officialResult.caseLinksCreated).toBe(1);
-    expect(remoteResult).toMatchObject({ caseLinksCreated: 0, unmatchedNotZendeskUrl: 1 });
+    expect(remoteResult).toMatchObject({ caseLinksCreated: 0, unmatchedUnrecognizedUrl: 1 });
 
     const links = await prisma.caseLink.findMany({ where: { caseId, system: "jira" } });
     expect(links).toHaveLength(1);
@@ -473,7 +474,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
         self: "https://api.atlassian.com/.../remotelink/1",
         object: { url: "https://acme.zendesk.com/agent/tickets/13", title: "Ticket 13" },
       });
-      await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+      await correlateJira(prisma, jiraIntegrationId);
       expect((await findCaseLink(caseId, "KAN-40"))!.evidence).toMatchObject({ remoteLink: expect.anything(), officialLink: expect.anything() });
 
       // The official link disappears from Zendesk's registry...

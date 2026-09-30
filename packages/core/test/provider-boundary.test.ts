@@ -49,11 +49,7 @@ interface AllowedViolation extends Violation {
  * Today's violations. Remove an entry in the same change that fixes it: the
  * test fails if a listed violation is gone.
  */
-const ALLOWLIST: AllowedViolation[] = [
-  // Jira and Linear resolve links with a Zendesk host check and a Zendesk integration lookup.
-  { rule: "ticket-source-host-or-lookup-in-tracker", file: "packages/jira/src/correlate.ts", removedBy: "N1.13" },
-  { rule: "ticket-source-host-or-lookup-in-tracker", file: "packages/linear/src/correlate.ts", removedBy: "N1.13" },
-];
+const ALLOWLIST: AllowedViolation[] = [];
 
 // ---- Helpers --------------------------------------------------------------------
 

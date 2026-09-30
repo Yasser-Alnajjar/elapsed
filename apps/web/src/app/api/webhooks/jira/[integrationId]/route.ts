@@ -16,6 +16,7 @@ import {
   type JiraWebhookPayload,
 } from "@sla/jira";
 import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
+import { caseRefResolverFor } from "@/lib/case-ref";
 import { getJiraOAuthConfig } from "@/lib/jira-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 
@@ -123,7 +124,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
   try {
     await runJiraWebhookIngest(prisma, integration.id, config, issueKey);
     const { result, claims } = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
-      await runJiraCorrelation(prisma, integration.id, { issueKey });
+      await runJiraCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, integration.organizationId), {
+        issueKey,
+      });
       await runJiraNormalization(prisma, integration.id, { issueKeys: [issueKey] });
       // Every case this issue is (or was, if just unlinked) linked to —
       // those are the only cases the issue's events can have changed.

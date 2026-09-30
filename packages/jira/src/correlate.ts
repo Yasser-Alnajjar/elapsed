@@ -3,23 +3,15 @@ import type { JiraRemoteLink } from "./types";
 import { JIRA_SOURCE_ROLE } from "./source-role";
 
 /**
- * Extracts a Zendesk ticket id from a URL, but only when the host is exactly
- * `{subdomain}.zendesk.com` — a link to some other tenant's Zendesk (or a
- * lookalike domain) must never correlate, per Phase 15's deterministic-tier
- * rule: never confidently invent a relationship.
+ * What an external URL points at, decided by the caller (N1.13): this package
+ * knows nothing about ticket sources. Structurally the same as
+ * `CaseRefResolver` in `@sla/commitments`, which builds it.
  */
-export function parseZendeskTicketId(url: string, subdomain: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (parsed.hostname.toLowerCase() !== `${subdomain.toLowerCase()}.zendesk.com`) return null;
-
-  const match = parsed.pathname.match(/\/(?:agent\/tickets|requests|api\/v2\/tickets)\/(\d+)(?:\.json)?\/?$/);
-  return match ? match[1]! : null;
-}
+export type CaseRefResolution =
+  | { kind: "case"; caseId: string }
+  | { kind: "unrecognized" }
+  | { kind: "no_case" };
+export type CaseRefResolver = (url: string) => Promise<CaseRefResolution>;
 
 interface LatestRemoteLink {
   link: JiraRemoteLink;
@@ -124,7 +116,8 @@ export interface CorrelationResult {
   caseLinksReactivated: number;
   /** A previously-active remote-link CaseLink whose link id no longer appears in its issue's current manifest (and has no independent `official_link` evidence), marked `unlinkedAt` this run — see `sweepUnlinkedRemoteLinks`. */
   caseLinksUnlinked: number;
-  unmatchedNotZendeskUrl: number;
+  /** Remote links whose URL no connected ticket source recognizes as its own. */
+  unmatchedUnrecognizedUrl: number;
   unmatchedNoCase: number;
 }
 
@@ -151,18 +144,19 @@ interface CaseLinkEvidence {
 
 /**
  * Deterministic-tier correlator (Phase 15): reads Jira remote links already
- * ingested by the backfill/poll, and for each one pointing at a Zendesk
- * ticket on this organization's connected Zendesk subdomain, creates a
- * `certain`/`remote_link` CaseLink plus an `issue_linked` NormalizedEvent on
- * first sight. No fuzzy matching — a link that isn't a Zendesk URL on the
- * right subdomain, or whose ticket has no matching Case yet, is left
- * unlinked and counted, never guessed at. A stale Zendesk subdomain (an old
- * connection's hostname baked into the link) is rejected here exactly like
- * any other non-matching host — this hostname check is intentionally never
- * relaxed. Zendesk's own official Jira-links API
- * (`runZendeskJiraLinkCorrelation`, packages/zendesk/src/correlate.ts) is the
- * authoritative fallback for a relationship a stale remote link can no
- * longer prove.
+ * ingested by the backfill/poll, and for each one whose URL the caller's
+ * `resolveCaseRef` recognizes as a ticket of one of this organization's own
+ * connected ticket sources, creates a `certain`/`remote_link` CaseLink plus
+ * an `issue_linked` NormalizedEvent on first sight. No fuzzy matching — a
+ * link that no ticket source recognizes, or whose ticket has no matching
+ * Case yet, is left unlinked and counted, never guessed at. Which hosts and
+ * URL shapes count is each ticket-source adapter's business (N1.13: this
+ * package no longer knows any of them); the recognizers stay strict, e.g. a
+ * stale Zendesk subdomain (an old connection's hostname baked into the link)
+ * is rejected like any other non-matching host. Zendesk's own official
+ * Jira-links API (`runZendeskJiraLinkCorrelation`,
+ * packages/zendesk/src/correlate.ts) is the authoritative fallback for a
+ * relationship a stale remote link can no longer prove.
  *
  * CaseLink identity is `(caseId, system, externalId)` (no `method` in the
  * unique key — see the `CaseLink` model), so when both this producer and
@@ -208,6 +202,7 @@ export interface JiraCorrelationScope {
 export async function runJiraCorrelation(
   prisma: PrismaClient,
   integrationId: string,
+  resolveCaseRef: CaseRefResolver | null,
   scope: JiraCorrelationScope = {},
 ): Promise<CorrelationResult> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
@@ -218,15 +213,13 @@ export async function runJiraCorrelation(
     caseLinksCreated: 0,
     caseLinksReactivated: 0,
     caseLinksUnlinked: 0,
-    unmatchedNotZendeskUrl: 0,
+    unmatchedUnrecognizedUrl: 0,
     unmatchedNoCase: 0,
   };
 
-  const zendeskIntegration = await prisma.integration.findUnique({
-    where: { organizationId_provider: { organizationId, provider: "zendesk" } },
-  });
-  const subdomain = (zendeskIntegration?.credentials as { subdomain?: string } | null)?.subdomain;
-  if (!subdomain) return result;
+  // No connected ticket source (the caller builds the resolver from the
+  // organization's ticket-source integrations): nothing to correlate onto.
+  if (!resolveCaseRef) return result;
 
   const [remoteLinkRows, manifests] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -254,21 +247,18 @@ export async function runJiraCorrelation(
   });
 
   for (const { issueKey, link, firstRawEventId, firstObservedAt, latestRawEventId, latestObservedAt } of currentlyActive) {
-    const ticketId = parseZendeskTicketId(link.object.url, subdomain);
-    if (!ticketId) {
-      result.unmatchedNotZendeskUrl += 1;
+    const ref = await resolveCaseRef(link.object.url);
+    if (ref.kind === "unrecognized") {
+      result.unmatchedUnrecognizedUrl += 1;
       continue;
     }
-
-    const zendeskCase = await prisma.case.findUnique({
-      where: { organizationId_externalId: { organizationId, externalId: ticketId } },
-    });
-    if (!zendeskCase || zendeskCase.deletedAt) {
+    if (ref.kind === "no_case") {
       result.unmatchedNoCase += 1;
       continue;
     }
+    const caseId = ref.caseId;
 
-    const where = { caseId_system_externalId: { caseId: zendeskCase.id, system: "jira" as const, externalId: issueKey } };
+    const where = { caseId_system_externalId: { caseId: caseId, system: "jira" as const, externalId: issueKey } };
     const existing = await prisma.caseLink.findUnique({ where });
     // Merge onto whatever evidence is already there rather than overwrite —
     // see the `CaseLinkEvidence` doc comment above for why. `official_link`
@@ -293,7 +283,7 @@ export async function runJiraCorrelation(
         where,
         update: { method, evidence: evidence as Prisma.InputJsonValue, unlinkedAt: null },
         create: {
-          caseId: zendeskCase.id,
+          caseId: caseId,
           system: "jira",
           externalId: issueKey,
           method,
@@ -306,7 +296,7 @@ export async function runJiraCorrelation(
         ? [
             prisma.normalizedEvent.create({
               data: {
-                caseId: zendeskCase.id,
+                caseId: caseId,
                 sourceRawEventId: firstRawEventId,
                 type: "issue_linked" as const,
                 occurredAt: firstObservedAt,
@@ -324,7 +314,7 @@ export async function runJiraCorrelation(
               // reconfirmed it, not the original link time.
               prisma.normalizedEvent.create({
                 data: {
-                  caseId: zendeskCase.id,
+                  caseId: caseId,
                   sourceRawEventId: latestRawEventId,
                   type: "issue_linked" as const,
                   occurredAt: latestObservedAt,

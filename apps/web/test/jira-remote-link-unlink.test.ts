@@ -23,6 +23,7 @@
  */
 import type { Prisma, PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { correlateJira } from "./correlate-helper";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -134,13 +135,13 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("1");
     await writeRemoteLinkRawEvent("KAN-1", remoteLink(1, "1"));
     await writeRemoteLinkManifestRawEvent("KAN-1", [1]);
-    const firstRun = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const firstRun = await correlateJira(prisma, jiraIntegrationId);
     expect(firstRun.caseLinksCreated).toBe(1);
     expect((await findCaseLink(caseId, "KAN-1"))!.unlinkedAt).toBeNull();
 
     // The remote link disappears from Jira's per-issue listing...
     await writeRemoteLinkManifestRawEvent("KAN-1", []);
-    const sweepRun = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const sweepRun = await correlateJira(prisma, jiraIntegrationId);
 
     expect(sweepRun.caseLinksUnlinked).toBe(1);
     const link = await findCaseLink(caseId, "KAN-1");
@@ -156,12 +157,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
 
     await writeRemoteLinkRawEvent("KAN-2", remoteLink(1, "2"));
     await writeRemoteLinkManifestRawEvent("KAN-2", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
     expect((await findCaseLink(caseId, "KAN-2"))!.evidence).toMatchObject({ officialLink: expect.anything(), remoteLink: expect.anything() });
 
     // Only the remote link disappears — the official link still proves it.
     await writeRemoteLinkManifestRawEvent("KAN-2", []);
-    const sweepRun = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const sweepRun = await correlateJira(prisma, jiraIntegrationId);
 
     expect(sweepRun.caseLinksUnlinked).toBe(0);
     const link = await findCaseLink(caseId, "KAN-2");
@@ -173,7 +174,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("3");
     await writeRemoteLinkRawEvent("KAN-3", remoteLink(1, "3"));
     await writeRemoteLinkManifestRawEvent("KAN-3", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
     expect((await findCaseLink(caseId, "KAN-3"))!.unlinkedAt).toBeNull();
 
     // The webhook route calls this exact function both for an explicit
@@ -198,7 +199,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
     await writeRemoteLinkRawEvent("KAN-4", remoteLink(1, "4"));
     await writeRemoteLinkManifestRawEvent("KAN-4", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
     expect((await findCaseLink(caseId, "KAN-4"))!.unlinkedAt).toBeNull();
 
     // The official link disappears first — exempted, since the remote link still proves it.
@@ -210,7 +211,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     // Now the remote link disappears too — without the fix, this would stay
     // exempted forever on stale `officialLink != null` evidence.
     await writeRemoteLinkManifestRawEvent("KAN-4", []);
-    const jiraSweep = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const jiraSweep = await correlateJira(prisma, jiraIntegrationId);
 
     expect(jiraSweep.caseLinksUnlinked).toBe(1);
     expect((await findCaseLink(caseId, "KAN-4"))!.unlinkedAt).not.toBeNull();
@@ -223,11 +224,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
     await writeRemoteLinkRawEvent("KAN-5", remoteLink(1, "5"));
     await writeRemoteLinkManifestRawEvent("KAN-5", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
 
     // The remote link disappears first — exempted, since the official link still proves it.
     await writeRemoteLinkManifestRawEvent("KAN-5", []);
-    const jiraSweep = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const jiraSweep = await correlateJira(prisma, jiraIntegrationId);
     expect(jiraSweep.caseLinksUnlinked).toBe(0);
     expect((await findCaseLink(caseId, "KAN-5"))!.unlinkedAt).toBeNull();
 
@@ -243,15 +244,15 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("6");
     await writeRemoteLinkRawEvent("KAN-6", remoteLink(1, "6"));
     await writeRemoteLinkManifestRawEvent("KAN-6", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
 
     await writeRemoteLinkManifestRawEvent("KAN-6", []);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
     expect((await findCaseLink(caseId, "KAN-6"))!.unlinkedAt).not.toBeNull();
 
     // The link reappears in a fresh listing.
     await writeRemoteLinkManifestRawEvent("KAN-6", [1]);
-    const relinkRun = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const relinkRun = await correlateJira(prisma, jiraIntegrationId);
 
     expect(relinkRun.caseLinksReactivated).toBe(1);
     const link = await findCaseLink(caseId, "KAN-6");
@@ -279,7 +280,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     // Both organizations independently link the same-shaped (issue KAN-7, ticket 7) pair.
     await writeRemoteLinkRawEvent("KAN-7", remoteLink(1, "7"));
     await writeRemoteLinkManifestRawEvent("KAN-7", [1]);
-    await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    await correlateJira(prisma, jiraIntegrationId);
 
     const linkInputB = jira.mapRemoteLinkToRawEvent("KAN-7", remoteLink(1, "7"));
     await prisma.rawEvent.create({
@@ -289,11 +290,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     await prisma.rawEvent.create({
       data: { integrationId: jiraB.id, providerEventId: manifestInputB.providerEventId, sourceHash: manifestInputB.sourceHash, payload: manifestInputB.payload as Prisma.InputJsonValue },
     });
-    await jira.runJiraCorrelation(prisma, jiraB.id);
+    await correlateJira(prisma, jiraB.id);
 
     // Only org A's issue gets its remote link removed.
     await writeRemoteLinkManifestRawEvent("KAN-7", []);
-    const resultA = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const resultA = await correlateJira(prisma, jiraIntegrationId);
     expect(resultA.caseLinksUnlinked).toBe(1);
 
     const linkA = await prisma.caseLink.findUnique({ where: { caseId_system_externalId: { caseId: caseA, system: "jira", externalId: "KAN-7" } } });

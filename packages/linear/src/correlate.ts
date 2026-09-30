@@ -3,25 +3,15 @@ import type { LinearAttachment, LinearIssue } from "./types";
 import { LINEAR_SOURCE_ROLE } from "./source-role";
 
 /**
- * Extracts a Zendesk ticket id from a URL, but only when the host is exactly
- * `{subdomain}.zendesk.com` — a link to some other tenant's Zendesk (or a
- * lookalike domain) must never correlate. Mirrors Jira's
- * `parseZendeskTicketId` (`packages/jira/src/correlate.ts`) — duplicated
- * rather than imported, matching every other provider package's
- * mirror-not-share shape.
+ * What an external URL points at, decided by the caller (N1.13): this package
+ * knows nothing about ticket sources. Structurally the same as
+ * `CaseRefResolver` in `@sla/commitments`, which builds it.
  */
-export function parseZendeskTicketId(url: string, subdomain: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  if (parsed.hostname.toLowerCase() !== `${subdomain.toLowerCase()}.zendesk.com`) return null;
-
-  const match = parsed.pathname.match(/\/(?:agent\/tickets|requests|api\/v2\/tickets)\/(\d+)(?:\.json)?\/?$/);
-  return match ? match[1]! : null;
-}
+export type CaseRefResolution =
+  | { kind: "case"; caseId: string }
+  | { kind: "unrecognized" }
+  | { kind: "no_case" };
+export type CaseRefResolver = (url: string) => Promise<CaseRefResolution>;
 
 interface LatestAttachment {
   attachment: LinearAttachment;
@@ -84,7 +74,8 @@ function latestIssuesById(rows: { payload: unknown; fetchedAt: Date }[]): Map<st
 export interface CorrelationResult {
   attachmentsEvaluated: number;
   caseLinksCreated: number;
-  unmatchedNotZendeskUrl: number;
+  /** Attachments whose URL no connected ticket source recognizes as its own. */
+  unmatchedUnrecognizedUrl: number;
   unmatchedNoCase: number;
   /** An attachment observed before its issue's own snapshot was ingested — the backfill always writes the issue first, so this should stay at zero in practice; counted rather than assumed impossible. */
   unmatchedNoIssueSnapshot: number;
@@ -93,12 +84,13 @@ export interface CorrelationResult {
 /**
  * Deterministic-tier correlator (Phase 15), mirroring `runJiraCorrelation`:
  * reads Linear attachments already ingested by the backfill/poll, and for
- * each one pointing at a Zendesk ticket on this organization's connected
- * Zendesk subdomain, creates a `certain`/`remote_link` CaseLink plus an
- * `issue_linked` NormalizedEvent on first sight. No fuzzy matching — an
- * attachment that isn't a Zendesk URL on the right subdomain, or whose
- * ticket has no matching Case yet, is left unlinked and counted, never
- * guessed at.
+ * each one whose URL the caller's `resolveCaseRef` recognizes as a ticket of
+ * one of this organization's own connected ticket sources, creates a
+ * `certain`/`remote_link` CaseLink plus an `issue_linked` NormalizedEvent on
+ * first sight. No fuzzy matching — an attachment no ticket source
+ * recognizes, or whose ticket has no matching Case yet, is left unlinked
+ * and counted, never guessed at. Which hosts and URL shapes count is each
+ * ticket-source adapter's business (N1.13).
  *
  * Must run before `runLinearNormalization`, which relies on the CaseLinks
  * created here to know which Case a Linear issue's events belong to.
@@ -109,23 +101,25 @@ export interface CorrelationResult {
  * to reconstruct a browse link from later, so the URL is captured here at
  * correlation time instead.
  */
-export async function runLinearCorrelation(prisma: PrismaClient, integrationId: string): Promise<CorrelationResult> {
+export async function runLinearCorrelation(
+  prisma: PrismaClient,
+  integrationId: string,
+  resolveCaseRef: CaseRefResolver | null,
+): Promise<CorrelationResult> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
   const organizationId = integration.organizationId;
 
   const result: CorrelationResult = {
     attachmentsEvaluated: 0,
     caseLinksCreated: 0,
-    unmatchedNotZendeskUrl: 0,
+    unmatchedUnrecognizedUrl: 0,
     unmatchedNoCase: 0,
     unmatchedNoIssueSnapshot: 0,
   };
 
-  const zendeskIntegration = await prisma.integration.findUnique({
-    where: { organizationId_provider: { organizationId, provider: "zendesk" } },
-  });
-  const subdomain = (zendeskIntegration?.credentials as { subdomain?: string } | null)?.subdomain;
-  if (!subdomain) return result;
+  // No connected ticket source (the caller builds the resolver from the
+  // organization's ticket-source integrations): nothing to correlate onto.
+  if (!resolveCaseRef) return result;
 
   const [attachmentRows, issueRows] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -143,9 +137,9 @@ export async function runLinearCorrelation(prisma: PrismaClient, integrationId: 
   result.attachmentsEvaluated = latestAttachments.size;
 
   for (const { issueId, attachment, firstRawEventId, firstObservedAt } of latestAttachments.values()) {
-    const ticketId = parseZendeskTicketId(attachment.url, subdomain);
-    if (!ticketId) {
-      result.unmatchedNotZendeskUrl += 1;
+    const ref = await resolveCaseRef(attachment.url);
+    if (ref.kind === "unrecognized") {
+      result.unmatchedUnrecognizedUrl += 1;
       continue;
     }
 
@@ -155,16 +149,14 @@ export async function runLinearCorrelation(prisma: PrismaClient, integrationId: 
       continue;
     }
 
-    const zendeskCase = await prisma.case.findUnique({
-      where: { organizationId_externalId: { organizationId, externalId: ticketId } },
-    });
-    if (!zendeskCase || zendeskCase.deletedAt) {
+    if (ref.kind === "no_case") {
       result.unmatchedNoCase += 1;
       continue;
     }
+    const caseId = ref.caseId;
 
     const where = {
-      caseId_system_externalId: { caseId: zendeskCase.id, system: "linear" as const, externalId: issue.identifier },
+      caseId_system_externalId: { caseId, system: "linear" as const, externalId: issue.identifier },
     };
     const existing = await prisma.caseLink.findUnique({ where });
     const evidence = { attachment, issueUrl: issue.url } as unknown as Prisma.InputJsonValue;
@@ -173,7 +165,7 @@ export async function runLinearCorrelation(prisma: PrismaClient, integrationId: 
       where,
       update: { evidence },
       create: {
-        caseId: zendeskCase.id,
+        caseId,
         system: "linear",
         externalId: issue.identifier,
         method: "remote_link",
@@ -192,14 +184,14 @@ export async function runLinearCorrelation(prisma: PrismaClient, integrationId: 
     // the link but was interrupted before emitting the event), and gating
     // solely on the link's own existence would leave that drift permanent.
     const existingLinkEvent = await prisma.normalizedEvent.findFirst({
-      where: { caseId: zendeskCase.id, type: "issue_linked", sourceRawEventId: firstRawEventId },
+      where: { caseId, type: "issue_linked", sourceRawEventId: firstRawEventId },
       select: { id: true },
     });
 
     if (!existingLinkEvent) {
       await prisma.normalizedEvent.create({
         data: {
-          caseId: zendeskCase.id,
+          caseId,
           sourceRawEventId: firstRawEventId,
           type: "issue_linked",
           occurredAt: firstObservedAt,
