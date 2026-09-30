@@ -1,10 +1,9 @@
 "use client";
-
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, Utils } from "@/lib/utils";
 
 import {
   GROUP_LABEL,
@@ -17,29 +16,22 @@ import {
   type SeverityFilter,
   type StatusFilter,
 } from "./constants";
-
 interface CaseListFiltersProps {
   globalFilter: string;
   setGlobalFilter: (value: string) => void;
-
   status: StatusFilter;
   setStatus: (value: StatusFilter) => void;
-
   openState: OpenFilter;
   setOpenState: (value: OpenFilter) => void;
-
   linkState: LinkFilter;
   setLinkState: (value: LinkFilter) => void;
-
   severity: SeverityFilter;
   setSeverity: (value: SeverityFilter) => void;
-
   statusCounts: Record<StatusFilter, number>;
   openCounts: Record<OpenFilter, number>;
   linkCounts: Record<LinkFilter, number>;
   severityCounts: Record<SeverityFilter, number>;
 }
-
 export function CaseListFilters({
   globalFilter,
   setGlobalFilter,
@@ -56,67 +48,74 @@ export function CaseListFilters({
   linkCounts,
   severityCounts,
 }: CaseListFiltersProps) {
+  const [search, setSearch] = useState(globalFilter);
+  const debouncedSetGlobalFilter = useMemo(
+    () => Utils.debounce(setGlobalFilter, 300),
+    [setGlobalFilter],
+  );
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    debouncedSetGlobalFilter(value);
+  };
   return (
     <div className="flex flex-col gap-4 rounded bg-surface-container-low p-4 shadow-sm">
-      <div className="flex flex-col items-stretch gap-2 lg:flex-row lg:items-center flex-wrap">
+      {" "}
+      <div className="flex flex-wrap flex-col items-stretch gap-2 lg:flex-row lg:items-center">
+        {" "}
         <div className="relative min-w-60 flex-1">
-          <Search className="absolute inset-s-3 top-2.5 size-4.5 text-outline" />
-
+          {" "}
+          <Search className="absolute inset-s-3 top-2.5 size-4.5 text-outline" />{" "}
           <Input
-            value={globalFilter}
-            onChange={(event) => setGlobalFilter(event.target.value)}
+            value={search}
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search customer, ticket ID, or subject…"
             aria-label="Search cases"
             className="h-auto bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner md:text-sm"
-          />
-
+          />{" "}
           <div className="pointer-events-none absolute inset-e-2.5 top-2 flex items-center gap-1">
+            {" "}
             <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-xxs text-on-surface-variant">
-              ZD
-            </span>
-
+              {" "}
+              ZD{" "}
+            </span>{" "}
             <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-xxs text-on-surface-variant">
-              ENG
-            </span>
-          </div>
-        </div>
-
+              {" "}
+              ENG{" "}
+            </span>{" "}
+          </div>{" "}
+        </div>{" "}
         <FilterGroup
           label="SEVERITY:"
           options={SEVERITY_FILTERS}
           value={severity}
           counts={severityCounts}
           onChange={setSeverity}
-        />
-
+        />{" "}
         <FilterGroup
           label="LINK:"
           options={LINK_FILTERS}
           value={linkState}
           counts={linkCounts}
           onChange={setLinkState}
-        />
-
+        />{" "}
         <FilterGroup
           label="SLA STATUS:"
           options={STATUS_FILTERS}
           value={status}
           counts={statusCounts}
           onChange={setStatus}
-        />
-
+        />{" "}
         <FilterGroup
           label="OPEN:"
           options={OPEN_FILTERS}
           value={openState}
           counts={openCounts}
           onChange={setOpenState}
-        />
-      </div>
+        />{" "}
+      </div>{" "}
     </div>
   );
 }
-
 type FilterOption<T extends string> = {
   value: T;
   label: string;
@@ -124,7 +123,6 @@ type FilterOption<T extends string> = {
   dot?: string;
   badge?: string;
 };
-
 interface FilterGroupProps<T extends string> {
   label: string;
   options: readonly FilterOption<T>[];
@@ -142,12 +140,11 @@ function FilterGroup<T extends string>({
 }: FilterGroupProps<T>) {
   return (
     <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:shrink-0 lg:self-auto">
-      <span className={GROUP_LABEL}>{label}</span>
-
+      {" "}
+      <span className={GROUP_LABEL}>{label}</span>{" "}
       {options.map((filter) => {
         const active = value === filter.value;
         const count = counts?.[filter.value];
-
         return (
           <Button
             key={filter.value}
@@ -165,12 +162,11 @@ function FilterGroup<T extends string>({
                 : cn("hover:bg-current/10"),
             )}
           >
+            {" "}
             {filter.dot && (
               <span className={cn("size-1.5 rounded-full", filter.dot)} />
-            )}
-
-            <span>{filter.label}</span>
-
+            )}{" "}
+            <span>{filter.label}</span>{" "}
             {count !== undefined && (
               <span
                 className={cn(
@@ -178,12 +174,13 @@ function FilterGroup<T extends string>({
                   active ? "bg-current/15" : filter.badge,
                 )}
               >
-                {count}
+                {" "}
+                {count}{" "}
               </span>
-            )}
+            )}{" "}
           </Button>
         );
-      })}
+      })}{" "}
     </div>
   );
 }
