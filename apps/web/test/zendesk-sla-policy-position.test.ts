@@ -18,6 +18,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
   let commitments: typeof import("@sla/commitments");
+  // The Zendesk importer no longer depends on @sla/commitments (N1.12): the caller supplies the default calendar.
+  const ensureDefaultCalendar = (organizationId: string) =>
+    commitments.ensureDefaultCalendarVersion(prisma, organizationId);
 
   let organizationId: string;
   let integrationId: string;
@@ -78,7 +81,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
 
   it("stores the imported policy's Zendesk position", async () => {
     await writePolicySnapshot(1, "Standard", 3);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const policy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } });
     expect(policy.position).toBe(3);
@@ -86,7 +89,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
 
   it("leaves position null when Zendesk's payload doesn't carry one", async () => {
     await writePolicySnapshot(1, "Standard", undefined);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const policy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } });
     expect(policy.position).toBeNull();
@@ -99,10 +102,10 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
     await writePolicySnapshot(2, "Urgent", 2, {
       all: [{ field: "priority", operator: "is", value: "urgent" }],
     });
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
-      data: { organizationId, externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     await commitments.runCommitmentPipeline(prisma, organizationId);
 
@@ -115,11 +118,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
 
   it("re-importing updates position when Zendesk's own order changes", async () => {
     await writePolicySnapshot(1, "Standard", 1);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect((await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } })).position).toBe(1);
 
     await writePolicySnapshot(1, "Standard", 4);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect((await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } })).position).toBe(4);
   });
 
@@ -138,7 +141,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
    */
   it("matches a tag-filtered policy over an organization-filtered policy and a catch-all, by position", async () => {
     const customer = await prisma.customer.create({
-      data: { organizationId, name: "Acme", zendeskOrgId: "555" },
+      data: {
+        organizationId,
+        name: "Acme",
+        zendeskOrgId: "555",
+        identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "555" } },
+      },
     });
 
     await writePolicySnapshot(1, "D6-Org Ticket Tag - d6", 1, {
@@ -148,11 +156,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
       all: [{ field: "organization_id", operator: "is", value: "555" }],
     });
     await writePolicySnapshot(3, "Set first reply time", 3);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
       data: {
         organizationId,
+        system: "zendesk",
         externalId: "ticket-2",
         customerId: customer.id,
         tags: ["d6", "customer-visible"],

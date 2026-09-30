@@ -58,4 +58,21 @@ describe("diffNormalizedEvents", () => {
       expect(toDeleteIds).toEqual(["a"]);
     }
   });
+
+  it("treats a stored event without a source role as different from its derived twin", () => {
+    const stored = [{ id: "a", ...base, sourceRole: null, occurredAt: at("2026-09-01T09:00:00Z") }];
+    const derived = [{ ...base, sourceRole: "ticket_source", occurredAt: "2026-09-01T09:00:00.000Z" }];
+
+    const { toCreate, toDeleteIds } = diffNormalizedEvents(stored, derived);
+
+    expect(toCreate).toEqual(derived);
+    expect(toDeleteIds).toEqual(["a"]);
+  });
+
+  it("keeps a stored event whose source role matches", () => {
+    const stored = [{ id: "a", ...base, sourceRole: "ticket_source", occurredAt: at("2026-09-01T09:00:00Z") }];
+    const derived = [{ ...base, sourceRole: "ticket_source", occurredAt: "2026-09-01T09:00:00.000Z" }];
+
+    expect(diffNormalizedEvents(stored, derived)).toEqual({ toCreate: [], toDeleteIds: [] });
+  });
 });

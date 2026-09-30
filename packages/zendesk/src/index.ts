@@ -5,6 +5,7 @@ export {
   isPublicCommentEvent,
   latestSnapshotById,
   NORMALIZATION_OVERLAP_MS,
+  normalizeZendeskPriority,
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,
@@ -33,8 +34,6 @@ export type {
   ZendeskUserRoles,
 } from "./normalize";
 export {
-  DEFAULT_CALENDAR_NAME,
-  ensureDefaultCalendarVersion,
   extractMatchFromFilter,
   groupPolicyMetricsByPriority,
   IMPORTED_PAUSE_ON_STATES,
@@ -43,7 +42,9 @@ export {
   runZendeskSlaPolicyImport,
   WARN_AT_PERCENT,
 } from "./policies";
+export { parseZendeskTicketId, recognizeZendeskTicketUrl } from "./ticket-url";
 export type {
+  EnsureDefaultCalendar,
   ExtractedMatch,
   GroupedPolicyMetrics,
   PolicyTargetGroup,
@@ -82,3 +83,4 @@ export {
 export type { WebhookIngestResult } from "./webhook";
 export { parseJiraLinkRecord, runZendeskJiraLinkCorrelation } from "./correlate";
 export type { JiraLinkCorrelationResult } from "./correlate";
+export { JIRA_LINK_EVENT_SOURCE_ROLE, ZENDESK_SOURCE_ROLE } from "./source-role";

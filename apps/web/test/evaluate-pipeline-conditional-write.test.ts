@@ -136,6 +136,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
       const caseRow = await prisma.case.create({
         data: {
           organizationId,
+          system: "zendesk",
           externalId: "1",
           priority: "urgent",
           openedAt: OPENED,
@@ -150,6 +151,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
           occurredAt: OPENED,
           actor: "customer",
           system: "zendesk",
+          sourceRole: "ticket_source",
           toState: "open",
         },
       });

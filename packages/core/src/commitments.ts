@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { computeDeadline } from "./calendar";
 import type {
   BusinessCalendarVersion,
+  CanonicalPriority,
   CaseAttributes,
   Commitment,
   CommitmentKind,
@@ -70,8 +71,8 @@ function includesValue(actual: unknown, expected: unknown): boolean {
   return false;
 }
 
-/** Zendesk's fixed priority ordering — the only field whose `less_than`/`greater_than` comparison isn't a plain numeric/date compare. */
-const PRIORITY_ORDER: Record<string, number> = {
+/** The ordering of Elapsed's own priority vocabulary (`CanonicalPriority`) — the only field whose `less_than`/`greater_than` comparison isn't a plain numeric/date compare. */
+const PRIORITY_ORDER: Record<CanonicalPriority, number> = {
   low: 0,
   normal: 1,
   high: 2,
@@ -91,8 +92,8 @@ function compareOrdinal(
   expected: unknown,
 ): number | null {
   if (field === "priority") {
-    const a = PRIORITY_ORDER[String(actual).toLowerCase()];
-    const b = PRIORITY_ORDER[String(expected).toLowerCase()];
+    const a = PRIORITY_ORDER[String(actual).toLowerCase() as CanonicalPriority] as number | undefined;
+    const b = PRIORITY_ORDER[String(expected).toLowerCase() as CanonicalPriority] as number | undefined;
     return a === undefined || b === undefined ? null : a - b;
   }
 
@@ -246,12 +247,29 @@ function matches(
   return true;
 }
 /**
+ * Whether the policy's source allows it to price this case (N1.11). A native
+ * policy is eligible for every case. An imported policy that carries a
+ * `sourceKey` is eligible only for a case of that same source; one without
+ * a key is unscoped (its rows predate scoping, or nothing set it).
+ */
+function isSourceEligible(
+  caseAttributes: CaseAttributes,
+  policyVersion: SLAPolicyVersion,
+): boolean {
+  if (policyVersion.policySource === "native") return true;
+  if (policyVersion.sourceKey == null) return true;
+  return policyVersion.sourceKey === caseAttributes.sourceKey;
+}
+
+/**
  * Matches a Case's attributes against active policy versions.
  *
  * Imported policies always match before native ones (D12/Phase 4) —
  * `policySource` absent or `"imported"` outranks `"native"` — since an
  * imported policy is read-only, Zendesk-driven, and considered
  * authoritative; a native policy only ever fills a gap Zendesk leaves.
+ * An imported policy scoped to a source (`sourceKey`) is a candidate only
+ * for cases of that source (N1.11); native policies are candidates for all.
  *
  * Within the imported bucket, policies are ranked by their Zendesk
  * `position` (D6/1.10: lower position wins, matching Zendesk's own
@@ -270,8 +288,9 @@ export function matchPolicyVersion(
   caseAttributes: CaseAttributes,
   activePolicyVersions: SLAPolicyVersion[],
 ): SLAPolicyVersion | null {
-  const candidates = activePolicyVersions.filter((pv) =>
-    matches(caseAttributes, pv),
+  const candidates = activePolicyVersions.filter(
+    (pv) =>
+      isSourceEligible(caseAttributes, pv) && matches(caseAttributes, pv),
   );
   if (candidates.length === 0) return null;
 

@@ -131,6 +131,7 @@ describe.skipIf(!TEST_DATABASE_URL)("getCycleTimeAnomalies (real Postgres)", () 
     const caseRow = await prisma.case.create({
       data: {
         organizationId,
+        system: "zendesk",
         customerId,
         externalId: `case-${caseCounter}`,
         subject: `Case ${caseCounter}`,

@@ -113,7 +113,7 @@ describe.skipIf(!TEST_DATABASE_URL)("commitment re-resolution (real Postgres)", 
 
   async function createCase(overrides: Record<string, unknown> = {}) {
     return prisma.case.create({
-      data: { organizationId, externalId: `case-${Math.random()}`, openedAt: at("10:00"), ...overrides },
+      data: { organizationId, system: "zendesk", externalId: `case-${Math.random()}`, openedAt: at("10:00"), ...overrides },
     });
   }
 
@@ -129,6 +129,7 @@ describe.skipIf(!TEST_DATABASE_URL)("commitment re-resolution (real Postgres)", 
         occurredAt: at(e.time),
         actor: e.actor ?? "agent",
         system: "zendesk" as const,
+        sourceRole: "ticket_source" as const,
         toState: e.toState ?? null,
       })),
     });

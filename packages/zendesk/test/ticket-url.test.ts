@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseZendeskTicketId } from "../src/correlate";
+import { parseZendeskTicketId, recognizeZendeskTicketUrl } from "../src/ticket-url";
 
 describe("parseZendeskTicketId", () => {
   it("matches the agent view URL on the right subdomain", () => {
@@ -36,5 +36,23 @@ describe("parseZendeskTicketId", () => {
 
   it("returns null for a Zendesk URL that doesn't point at a ticket", () => {
     expect(parseZendeskTicketId("https://acme.zendesk.com/agent/dashboard", "acme")).toBeNull();
+  });
+});
+
+describe("recognizeZendeskTicketUrl (N1.13)", () => {
+  const url = "https://acme.zendesk.com/agent/tickets/42";
+
+  it("recognizes a ticket on the integration's own subdomain", () => {
+    expect(recognizeZendeskTicketUrl(url, { subdomain: "acme" })).toBe("42");
+  });
+
+  it("recognizes nothing on another subdomain", () => {
+    expect(recognizeZendeskTicketUrl(url, { subdomain: "other" })).toBeNull();
+  });
+
+  it("recognizes nothing when the credentials carry no usable subdomain", () => {
+    for (const credentials of [null, undefined, {}, { subdomain: "" }, { subdomain: 5 }, "acme"]) {
+      expect(recognizeZendeskTicketUrl(url, credentials)).toBeNull();
+    }
   });
 });

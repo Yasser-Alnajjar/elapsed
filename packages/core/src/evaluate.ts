@@ -14,7 +14,7 @@ import type {
   NormalizedEvent,
   SLAPolicyVersion,
 } from "./types";
-import { TICKET_SOURCE_SYSTEMS } from "./ticket-source";
+import { isTicketSourceEvent } from "./ticket-source";
 import { stableHash } from "./util";
 
 /**
@@ -90,7 +90,7 @@ const TICKET_LIFECYCLE_EVENT_TYPES = new Set<NormalizedEvent["type"]>([
 
 /**
  * The event that closed the case, if it is closed as of `asOf`: the first
- * ticket-source (Zendesk or Intercom) `case_closed` of the *current*
+ * ticket-source `case_closed` of the *current*
  * closure, or null if none has happened yet or the case is currently open.
  *
  * Only the ticket source ever anchors a case's lifecycle — a linked Jira issue is
@@ -117,7 +117,7 @@ export function findCaseCloseEvent(
   const lifecycleEvents = events
     .filter(
       (e) =>
-        TICKET_SOURCE_SYSTEMS.has(e.system) &&
+        isTicketSourceEvent(e) &&
         TICKET_LIFECYCLE_EVENT_TYPES.has(e.type) &&
         e.occurredAt <= asOf,
     )
@@ -173,7 +173,7 @@ export function findFirstResponseEvent(
 ): NormalizedEvent | null {
   let first: NormalizedEvent | null = null;
   for (const event of events) {
-    if (!TICKET_SOURCE_SYSTEMS.has(event.system)) continue;
+    if (!isTicketSourceEvent(event)) continue;
     if (event.type !== "agent_replied" && event.type !== "case_closed") continue;
     if (event.occurredAt > asOf) continue;
     if (startedAt !== undefined && event.occurredAt < startedAt) continue;
@@ -217,14 +217,14 @@ export function resolveFirstResponseStartedAt(
   caseCreatedAt: string,
 ): string | null {
   const created = events
-    .filter((e) => TICKET_SOURCE_SYSTEMS.has(e.system) && e.type === "case_created")
+    .filter((e) => isTicketSourceEvent(e) && e.type === "case_created")
     .sort(compareNormalizedEvents)[0];
   if (!created || created.actor !== "agent") return caseCreatedAt;
 
   const firstCustomerReply = events
     .filter(
       (e) =>
-        TICKET_SOURCE_SYSTEMS.has(e.system) &&
+        isTicketSourceEvent(e) &&
         e.type === "customer_replied" &&
         compareNormalizedEvents(e, created) >= 0,
     )

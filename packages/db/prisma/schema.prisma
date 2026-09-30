@@ -236,6 +236,7 @@ model Integration {
   normalizedThroughFetchedAt DateTime?
   normalizedThroughId        String?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cases          Case[]
   rawEvents      RawEvent[]
 
   @@unique([organizationId, provider])
@@ -270,6 +271,10 @@ model NormalizedEvent {
   occurredAt       DateTime
   actor            String
   system           IntegrationProvider
+  /// What this event's source plays in the case: `ticket_source`,
+  /// `work_tracker` or `code_host`. The engine decides by this, not by
+  /// `system` (N1.5). Derived data: the backfill equals re-derivation.
+  sourceRole       String
   fromState        String?
   toState          String?
   /// Position in the provider's own source order (Zendesk audit order, then
@@ -322,6 +327,7 @@ model Customer {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   cases             Case[]
+  identities        CustomerIdentity[]
   calendar          BusinessCalendar? @relation(fields: [calendarId], references: [id], onDelete: SetNull)
   calendarVersion   BusinessCalendarVersion? @relation("CustomerCalendarVersion", fields: [calendarVersionId], references: [id], onDelete: SetNull)
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -332,6 +338,27 @@ model Customer {
   @@map("customers")
 }
 
+/// How a provider names a Customer (N1.14). One row per provider-side identity
+/// — a Zendesk organization, an Intercom company or contact — so provider
+/// knowledge lives in data instead of one column per provider on `Customer`.
+/// The legacy `Customer.zendeskOrgId` / `intercomCompanyId` /
+/// `intercomContactId` columns are dual-written until they are dropped in N2.10.
+model CustomerIdentity {
+  id             String              @id @default(cuid())
+  organizationId String
+  customerId     String
+  provider       IntegrationProvider
+  /// Adapter-defined identity kind: "organization", "company", "contact".
+  kind           String
+  externalId     String
+  createdAt      DateTime            @default(now())
+  customer       Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider, kind, externalId])
+  @@index([customerId])
+  @@map("customer_identities")
+}
+
 /// The unit of customer commitment — one customer request, spanning systems.
 /// A mutable projection; the source of truth for its history is the
 /// NormalizedEvent stream, not this row's current field values.
@@ -340,18 +367,21 @@ model Case {
   organizationId   String
   customerId       String?
   externalId       String
-  /// Which ticket-source integration created this case (roadmap step 22:
+  /// Which ticket-source provider created this case (roadmap step 22:
   /// Intercom joined Zendesk as a second possible source). Set once at
   /// creation and never changed — used to pick the right outbound ticket
-  /// link (case-detail-data.ts, report-data.ts) instead of the old
-  /// always-Zendesk assumption. Deliberately NOT part of the unique key
-  /// below: Jira/Linear's correlator looks up a case by externalId alone,
-  /// with no way to know in advance which ticket source created it. An org
-  /// that connects two ticket sources whose externalIds happen to collide is
-  /// an accepted, uncommon edge case (the product positions Zendesk and
-  /// Intercom as alternatives, not both at once — plans/02), not one this
-  /// column tries to prevent.
-  system           IntegrationProvider @default(zendesk)
+  /// link (case-detail-data.ts, report-data.ts). Every writer sets it
+  /// explicitly (N1.15 removed the old `zendesk` default).
+  system           IntegrationProvider
+  /// The ticket-source `Integration` row that created this case (N1.15).
+  /// `Integration` rows are never deleted (disconnect is soft) and are unique
+  /// per (organization, provider), so this stays stable across reconnects.
+  /// Together with `externalId` it names a case: two ticket sources may reuse
+  /// an id without colliding. Nullable only so a row written by pre-N1.15 code
+  /// (after a code rollback) is still valid; re-run the migration's backfill
+  /// `UPDATE` to repair such rows. Lookups use the compound key below; the old
+  /// `(organizationId, externalId)` key stays until N2.10.
+  sourceIntegrationId String?
   /// The source ticket's subject/title (e.g. Zendesk's `subject` field).
   /// Display-only — never used for matching or correlation. Null for cases
   /// whose source system was ingested before this column existed, or whose
@@ -388,6 +418,9 @@ model Case {
   /// Canonical fields that already have a dedicated column (priority, tags,
   /// channel, customerId, tier) are NOT duplicated in here; `toCaseAttributes`
   /// (packages/commitments) merges both into one match input at read time.
+  /// The exception is a provider's own field-name aliases of those columns
+  /// (Zendesk's `current_tags`, `via_id`, `current_via_id`): the adapter
+  /// writes them here (N1.10), so the commitments layer knows none of them.
   /// Null for cases from a source/normalizer that doesn't populate it.
   attributes       Json?
   openedAt         DateTime
@@ -402,11 +435,13 @@ model Case {
   caseLinks        CaseLink[]
   customer         Customer?         @relation(fields: [customerId], references: [id])
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sourceIntegration Integration?     @relation(fields: [sourceIntegrationId], references: [id], onDelete: SetNull)
   commitments      Commitment[]
   legSpans         LegSpan[]
   normalizedEvents NormalizedEvent[]
 
   @@unique([organizationId, externalId])
+  @@unique([organizationId, sourceIntegrationId, externalId])
   @@index([organizationId, openedAt])
   @@map("cases")
 }
@@ -464,6 +499,10 @@ model SLAPolicy {
   /// Imported vs native (D12, Phase 4). Backfilled from `externalId` for
   /// every pre-Phase-4 row: non-null externalId -> imported.
   source         PolicySource       @default(native)
+  /// Which provider an imported policy came from (N1.11), so it prices only
+  /// that provider's cases (`matchPolicyVersion`). Null for a native policy,
+  /// which is a candidate for every case.
+  sourceProvider IntegrationProvider?
   /// An owner's own pause/resume of a native policy (Phase 4 task 4.4).
   /// Distinct from `archivedAt`, which means "gone from Zendesk" and never
   /// applies to a native policy.

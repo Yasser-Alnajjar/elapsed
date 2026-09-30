@@ -3,6 +3,7 @@ import { deriveNextReplyCycles, findFirstResponseEvent, resolveFirstResponseStar
 import {
   deriveCaseClosedAt,
   deriveNormalizedEventsForTicket,
+  normalizeZendeskPriority,
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,
@@ -48,6 +49,21 @@ function statusChange(value: string, previous_value: string) {
 function priorityChange(value: string | null, previous_value: string | null) {
   return { id: 2, type: "Change", field_name: "priority", value, previous_value };
 }
+
+describe("normalizeZendeskPriority", () => {
+  it("is the identity mapping onto CanonicalPriority", () => {
+    expect(normalizeZendeskPriority("low")).toBe("low");
+    expect(normalizeZendeskPriority("normal")).toBe("normal");
+    expect(normalizeZendeskPriority("high")).toBe("high");
+    expect(normalizeZendeskPriority("urgent")).toBe("urgent");
+  });
+
+  it("maps an unset or unrecognized priority to null instead of leaking a raw string", () => {
+    expect(normalizeZendeskPriority(null)).toBeNull();
+    expect(normalizeZendeskPriority(undefined)).toBeNull();
+    expect(normalizeZendeskPriority("bogus")).toBeNull();
+  });
+});
 
 describe("normalizeZendeskStatus", () => {
   it("maps every known Zendesk status", () => {
@@ -314,6 +330,20 @@ describe("deriveNormalizedEventsForTicket", () => {
     ];
     const events = deriveNormalizedEventsForTicket({ ...ticket, status: "new" }, audits, "raw_ticket_42");
     expect(events[1]).toMatchObject({ type: "priority_changed", fromState: "low", toState: null });
+  });
+
+  it("never carries a non-canonical priority string on priority_changed", () => {
+    const audits = [
+      audit({
+        id: 1,
+        created_at: "2026-01-01T09:05:00Z",
+        author_id: 501,
+        via: { channel: "web" },
+        events: [priorityChange("bogus", "normal")],
+      }),
+    ];
+    const events = deriveNormalizedEventsForTicket({ ...ticket, status: "new" }, audits, "raw_ticket_42");
+    expect(events[1]).toMatchObject({ type: "priority_changed", fromState: "normal", toState: null });
   });
 });
 
@@ -961,7 +991,7 @@ describe("Next Reply cycles from derived ticket events", () => {
   });
 
   const toCoreEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
-    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "zendesk" }));
+    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "zendesk", sourceRole: "ticket_source" as const }));
 
   const cycles = (events: NormalizedEvent[]) =>
     deriveNextReplyCycles(events, { asOf: AS_OF, firstResponseCompletion: findFirstResponseEvent(events, AS_OF) }).map(
@@ -1120,6 +1150,7 @@ describe("zendeskConditionAttributes", () => {
     });
 
     expect(result).toEqual({
+      current_tags: [],
       status: "pending",
       type: "incident",
       group_id: 42,
@@ -1141,6 +1172,7 @@ describe("zendeskConditionAttributes", () => {
     const result = zendeskConditionAttributes(ticket);
 
     expect(result).toEqual({
+      current_tags: [],
       status: "closed",
       requester_id: 501,
       via_id: "web",
@@ -1164,6 +1196,20 @@ describe("zendeskConditionAttributes", () => {
     expect(result.custom_fields_1).toBe("a");
     expect(result.custom_fields_2).toBe(5);
     expect(result.custom_fields_3).toBeNull();
+  });
+
+  it("writes the Zendesk aliases `current_tags`, `via_id` and `current_via_id` (N1.10), from the same ticket fields as the canonical Case columns", () => {
+    const tagged = zendeskConditionAttributes({ ...ticket, tags: ["vip", "escalated"], via: { channel: "chat" } });
+
+    expect(tagged.current_tags).toEqual(["vip", "escalated"]);
+    expect(tagged.via_id).toBe("chat");
+    expect(tagged.current_via_id).toBe("chat");
+    // A ticket with no tags stores `[]` on Case.tags, so the alias is `[]` too.
+    expect(zendeskConditionAttributes(ticket).current_tags).toEqual([]);
+    // No channel, no channel aliases (Case.channel is null too).
+    const noChannel = zendeskConditionAttributes({ ...ticket, via: undefined });
+    expect(noChannel).not.toHaveProperty("via_id");
+    expect(noChannel).not.toHaveProperty("current_via_id");
   });
 
   it("never emits organization_id, priority, or tags — those are resolved as canonical Case columns / match.customerIds elsewhere, never duplicated into the generic attributes bag", () => {
@@ -1267,7 +1313,7 @@ describe("deriveNormalizedEventsForTicket — creation actor (H-11)", () => {
 
   describe("first-response start (D5b) follows the fixed creation actor", () => {
     const asEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
-      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-54", system: "zendesk" }));
+      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-54", system: "zendesk", sourceRole: "ticket_source" as const }));
     const firstResponseStart = (t: ZendeskTicket, audits: AuditRecord[]) =>
       resolveFirstResponseStartedAt(asEvents(deriveNormalizedEventsForTicket(t, audits, "raw_t", roles)), t.created_at);
 

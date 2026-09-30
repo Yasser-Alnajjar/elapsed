@@ -1,6 +1,8 @@
-import { Prisma, type PrismaClient } from "@sla/db";
-import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
+import { Prisma, findCustomerByIdentity, upsertCustomerByIdentity, type PrismaClient } from "@sla/db";
+import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
+import { zendeskOrganizationIdentity } from "./customer-identity";
+import { ZENDESK_SOURCE_ROLE } from "./source-role";
 
 /** Zendesk's closed set of ticket statuses, mapped to the provider-independent vocabulary. */
 const STATUS_TO_NORMALIZED_STATE: Record<string, NormalizedState> = {
@@ -75,6 +77,24 @@ function isStatusChangeEvent(
   );
 }
 
+/**
+ * Zendesk's ticket priorities are already Elapsed's vocabulary
+ * (`CanonicalPriority`), so this is the identity mapping; a value outside it
+ * (not something Zendesk sends) becomes `null` rather than leaking a raw
+ * provider string past the adapter.
+ */
+export function normalizeZendeskPriority(priority: string | null | undefined): CanonicalPriority | null {
+  switch (priority) {
+    case "low":
+    case "normal":
+    case "high":
+    case "urgent":
+      return priority;
+    default:
+      return null;
+  }
+}
+
 /** Unlike status, a priority can be unset (`null`) on either side of the change. */
 function isPriorityChangeEvent(
   event: ZendeskAudit["events"][number],
@@ -137,9 +157,9 @@ export interface DerivedNormalizedEvent {
   type: NormalizedEventType;
   occurredAt: string;
   actor: Actor;
-  /** A raw priority string, not a `NormalizedState`, on `priority_changed` — see `NormalizedEvent` (@sla/core). */
-  fromState: NormalizedState | string | null;
-  toState: NormalizedState | string | null;
+  /** A `CanonicalPriority`, not a `NormalizedState`, on `priority_changed` — see `NormalizedEvent` (@sla/core). */
+  fromState: NormalizedState | CanonicalPriority | null;
+  toState: NormalizedState | CanonicalPriority | null;
   sourceRawEventId: string;
   /**
    * Position in the ticket's own source order: 0 for the synthesized
@@ -292,8 +312,8 @@ export function deriveNormalizedEventsForTicket(
           type: "priority_changed",
           occurredAt: audit.created_at,
           actor: resolveActor(audit.via?.channel, audit.author_id, ticket, userRoles),
-          fromState: event.previous_value,
-          toState: event.value,
+          fromState: normalizeZendeskPriority(event.previous_value),
+          toState: normalizeZendeskPriority(event.value),
           sourceRawEventId: rawEventId,
           sourceSequence,
         });
@@ -367,6 +387,9 @@ function customFieldAttributes(ticket: ZendeskTicket): Record<string, unknown> {
  * which have no Zendesk ticket source) are set directly on `Case` and merged
  * into the match input separately by `toCaseAttributes`
  * (packages/commitments), so they are deliberately not duplicated here.
+ * What IS written here are Zendesk's own field-name aliases of those
+ * canonical columns: `current_tags` (of `tags`) and `via_id` /
+ * `current_via_id` (of `channel`), which only Zendesk SLA conditions use.
  *
  * See the field -> Case/attributes mapping table on `ZendeskSlaPolicyCondition`
  * (./types) for the full picture, including which condition fields this
@@ -376,6 +399,10 @@ export function zendeskConditionAttributes(
   ticket: ZendeskTicket,
 ): Record<string, unknown> {
   return {
+    // Alias of the canonical `Case.tags` column: same value the Case row
+    // gets (`ticket.tags ?? []`), so a `current_tags` condition sees exactly
+    // what a `tags` condition does.
+    current_tags: ticket.tags ?? [],
     // Zendesk's raw ticket status (e.g. "pending", "hold") — distinct from
     // this system's own NormalizedState vocabulary, which an SLA condition
     // imported from Zendesk was never written against.
@@ -460,6 +487,7 @@ function normalizedEventKey(event: {
   type: string;
   occurredAt: Date | string;
   actor: string;
+  sourceRole?: string | null;
   fromState: string | null;
   toState: string | null;
 }): string {
@@ -469,6 +497,9 @@ function normalizedEventKey(event: {
     event.type,
     new Date(event.occurredAt).getTime(),
     event.actor,
+    // A stored row with no role (written before N1.5's backfill) never matches
+    // its derived twin, so it is replaced by one that has it.
+    event.sourceRole ?? "",
     event.fromState ?? "",
     event.toState ?? "",
   ].join("|");
@@ -698,11 +729,7 @@ async function normalizeTickets(
 
   const latestOrgs = latestSnapshotById<ZendeskOrganization>(orgRows);
   for (const { value: org } of latestOrgs.values()) {
-    await prisma.customer.upsert({
-      where: { organizationId_zendeskOrgId: { organizationId, zendeskOrgId: String(org.id) } },
-      update: { name: org.name },
-      create: { organizationId, name: org.name, zendeskOrgId: String(org.id) },
-    });
+    await upsertCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, org.id), org.name);
     result.customersUpserted += 1;
   }
 
@@ -741,7 +768,7 @@ async function normalizeTickets(
     const latestTickets = latestSnapshotById<ZendeskTicket>(ticketRows);
     const auditsByTicketId = groupAuditsByTicketId(auditRows);
 
-    await deriveTickets(prisma, organizationId, latestTickets, auditsByTicketId, userRoles, result);
+    await deriveTickets(prisma, organizationId, integrationId, latestTickets, auditsByTicketId, userRoles, result);
   }
 
   return result;
@@ -750,6 +777,7 @@ async function normalizeTickets(
 async function deriveTickets(
   prisma: PrismaClient,
   organizationId: string,
+  integrationId: string,
   latestTickets: ReturnType<typeof latestSnapshotById<ZendeskTicket>>,
   auditsByTicketId: Map<number, AuditRecord[]>,
   userRoles: ZendeskUserRoles,
@@ -771,11 +799,7 @@ async function deriveTickets(
 
       const customer =
         ticket.organization_id != null
-          ? await prisma.customer.findUnique({
-              where: {
-                organizationId_zendeskOrgId: { organizationId, zendeskOrgId: String(ticket.organization_id) },
-              },
-            })
+          ? await findCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, ticket.organization_id))
           : null;
 
       const auditsForTicket = auditsByTicketId.get(ticket.id) ?? [];
@@ -791,8 +815,15 @@ async function deriveTickets(
       const ownRawEventIds = [...ticketSnapshotRawEventIds, ...auditsForTicket.map((a) => a.rawEventId)];
 
       const caseRow = await prisma.case.upsert({
-        where: { organizationId_externalId: { organizationId, externalId: String(ticket.id) } },
+        where: {
+          organizationId_sourceIntegrationId_externalId: {
+            organizationId,
+            sourceIntegrationId: integrationId,
+            externalId: String(ticket.id),
+          },
+        },
         update: {
+          sourceIntegrationId: integrationId,
           customerId: customer?.id ?? null,
           subject: ticket.subject,
           priority: ticket.priority,
@@ -816,6 +847,7 @@ async function deriveTickets(
           customerId: customer?.id ?? null,
           externalId: String(ticket.id),
           system: "zendesk",
+          sourceIntegrationId: integrationId,
           subject: ticket.subject,
           priority: ticket.priority,
           channel: ticket.via?.channel ?? null,
@@ -841,12 +873,16 @@ async function deriveTickets(
           type: true,
           occurredAt: true,
           actor: true,
+          sourceRole: true,
           fromState: true,
           toState: true,
           sourceSequence: true,
         },
       });
-      const { toCreate, toDeleteIds } = diffNormalizedEvents(stored, derived);
+      const { toCreate, toDeleteIds } = diffNormalizedEvents(
+        stored,
+        derived.map((event) => ({ ...event, sourceRole: ZENDESK_SOURCE_ROLE })),
+      );
       if (toDeleteIds.length > 0 || toCreate.length > 0) {
         await prisma.$transaction([
           prisma.normalizedEvent.deleteMany({ where: { id: { in: toDeleteIds } } }),
@@ -858,6 +894,7 @@ async function deriveTickets(
               occurredAt: new Date(event.occurredAt),
               actor: event.actor,
               system: "zendesk" as const,
+              sourceRole: ZENDESK_SOURCE_ROLE,
               fromState: event.fromState,
               toState: event.toState,
               sourceSequence: event.sourceSequence,

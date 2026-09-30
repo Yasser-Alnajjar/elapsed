@@ -107,8 +107,14 @@ export const Actions = {
         "/api/integrations/zendesk/backfill",
       );
     },
+    async startIntercomBackfill() {
+      return postJSON<Record<string, never>>("/api/integrations/intercom/backfill");
+    },
     async startJiraBackfill() {
       return postJSON<Record<string, never>>("/api/integrations/jira/backfill");
+    },
+    async startLinearBackfill() {
+      return postJSON<Record<string, never>>("/api/integrations/linear/backfill");
     },
   },
 

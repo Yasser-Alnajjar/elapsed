@@ -17,12 +17,15 @@ export interface PolicyContext {
   customersWithCalendarOverride: Awaited<ReturnType<typeof loadCustomerCalendarOverrides>>;
 }
 
+/** The owning-policy columns `toPolicyVersionDomain` reads; every policy-version loader includes exactly these. */
+export const POLICY_SELECT = { position: true, source: true, sourceProvider: true } as const;
+
 function loadPolicyVersionRows(prisma: PrismaClient, organizationId: string) {
   return prisma.sLAPolicyVersion.findMany({
     where: { policy: { organizationId, archivedAt: null, deactivatedAt: null } },
     include: {
       calendarVersion: true,
-      policy: { select: { position: true, source: true } },
+      policy: { select: POLICY_SELECT },
     },
   });
 }

@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DATABASE_URL)("SLA import summary persistence (real Postgr
       },
     });
     await prisma.case.create({
-      data: { organizationId, externalId: "case-1", openedAt: at("09:00"), priority: "urgent" },
+      data: { organizationId, system: "zendesk", externalId: "case-1", openedAt: at("09:00"), priority: "urgent" },
     });
 
     const first = await sourceSync.projectAndEvaluateSourceSyncs(prisma, organizationId);

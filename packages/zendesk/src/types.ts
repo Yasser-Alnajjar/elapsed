@@ -156,14 +156,14 @@ export interface ZendeskIncrementalOrganizationExport {
  * Case/Case.attributes mapping this importer resolves:
  *
  *   priority          -> Case.priority            -> attributes.priority
- *   tags              -> Case.tags                -> attributes.tags, attributes.current_tags
+ *   tags              -> Case.tags                -> attributes.tags (canonical), attributes.current_tags (Zendesk alias, written by the adapter)
  *   organization_id    -> Case.customerId          -> match.customerIds (never a generic attribute — see extractMatchFromFilter)
  *   status            -> attributes (raw Zendesk status, e.g. "pending") -> attributes.status
  *   type              -> attributes.type           -> attributes.type
  *   group_id          -> attributes.group_id       -> attributes.group_id
  *   assignee_id       -> attributes.assignee_id    -> attributes.assignee_id
  *   requester_id      -> attributes.requester_id   -> attributes.requester_id
- *   via_id/current_via_id -> ticket.via.channel (string) -> attributes.channel, attributes.via_id, attributes.current_via_id
+ *   via_id/current_via_id -> ticket.via.channel (string) -> attributes.channel (canonical), attributes.via_id, attributes.current_via_id (Zendesk aliases, written by the adapter)
  *   brand_id          -> attributes.brand_id       -> attributes.brand_id
  *   ticket_form_id    -> attributes.ticket_form_id -> attributes.ticket_form_id, attributes.form_id
  *   recipient         -> attributes.recipient      -> attributes.recipient

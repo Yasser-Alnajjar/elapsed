@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 import { buildAuthorizeUrl } from "@sla/intercom";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
-import { getIntercomOAuthConfig, INTERCOM_STATE_COOKIE } from "@/lib/intercom-env";
+import {
+  getIntercomOAuthConfig,
+  INTERCOM_STATE_COOKIE,
+} from "@/lib/intercom-env";
 import { signOAuthState } from "@/lib/oauth-state";
 
 export async function GET(request: Request) {
@@ -30,7 +33,19 @@ export async function GET(request: Request) {
   }
 
   const nonce = randomBytes(16).toString("hex");
-  const state = signOAuthState({ nonce, organizationId: session.user.organizationId, userId: session.user.id });
+  // Onboarding starts the flow with `?returnTo=onboarding` so the callback
+  // lands back in it; anything else returns to the settings page. Only this
+  // fixed value is ever carried through the signed state — never a URL.
+  const returnTo =
+    new URL(request.url).searchParams.get("returnTo") === "onboarding"
+      ? "onboarding"
+      : undefined;
+  const state = signOAuthState({
+    nonce,
+    organizationId: session.user.organizationId,
+    userId: session.user.id,
+    ...(returnTo ? { returnTo } : {}),
+  });
 
   const response = NextResponse.redirect(buildAuthorizeUrl(config, state));
   response.cookies.set(INTERCOM_STATE_COOKIE, state, {

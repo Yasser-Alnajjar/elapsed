@@ -10,6 +10,7 @@ import {
   type NormalizedEventType,
   type NormalizedState,
   type SLAPolicyMatch,
+  type SourceRole,
   type SLAPolicyVersion,
   type WeeklyWindow,
 } from "@sla/core";
@@ -37,6 +38,8 @@ export interface NormalizedEventRecord {
   occurredAt: Date;
   actor: string;
   system: string;
+  /** Null only on rows written before N1.5's backfill or by a writer that has not set it yet; the NOT NULL migration follows the writer deploy. */
+  sourceRole: string | null;
   fromState: string | null;
   toState: string | null;
   sourceRawEventId: string;
@@ -70,7 +73,8 @@ export function toNormalizedEventDomain(
     type: row.type as NormalizedEventType,
     occurredAt: row.occurredAt.toISOString(),
     actor: row.actor as NormalizedEvent["actor"],
-    system: row.system as NormalizedEvent["system"],
+    system: row.system,
+    sourceRole: row.sourceRole as SourceRole,
     fromState: row.fromState as NormalizedState | null,
     toState: row.toState as NormalizedState | null,
     sourceRawEventId: row.sourceRawEventId,
@@ -214,6 +218,7 @@ const EVENT_SELECT = {
   occurredAt: true,
   actor: true,
   system: true,
+  sourceRole: true,
   fromState: true,
   toState: true,
   sourceRawEventId: true,
@@ -221,7 +226,7 @@ const EVENT_SELECT = {
 } as const;
 
 /** Events for `caseIds`, `IN` list chunked so it's never one enormous parameter list. Ordered per case as the engine expects. */
-async function loadEventsForCases(prisma: PrismaClient, caseIds: readonly string[]) {
+export async function loadEventsForCases(prisma: PrismaClient, caseIds: readonly string[]) {
   const rows: NormalizedEventRecord[] = [];
   for (const ids of chunk(caseIds)) {
     rows.push(

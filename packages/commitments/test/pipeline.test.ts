@@ -112,7 +112,7 @@ describe("toCaseAttributes", () => {
     });
   });
 
-  it("mirrors tags into attributes under both `tags` and `current_tags` so either generic match condition can be evaluated", () => {
+  it("mirrors tags into attributes under `tags` only; provider aliases such as `current_tags` are the adapter's job", () => {
     expect(
       toCaseAttributes({
         id: "case_1",
@@ -124,14 +124,14 @@ describe("toCaseAttributes", () => {
       }),
     ).toEqual({
       caseId: "case_1",
-      attributes: { tags: ["d6", "vip"], current_tags: ["d6", "vip"] },
+      attributes: { tags: ["d6", "vip"] },
       priority: undefined,
       customerId: undefined,
       tier: undefined,
     });
   });
 
-  it("mirrors channel into attributes under `channel`, `via_id`, and `current_via_id`", () => {
+  it("mirrors channel into attributes under `channel` only; provider aliases such as `via_id` are the adapter's job", () => {
     expect(
       toCaseAttributes({
         id: "case_1",
@@ -143,11 +143,17 @@ describe("toCaseAttributes", () => {
       }),
     ).toEqual({
       caseId: "case_1",
-      attributes: { channel: "chat", via_id: "chat", current_via_id: "chat" },
+      attributes: { channel: "chat" },
       priority: undefined,
       customerId: undefined,
       tier: undefined,
     });
+  });
+
+  it("passes the case's source provider through as the opaque `sourceKey` (N1.11)", () => {
+    const base = { id: "case_1", priority: null, customerId: null, tier: null, openedAt: new Date() };
+    expect(toCaseAttributes({ ...base, system: "some-source" }).sourceKey).toBe("some-source");
+    expect(toCaseAttributes(base)).not.toHaveProperty("sourceKey");
   });
 
   it("merges the generic `attributes` JSON bag in as-is (Zendesk fields with no dedicated column: status, type, group_id, ...)", () => {

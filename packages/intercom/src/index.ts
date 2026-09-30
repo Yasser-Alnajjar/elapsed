@@ -33,6 +33,7 @@ export {
 } from "./client";
 export type { IntercomClientOptions } from "./client";
 export { computeSourceHash } from "./hash";
+export { recognizeIntercomConversationUrl } from "./ticket-url";
 export { runIntercomBackfill } from "./backfill";
 export type { BackfillResult } from "./backfill";
 export type { IntercomOAuthConfig } from "./oauth";
@@ -43,3 +44,4 @@ export {
   recordIntercomWorkspaceId,
   IntercomReauthRequiredError,
 } from "./tokenLifecycle";
+export { INTERCOM_SOURCE_ROLE } from "./source-role";

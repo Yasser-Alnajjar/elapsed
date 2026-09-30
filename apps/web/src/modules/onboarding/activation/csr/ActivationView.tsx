@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { Actions } from "@/actions/client";
 import { formatMinutes } from "@/lib/format";
+import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
 import type { ActivationPageData } from "@/lib/types/onboarding";
 import type { FindingsData } from "@/lib/types/findings";
 
@@ -238,7 +239,13 @@ function HealthCard({
 }
 
 /** What the 90-day backfill actually found — folded in from the old standalone "findings" page instead of a second screen. */
-function FindingsSection({ findings }: { findings: FindingsData }) {
+function FindingsSection({
+  findings,
+  trackerLabel,
+}: {
+  findings: FindingsData;
+  trackerLabel: string;
+}) {
   const hasFindings = findings.totalEscalated > 0;
 
   if (!hasFindings) {
@@ -246,7 +253,7 @@ function FindingsSection({ findings }: { findings: FindingsData }) {
       <EmptyState
         icon={Sparkles}
         title="No escalations yet"
-        description={`No tickets have been escalated to Jira in the last ${findings.periodDays} days. Once cases escalate and issues get linked, findings will appear here automatically — nothing to configure.`}
+        description={`No tickets have been escalated to ${trackerLabel} in the last ${findings.periodDays} days. Once cases escalate and issues get linked, findings will appear here automatically — nothing to configure.`}
       />
     );
   }
@@ -257,7 +264,7 @@ function FindingsSection({ findings }: { findings: FindingsData }) {
         Over the last {findings.periodDays} days,{" "}
         <strong className="text-primary">{findings.totalEscalated}</strong>{" "}
         ticket{findings.totalEscalated === 1 ? " was" : "s were"} escalated to
-        Jira. <strong className="text-error">{findings.exceededTarget}</strong>{" "}
+        {trackerLabel}. <strong className="text-error">{findings.exceededTarget}</strong>{" "}
         of {findings.exceededTarget === 1 ? "it" : "them"} exceeded{" "}
         {findings.exceededTarget === 1 ? "its" : "their"} customer resolution
         target.
@@ -268,7 +275,7 @@ function FindingsSection({ findings }: { findings: FindingsData }) {
             <strong>
               {formatMinutes(findings.avgEngineeringMinutes)}
             </strong>{" "}
-            waiting to be picked up in Jira.
+            waiting to be picked up in {trackerLabel}.
           </>
         )}
       </p>
@@ -404,6 +411,12 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
     findings,
   } = data;
 
+  // Names the ticket source / tracker that is actually connected (N1.16).
+  const { ticketSource, tracker } = deriveOnboardingProgress(status);
+  const sourceLabel = ticketSource === "intercom" ? "Intercom" : "Zendesk";
+  const trackerLabel = tracker === "linear" ? "Linear" : "Jira";
+  const ticketNoun = ticketSource === "intercom" ? "conversations" : "tickets";
+
   const correlationRate =
     status.escalatedCases > 0
       ? Math.round((status.linkedIssues / status.escalatedCases) * 100)
@@ -425,17 +438,17 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           steps={[
             {
               number: "01",
-              label: "Zendesk Helpdesk",
-              detail: `${status.ticketsFetched.toLocaleString()} tickets ingested`,
+              label: `${sourceLabel} ${ticketSource === "intercom" ? "Workspace" : "Helpdesk"}`,
+              detail: `${status.ticketsFetched.toLocaleString()} ${ticketNoun} ingested`,
             },
             {
               number: "02",
               label: "90d Baseline Data",
-              detail: `${status.ticketsFetched.toLocaleString()} tickets verified`,
+              detail: `${status.ticketsFetched.toLocaleString()} ${ticketNoun} verified`,
             },
             {
               number: "03",
-              label: "Jira Software",
+              label: tracker === "linear" ? "Linear" : "Jira Software",
               detail: `${status.linkedIssues.toLocaleString()} issue keys paired`,
             },
             {
@@ -467,7 +480,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 online
               </h1>
               <p className={`${DESCRIPTION_CLASS} max-w-xl`}>
-                Zendesk and Jira are deterministically paired. The continuous
+                {sourceLabel} and {trackerLabel} are deterministically paired. The continuous
                 customer SLA clock is running across every open commitment,
                 including handoffs between support and engineering.
               </p>
@@ -475,7 +488,8 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 <div className="flex items-center gap-2">
                   <Ticket className="size-4 text-primary shrink-0" />
                   <span>
-                    Tickets ingested:{" "}
+                    {ticketSource === "intercom" ? "Conversations" : "Tickets"}{" "}
+                    ingested:{" "}
                     <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
                       {status.ticketsFetched.toLocaleString()}
                     </strong>
@@ -484,7 +498,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 <div className="flex items-center gap-2">
                   <Workflow className="size-4 text-primary shrink-0" />
                   <span>
-                    Escalated to Jira:{" "}
+                    Escalated to {trackerLabel}:{" "}
                     <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
                       {status.escalatedCases.toLocaleString()}
                     </strong>
@@ -529,7 +543,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               What the 90-day backfill found
             </h3>
           </div>
-          <FindingsSection findings={findings} />
+          <FindingsSection findings={findings} trackerLabel={trackerLabel} />
         </div>
       </Reveal>
 
@@ -545,18 +559,18 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <HealthCard
               icon={Headset}
-              label="Zendesk feed"
+              label={`${sourceLabel} feed`}
               status="Healthy"
               statusTone="good"
               value={status.ticketsFetched.toLocaleString()}
-              valueUnit="tickets"
-              description="Historical tickets indexed"
+              valueUnit={ticketNoun}
+              description={`Historical ${ticketNoun} indexed`}
               footer={[{ label: "Sync mode", value: "Read-only, incremental" }]}
             />
 
             <HealthCard
               icon={Workflow}
-              label="Jira tracker"
+              label={`${trackerLabel} tracker`}
               status="Active"
               statusTone="good"
               value={status.linkedIssues.toLocaleString()}
@@ -564,7 +578,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               description={
                 correlationRate !== null
                   ? `${correlationRate}% of escalated cases correlated`
-                  : "No cases escalated to Jira yet"
+                  : `No cases escalated to ${trackerLabel} yet`
               }
               footer={[
                 {
@@ -683,8 +697,8 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                     Zero mutation
                   </div>
                   <div className={DESCRIPTION_CLASS}>
-                    Read-only access — nothing is ever written back to Zendesk
-                    or Jira.
+                    Read-only access — nothing is ever written back to{" "}
+                    {sourceLabel} or {trackerLabel}.
                   </div>
                 </div>
               </div>

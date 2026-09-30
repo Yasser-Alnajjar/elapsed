@@ -1,10 +1,19 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn, Utils } from "@/lib/utils";
+import { useQueryParams } from "@/hooks";
 
 import {
   AT_RISK_LEG_FILTERS,
@@ -12,14 +21,6 @@ import {
   GROUP_LABEL,
 } from "./constants";
 import type { LegFilter, SeverityFilter } from "./types";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { useQueryParams } from "@/hooks";
 
 type AtRiskFiltersProps = {
   severity: SeverityFilter;
@@ -45,9 +46,26 @@ export const AtRiskFilters = ({
   onQueryChange,
 }: AtRiskFiltersProps) => {
   const { createQueryFromObject } = useQueryParams();
-  const handlePageSizeChange = (value: string) => {
-    createQueryFromObject({ pageSize: Number(value), page: 1 });
+
+  const [search, setSearch] = useState(query);
+
+  const debouncedQueryChange = useMemo(
+    () => Utils.debounce(onQueryChange, 300),
+    [onQueryChange],
+  );
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    debouncedQueryChange(value);
   };
+
+  const handlePageSizeChange = (value: string) => {
+    createQueryFromObject({
+      pageSize: Number(value),
+      page: 1,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4 rounded bg-surface-container-low p-4 shadow-sm">
       <div className="flex flex-col flex-wrap items-stretch gap-2 lg:flex-row lg:items-center">
@@ -55,14 +73,15 @@ export const AtRiskFilters = ({
           <Search className="absolute inset-s-3 top-2.5 size-4.5 text-outline" />
 
           <Input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
+            value={search}
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search customer, ticket ID, or subject…"
             aria-label="Search at-risk cases"
             className="h-auto bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner md:text-sm"
           />
         </div>
-        <div className="flex self-start  rounded bg-surface-container-lowest p-1  flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+
+        <div className="flex flex-wrap items-center justify-center gap-1.5 self-start rounded bg-surface-container-lowest p-1 sm:justify-start">
           <div className="flex items-center gap-2 text-xs">
             <span>Show</span>
 
@@ -83,6 +102,7 @@ export const AtRiskFilters = ({
             <span>Per Page</span>
           </div>
         </div>
+
         <FilterGroup
           label="SEVERITY:"
           options={AT_RISK_SEVERITY_FILTERS}
@@ -143,7 +163,7 @@ function FilterGroup<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(filter.value)}
             className={cn(
-              "gap-1 rounded px-2.5 py-1 font-mono text-xxs font-semibold tracking-wider h-auto",
+              "h-auto gap-1 rounded px-2.5 py-1 font-mono text-xxs font-semibold tracking-wider",
               "transition-colors duration-150",
               filter.tone,
               active

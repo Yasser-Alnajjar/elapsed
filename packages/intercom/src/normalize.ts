@@ -1,11 +1,13 @@
-import type { Prisma, PrismaClient } from "@sla/db";
-import type { Actor, NormalizedEventType, NormalizedState } from "@sla/core";
+import { findCustomerByIdentity, upsertCustomerByIdentity, type Prisma, type PrismaClient } from "@sla/db";
+import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type {
   IntercomContact,
   IntercomConversationPart,
   IntercomConversationState,
   IntercomConversationWithParts,
 } from "./types";
+import { intercomCompanyIdentity, intercomContactIdentity } from "./customer-identity";
+import { INTERCOM_SOURCE_ROLE } from "./source-role";
 
 /**
  * Intercom's closed, three-value conversation lifecycle, mapped to the
@@ -249,19 +251,19 @@ export function deriveCaseClosedAt(
 }
 
 /**
- * Intercom's binary conversation priority, mapped onto the Zendesk priority
- * vocabulary SLA policies match on (`{ priority: ["normal"] }`, etc.) — left
+ * Intercom's binary conversation priority, mapped onto `CanonicalPriority`
+ * (@sla/core), the vocabulary SLA policies match on (`{ priority: ["normal"] }`, etc.) — left
  * raw, "not_priority"/"priority" would match no policy, so an Intercom case
  * would never get commitments and never reach the dashboard.
  */
-const PRIORITY_TO_NORMALIZED_PRIORITY: Record<string, string> = {
+const PRIORITY_TO_CANONICAL_PRIORITY: Record<string, CanonicalPriority> = {
   priority: "high",
   not_priority: "normal",
 };
 
 export function normalizeIntercomPriority(priority: string | null | undefined): string | null {
   if (!priority) return null;
-  return PRIORITY_TO_NORMALIZED_PRIORITY[priority] ?? priority;
+  return PRIORITY_TO_CANONICAL_PRIORITY[priority] ?? priority;
 }
 
 const MAX_MESSAGE_SUBJECT_LENGTH = 120;
@@ -426,11 +428,7 @@ export async function runIntercomNormalization(
 
   const latestCompanies = latestSnapshotById<{ id: string; name: string }>(companyRows);
   for (const { value: company } of latestCompanies.values()) {
-    await prisma.customer.upsert({
-      where: { organizationId_intercomCompanyId: { organizationId, intercomCompanyId: company.id } },
-      update: { name: company.name },
-      create: { organizationId, name: company.name, intercomCompanyId: company.id },
-    });
+    await upsertCustomerByIdentity(prisma, intercomCompanyIdentity(organizationId, company.id), company.name);
     result.customersUpserted += 1;
   }
 
@@ -448,9 +446,7 @@ export async function runIntercomNormalization(
       const primaryContact = primaryContactId ? latestContacts.get(primaryContactId)?.value : undefined;
       const companyId = primaryContact?.companies?.data[0]?.id;
       const customer = companyId
-        ? await prisma.customer.findUnique({
-            where: { organizationId_intercomCompanyId: { organizationId, intercomCompanyId: companyId } },
-          })
+        ? await findCustomerByIdentity(prisma, intercomCompanyIdentity(organizationId, companyId))
         : primaryContactId
           ? await upsertContactCustomer(primaryContactId, primaryContact, conversation)
           : null;
@@ -473,8 +469,15 @@ export async function runIntercomNormalization(
       const ownRawEventIds = [...conversationSnapshotRawEventIds, ...partsForConversation.map((p) => p.rawEventId)];
 
       const caseRow = await prisma.case.upsert({
-        where: { organizationId_externalId: { organizationId, externalId: conversation.id } },
+        where: {
+          organizationId_sourceIntegrationId_externalId: {
+            organizationId,
+            sourceIntegrationId: integrationId,
+            externalId: conversation.id,
+          },
+        },
         update: {
+          sourceIntegrationId: integrationId,
           customerId: customer?.id ?? null,
           subject,
           priority,
@@ -487,6 +490,7 @@ export async function runIntercomNormalization(
           customerId: customer?.id ?? null,
           externalId: conversation.id,
           system: "intercom",
+          sourceIntegrationId: integrationId,
           subject,
           priority,
           channel: conversation.source?.type ?? null,
@@ -509,6 +513,7 @@ export async function runIntercomNormalization(
             occurredAt: new Date(event.occurredAt),
             actor: event.actor,
             system: "intercom" as const,
+            sourceRole: INTERCOM_SOURCE_ROLE,
             fromState: event.fromState,
             toState: event.toState,
             sourceSequence: event.sourceSequence,
@@ -539,10 +544,6 @@ export async function runIntercomNormalization(
     const author = conversation.source?.author;
     const authorName = author?.id === contactId ? author.name || author.email : undefined;
     const name = contact?.name || contact?.email || authorName || `Intercom contact ${contactId}`;
-    return prisma.customer.upsert({
-      where: { organizationId_intercomContactId: { organizationId, intercomContactId: contactId } },
-      update: { name },
-      create: { organizationId, name, intercomContactId: contactId },
-    });
+    return upsertCustomerByIdentity(prisma, intercomContactIdentity(organizationId, contactId), name);
   }
 }

@@ -861,6 +861,96 @@ describe("matchPolicyVersion", () => {
       ).toBe("native-specific");
     });
   });
+
+  describe("N1.11: imported policies are scoped to their source", () => {
+    const importedFromA: SLAPolicyVersion = {
+      ...genericPolicy,
+      id: "imported-from-a",
+      policySource: "imported",
+      sourceKey: "source-a",
+    };
+    const nativeGeneric: SLAPolicyVersion = {
+      ...genericPolicy,
+      id: "native-generic",
+      policySource: "native",
+    };
+
+    it("prices a case of the same source", () => {
+      expect(
+        matchPolicyVersion(
+          { caseId: "c", attributes: {}, sourceKey: "source-a" },
+          [importedFromA],
+        )?.id,
+      ).toBe("imported-from-a");
+    });
+
+    it("is not a candidate for a case of another source, so that case falls through to a native policy", () => {
+      const other: CaseAttributes = {
+        caseId: "c",
+        attributes: {},
+        sourceKey: "source-b",
+      };
+      expect(matchPolicyVersion(other, [importedFromA])).toBeNull();
+      expect(
+        matchPolicyVersion(other, [importedFromA, nativeGeneric])?.id,
+      ).toBe("native-generic");
+    });
+
+    it("is not a candidate for a case whose source is unknown", () => {
+      expect(
+        matchPolicyVersion({ caseId: "c", attributes: {} }, [importedFromA]),
+      ).toBeNull();
+    });
+
+    it("a native policy is a candidate for every source, even one that carries a key", () => {
+      const keyedNative: SLAPolicyVersion = {
+        ...nativeGeneric,
+        sourceKey: "source-a",
+      };
+      expect(
+        matchPolicyVersion(
+          { caseId: "c", attributes: {}, sourceKey: "source-b" },
+          [keyedNative],
+        )?.id,
+      ).toBe("native-generic");
+    });
+
+    it("an imported policy without a key stays unscoped (rows that predate scoping keep matching)", () => {
+      const unscoped: SLAPolicyVersion = {
+        ...genericPolicy,
+        id: "unscoped",
+        policySource: "imported",
+        sourceKey: null,
+      };
+      for (const sourceKey of ["source-a", "source-b", undefined]) {
+        expect(
+          matchPolicyVersion({ caseId: "c", attributes: {}, sourceKey }, [
+            unscoped,
+          ])?.id,
+        ).toBe("unscoped");
+      }
+    });
+
+    it("scoping applies before ranking: a case takes its own source's policy even when another source's has a better position", () => {
+      const betterPositionOtherSource: SLAPolicyVersion = {
+        ...genericPolicy,
+        id: "other-source-first",
+        policySource: "imported",
+        sourceKey: "source-b",
+        policyPosition: 1,
+      };
+      const ownSource: SLAPolicyVersion = {
+        ...importedFromA,
+        policyPosition: 9,
+      };
+      expect(
+        matchPolicyVersion(
+          { caseId: "c", attributes: {}, sourceKey: "source-a" },
+          [betterPositionOtherSource, ownSource],
+        )?.id,
+      ).toBe("imported-from-a");
+    });
+  });
 });
 
 describe("createCommitment", () => {

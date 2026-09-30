@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { Actor, NormalizedState } from "@sla/core";
 import type { LinearHistoryEntry, LinearIssue, LinearWorkflowState } from "./types";
+import { LINEAR_SOURCE_ROLE } from "./source-role";
 
 /**
  * Linear's true fixed vocabulary (`LinearWorkflowState.type`), unlike the
@@ -245,6 +246,7 @@ export async function runLinearNormalization(
             occurredAt: new Date(event.occurredAt),
             actor: event.actor,
             system: "linear" as const,
+            sourceRole: LINEAR_SOURCE_ROLE,
             fromState: event.fromState,
             toState: event.toState,
             sourceSequence,

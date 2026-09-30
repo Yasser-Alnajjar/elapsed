@@ -124,6 +124,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
         const caseRow = await prisma.case.create({
           data: {
             organizationId,
+            system: "zendesk",
             customerId: customer.id,
             externalId,
             openedAt,

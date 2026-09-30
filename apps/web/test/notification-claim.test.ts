@@ -85,7 +85,7 @@ describe.skipIf(!TEST_DATABASE_URL)("notification claim/deliver (real Postgres)"
         effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
       },
     });
-    caseId = (await prisma.case.create({ data: { organizationId, externalId: "7001", openedAt: new Date() } })).id;
+    caseId = (await prisma.case.create({ data: { organizationId, system: "zendesk", externalId: "7001", openedAt: new Date() } })).id;
     commitmentId = (
       await prisma.commitment.create({
         data: {

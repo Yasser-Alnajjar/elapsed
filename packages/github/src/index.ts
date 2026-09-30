@@ -20,3 +20,4 @@ export {
 export type { TimelineRecord, DerivedNormalizedEvent, GithubNormalizationResult } from "./normalize";
 export { extractIssueIdentifiers, runGithubCorrelation } from "./correlate";
 export type { CorrelationResult } from "./correlate";
+export { GITHUB_SOURCE_ROLE } from "./source-role";

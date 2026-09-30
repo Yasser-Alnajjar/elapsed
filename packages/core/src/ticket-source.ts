@@ -1,12 +1,14 @@
 import type { NormalizedEvent } from "./types";
 
 /**
- * Ticket-source systems — the ones that create Cases and own their lifecycle
- * (roadmap step 22 added Intercom beside Zendesk). Shared by every place that
- * reasons about a case's own open/closed/solved state, replies, or first
- * response: `evaluate.ts` (`findCaseCloseEvent`, `findFirstResponseEvent`,
- * `resolveFirstResponseStartedAt`) and `reply-cycles.ts`
- * (`deriveNextReplyCycles`). A linked Jira issue is never the anchor for a
- * case's lifecycle, so it's deliberately excluded.
+ * Whether `event` came from a ticket source — an integration that creates
+ * Cases and owns their lifecycle, decided by the event's `sourceRole`, never by
+ * which provider it is. Shared by every place that reasons about a case's own
+ * open/closed/solved state, replies, or first response: `evaluate.ts`
+ * (`findCaseCloseEvent`, `findFirstResponseEvent`,
+ * `resolveFirstResponseStartedAt`), `reply-cycles.ts` (`deriveNextReplyCycles`)
+ * and `clock-rules.ts` (`eventsForPauseFold`). A linked tracker issue is never
+ * the anchor for a case's lifecycle, so it's deliberately excluded.
  */
-export const TICKET_SOURCE_SYSTEMS = new Set<NormalizedEvent["system"]>(["zendesk", "intercom"]);
+export const isTicketSourceEvent = (e: Pick<NormalizedEvent, "sourceRole">): boolean =>
+  e.sourceRole === "ticket_source";

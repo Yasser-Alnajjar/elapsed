@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { deriveLegSpans, legAtTime, sumLegMinutes, validateLegSpans } from "../src/legs.js";
 import type { LegSpan, NormalizedEvent } from "../src/types";
@@ -8,7 +9,7 @@ function event(
     Pick<NormalizedEvent, "occurredAt" | "system" | "type">,
 ): NormalizedEvent {
   seq += 1;
-  return {
+  return withSourceRole({
     id: `evt-${seq}`,
     caseId: "case-1",
     actor: "agent",
@@ -16,7 +17,7 @@ function event(
     toState: null,
     sourceRawEventId: `raw-${seq}`,
     ...partial,
-  };
+  });
 }
 
 describe("deriveLegSpans", () => {
@@ -523,5 +524,46 @@ describe("deriveLegSpans with out-of-order and empty event lists", () => {
       expect(warnings.map((w) => w.kind)).toEqual(["ambiguous_handoff"]);
       expect(spans.map((s) => s.leg)).toEqual(["support", "unknown"]);
     }
+  });
+});
+
+describe("deriveLegSpans decides by sourceRole, not by system name (N1.7)", () => {
+  const T = (m: number) => `2026-09-07T${String(9 + Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00.000Z`;
+  const legs = (events: NormalizedEvent[]) => deriveLegSpans(events).spans.map((s) => s.leg);
+
+  it("opaque system names give the same timeline as the provider names", () => {
+    const build = (ticket: string, tracker: string) => [
+      event({ type: "case_created", system: ticket, sourceRole: "ticket_source", toState: "open", occurredAt: T(0) }),
+      event({ type: "issue_linked", system: tracker, sourceRole: "work_tracker", occurredAt: T(60) }),
+      event({ type: "state_changed", system: tracker, sourceRole: "work_tracker", toState: "resolved", occurredAt: T(120) }),
+      event({ type: "state_changed", system: ticket, sourceRole: "ticket_source", toState: "pending_customer", occurredAt: T(180) }),
+    ];
+    expect(deriveLegSpans(build("ticket-a", "tracker-a"))).toEqual(deriveLegSpans(build("zendesk", "jira")));
+    expect(legs(build("ticket-a", "tracker-a"))).toEqual(["support", "engineering", "support", "waiting_customer"]);
+  });
+
+  it("a code_host event feeds the engineering state exactly like a work_tracker event", () => {
+    for (const role of ["work_tracker", "code_host"] as const) {
+      const events = [
+        event({ type: "case_created", system: "s", sourceRole: "ticket_source", toState: "open", occurredAt: T(0) }),
+        event({ type: "issue_linked", system: "t", sourceRole: role, occurredAt: T(60) }),
+        event({ type: "state_changed", system: "t", sourceRole: role, toState: "resolved", occurredAt: T(120) }),
+      ];
+      expect(legs(events)).toEqual(["support", "engineering", "support"]);
+    }
+  });
+
+  it("a provider-named system with a tracker role never drives the helpdesk state", () => {
+    // Named "zendesk" but stored as a tracker: pending_customer must not read as the customer owing a reply.
+    const events = [
+      event({ type: "case_created", system: "ticket-a", sourceRole: "ticket_source", toState: "open", occurredAt: T(0) }),
+      event({ type: "state_changed", system: "zendesk", sourceRole: "work_tracker", toState: "pending_customer", occurredAt: T(60) }),
+    ];
+    expect(legs(events)).toEqual(["support"]);
+  });
+
+  it("no ticket-source state yet stays unknown, even with tracker events present", () => {
+    const events = [event({ type: "state_changed", system: "t", sourceRole: "work_tracker", toState: "in_progress", occurredAt: T(0) })];
+    expect(legs(events)).toEqual(["unknown"]);
   });
 });

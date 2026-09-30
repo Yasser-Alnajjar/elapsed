@@ -85,6 +85,7 @@ function event(overrides: {
     occurredAt: overrides.occurredAt,
     actor: overrides.actor ?? "agent",
     system: "zendesk",
+    sourceRole: "ticket_source",
     fromState: null,
     toState: null,
     sourceRawEventId: overrides.id,

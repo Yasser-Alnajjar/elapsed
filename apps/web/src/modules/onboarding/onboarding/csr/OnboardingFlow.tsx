@@ -28,9 +28,11 @@ import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
 import { ReauthBanner } from "@/components/shared/reauth-banner";
 import { Button } from "@/components/ui/button";
+import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
 import { IntegrationConfigGate } from "@modules/settings/integrations/csr/IntegrationConfigGate";
+import { IntercomConnectButton } from "@modules/settings/integrations/csr/IntercomCard";
 import { JiraConnectButton } from "@modules/settings/integrations/csr/JiraCard";
 import { LinearConnectButton } from "@modules/settings/integrations/csr/LinearCard";
 import { GithubConnectForm } from "@modules/settings/integrations/csr/GithubCard";
@@ -156,47 +158,8 @@ function StatStrip({ stats }: { stats: StatItem[] }) {
   );
 }
 
-/** Secondary, not-yet-available connector — the mockups' "Intercom (Beta)" card, kept static since there's nothing to wire up yet. */
-function SecondaryProviderCard({
-  icon: Icon,
-  name,
-  badge,
-  tagline,
-}: {
-  icon: LucideIcon;
-  name: string;
-  badge: string;
-  tagline: string;
-}) {
-  return (
-    <div className="flex flex-col items-start gap-4 rounded-xl bg-surface-container-low p-5 opacity-85 transition-opacity hover:opacity-100 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-highest text-on-surface-variant">
-          <Icon className="size-5 shrink-0" />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="font-headline-sm text-headline-sm text-on-surface">
-              {name}
-            </span>
-            <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
-              {badge}
-            </span>
-          </div>
-          <span className="font-body-sm text-body-sm text-on-surface-variant">
-            {tagline}
-          </span>
-        </div>
-      </div>
-      <Button variant="outline" size="sm" disabled>
-        Coming soon
-      </Button>
-    </div>
-  );
-}
-
-interface AlternativeTrackerCardProps {
-  provider: "linear" | "github";
+interface BetaConnectorCardProps {
+  provider: "intercom" | "linear" | "github";
   icon: LucideIcon;
   name: string;
   tagline: string;
@@ -205,10 +168,11 @@ interface AlternativeTrackerCardProps {
   helpUrl: string;
   helpLabel: string;
   connectAction: ReactNode;
+  onConfigured?: () => void;
 }
 
-/** A real, working alternative engineering-leg connector (Linear/GitHub) — gated the same way as Jira/Zendesk, not a "coming soon" placeholder. */
-function AlternativeTrackerCard({
+/** A real, working Beta connector (Intercom as a ticket source; Linear/GitHub as engineering-leg sources) — gated the same way as Jira/Zendesk, not a "coming soon" placeholder. */
+function BetaConnectorCard({
   provider,
   icon: Icon,
   name,
@@ -218,7 +182,8 @@ function AlternativeTrackerCard({
   helpUrl,
   helpLabel,
   connectAction,
-}: AlternativeTrackerCardProps) {
+  onConfigured,
+}: BetaConnectorCardProps) {
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface-container p-5 shadow-sm">
       <div className="flex items-center gap-3">
@@ -247,6 +212,7 @@ function AlternativeTrackerCard({
         descriptionClass="font-body-sm text-body-sm text-on-surface-variant"
         helpUrl={helpUrl}
         helpLabel={helpLabel}
+        onConfigured={onConfigured}
       >
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <p className="font-body-sm text-body-sm text-on-surface-variant">
@@ -275,8 +241,8 @@ function NextStepPanel() {
         </h3>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           The SLA clock keeps running when a case moves into engineering.
-          Connecting Jira next links each escalated ticket to its issue so that
-          time is never silently dropped.
+          Connecting Jira or Linear next links each escalated ticket to its issue so
+          that time is never silently dropped.
         </p>
       </div>
       <span className="font-label-caps text-label-caps self-start rounded bg-primary-container/20 px-1.5 py-0.5 uppercase text-primary">
@@ -400,10 +366,17 @@ export function OnboardingFlow({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const { status, error, zendeskRunning, jiraRunning, refresh } =
-    useOnboardingBackfill({
-      status: initialStatus,
-    });
+  const {
+    status,
+    error,
+    zendeskRunning,
+    intercomRunning,
+    jiraRunning,
+    linearRunning,
+    refresh,
+  } = useOnboardingBackfill({
+    status: initialStatus,
+  });
 
   const consumedConnectedParam = useRef(false);
 
@@ -444,22 +417,35 @@ export function OnboardingFlow({
     router.replace("/onboarding");
   }, [searchParams, router]);
 
-  const onboardingComplete =
-    status.zendesk.connected &&
-    status.zendesk.backfillComplete &&
-    status.jira.connected;
+  // Step 1 is "a ticket source" — Zendesk or Intercom — and step 3 is "a
+  // tracker" — Jira or Linear (N1.16).
+  const { ticketSource, ticketSourceReady, tracker, complete } =
+    deriveOnboardingProgress(status);
+  const onboardingComplete = complete;
 
-  const readyToReviewPolicies =
-    status.zendesk.connected && status.zendesk.backfillComplete;
+  const sourceLabel = ticketSource === "intercom" ? "Intercom" : "Zendesk";
+  const trackerLabel =
+    tracker === "linear" ? "Linear" : tracker === "jira" ? "Jira" : null;
+  const sourceRunning =
+    ticketSource === "intercom" ? intercomRunning : zendeskRunning;
+  const trackerRunning = tracker === "linear" ? linearRunning : jiraRunning;
+  const trackerConnected = tracker !== null;
 
-  const readyToConnectJira =
-    readyToReviewPolicies && (reviewedPolicies || status.jira.connected);
+  // Zendesk imports SLA policies, so the flow stops to review them. Intercom
+  // has none to import (D9): the equivalent step is creating a first native
+  // policy, offered but never blocking.
+  const readyToReviewPolicies = ticketSourceReady && ticketSource === "zendesk";
+  const readyToCreatePolicy = ticketSourceReady && ticketSource === "intercom";
 
-  const currentStep: 1 | 2 | 3 | null = !status.zendesk.connected
+  const readyToConnectTracker =
+    ticketSourceReady &&
+    (ticketSource !== "zendesk" || reviewedPolicies || trackerConnected);
+
+  const currentStep: 1 | 2 | 3 | null = ticketSource === null
     ? 1
-    : !readyToConnectJira
+    : !readyToConnectTracker
       ? 2
-      : !status.jira.connected
+      : !trackerConnected
         ? 3
         : null;
 
@@ -475,7 +461,7 @@ export function OnboardingFlow({
     return () => window.clearTimeout(timeout);
   }, [router, onboardingComplete]);
 
-  if (!status.zendesk.connected) {
+  if (ticketSource === null) {
     return (
       <OnboardingShell
         title="Connect your support helpdesk in 30 seconds"
@@ -542,11 +528,17 @@ export function OnboardingFlow({
             </Reveal>
 
             <Reveal>
-              <SecondaryProviderCard
+              <BetaConnectorCard
+                provider="intercom"
                 icon={MessageCircle}
-                name="Intercom Workspace"
-                badge="On the roadmap"
-                tagline="Conversation timelines and customer response deltas"
+                name="Intercom"
+                tagline="Alternative ticket source — conversation timelines and reply deltas"
+                config={status.intercomConfig}
+                descriptionText="Read-only access — no conversations, contacts, or fields are ever written back to Intercom."
+                helpUrl="https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth"
+                helpLabel="Get your Intercom OAuth app credentials"
+                connectAction={<IntercomConnectButton returnTo="onboarding" />}
+                onConfigured={refresh}
               />
             </Reveal>
           </div>
@@ -603,8 +595,8 @@ export function OnboardingFlow({
                   Ready to begin your SLA backfill
                 </span>
                 <span className={DESCRIPTION_CLASS}>
-                  Step 1 of 3 — connect Zendesk to calculate continuous
-                  resolution times
+                  Step 1 of 3 — connect Zendesk or Intercom to calculate
+                  continuous resolution times
                 </span>
               </div>
             </div>
@@ -614,15 +606,24 @@ export function OnboardingFlow({
     );
   }
 
-  if (status.zendesk.reauthRequired) {
+  const sourceStatus =
+    ticketSource === "intercom" ? status.intercom : status.zendesk;
+  if (sourceStatus.reauthRequired) {
     return (
-      <OnboardingShell title="Reconnect Zendesk" currentStep={currentStep}>
+      <OnboardingShell
+        title={`Reconnect ${sourceLabel}`}
+        currentStep={currentStep}
+      >
         <Reveal>
           <ReauthBanner
-            provider="Zendesk"
-            reconnectHref={`/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(
-              zendeskSubdomain ?? "",
-            )}`}
+            provider={sourceLabel}
+            reconnectHref={
+              ticketSource === "intercom"
+                ? "/api/integrations/intercom/connect?returnTo=onboarding"
+                : `/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(
+                    zendeskSubdomain ?? "",
+                  )}`
+            }
           />
         </Reveal>
       </OnboardingShell>
@@ -632,27 +633,27 @@ export function OnboardingFlow({
   // Stage 03 in the mockups: backfill is done and it's time to connect the
   // issue tracker. Drives both the top ribbon and which card takes the
   // primary (7-col) vs. secondary (5-col) slot below.
-  const showJiraCard = readyToConnectJira && !status.jira.connected;
+  const showTrackerCard = readyToConnectTracker && !trackerConnected;
 
   const engineStateValue = onboardingComplete
     ? "FINDINGS_READY"
-    : showJiraCard
+    : showTrackerCard
       ? "AWAITING_TRACKER_AUTH"
-      : zendeskRunning || jiraRunning
+      : sourceRunning || trackerRunning
         ? "REPLAYING_RECORDS"
         : "SYNCED";
 
   return (
     <OnboardingShell
       title={
-        showJiraCard
+        showTrackerCard
           ? "Connect engineering to close the SLA blindspot"
           : "Ingesting 90 days of historical tickets"
       }
       description={
-        showJiraCard
+        showTrackerCard
           ? "When support escalates a ticket, does the SLA clock pause? Connect your issue tracker to reconstruct the continuous clock."
-          : "Deterministic event replay in progress — parsing raw audit logs and inter-tier handoffs without mutating your Zendesk source records."
+          : `Deterministic event replay in progress — parsing raw audit logs and inter-tier handoffs without mutating your ${sourceLabel} source records.`
       }
       currentStep={currentStep}
       wide
@@ -660,7 +661,7 @@ export function OnboardingFlow({
         <EngineStateChip label="Engine state" value={engineStateValue} />
       }
     >
-      {showJiraCard && (
+      {showTrackerCard && (
         <Reveal>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 rounded-lg bg-surface-container px-3 py-1.5 shadow-sm">
@@ -675,8 +676,8 @@ export function OnboardingFlow({
             <div className="flex items-center gap-2 rounded bg-surface-container-low px-3 py-1.5 text-tertiary shadow-sm">
               <span className="size-2 rounded-full bg-tertiary animate-ping" />
               <span className="font-code-audit text-code-audit font-semibold uppercase">
-                Zendesk linked ({status.ticketsFetched.toLocaleString()}{" "}
-                tickets)
+                {sourceLabel} linked ({status.ticketsFetched.toLocaleString()}{" "}
+                {ticketSource === "intercom" ? "conversations" : "tickets"})
               </span>
             </div>
           </div>
@@ -691,7 +692,7 @@ export function OnboardingFlow({
               <p className={DESCRIPTION_CLASS}>
                 {reviewedPolicies
                   ? "Your SLA policies have been imported and reviewed."
-                  : "Your SLA policies have been imported — review what matched before connecting Jira."}
+                  : "Your SLA policies have been imported — review what matched before connecting your issue tracker."}
               </p>
             </div>
             <Button variant={reviewedPolicies ? "outline" : "default"} asChild>
@@ -703,9 +704,29 @@ export function OnboardingFlow({
         </Reveal>
       )}
 
+      {readyToCreatePolicy && (
+        <Reveal>
+          <div className="flex flex-col items-start gap-3 rounded-lg bg-surface-container-low p-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <ListChecks className="size-[18px] shrink-0 text-primary" />
+              <p className={DESCRIPTION_CLASS}>
+                Intercom has no SLA policies to import — create your first
+                native policy so each conversation gets First Response and
+                Resolution commitments.
+              </p>
+            </div>
+            <Button variant="default" asChild>
+              <Link href="/settings/sla/configuration">
+                Create your first policy
+              </Link>
+            </Button>
+          </div>
+        </Reveal>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-5 lg:col-span-7">
-          {showJiraCard ? (
+          {showTrackerCard ? (
             <Reveal>
               <ConnectorCard>
                 <ConnectorHeader
@@ -729,7 +750,8 @@ export function OnboardingFlow({
                 >
                   <p className={DESCRIPTION_CLASS}>
                     Connect Jira to add engineering-leg timing and correlate
-                    support cases with engineering work.
+                    support cases with engineering work — or choose Linear
+                    below.
                   </p>
 
                   <div className="mt-4">
@@ -742,16 +764,26 @@ export function OnboardingFlow({
             <Reveal>
               <ConnectorCard>
                 <ConnectorHeader
-                  icon={Ticket}
-                  name="Zendesk Support"
+                  icon={ticketSource === "intercom" ? MessageCircle : Ticket}
+                  name={
+                    ticketSource === "intercom"
+                      ? "Intercom"
+                      : "Zendesk Support"
+                  }
                   badge="Connected"
-                  tagline="Ingesting ticket timestamps and SLA policies"
+                  tagline={
+                    ticketSource === "intercom"
+                      ? "Ingesting conversation timelines and reply deltas"
+                      : "Ingesting ticket timestamps and SLA policies"
+                  }
                 />
 
                 <OnboardingProgress
                   status={status}
-                  zendeskRunning={zendeskRunning}
-                  jiraRunning={jiraRunning}
+                  sourceLabel={sourceLabel}
+                  sourceRunning={sourceRunning}
+                  trackerLabel={trackerLabel}
+                  trackerRunning={trackerRunning}
                   error={error}
                 />
 
@@ -770,7 +802,7 @@ export function OnboardingFlow({
 
         <div className="flex flex-col gap-5 lg:col-span-5">
           <Reveal>
-            {showJiraCard ? (
+            {showTrackerCard ? (
               <CorrelationPanel />
             ) : (
               !onboardingComplete && <NextStepPanel />
@@ -779,20 +811,21 @@ export function OnboardingFlow({
         </div>
       </div>
 
-      {showJiraCard && (
+      {showTrackerCard && (
         <Reveal>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
-                Alternative issue trackers
+                Or choose another issue tracker
               </span>
               <span className="font-code-audit text-code-audit text-on-surface-variant/70">
-                Connect alongside Jira, or configure later from Settings
+                Linear completes this step like Jira does; configure the rest
+                later from Settings
               </span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <AlternativeTrackerCard
+              <BetaConnectorCard
                 provider="linear"
                 icon={Layers}
                 name="Linear"
@@ -802,9 +835,10 @@ export function OnboardingFlow({
                 helpUrl="https://linear.app/settings/api"
                 helpLabel="Get your Linear OAuth app credentials"
                 connectAction={<LinearConnectButton />}
+                onConfigured={refresh}
               />
 
-              <AlternativeTrackerCard
+              <BetaConnectorCard
                 provider="github"
                 icon={Code}
                 name="GitHub"
@@ -814,6 +848,7 @@ export function OnboardingFlow({
                 helpUrl="/docs/integrations/github#create-github-app"
                 helpLabel="Create your read-only GitHub App"
                 connectAction={<GithubConnectForm />}
+                onConfigured={refresh}
               />
             </div>
           </div>

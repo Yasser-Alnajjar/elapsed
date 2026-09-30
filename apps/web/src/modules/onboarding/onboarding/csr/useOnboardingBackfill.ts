@@ -3,11 +3,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Actions } from "@/actions/client";
-import type { OnboardingStatus } from "@/lib/types/onboarding";
+import type { OnboardingStatus, ProviderOnboardingStatus } from "@/lib/types/onboarding";
 
 interface UseOnboardingBackfillOptions {
   status: OnboardingStatus;
 }
+
+const PROVIDERS = ["zendesk", "intercom", "jira", "linear"] as const;
+type BackfillProvider = (typeof PROVIDERS)[number];
+
+const START_BACKFILL: Record<BackfillProvider, () => Promise<{ ok: boolean; body: { error?: string } }>> = {
+  zendesk: () => Actions.Onboarding.startZendeskBackfill(),
+  intercom: () => Actions.Onboarding.startIntercomBackfill(),
+  jira: () => Actions.Onboarding.startJiraBackfill(),
+  linear: () => Actions.Onboarding.startLinearBackfill(),
+};
+
+const PROVIDER_LABEL: Record<BackfillProvider, string> = {
+  zendesk: "Zendesk",
+  intercom: "Intercom",
+  jira: "Jira",
+  linear: "Linear",
+};
+
+const isRunning = (p: ProviderOnboardingStatus) => p.connected && !p.backfillComplete && !p.reauthRequired;
 
 export function useOnboardingBackfill({
   status,
@@ -15,20 +34,18 @@ export function useOnboardingBackfill({
   const [currentStatus, setCurrentStatus] = useState(status);
   const [error, setError] = useState<string | null>(null);
 
-  const startedRef = useRef({
+  const startedRef = useRef<Record<BackfillProvider, boolean>>({
     zendesk: false,
+    intercom: false,
     jira: false,
+    linear: false,
   });
 
-  const zendeskRunning =
-    currentStatus.zendesk.connected &&
-    !currentStatus.zendesk.backfillComplete &&
-    !currentStatus.zendesk.reauthRequired;
-
-  const jiraRunning =
-    currentStatus.jira.connected &&
-    !currentStatus.jira.backfillComplete &&
-    !currentStatus.jira.reauthRequired;
+  const zendeskRunning = isRunning(currentStatus.zendesk);
+  const intercomRunning = isRunning(currentStatus.intercom);
+  const jiraRunning = isRunning(currentStatus.jira);
+  const linearRunning = isRunning(currentStatus.linear);
+  const anyRunning = zendeskRunning || intercomRunning || jiraRunning || linearRunning;
 
   const refresh = useCallback(async () => {
     const progress = await Actions.Onboarding.getProgress();
@@ -41,29 +58,27 @@ export function useOnboardingBackfill({
   }, []);
 
   useEffect(() => {
-    if (zendeskRunning && !startedRef.current.zendesk) {
-      startedRef.current.zendesk = true;
+    const running: Record<BackfillProvider, boolean> = {
+      zendesk: zendeskRunning,
+      intercom: intercomRunning,
+      jira: jiraRunning,
+      linear: linearRunning,
+    };
 
-      void Actions.Onboarding.startZendeskBackfill().then(({ ok, body }) => {
+    for (const provider of PROVIDERS) {
+      if (!running[provider] || startedRef.current[provider]) continue;
+      startedRef.current[provider] = true;
+
+      void START_BACKFILL[provider]().then(({ ok, body }) => {
         if (!ok) {
-          setError(body.error ?? "Zendesk backfill failed to start");
+          setError(body.error ?? `${PROVIDER_LABEL[provider]} backfill failed to start`);
         }
       });
     }
-
-    if (jiraRunning && !startedRef.current.jira) {
-      startedRef.current.jira = true;
-
-      void Actions.Onboarding.startJiraBackfill().then(({ ok, body }) => {
-        if (!ok) {
-          setError(body.error ?? "Jira backfill failed to start");
-        }
-      });
-    }
-  }, [zendeskRunning, jiraRunning]);
+  }, [zendeskRunning, intercomRunning, jiraRunning, linearRunning]);
 
   useEffect(() => {
-    if (!zendeskRunning && !jiraRunning) {
+    if (!anyRunning) {
       return;
     }
 
@@ -85,13 +100,15 @@ export function useOnboardingBackfill({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [zendeskRunning, jiraRunning]);
+  }, [anyRunning]);
 
   return {
     status: currentStatus,
     error,
     zendeskRunning,
+    intercomRunning,
     jiraRunning,
+    linearRunning,
     refresh,
   };
 }

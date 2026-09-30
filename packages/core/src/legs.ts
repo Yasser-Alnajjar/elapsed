@@ -1,4 +1,5 @@
 import { sortNormalizedEvents } from "./ordering";
+import { isTicketSourceEvent } from "./ticket-source";
 import type {
   Confidence,
   Leg,
@@ -47,19 +48,18 @@ export function deriveLegSpans(
 
   const sorted = sortNormalizedEvents(events);
 
-  // Either ticket-source provider (Zendesk or Intercom, roadmap step 22)
-  // drives the same decision — a case only ever comes from one of them, so
-  // whichever one is present is "the" helpdesk state. Kept the historical
-  // name since Zendesk is still the only one either drives in practice.
-  let zendeskState: NormalizedState | null = null;
-  // Either engineering-tracker provider (Jira or Linear) drives the same
-  // decision — a case's engineering leg ends when its linked issue resolves,
-  // regardless of which tracker that issue lives in.
+  // Events whose `sourceRole` is `ticket_source` drive the same decision — a
+  // case only ever comes from one ticket source, so whichever one is present
+  // is "the" helpdesk state.
+  let ticketSourceState: NormalizedState | null = null;
+  // Every other role (`work_tracker` and `code_host`) drives the engineering
+  // state — a case's engineering leg ends when its linked issue resolves,
+  // regardless of which tracker or code host it lives in.
   let engineeringState: NormalizedState | null = null;
   let linkedIssueCount = 0;
 
   const decide = (): Decision => {
-    if (zendeskState === "pending_customer") {
+    if (ticketSourceState === "pending_customer") {
       return { leg: "waiting_customer", confidence: "certain" };
     }
     if (linkedIssueCount > 0) {
@@ -74,7 +74,7 @@ export function deriveLegSpans(
           }
         : { leg: "engineering", confidence: "certain" };
     }
-    if (zendeskState === null) {
+    if (ticketSourceState === null) {
       return { leg: "unknown", confidence: "unknown", note: "no signal yet" };
     }
     return { leg: "support", confidence: "certain" };
@@ -135,9 +135,8 @@ export function deriveLegSpans(
         // Filtered to state-bearing types above, so this is always a real
         // NormalizedState, never a priority_changed value.
         const toState = event.toState as NormalizedState;
-        if (event.system === "zendesk" || event.system === "intercom") zendeskState = toState;
-        if (event.system === "jira" || event.system === "linear" || event.system === "github")
-          engineeringState = toState;
+        if (isTicketSourceEvent(event)) ticketSourceState = toState;
+        else engineeringState = toState;
       }
       if (event.type === "issue_linked") linkedIssueCount++;
       if (event.type === "issue_unlinked")

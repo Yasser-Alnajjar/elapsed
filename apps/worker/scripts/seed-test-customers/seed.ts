@@ -23,6 +23,7 @@ import { createHash } from "node:crypto";
 import {
   createNativePolicy,
   createNativeCalendar,
+  ensureDefaultCalendarVersion,
   runCommitmentPipeline,
   runCommitmentReResolutionPipeline,
   runEvaluationPipeline,
@@ -49,6 +50,7 @@ import {
   TENANTS,
   type TenantDef,
 } from "./config";
+import { caseRefResolverFor } from "../../src/case-ref";
 import { buildSeedDataset, NATIVE_WEEKLY, type SeedDataset, type SeedRawEvent } from "./dataset";
 import { DAY, HOUR, MIN } from "./scenarios";
 
@@ -240,7 +242,9 @@ async function seedTenant(prisma: PrismaClient, tenant: TenantDef, anchorDate: D
   await ingest("A");
   await derive(prisma, zendesk.id, jira.id, log);
   await applyCustomerMetadata(prisma, organizationId, dataset);
-  const slaImport = await runZendeskSlaPolicyImport(prisma, zendesk.id);
+  const slaImport = await runZendeskSlaPolicyImport(prisma, zendesk.id, (orgId) =>
+    ensureDefaultCalendarVersion(prisma, orgId),
+  );
   await pinPolicyVersions(prisma, organizationId, anchor);
 
   const commitments = await runCommitmentPipeline(prisma, organizationId);
@@ -360,7 +364,8 @@ async function derive(
   if (normalization.ticketsFailed.length > 0) throw new Error(`Zendesk normalization failed: ${JSON.stringify(normalization.ticketsFailed)}`);
   await runZendeskBusinessCalendarImport(prisma, zendeskId);
   await runZendeskJiraLinkCorrelation(prisma, zendeskId);
-  await runJiraCorrelation(prisma, jiraId);
+  const { organizationId } = await prisma.integration.findUniqueOrThrow({ where: { id: jiraId }, select: { organizationId: true } });
+  await runJiraCorrelation(prisma, jiraId, await caseRefResolverFor(prisma, organizationId));
   const jiraNormalization = await runJiraNormalization(prisma, jiraId);
   if (jiraNormalization.issuesFailed.length > 0) throw new Error(`Jira normalization failed: ${JSON.stringify(jiraNormalization.issuesFailed)}`);
   log(

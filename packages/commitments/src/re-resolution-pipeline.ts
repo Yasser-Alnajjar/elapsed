@@ -15,6 +15,7 @@ import { RE_RESOLUTION_ELIGIBLE_WHERE } from "./active-commitment";
 import { latestVersionPerPolicy, resolveCommitmentCalendarVersion, toCaseAttributes } from "./pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
 import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import { toPolicyVersionDomain } from "./policy-domain";
 import { loadPolicyContext, type PolicyContext } from "./tick-context";
 
 /**
@@ -140,20 +141,7 @@ export async function runCommitmentReResolutionPipeline(
     options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
-  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map((row) => ({
-    id: row.id,
-    policyId: row.policyId,
-    version: row.version,
-    match: row.match as SLAPolicyMatch,
-    targets: row.targets as { kind: CommitmentKind; minutes: number }[],
-    pauseOnStates: row.pauseOnStates as NormalizedState[],
-    calendarVersionId: row.calendarVersionId,
-    warnAtPercent: row.warnAtPercent,
-    effectiveFrom: row.effectiveFrom.toISOString(),
-    policyPosition: row.policy.position,
-    policySource: row.policy.source,
-    calendarIsExplicit: row.calendarIsExplicit,
-  }));
+  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map(toPolicyVersionDomain);
   const activePolicyVersions = latestVersionPerPolicy(allPolicyVersions);
 
   // Lazy and memoized, same as runCommitmentPipeline: only resolved the
@@ -192,6 +180,7 @@ export async function runCommitmentReResolutionPipeline(
       tier: true,
       tags: true,
       channel: true,
+      system: true,
       attributes: true,
       openedAt: true,
       commitments: {

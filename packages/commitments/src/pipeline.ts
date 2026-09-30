@@ -14,6 +14,7 @@ import {
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
 import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import { toPolicyVersionDomain } from "./policy-domain";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 
 export { toCalendarVersionDomain } from "./calendar-domain";
@@ -30,10 +31,12 @@ export interface CaseRecord {
   customerId: string | null;
   tier: string | null;
   openedAt: Date;
-  /** Source ticket's tags (e.g. a Zendesk ticket's `tags`) — a generic SLA policy match input, mirrored into `attributes.tags`/`attributes.current_tags` below so a `match.conditions` entry on field `"tags"` or `"current_tags"` (see `extractMatchFromFilter`, packages/zendesk) can actually be evaluated. */
+  /** Source ticket's tags (e.g. a Zendesk ticket's `tags`) — a generic SLA policy match input, mirrored into `attributes.tags` below. Provider-specific aliases of it (Zendesk's `current_tags`) are written by that provider's adapter into `attributes`. */
   tags?: string[];
-  /** Source ticket's channel (e.g. a Zendesk ticket's `via.channel`) — mirrored into `attributes.channel`/`attributes.via_id`/`attributes.current_via_id` below, the same string-based match `zendeskConditionAttributes` (packages/zendesk) documents for those fields. */
+  /** Source ticket's channel (e.g. a Zendesk ticket's `via.channel`) — mirrored into `attributes.channel` below. Provider-specific aliases of it (Zendesk's `via_id`/`current_via_id`) are written by that provider's adapter into `attributes`. */
   channel?: string | null;
+  /** The ticket-source provider that created the case (`Case.system`) — becomes `CaseAttributes.sourceKey`, so an imported policy scoped to another source is not a candidate (N1.11). Opaque to the core. */
+  system?: string;
   /**
    * Every other generic, source-specific SLA policy match input (Zendesk's
    * `status`, `type`, `group_id`, `assignee_id`, `custom_fields_<id>`, ... —
@@ -56,21 +59,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 export function toCaseAttributes(caseRow: CaseRecord): CaseAttributes {
   return {
     caseId: caseRow.id,
+    ...(caseRow.system != null ? { sourceKey: caseRow.system } : {}),
     attributes: {
       ...(isPlainObject(caseRow.attributes) ? caseRow.attributes : {}),
       ...(caseRow.priority != null ? { priority: caseRow.priority } : {}),
       ...(caseRow.customerId != null ? { customerId: caseRow.customerId } : {}),
       ...(caseRow.tier != null ? { tier: caseRow.tier } : {}),
-      ...(caseRow.tags != null
-        ? { tags: caseRow.tags, current_tags: caseRow.tags }
-        : {}),
-      ...(caseRow.channel != null
-        ? {
-            channel: caseRow.channel,
-            via_id: caseRow.channel,
-            current_via_id: caseRow.channel,
-          }
-        : {}),
+      ...(caseRow.tags != null ? { tags: caseRow.tags } : {}),
+      ...(caseRow.channel != null ? { channel: caseRow.channel } : {}),
     },
     priority: caseRow.priority ?? undefined,
     customerId: caseRow.customerId ?? undefined,
@@ -198,22 +194,7 @@ export async function runCommitmentPipeline(
     options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
-  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map(
-    (row) => ({
-      id: row.id,
-      policyId: row.policyId,
-      version: row.version,
-      match: row.match as SLAPolicyMatch,
-      targets: row.targets as { kind: CommitmentKind; minutes: number }[],
-      pauseOnStates: row.pauseOnStates as NormalizedState[],
-      calendarVersionId: row.calendarVersionId,
-      warnAtPercent: row.warnAtPercent,
-      effectiveFrom: row.effectiveFrom.toISOString(),
-      policyPosition: row.policy.position,
-      policySource: row.policy.source,
-      calendarIsExplicit: row.calendarIsExplicit,
-    }),
-  );
+  const allPolicyVersions: SLAPolicyVersion[] = policyVersionRows.map(toPolicyVersionDomain);
   const policyVersionsById = new Map(
     allPolicyVersions.map((pv) => [pv.id, pv]),
   );
@@ -265,6 +246,7 @@ export async function runCommitmentPipeline(
       tier: true,
       tags: true,
       channel: true,
+      system: true,
       attributes: true,
       openedAt: true,
       // Scoped to the single-cycle kinds this pipeline creates: a persisted

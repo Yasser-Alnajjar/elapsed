@@ -46,8 +46,8 @@ describe.skipIf(!TEST_DATABASE_URL)("evaluation persistence (real Postgres)", ()
       prisma.normalizedEvent.deleteMany({ where: { caseId, sourceRawEventId: { in: [auditRawEventId] } } }),
       prisma.normalizedEvent.createMany({
         data: [
-          { caseId, sourceRawEventId: auditRawEventId, type: "case_created", occurredAt: OPENED, actor: "customer", system: "zendesk", toState: "open" },
-          { caseId, sourceRawEventId: auditRawEventId, type: "state_changed", occurredAt: PAUSED, actor: "customer", system: "zendesk", fromState: "open", toState: "pending_customer" },
+          { caseId, sourceRawEventId: auditRawEventId, type: "case_created", occurredAt: OPENED, actor: "customer", system: "zendesk", sourceRole: "ticket_source", toState: "open" },
+          { caseId, sourceRawEventId: auditRawEventId, type: "state_changed", occurredAt: PAUSED, actor: "customer", system: "zendesk", sourceRole: "ticket_source", fromState: "open", toState: "pending_customer" },
         ],
       }),
     ]);
@@ -105,7 +105,7 @@ describe.skipIf(!TEST_DATABASE_URL)("evaluation persistence (real Postgres)", ()
     });
 
     const caseRow = await prisma.case.create({
-      data: { organizationId, externalId: "45", priority: "urgent", openedAt: OPENED },
+      data: { organizationId, system: "zendesk", externalId: "45", priority: "urgent", openedAt: OPENED },
     });
     caseId = caseRow.id;
     await normalize();

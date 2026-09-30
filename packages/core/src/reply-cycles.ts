@@ -1,5 +1,5 @@
 import { compareNormalizedEvents } from "./ordering";
-import { TICKET_SOURCE_SYSTEMS } from "./ticket-source";
+import { isTicketSourceEvent } from "./ticket-source";
 import type { EvaluationEventRef, NextReplyCycle, NormalizedEvent } from "./types";
 
 export interface DeriveNextReplyCyclesOptions {
@@ -75,7 +75,7 @@ export function deriveNextReplyCycles(
     .filter(
       (e) =>
         (e.type === "customer_replied" || e.type === "agent_replied" || e.type === "case_closed") &&
-        TICKET_SOURCE_SYSTEMS.has(e.system) &&
+        isTicketSourceEvent(e) &&
         Date.parse(e.occurredAt) <= asOfMs,
     )
     .sort(orderForCycleFold);

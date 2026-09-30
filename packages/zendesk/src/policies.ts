@@ -7,7 +7,6 @@ import {
   type NormalizedState,
   type SLAPolicyMatch,
 } from "@sla/core";
-import { DEFAULT_CALENDAR_NAME, ensureDefaultCalendarVersion } from "@sla/commitments";
 import { latestCalendarVersionsByZendeskScheduleId } from "./calendars";
 import { latestSnapshotById } from "./normalize";
 import type { SlaPolicyManifest } from "./rawEvents";
@@ -97,11 +96,16 @@ function isResolvedConditionField(field: string): boolean {
 export const IMPORTED_PAUSE_ON_STATES: NormalizedState[] = [];
 export const WARN_AT_PERCENT = [50, 80, 95];
 
-// `ensureDefaultCalendarVersion`/`DEFAULT_CALENDAR_NAME` now live in
-// @sla/commitments (4i: native policy resolution needs them too, for an org
-// that never connected a ticket source) — re-exported here unchanged for
-// this module's existing callers/tests.
-export { DEFAULT_CALENDAR_NAME, ensureDefaultCalendarVersion };
+/**
+ * Resolves (creating it when missing) the organization's "always open"
+ * default calendar version. The importer only needs its id as the fallback
+ * for a policy with no resolvable Zendesk schedule, and does not own how it
+ * is stored: `@sla/commitments` does (`ensureDefaultCalendarVersion`), and
+ * the caller passes that in (N1.12). Called at most once per import, and
+ * only when there is at least one policy to import, so an org with nothing
+ * to import never gets the calendar created.
+ */
+export type EnsureDefaultCalendar = (organizationId: string) => Promise<{ id: string }>;
 
 export interface ExtractedMatch {
   match: SLAPolicyMatch;
@@ -328,8 +332,11 @@ export async function upsertPolicyVersion(
   // stay permanently excluded from matching even though it's live again.
   const policy = await prisma.sLAPolicy.upsert({
     where: { organizationId_externalId: { organizationId, externalId } },
-    update: { name, position, archivedAt: null },
-    create: { organizationId, externalId, name, position, source: "imported" },
+    // `sourceProvider` scopes the policy to Zendesk cases (N1.11); set on
+    // update too, so a row written before the column existed heals on the
+    // next import instead of staying unscoped.
+    update: { name, position, archivedAt: null, sourceProvider: "zendesk" },
+    create: { organizationId, externalId, name, position, source: "imported", sourceProvider: "zendesk" },
   });
 
   const [latestVersion, latestImportedVersion] = await Promise.all([
@@ -406,6 +413,7 @@ export interface SlaPolicyImportResult {
 export async function runZendeskSlaPolicyImport(
   prisma: PrismaClient,
   integrationId: string,
+  ensureDefaultCalendar: EnsureDefaultCalendar,
 ): Promise<SlaPolicyImportResult> {
   const integration = await prisma.integration.findUniqueOrThrow({
     where: { id: integrationId },
@@ -471,18 +479,15 @@ export async function runZendeskSlaPolicyImport(
 
   if (latestPolicies.size === 0) return result;
 
-  const customers = await prisma.customer.findMany({
-    where: { organizationId, zendeskOrgId: { not: null } },
-    select: { id: true, zendeskOrgId: true },
+  const identities = await prisma.customerIdentity.findMany({
+    where: { organizationId, provider: "zendesk", kind: "organization" },
+    select: { customerId: true, externalId: true },
   });
   const customerIdsByZendeskOrgId = new Map(
-    customers.map((c) => [c.zendeskOrgId as string, c.id]),
+    identities.map((i) => [i.externalId, i.customerId]),
   );
 
-  const defaultCalendarVersion = await ensureDefaultCalendarVersion(
-    prisma,
-    organizationId,
-  );
+  const defaultCalendarVersion = await ensureDefaultCalendar(organizationId);
   const calendarVersionsByScheduleId =
     await latestCalendarVersionsByZendeskScheduleId(prisma, organizationId);
 

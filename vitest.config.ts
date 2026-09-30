@@ -6,6 +6,8 @@ import { defineConfig } from "vitest/config";
 // other's data: they get their own project, one file at a time, after the rest.
 const realDatabaseSuites = [
   "apps/web/test/tenant-isolation.test.ts",
+  "apps/web/test/onboarding-intercom.test.ts",
+  "apps/web/test/provider-matrix-smoke.test.ts",
   "apps/web/test/report-data.test.ts",
   "apps/web/test/anomaly-data.test.ts",
   "apps/web/test/breached-at-data.test.ts",
@@ -29,12 +31,14 @@ const realDatabaseSuites = [
   "apps/web/test/zendesk-sla-policy-archive.test.ts",
   "apps/web/test/sla-import-summary.test.ts",
   "apps/web/test/zendesk-sla-policy-position.test.ts",
+  "apps/web/test/imported-policy-source-scope.test.ts",
   "apps/web/test/sla-golden-scenarios.test.ts",
   "apps/web/test/first-response-creation-actor.test.ts",
   "apps/web/test/imported-policy-pending-parity.test.ts",
   "apps/web/test/zendesk-normalization-scope.test.ts",
   "apps/web/test/jira-normalization-scope.test.ts",
   "apps/web/test/jira-correlation-scope.test.ts",
+  "apps/web/test/tracker-link-resolution.test.ts",
   "apps/web/test/jira-remote-link-unlink.test.ts",
   "apps/web/test/zendesk-webhook-route.test.ts",
   "apps/web/test/jira-webhook-route.test.ts",

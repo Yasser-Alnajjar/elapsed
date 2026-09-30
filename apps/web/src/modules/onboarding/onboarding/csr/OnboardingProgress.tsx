@@ -19,8 +19,12 @@ import type { OnboardingStatus } from "@/lib/types/onboarding";
 
 interface OnboardingProgressProps {
   status: OnboardingStatus;
-  zendeskRunning: boolean;
-  jiraRunning: boolean;
+  /** The ticket source being ingested ("Zendesk" | "Intercom") and its backfill state. */
+  sourceLabel: string;
+  sourceRunning: boolean;
+  /** The connected tracker ("Jira" | "Linear"), or null before step 3. */
+  trackerLabel: string | null;
+  trackerRunning: boolean;
   error: string | null;
 }
 
@@ -47,7 +51,7 @@ const statCards: StatCardSpec[] = [
   {
     key: "linkedIssues",
     icon: Workflow,
-    label: "Linked Jira issues",
+    label: "Linked issues",
     description: "Resolved via official remote issue links",
   },
 ];
@@ -61,14 +65,19 @@ interface LedgerEntry {
 
 function buildLedger({
   status,
-  zendeskRunning,
-  jiraRunning,
-}: Pick<OnboardingProgressProps, "status" | "zendeskRunning" | "jiraRunning">): LedgerEntry[] {
+  sourceLabel,
+  sourceRunning,
+  trackerLabel,
+  trackerRunning,
+}: Pick<
+  OnboardingProgressProps,
+  "status" | "sourceLabel" | "sourceRunning" | "trackerLabel" | "trackerRunning"
+>): LedgerEntry[] {
   const entries: LedgerEntry[] = [
     {
       icon: Network,
       tone: "primary",
-      text: "Read-only handshake established with your Zendesk instance",
+      text: `Read-only handshake established with your ${sourceLabel} workspace`,
     },
   ];
 
@@ -78,7 +87,7 @@ function buildLedger({
       tone: "primary",
       text: `${status.ticketsFetched.toLocaleString()} tickets ingested and normalized so far`,
     });
-  } else if (zendeskRunning) {
+  } else if (sourceRunning) {
     entries.push({
       icon: RefreshCw,
       tone: "muted",
@@ -100,25 +109,25 @@ function buildLedger({
     entries.push({
       icon: Link,
       tone: "tertiary",
-      text: `${status.linkedIssues.toLocaleString()} Jira issue link${
+      text: `${status.linkedIssues.toLocaleString()} ${trackerLabel ?? "engineering"} issue link${
         status.linkedIssues === 1 ? "" : "s"
       } resolved deterministically`,
     });
-  } else if (jiraRunning) {
+  } else if (trackerRunning) {
     entries.push({
       icon: RefreshCw,
       tone: "muted",
-      text: "Correlating escalated cases against Jira remote links…",
+      text: `Correlating escalated cases against ${trackerLabel} links…`,
     });
   }
 
-  if (!zendeskRunning) {
+  if (!sourceRunning) {
     entries.push({
       icon: CircleCheckBig,
       tone: "tertiary",
-      text: jiraRunning
-        ? "Zendesk backfill complete — Jira is still catching up in the background"
-        : "Zendesk backfill complete",
+      text: trackerRunning
+        ? `${sourceLabel} backfill complete — ${trackerLabel} is still catching up in the background`
+        : `${sourceLabel} backfill complete`,
     });
   }
 
@@ -134,12 +143,14 @@ const LEDGER_TONE_CLASS: Record<LedgerEntry["tone"], string> = {
 
 export function OnboardingProgress({
   status,
-  zendeskRunning,
-  jiraRunning,
+  sourceLabel,
+  sourceRunning,
+  trackerLabel,
+  trackerRunning,
   error,
 }: OnboardingProgressProps) {
-  const running = zendeskRunning || jiraRunning;
-  const ledger = buildLedger({ status, zendeskRunning, jiraRunning });
+  const running = sourceRunning || trackerRunning;
+  const ledger = buildLedger({ status, sourceLabel, sourceRunning, trackerLabel, trackerRunning });
 
   return (
     <div className="flex flex-col gap-3">
@@ -234,7 +245,8 @@ export function OnboardingProgress({
       <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-3 py-2 text-on-surface-variant/70">
         <Lock className="size-4 shrink-0" />
         <span className="font-code-audit text-code-audit">
-          Read-only ingestion — Elapsed never writes back to Zendesk or Jira
+          Read-only ingestion — Elapsed never writes back to {sourceLabel}
+          {trackerLabel ? ` or ${trackerLabel}` : ""}
         </span>
       </div>
 

@@ -9,6 +9,7 @@ import type { WorkerConfig } from "../src/config";
 // cycle's per-integration status handling is what's under test.
 vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
+  buildCaseRefResolver: vi.fn().mockResolvedValue(null),
   loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [] }),
   runCommitmentPipeline: vi.fn().mockResolvedValue({ commitmentsCreated: 0 }),
   runCommitmentReResolutionPipeline: vi.fn().mockResolvedValue({

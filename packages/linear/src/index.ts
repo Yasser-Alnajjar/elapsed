@@ -18,5 +18,6 @@ export {
   UnknownLinearStateTypeError,
 } from "./normalize";
 export type { HistoryRecord, DerivedNormalizedEvent, LinearNormalizationResult } from "./normalize";
-export { parseZendeskTicketId, runLinearCorrelation } from "./correlate";
-export type { CorrelationResult } from "./correlate";
+export { runLinearCorrelation } from "./correlate";
+export type { CaseRefResolution, CaseRefResolver, CorrelationResult } from "./correlate";
+export { LINEAR_SOURCE_ROLE } from "./source-role";

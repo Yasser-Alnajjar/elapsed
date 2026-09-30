@@ -7,6 +7,7 @@ import { getDashboardData } from "@/lib/dashboard-data";
 import { getFindingsData } from "@/lib/findings-data";
 import { getIntegrationsData } from "@/lib/integrations-data";
 import { getOnboardingStatus } from "@/lib/onboarding-data";
+import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
 import { getPolicyImportReview } from "@/lib/policy-import-review-data";
 import type {
   ActivationPageData,
@@ -45,12 +46,7 @@ export const OnboardingActions = {
 
     const status = await getOnboardingStatus(prisma, organizationId);
 
-    const onboardingComplete =
-      status.zendesk.connected &&
-      status.zendesk.backfillComplete &&
-      status.jira.connected;
-
-    if (!onboardingComplete) {
+    if (!deriveOnboardingProgress(status).complete) {
       redirect("/onboarding");
     }
 

@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { GithubPullRequest } from "./types";
+import { GITHUB_SOURCE_ROLE } from "./source-role";
 
 /**
  * A Jira issue key / Linear identifier shape: an uppercase team/project key
@@ -162,6 +163,7 @@ export async function runGithubCorrelation(prisma: PrismaClient, integrationId: 
             occurredAt: observedAt,
             actor: "system",
             system: "github",
+            sourceRole: GITHUB_SOURCE_ROLE,
             fromState: null,
             toState: null,
           },

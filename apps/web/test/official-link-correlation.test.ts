@@ -24,6 +24,7 @@ import type { Prisma, PrismaClient } from "@sla/db";
 import { deriveLegSpans } from "@sla/core";
 import { toNormalizedEventDomain } from "@sla/commitments";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { correlateJira } from "./correlate-helper";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -88,7 +89,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
   });
 
   async function seedCase(ticketId: string, openedAt = new Date("2026-03-01T00:00:00.000Z")): Promise<string> {
-    const row = await prisma.case.create({ data: { organizationId, externalId: ticketId, openedAt } });
+    const row = await prisma.case.create({
+      data: { organizationId, system: "zendesk", sourceIntegrationId: zendeskIntegrationId, externalId: ticketId, openedAt },
+    });
     return row.id;
   }
 
@@ -155,7 +158,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       data: { integrationId: zendeskIntegrationId, providerEventId: `ticket:${caseId}:seed`, sourceHash: "seed", payload: {} },
     });
     await prisma.normalizedEvent.create({
-      data: { caseId, sourceRawEventId: rawEvent.id, type: "case_created", occurredAt: new Date(occurredAt), actor: "customer", system: "zendesk", toState: "new" },
+      data: { caseId, sourceRawEventId: rawEvent.id, type: "case_created", occurredAt: new Date(occurredAt), actor: "customer", system: "zendesk", sourceRole: "ticket_source", toState: "new" },
     });
   }
 
@@ -234,9 +237,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
 
       if (officialFirst) {
         await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
-        await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+        await correlateJira(prisma, jiraIntegrationId);
       } else {
-        await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+        await correlateJira(prisma, jiraIntegrationId);
         await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
       }
 
@@ -261,9 +264,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       object: { url: "https://old-subdomain.zendesk.com/agent/tickets/127", title: "Ticket 127" },
     });
 
-    const result = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const result = await correlateJira(prisma, jiraIntegrationId);
 
-    expect(result).toMatchObject({ caseLinksCreated: 0, unmatchedNotZendeskUrl: 1 });
+    expect(result).toMatchObject({ caseLinksCreated: 0, unmatchedUnrecognizedUrl: 1 });
     expect(await prisma.caseLink.count({ where: { caseId } })).toBe(0);
   });
 
@@ -277,10 +280,10 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     });
 
     const officialResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
-    const remoteResult = await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+    const remoteResult = await correlateJira(prisma, jiraIntegrationId);
 
     expect(officialResult.caseLinksCreated).toBe(1);
-    expect(remoteResult).toMatchObject({ caseLinksCreated: 0, unmatchedNotZendeskUrl: 1 });
+    expect(remoteResult).toMatchObject({ caseLinksCreated: 0, unmatchedUnrecognizedUrl: 1 });
 
     const links = await prisma.caseLink.findMany({ where: { caseId, system: "jira" } });
     expect(links).toHaveLength(1);
@@ -309,7 +312,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     // Same externalId as org A's case, deliberately, to prove no cross-tenant collision.
     const caseA = await seedCase("123");
     const caseB = await prisma.case.create({
-      data: { organizationId: orgB.id, externalId: "123", openedAt: new Date("2026-03-01T00:00:00.000Z") },
+      data: { organizationId: orgB.id, system: "zendesk", sourceIntegrationId: zendeskB.id, externalId: "123", openedAt: new Date("2026-03-01T00:00:00.000Z") },
     });
 
     // Only org A's Zendesk integration has an official-link RawEvent.
@@ -473,7 +476,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
         self: "https://api.atlassian.com/.../remotelink/1",
         object: { url: "https://acme.zendesk.com/agent/tickets/13", title: "Ticket 13" },
       });
-      await jira.runJiraCorrelation(prisma, jiraIntegrationId);
+      await correlateJira(prisma, jiraIntegrationId);
       expect((await findCaseLink(caseId, "KAN-40"))!.evidence).toMatchObject({ remoteLink: expect.anything(), officialLink: expect.anything() });
 
       // The official link disappears from Zendesk's registry...
@@ -495,7 +498,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       });
       const caseA = await seedCase("13");
       const caseB = await prisma.case.create({
-        data: { organizationId: orgB.id, externalId: "13", openedAt: new Date("2026-03-01T00:00:00.000Z") },
+        data: { organizationId: orgB.id, system: "zendesk", sourceIntegrationId: zendeskB.id, externalId: "13", openedAt: new Date("2026-03-01T00:00:00.000Z") },
       });
 
       // Both organizations independently link the same-shaped (ticket 13, KAN-40) pair.

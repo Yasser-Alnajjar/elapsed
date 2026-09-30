@@ -19,14 +19,21 @@ export type NormalizedState =
   | "resolved"
   | "closed";
 
+/**
+ * Elapsed's own priority vocabulary, in ascending order. Adapters map their
+ * provider's priorities onto it before a value reaches `Case.priority` or a
+ * `priority_changed` event; the engine never sees a provider's raw strings.
+ */
+export type CanonicalPriority = "low" | "normal" | "high" | "urgent";
+
 export type Actor = "customer" | "agent" | "system";
 
-export type SourceSystem =
-  | "zendesk"
-  | "jira"
-  | "linear"
-  | "intercom"
-  | "github";
+/**
+ * What a source plays in a case, whatever provider supplies it: the ticket
+ * source owns the case's lifecycle, a work tracker holds linked engineering
+ * issues, a code host holds linked code changes.
+ */
+export type SourceRole = "ticket_source" | "work_tracker" | "code_host";
 
 export type NormalizedEventType =
   | "case_created"
@@ -55,18 +62,22 @@ export interface NormalizedEvent {
   type: NormalizedEventType;
   occurredAt: string; // ISO 8601
   actor: Actor;
-  system: SourceSystem;
+  /**
+   * Opaque provenance: keys per-source state and breaks ordering ties, and
+   * never decides behaviour. Behaviour is decided by `sourceRole`.
+   */
+  system: string;
+  sourceRole: SourceRole;
   /**
    * A semantic ticket state for every type except `priority_changed`, which
-   * overloads these two fields to carry the ticket source's raw priority
-   * strings instead (e.g. "normal" -> "urgent") — display-only, so it's
-   * exempt from the `NormalizedState` vocabulary. Every engine fold that
-   * reads these for SLA math (`foldClockIntervals`, `deriveNextReplyCycles`,
-   * `legs.ts`) filters by `type` first, so a `priority_changed` event never
-   * reaches them.
+   * overloads these two fields to carry a `CanonicalPriority` instead (e.g.
+   * "normal" -> "urgent"; null when unset) — display-only. Every engine fold
+   * that reads these for SLA math (`foldClockIntervals`,
+   * `deriveNextReplyCycles`, `legs.ts`) filters by `type` first, so a
+   * `priority_changed` event never reaches them.
    */
-  fromState: NormalizedState | string | null;
-  toState: NormalizedState | string | null;
+  fromState: NormalizedState | CanonicalPriority | null;
+  toState: NormalizedState | CanonicalPriority | null;
   sourceRawEventId: string;
   /**
    * The event's position in its provider's own ordering (e.g. Zendesk audit
@@ -148,6 +159,16 @@ export interface SLAPolicyVersion {
    */
   policySource?: "imported" | "native" | null;
   /**
+   * Opaque key of the source an *imported* policy came from (N1.11) —
+   * compared for equality with `CaseAttributes.sourceKey`, never
+   * interpreted. An imported policy that carries a key is a candidate only
+   * for cases of that same source, so a policy imported from one ticket
+   * source never prices another source's cases. Absent/`null` means
+   * unscoped (legacy behaviour: candidate for every case). Ignored for a
+   * native policy, which is a candidate for every case.
+   */
+  sourceKey?: string | null;
+  /**
    * Whether a calendar was explicitly chosen for this policy version (4i).
    * `calendarVersionId` above always holds a concrete, usable version either
    * way (an explicit pin, or a snapshot resolved at save time), but only
@@ -167,6 +188,13 @@ export interface SLAPolicyVersion {
 
 export interface CaseAttributes {
   caseId: string;
+
+  /**
+   * Opaque key of the source this case came from (N1.11), matched against
+   * `SLAPolicyVersion.sourceKey`. Absent means the source is unknown, in
+   * which case a source-scoped imported policy is not a candidate.
+   */
+  sourceKey?: string;
 
   /**
    * Canonical internal attributes used by generic policy matching.
@@ -247,7 +275,8 @@ export type ClockState = "running" | "paused" | "stopped";
  */
 export interface EvaluationEventRef {
   sourceRawEventId: string;
-  system: SourceSystem;
+  /** Opaque provenance, as on `NormalizedEvent.system`. */
+  system: string;
   type: NormalizedEventType;
   occurredAt: string; // ISO 8601
   toState: NormalizedState | string | null;

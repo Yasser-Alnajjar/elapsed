@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { computeElapsedWorkingMinutes } from "../src/elapsed.js";
 import { computeBreachedAt, evaluateCommitment } from "../src/evaluate.js";
@@ -71,7 +72,7 @@ function event(
   partial: Pick<NormalizedEvent, "type" | "toState"> & Partial<NormalizedEvent>,
 ): NormalizedEvent {
   seq += 1;
-  return {
+  return withSourceRole({
     id: `evt-${seq}`,
     caseId: "case-1",
     occurredAt,
@@ -80,7 +81,7 @@ function event(
     fromState: null,
     sourceRawEventId: `raw-${seq}`,
     ...partial,
-  };
+  });
 }
 
 const created = (at: string) => event(at, { type: "case_created", toState: "open", actor: "customer" });

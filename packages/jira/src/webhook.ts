@@ -12,6 +12,7 @@ import {
   type RawEventInput,
 } from "./rawEvents";
 import { loadFreshJiraCredentials, refreshAfterUnauthorized } from "./tokenLifecycle";
+import { JIRA_SOURCE_ROLE } from "./source-role";
 
 /** Random per-integration secret, generated once at connect and never rotated on reconnect (see Integration.webhookSecret's doc comment). */
 export function generateWebhookSecret(): string {
@@ -156,6 +157,7 @@ export async function markCaseLinksUnlinkedForIssue(
           occurredAt: rawEvent.fetchedAt,
           actor: "system" as const,
           system: "jira" as const,
+          sourceRole: JIRA_SOURCE_ROLE,
           fromState: null,
           toState: null,
         },

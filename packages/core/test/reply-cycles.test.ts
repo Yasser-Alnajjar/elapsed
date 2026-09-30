@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { findFirstResponseEvent } from "../src/evaluate";
 import { deriveNextReplyCycles, nextReplyCycleKey } from "../src/reply-cycles";
@@ -19,7 +20,7 @@ function event(
   overrides: Partial<NormalizedEvent> & { toState?: NormalizedState | null } = {},
 ): NormalizedEvent {
   seq += 1;
-  return {
+  return withSourceRole({
     id: `evt-${seq}`,
     caseId: "case-1",
     type,
@@ -30,7 +31,7 @@ function event(
     toState: null,
     sourceRawEventId: `raw-${seq}`,
     ...overrides,
-  };
+  });
 }
 
 const created = () => event("08:00", "case_created", { toState: "open", actor: "customer" });

@@ -447,6 +447,7 @@ export async function getProjectAnalytics(
             toState: true,
             sourceRawEventId: true,
             sourceSequence: true,
+            sourceRole: true,
           },
         })
       : [];

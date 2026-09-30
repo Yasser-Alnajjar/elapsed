@@ -1,18 +1,20 @@
-import type { NormalizedEvent, SourceSystem } from "./types";
+import type { NormalizedEvent, SourceRole } from "./types";
 
 /**
- * Fixed rank that orders events from different systems landing on the same
- * instant. Each system numbers its own `sourceSequence` independently, so
- * sequences are only comparable within one system; the rank itself carries
- * no meaning beyond being fixed. Ticket sources come first.
+ * Fixed rank that orders events from different source roles landing on the
+ * same instant: ticket sources first, then work trackers, then code hosts.
+ * Each source numbers its own `sourceSequence` independently, so sequences are
+ * only comparable within one system; the rank carries no meaning beyond being
+ * fixed.
  */
-const SYSTEM_RANK: Record<SourceSystem, number> = {
-  zendesk: 0,
-  intercom: 1,
-  jira: 2,
-  linear: 3,
-  github: 4,
+const ROLE_RANK: Record<SourceRole, number> = {
+  ticket_source: 0,
+  work_tracker: 1,
+  code_host: 2,
 };
+
+/** A role this table does not know (a row not yet backfilled) sorts after every known one; ties then fall through to `system`, `sourceSequence` and content. */
+const rankOf = (role: SourceRole) => ROLE_RANK[role] ?? Number.MAX_SAFE_INTEGER;
 
 function compareStrings(a: string | null, b: string | null): number {
   if (a === b) return 0;
@@ -25,7 +27,8 @@ function compareStrings(a: string | null, b: string | null): number {
  * The one total order every engine fold uses for a case's event stream:
  *
  *   1. `occurredAt`
- *   2. `system` (fixed `SYSTEM_RANK`)
+ *   2. `sourceRole` (fixed `ROLE_RANK`), then `system` compared as an opaque
+ *      string, so two sources of one role order the same way on every run
  *   3. `sourceSequence` — the provider's own ordering (Zendesk audit order
  *      and event position within the audit; missing on rows written before
  *      the field existed, treated as 0)
@@ -38,7 +41,8 @@ function compareStrings(a: string | null, b: string | null): number {
 export function compareNormalizedEvents(a: NormalizedEvent, b: NormalizedEvent): number {
   return (
     Date.parse(a.occurredAt) - Date.parse(b.occurredAt) ||
-    SYSTEM_RANK[a.system] - SYSTEM_RANK[b.system] ||
+    rankOf(a.sourceRole) - rankOf(b.sourceRole) ||
+    compareStrings(a.system, b.system) ||
     (a.sourceSequence ?? 0) - (b.sourceSequence ?? 0) ||
     compareStrings(a.sourceRawEventId, b.sourceRawEventId) ||
     compareStrings(a.type, b.type) ||

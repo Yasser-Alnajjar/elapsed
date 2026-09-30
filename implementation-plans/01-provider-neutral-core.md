@@ -37,19 +37,19 @@ The product has 10 live customers. Every later phase (contract, freshness, admin
 | ID | Violation | Location |
 |---|---|---|
 | V1 | `SourceSystem` is a union of five provider names inside the core domain type, used by `NormalizedEvent.system` and `EvaluationEventRef.system` | [`packages/core/src/types.ts:24`](../packages/core/src/types.ts) |
-| V2 | `TICKET_SOURCE_SYSTEMS = {"zendesk","intercom"}` decides which events anchor a case's lifecycle | [`packages/core/src/ticket-source.ts:12`](../packages/core/src/ticket-source.ts); used in `evaluate.ts:120,176,220,227`, `reply-cycles.ts:78`, `clock-rules.ts:63` |
-| V3 | Leg ownership decided by `event.system === "zendesk" \|\| "intercom"` / `"jira" \|\| "linear" \|\| "github"`; variable named `zendeskState` | [`packages/core/src/legs.ts:54,62,77,138-139`](../packages/core/src/legs.ts) |
-| V4 | `SYSTEM_RANK` orders same-instant events by provider name | [`packages/core/src/ordering.ts:9-15`](../packages/core/src/ordering.ts) |
+| V2 *(fixed in N1.6: `isTicketSourceEvent`, a `sourceRole` check)* | `TICKET_SOURCE_SYSTEMS = {"zendesk","intercom"}` decided which events anchor a case's lifecycle | [`packages/core/src/ticket-source.ts:12`](../packages/core/src/ticket-source.ts); used in `evaluate.ts:120,176,220,227`, `reply-cycles.ts:78`, `clock-rules.ts:63` |
+| V3 *(fixed in N1.7: role-based)* | Leg ownership decided by `event.system === "zendesk" \|\| "intercom"` / `"jira" \|\| "linear" \|\| "github"`; variable named `zendeskState` | [`packages/core/src/legs.ts:54,62,77,138-139`](../packages/core/src/legs.ts) |
+| V4 *(fixed in N1.8: `ROLE_RANK`)* | `SYSTEM_RANK` ordered same-instant events by provider name | [`packages/core/src/ordering.ts:9-15`](../packages/core/src/ordering.ts) |
 | V5 | Zendesk's priority vocabulary is the core's comparison order (`PRIORITY_ORDER`); `priority_changed` carries raw provider strings in `fromState`/`toState` | [`packages/core/src/commitments.ts:73`](../packages/core/src/commitments.ts), [`types.ts:44-70`](../packages/core/src/types.ts) |
 | V6 | `toCaseAttributes` adds Zendesk filter-field aliases (`current_tags`, `via_id`, `current_via_id`) | [`packages/commitments/src/pipeline.ts:58-72`](../packages/commitments/src/pipeline.ts) |
 | V7 | Imported (Zendesk) policies are candidates for **every** case in the org, including Intercom cases | `matchPolicyVersion` [`packages/core/src/commitments.ts:269`](../packages/core/src/commitments.ts); `SLAPolicy` has no source-provider field |
 | V8 | The adapter depends on the orchestration package: `@sla/zendesk` imports `DEFAULT_CALENDAR_NAME` and `ensureDefaultCalendarVersion` from `@sla/commitments` | [`packages/zendesk/src/policies.ts:10`](../packages/zendesk/src/policies.ts), `packages/zendesk/package.json` |
 | V9 | Jira and Linear correlate only `{subdomain}.zendesk.com` URLs and read the Zendesk integration's credentials directly | [`packages/jira/src/correlate.ts:10-17,224-263`](../packages/jira/src/correlate.ts), [`packages/linear/src/correlate.ts:12-19,123-145`](../packages/linear/src/correlate.ts) |
-| V10 | Provider identity stored as columns of a core entity: `Customer.zendeskOrgId`, `intercomCompanyId`, `intercomContactId`, plus three provider-specific unique keys | [`packages/db/prisma/schema.prisma:289-334`](../packages/db/prisma/schema.prisma); writers `zendesk/normalize.ts:656`, `intercom/normalize.ts:429,542`; reader `zendesk/policies.ts:160,465` |
-| V11 | `Case` is unique on `(organizationId, externalId)` with no source; `system @default(zendesk)` | [`schema.prisma:338-415`](../packages/db/prisma/schema.prisma); lookups via `organizationId_externalId` in `zendesk/normalize.ts`, `zendesk/correlate.ts`, `intercom/normalize.ts`, `jira/correlate.ts`, `linear/correlate.ts` |
-| V12 | Onboarding step 1 requires Zendesk; the Intercom card is a static placeholder; connect-time projection runs only for Zendesk and Jira | [`OnboardingFlow.tsx:159,458,478`](../apps/web/src/modules/onboarding/onboarding/csr/OnboardingFlow.tsx), [`lib/types/onboarding.ts:13-31`](../apps/web/src/lib/types/onboarding.ts), [`lib/source-sync.ts:37,92-115`](../apps/web/src/lib/source-sync.ts) |
-| V13 | No provider-neutral golden suite: the golden scenarios use Zendesk fixtures and real Postgres | [`apps/web/test/sla-golden-scenarios.test.ts:22`](../apps/web/test/sla-golden-scenarios.test.ts) |
-| V14 | Nothing prevents regressions: no import-boundary or provider-literal test | — |
+| V10 *(fixed in N1.14: `CustomerIdentity`, legacy columns dual-written until N2.10)* | Provider identity stored as columns of a core entity: `Customer.zendeskOrgId`, `intercomCompanyId`, `intercomContactId`, plus three provider-specific unique keys | [`packages/db/prisma/schema.prisma:289-334`](../packages/db/prisma/schema.prisma); writers `zendesk/normalize.ts:656`, `intercom/normalize.ts:429,542`; reader `zendesk/policies.ts:160,465` |
+| V11 *(fixed in N1.15: `Case.sourceIntegrationId` and its compound key; old key stays until N2.10)* | `Case` is unique on `(organizationId, externalId)` with no source; `system @default(zendesk)` | [`schema.prisma:338-415`](../packages/db/prisma/schema.prisma); lookups via `organizationId_externalId` in `zendesk/normalize.ts`, `zendesk/correlate.ts`, `intercom/normalize.ts`, `jira/correlate.ts`, `linear/correlate.ts` |
+| V12 *(fixed in N1.16)* | Onboarding step 1 requires Zendesk; the Intercom card is a static placeholder; connect-time projection runs only for Zendesk and Jira | [`OnboardingFlow.tsx:159,458,478`](../apps/web/src/modules/onboarding/onboarding/csr/OnboardingFlow.tsx), [`lib/types/onboarding.ts:13-31`](../apps/web/src/lib/types/onboarding.ts), [`lib/source-sync.ts:37,92-115`](../apps/web/src/lib/source-sync.ts) |
+| V13 *(fixed in N1.3)* | No provider-neutral golden suite: the golden scenarios use Zendesk fixtures and real Postgres | [`apps/web/test/sla-golden-scenarios.test.ts:22`](../apps/web/test/sla-golden-scenarios.test.ts) |
+| V14 *(fixed in N1.1 and N1.4)* | Nothing prevents regressions: no import-boundary or provider-literal test | — |
 
 **Deferred to N2 (do not fix here):**
 - Worker `if/else` dispatch and the 10 provider error classes (`apps/worker/src/cycle.ts`).
@@ -391,6 +391,12 @@ _Filled in during the phase. Only aggregate counts; never customer data._
 | Date | Task | Class | Decision | Commitments | Tenants | Before → after | Customer-facing effect | Approved by |
 |---|---|---|---|---|---|---|---|---|
 | — | — | — | — | — | — | — | — | — |
+
+### Drift log (class C)
+
+| Date | Task | Backup | `asOf` | Commitments | Status drift | `breachedAt` drift | Follow-up |
+|---|---|---|---|---|---|---|---|
+| 2026-09-30 | N1.2 | `sla-20260929T213644Z.dump` | 2026-09-29T21:36:44Z | 3,921 (12 orgs, 1,508 cases) | 0 | 10 | Roadmap H-13 (does not block N1) |
 
 ## 14. Out of scope for N1
 

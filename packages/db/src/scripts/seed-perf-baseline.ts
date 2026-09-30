@@ -430,6 +430,7 @@ export async function seedPerfBaseline(
           occurredAt,
           actor: seq % 2 === 0 ? "agent" : "customer",
           system: IntegrationProvider.zendesk,
+          sourceRole: "ticket_source",
           sourceSequence: seq,
         });
       }

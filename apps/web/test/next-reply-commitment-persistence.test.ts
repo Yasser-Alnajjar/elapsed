@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Next Reply commitment persistence (real Pos
       effectiveFrom: at("00:00").toISOString(),
     };
     caseId = (
-      await prisma.case.create({ data: { organizationId, externalId: "7", openedAt: at("09:00") } })
+      await prisma.case.create({ data: { organizationId, system: "zendesk", externalId: "7", openedAt: at("09:00") } })
     ).id;
   });
 
@@ -114,6 +114,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Next Reply commitment persistence (real Pos
         occurredAt: at(e.time),
         actor: e.type === "customer_replied" || e.type === "case_created" ? "customer" : "agent",
         system: "zendesk" as const,
+        sourceRole: "ticket_source" as const,
         sourceSequence: e.sequence,
       })),
     });

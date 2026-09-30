@@ -114,7 +114,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
     nextExternalId += 1;
     return (
       await prisma.case.create({
-        data: { organizationId, externalId: `case-${nextExternalId}`, openedAt: at("09:00") },
+        data: { organizationId, system: "zendesk", externalId: `case-${nextExternalId}`, openedAt: at("09:00") },
       })
     ).id;
   }
@@ -122,9 +122,9 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
   async function seedConversation(caseId: string) {
     await prisma.normalizedEvent.createMany({
       data: [
-        { caseId, sourceRawEventId: rawEventId, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceSequence: 0 },
-        { caseId, sourceRawEventId: rawEventId, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceSequence: 1 },
-        { caseId, sourceRawEventId: rawEventId, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceSequence: 2 },
+        { caseId, sourceRawEventId: rawEventId, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 0 },
+        { caseId, sourceRawEventId: rawEventId, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 1 },
+        { caseId, sourceRawEventId: rawEventId, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 2 },
       ],
     });
   }

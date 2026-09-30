@@ -10,6 +10,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "backfill:breached-at": "dotenv -e ../../.env -- tsx src/scripts/backfill-breached-at.ts",
+    "replay:capture": "dotenv -e ../../.env -- tsx src/scripts/replay-capture.ts",
+    "replay:compare": "dotenv -e ../../.env -- tsx src/scripts/replay-compare.ts",
     "repair:first-response-start": "dotenv -e ../../.env -- tsx src/scripts/repair-first-response-start.ts"
   },
   "dependencies": {

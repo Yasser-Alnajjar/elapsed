@@ -22,6 +22,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk next_reply_time -> frozen Commitmen
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
   let commitments: typeof import("@sla/commitments");
+  // The Zendesk importer no longer depends on @sla/commitments (N1.12): the caller supplies the default calendar.
+  const ensureDefaultCalendar = (organizationId: string) =>
+    commitments.ensureDefaultCalendarVersion(prisma, organizationId);
 
   let organizationId: string;
   let integrationId: string;
@@ -78,7 +81,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk next_reply_time -> frozen Commitmen
       },
     });
 
-    const importResult = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const importResult = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect(importResult.unsupportedMetrics).toBe(0);
     expect(importResult.policyVersionsCreated).toBe(1);
 
@@ -95,16 +98,16 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk next_reply_time -> frozen Commitmen
     // anchored to the imported policy/calendar version — the same shape
     // runCommitmentPipeline would have created the anchor commitment as.
     const caseRow = await prisma.case.create({
-      data: { organizationId, externalId: "case-1", openedAt: at("09:00") },
+      data: { organizationId, system: "zendesk", externalId: "case-1", openedAt: at("09:00") },
     });
     const rawTicketEvent = await prisma.rawEvent.create({
       data: { integrationId, providerEventId: "ticket:1", sourceHash: "h2", payload: { id: 1 } },
     });
     await prisma.normalizedEvent.createMany({
       data: [
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceSequence: 0 },
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceSequence: 1 },
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceSequence: 2 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 0 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 1 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 2 },
       ],
     });
     await prisma.commitment.create({

@@ -109,7 +109,7 @@ export function CustomerSubjectCell({ row }: { row: CaseListRow }) {
   return (
     <div className="flex max-w-47.5 min-w-0 flex-col">
       <div className="flex items-center gap-1">
-        <span className=" text-sm font-semibold text-on-surface truncate">
+        <span className=" text-xs font-semibold text-on-surface truncate">
           {row.customerName ?? "—"}
         </span>
         {row.tier && (
@@ -122,7 +122,7 @@ export function CustomerSubjectCell({ row }: { row: CaseListRow }) {
         <TooltipTrigger asChild>
           <Link
             href={`/cases/${row.caseId}`}
-            className="mt-0.5 block min-w-0 truncate text-xs text-on-surface-variant hover:text-primary hover:underline"
+            className="mt-0.5 block min-w-0 truncate text-sm! text-on-surface-variant hover:text-primary hover:underline"
           >
             {row.subject ?? `#${row.externalId}`}
           </Link>
