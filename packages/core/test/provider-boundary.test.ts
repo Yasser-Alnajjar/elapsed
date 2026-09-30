@@ -50,8 +50,6 @@ interface AllowedViolation extends Violation {
  * test fails if a listed violation is gone.
  */
 const ALLOWLIST: AllowedViolation[] = [
-  // Leg derivation picks ticket state vs. tracker state by provider name.
-  { rule: "provider-literal-in-domain", file: "packages/core/src/legs.ts", removedBy: "N1.7" },
   // The Zendesk package imports `@sla/commitments`.
   { rule: "provider-depends-on-commitments", file: "packages/zendesk/package.json", removedBy: "N1.12" },
   // Jira and Linear resolve links with a Zendesk host check and a Zendesk integration lookup.
