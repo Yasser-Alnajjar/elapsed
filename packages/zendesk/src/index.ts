@@ -34,8 +34,6 @@ export type {
   ZendeskUserRoles,
 } from "./normalize";
 export {
-  DEFAULT_CALENDAR_NAME,
-  ensureDefaultCalendarVersion,
   extractMatchFromFilter,
   groupPolicyMetricsByPriority,
   IMPORTED_PAUSE_ON_STATES,
@@ -45,6 +43,7 @@ export {
   WARN_AT_PERCENT,
 } from "./policies";
 export type {
+  EnsureDefaultCalendar,
   ExtractedMatch,
   GroupedPolicyMetrics,
   PolicyTargetGroup,

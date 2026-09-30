@@ -1,5 +1,6 @@
 import { recordSlaImportSummary, withOrganizationSlaLock, type PrismaClient } from "@sla/db";
 import {
+  ensureDefaultCalendarVersion,
   runCommitmentPipeline,
   runCommitmentReResolutionPipeline,
   runEvaluationPipeline,
@@ -112,7 +113,9 @@ export async function projectAndEvaluateSourceSyncs(
             // the Cases this looks up by ticket id.
             jiraLinkCorrelation: await runZendeskJiraLinkCorrelation(prisma, zendesk.id),
             businessCalendarImport: await runZendeskBusinessCalendarImport(prisma, zendesk.id),
-            slaPolicyImport: await runZendeskSlaPolicyImport(prisma, zendesk.id),
+            slaPolicyImport: await runZendeskSlaPolicyImport(prisma, zendesk.id, (organizationId) =>
+              ensureDefaultCalendarVersion(prisma, organizationId),
+            ),
           }
         : null;
     const jiraResult =

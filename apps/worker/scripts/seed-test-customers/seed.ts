@@ -23,6 +23,7 @@ import { createHash } from "node:crypto";
 import {
   createNativePolicy,
   createNativeCalendar,
+  ensureDefaultCalendarVersion,
   runCommitmentPipeline,
   runCommitmentReResolutionPipeline,
   runEvaluationPipeline,
@@ -240,7 +241,9 @@ async function seedTenant(prisma: PrismaClient, tenant: TenantDef, anchorDate: D
   await ingest("A");
   await derive(prisma, zendesk.id, jira.id, log);
   await applyCustomerMetadata(prisma, organizationId, dataset);
-  const slaImport = await runZendeskSlaPolicyImport(prisma, zendesk.id);
+  const slaImport = await runZendeskSlaPolicyImport(prisma, zendesk.id, (orgId) =>
+    ensureDefaultCalendarVersion(prisma, orgId),
+  );
   await pinPolicyVersions(prisma, organizationId, anchor);
 
   const commitments = await runCommitmentPipeline(prisma, organizationId);

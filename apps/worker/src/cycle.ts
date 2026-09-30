@@ -1,4 +1,5 @@
 import {
+  ensureDefaultCalendarVersion,
   loadPolicyContext,
   runCommitmentPipeline,
   runCommitmentReResolutionPipeline,
@@ -360,6 +361,7 @@ export async function runCycle(
                 slaPolicyImportResult = await runZendeskSlaPolicyImport(
                   prisma,
                   integration.id,
+                  (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
                 );
               } else if (integration.provider === "jira") {
                 await runJiraCorrelation(prisma, integration.id);

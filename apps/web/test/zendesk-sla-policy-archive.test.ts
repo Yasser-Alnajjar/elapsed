@@ -29,6 +29,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
   let commitments: typeof import("@sla/commitments");
+  // The Zendesk importer no longer depends on @sla/commitments (N1.12): the caller supplies the default calendar.
+  const ensureDefaultCalendar = (organizationId: string) =>
+    commitments.ensureDefaultCalendarVersion(prisma, organizationId);
 
   let organizationId: string;
   let integrationId: string;
@@ -110,7 +113,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
 
   it("leaves every policy unarchived when no manifest has ever been written", async () => {
     await writePolicySnapshot(1, "Standard");
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const policy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } });
     expect(policy.archivedAt).toBeNull();
@@ -120,7 +123,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     await writePolicySnapshot(1, "Standard");
     await writePolicySnapshot(2, "Urgent");
     await writeManifest([1, 2]);
-    const first = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const first = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect(first.policiesArchived).toBe(0);
     expect(first.policyVersionsCreated).toBe(2);
 
@@ -129,7 +132,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
 
     // Policy 2 is deleted in Zendesk: the next full listing (and manifest) omits it.
     await writeManifest([1]);
-    const second = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const second = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect(second.policiesArchived).toBe(1);
 
     const policiesAfter = await prisma.sLAPolicy.findMany({ where: { organizationId }, orderBy: { externalId: "asc" } });
@@ -155,11 +158,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
   it("never archives a policy still present in the latest manifest", async () => {
     await writePolicySnapshot(1, "Standard");
     await writeManifest([1]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     // Re-running with the same live id changes nothing.
     await writeManifest([1]);
-    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect(result.policiesArchived).toBe(0);
 
     const policy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } });
@@ -176,17 +179,17 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     await writePolicySnapshot(3, "Enterprise");
 
     await writeManifest([1, 2]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     await writeManifest([1, 2, 3]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     const enterprise = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId, name: "Enterprise" } });
     expect(enterprise.archivedAt).toBeNull();
 
     // Policy 3 is deleted in Zendesk. The new live set [1,2] is identical in
     // *content* to the very first manifest written above.
     await writeManifest([1, 2]);
-    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     expect(result.policiesArchived).toBe(1);
     const afterward = await prisma.sLAPolicy.findFirstOrThrow({ where: { id: enterprise.id } });
@@ -197,7 +200,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     await writePolicySnapshot(1, "Standard");
     await writePolicySnapshot(2, "Urgent");
     await writeManifest([1, 2]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     // Policy 2 is deleted in Zendesk, but the sync that would discover this
     // fails before it can write a fresh manifest (e.g. the listing request
@@ -207,7 +210,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     // runs this cycle (packages/worker's cycle.ts runs normalization even
     // for an integration whose ingest just failed), using whatever manifest
     // is still the latest.
-    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     expect(result.policiesArchived).toBe(0);
     const policies = await prisma.sLAPolicy.findMany({ where: { organizationId } });
@@ -220,7 +223,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     });
     await writePolicySnapshot(1, "Standard");
     await writeManifest([1]); // the native policy's id is never a Zendesk policy id
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const unchanged = await prisma.sLAPolicy.findUniqueOrThrow({ where: { id: nativePolicy.id } });
     expect(unchanged.archivedAt).toBeNull();
@@ -231,7 +234,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
   it("leaves a historical commitment referencing a retired imported policy readable and unchanged", async () => {
     await writePolicySnapshot(1, "Urgent");
     await writeManifest([1]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const policyVersion = await prisma.sLAPolicyVersion.findFirstOrThrow({
       where: { policy: { organizationId, name: "Urgent" } },
@@ -256,7 +259,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
 
     // The policy is deleted in Zendesk and archived by the next sync.
     await writeManifest([]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     const archivedPolicy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId, name: "Urgent" } });
     expect(archivedPolicy.archivedAt).not.toBeNull();
 
@@ -273,10 +276,10 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
   it("retired imported policy cannot be selected by matching for a new ticket", async () => {
     await writePolicySnapshot(1, "Urgent");
     await writeManifest([1]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     await writeManifest([]); // deleted in Zendesk
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
       data: { organizationId, externalId: "case-no-match", openedAt: new Date("2026-09-17T10:00:00.000Z") },
@@ -295,10 +298,10 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
   it("a policy recreated in Zendesk after deletion is un-archived and can be matched again", async () => {
     await writePolicySnapshot(1, "Urgent");
     await writeManifest([1]);
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     await writeManifest([]); // deleted in Zendesk
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     const archived = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId, name: "Urgent" } });
     expect(archived.archivedAt).not.toBeNull();
 
@@ -306,7 +309,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy archival (real Postgres)
     // false-positive deletion that Zendesk itself reversed).
     await writePolicySnapshot(1, "Urgent");
     await writeManifest([1]);
-    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    const result = await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     expect(result.policiesArchived).toBe(0);
 
     const recreated = await prisma.sLAPolicy.findUniqueOrThrow({ where: { id: archived.id } });

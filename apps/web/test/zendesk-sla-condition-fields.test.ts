@@ -22,6 +22,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
   let commitments: typeof import("@sla/commitments");
+  // The Zendesk importer no longer depends on @sla/commitments (N1.12): the caller supplies the default calendar.
+  const ensureDefaultCalendar = (organizationId: string) =>
+    commitments.ensureDefaultCalendarVersion(prisma, organizationId);
 
   let organizationId: string;
   let integrationId: string;
@@ -100,7 +103,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
   }
 
   async function importAndMatch() {
-    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId);
+    await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
     await zendesk.runZendeskNormalization(prisma, integrationId);
     await commitments.runCommitmentPipeline(prisma, organizationId);
   }

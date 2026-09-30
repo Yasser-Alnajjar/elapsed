@@ -50,8 +50,6 @@ interface AllowedViolation extends Violation {
  * test fails if a listed violation is gone.
  */
 const ALLOWLIST: AllowedViolation[] = [
-  // The Zendesk package imports `@sla/commitments`.
-  { rule: "provider-depends-on-commitments", file: "packages/zendesk/package.json", removedBy: "N1.12" },
   // Jira and Linear resolve links with a Zendesk host check and a Zendesk integration lookup.
   { rule: "ticket-source-host-or-lookup-in-tracker", file: "packages/jira/src/correlate.ts", removedBy: "N1.13" },
   { rule: "ticket-source-host-or-lookup-in-tracker", file: "packages/linear/src/correlate.ts", removedBy: "N1.13" },

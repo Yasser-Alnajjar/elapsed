@@ -493,9 +493,6 @@ importers:
 
   packages/zendesk:
     dependencies:
-      '@sla/commitments':
-        specifier: workspace:*
-        version: link:../commitments
       '@sla/core':
         specifier: workspace:*
         version: link:../core

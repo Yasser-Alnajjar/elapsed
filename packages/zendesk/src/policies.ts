@@ -7,7 +7,6 @@ import {
   type NormalizedState,
   type SLAPolicyMatch,
 } from "@sla/core";
-import { DEFAULT_CALENDAR_NAME, ensureDefaultCalendarVersion } from "@sla/commitments";
 import { latestCalendarVersionsByZendeskScheduleId } from "./calendars";
 import { latestSnapshotById } from "./normalize";
 import type { SlaPolicyManifest } from "./rawEvents";
@@ -97,11 +96,16 @@ function isResolvedConditionField(field: string): boolean {
 export const IMPORTED_PAUSE_ON_STATES: NormalizedState[] = [];
 export const WARN_AT_PERCENT = [50, 80, 95];
 
-// `ensureDefaultCalendarVersion`/`DEFAULT_CALENDAR_NAME` now live in
-// @sla/commitments (4i: native policy resolution needs them too, for an org
-// that never connected a ticket source) — re-exported here unchanged for
-// this module's existing callers/tests.
-export { DEFAULT_CALENDAR_NAME, ensureDefaultCalendarVersion };
+/**
+ * Resolves (creating it when missing) the organization's "always open"
+ * default calendar version. The importer only needs its id as the fallback
+ * for a policy with no resolvable Zendesk schedule, and does not own how it
+ * is stored: `@sla/commitments` does (`ensureDefaultCalendarVersion`), and
+ * the caller passes that in (N1.12). Called at most once per import, and
+ * only when there is at least one policy to import, so an org with nothing
+ * to import never gets the calendar created.
+ */
+export type EnsureDefaultCalendar = (organizationId: string) => Promise<{ id: string }>;
 
 export interface ExtractedMatch {
   match: SLAPolicyMatch;
@@ -409,6 +413,7 @@ export interface SlaPolicyImportResult {
 export async function runZendeskSlaPolicyImport(
   prisma: PrismaClient,
   integrationId: string,
+  ensureDefaultCalendar: EnsureDefaultCalendar,
 ): Promise<SlaPolicyImportResult> {
   const integration = await prisma.integration.findUniqueOrThrow({
     where: { id: integrationId },
@@ -482,10 +487,7 @@ export async function runZendeskSlaPolicyImport(
     customers.map((c) => [c.zendeskOrgId as string, c.id]),
   );
 
-  const defaultCalendarVersion = await ensureDefaultCalendarVersion(
-    prisma,
-    organizationId,
-  );
+  const defaultCalendarVersion = await ensureDefaultCalendar(organizationId);
   const calendarVersionsByScheduleId =
     await latestCalendarVersionsByZendeskScheduleId(prisma, organizationId);
 
