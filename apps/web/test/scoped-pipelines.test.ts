@@ -100,6 +100,7 @@ describe.skipIf(!TEST_DATABASE_URL)("scoped pipelines (real Postgres)", () => {
         occurredAt: OPENED,
         actor: "customer",
         system: "zendesk" as const,
+        sourceRole: "ticket_source" as const,
         sourceSequence: 0,
       })),
     });
@@ -224,6 +225,7 @@ describe.skipIf(!TEST_DATABASE_URL)("scoped pipelines (real Postgres)", () => {
           occurredAt: new Date(OPENED.getTime() + 2 * 60_000),
           actor: "agent",
           system: "zendesk",
+          sourceRole: "ticket_source",
           fromState: "open",
           toState: "resolved",
           sourceSequence: 1,

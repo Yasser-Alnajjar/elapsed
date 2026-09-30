@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { computeBreachedAt, evaluateCommitment, findCaseCloseEvent, findFirstResponseEvent } from "../src/evaluate";
 import { foldClockIntervals } from "../src/elapsed";
@@ -46,7 +47,7 @@ function event(
   type: NormalizedEventType,
   overrides: Partial<NormalizedEvent> & { fromState?: NormalizedState | null; toState?: NormalizedState | null } = {},
 ): NormalizedEvent {
-  return {
+  return withSourceRole({
     id,
     caseId: "case-1",
     type,
@@ -57,7 +58,7 @@ function event(
     toState: null,
     sourceRawEventId: `raw-${id}`,
     ...overrides,
-  };
+  });
 }
 
 function commitment(kind: CommitmentKind): Commitment {

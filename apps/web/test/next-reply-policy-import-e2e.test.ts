@@ -102,9 +102,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk next_reply_time -> frozen Commitmen
     });
     await prisma.normalizedEvent.createMany({
       data: [
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceSequence: 0 },
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceSequence: 1 },
-        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceSequence: 2 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "case_created", occurredAt: at("09:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 0 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "agent_replied", occurredAt: at("09:30"), actor: "agent", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 1 },
+        { caseId: caseRow.id, sourceRawEventId: rawTicketEvent.id, type: "customer_replied", occurredAt: at("10:00"), actor: "customer", system: "zendesk", sourceRole: "ticket_source", sourceSequence: 2 },
       ],
     });
     await prisma.commitment.create({

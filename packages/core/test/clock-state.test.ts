@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { computeBreachedAt, evaluateCommitment } from "../src/evaluate.js";
 import type {
@@ -57,7 +58,7 @@ function event(
   occurredAt: string,
   partial: Partial<NormalizedEvent>,
 ): NormalizedEvent {
-  return {
+  return withSourceRole({
     id,
     caseId: "case-45",
     type: "state_changed",
@@ -68,7 +69,7 @@ function event(
     toState: "open",
     sourceRawEventId: "raw-audit",
     ...partial,
-  };
+  });
 }
 
 const created = event("evt-created", OPENED, {

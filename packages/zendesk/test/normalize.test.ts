@@ -961,7 +961,7 @@ describe("Next Reply cycles from derived ticket events", () => {
   });
 
   const toCoreEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
-    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "zendesk" }));
+    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "zendesk", sourceRole: "ticket_source" as const }));
 
   const cycles = (events: NormalizedEvent[]) =>
     deriveNextReplyCycles(events, { asOf: AS_OF, firstResponseCompletion: findFirstResponseEvent(events, AS_OF) }).map(
@@ -1267,7 +1267,7 @@ describe("deriveNormalizedEventsForTicket — creation actor (H-11)", () => {
 
   describe("first-response start (D5b) follows the fixed creation actor", () => {
     const asEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
-      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-54", system: "zendesk" }));
+      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-54", system: "zendesk", sourceRole: "ticket_source" as const }));
     const firstResponseStart = (t: ZendeskTicket, audits: AuditRecord[]) =>
       resolveFirstResponseStartedAt(asEvents(deriveNormalizedEventsForTicket(t, audits, "raw_t", roles)), t.created_at);
 

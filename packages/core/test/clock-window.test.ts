@@ -1,3 +1,4 @@
+import { withSourceRole } from "./source-role";
 import { describe, expect, it } from "vitest";
 import { createCommitment } from "../src/commitments";
 import { computeElapsedWorkingMinutes, foldClockIntervals } from "../src/elapsed";
@@ -56,7 +57,7 @@ function event(
   overrides: Partial<NormalizedEvent> = {},
 ): NormalizedEvent {
   seq += 1;
-  return {
+  return withSourceRole({
     id: `evt-${seq}`,
     caseId: "case-1",
     type,
@@ -68,7 +69,7 @@ function event(
     sourceRawEventId: `raw-${seq}`,
     sourceSequence: seq,
     ...overrides,
-  };
+  });
 }
 
 const jira = (time: string, toState: NormalizedState) =>

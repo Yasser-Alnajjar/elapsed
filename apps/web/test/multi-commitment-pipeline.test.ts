@@ -104,6 +104,7 @@ describe.skipIf(!TEST_DATABASE_URL)("multiple commitments per case (real Postgre
         occurredAt: at(e.time),
         actor: e.actor ?? "agent",
         system: "zendesk" as const,
+        sourceRole: "ticket_source" as const,
         toState: e.toState ?? null,
       })),
     });

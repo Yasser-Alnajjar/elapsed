@@ -478,7 +478,7 @@ describe("Next Reply cycles from derived conversation events", () => {
   const iso = (offset: number) => new Date((conversation.created_at + offset) * 1000).toISOString();
 
   const toCoreEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
-    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "intercom" }));
+    derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "intercom", sourceRole: "ticket_source" as const }));
 
   const cycles = (events: NormalizedEvent[]) =>
     deriveNextReplyCycles(events, { asOf: AS_OF, firstResponseCompletion: findFirstResponseEvent(events, AS_OF) }).map(

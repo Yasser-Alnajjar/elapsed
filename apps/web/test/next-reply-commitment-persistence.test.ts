@@ -114,6 +114,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Next Reply commitment persistence (real Pos
         occurredAt: at(e.time),
         actor: e.type === "customer_replied" || e.type === "case_created" ? "customer" : "agent",
         system: "zendesk" as const,
+        sourceRole: "ticket_source" as const,
         sourceSequence: e.sequence,
       })),
     });

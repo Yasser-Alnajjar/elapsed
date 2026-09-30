@@ -1,4 +1,4 @@
-import { TICKET_SOURCE_SYSTEMS } from "./ticket-source";
+import { isTicketSourceEvent } from "./ticket-source";
 import type { CommitmentKind, NormalizedEvent, NormalizedState, SLAPolicyVersion } from "./types";
 
 interface CommitmentClockRule {
@@ -60,7 +60,7 @@ export function commitmentPausesOn(
 export function eventsForPauseFold(kind: CommitmentKind, events: NormalizedEvent[]): NormalizedEvent[] {
   if (kind !== "resolution") return events;
   return events.map((event) =>
-    event.toState === "resolved" && !TICKET_SOURCE_SYSTEMS.has(event.system)
+    event.toState === "resolved" && !isTicketSourceEvent(event)
       ? { ...event, toState: null }
       : event,
   );
