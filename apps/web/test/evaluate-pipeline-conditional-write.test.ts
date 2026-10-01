@@ -24,6 +24,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -136,7 +137,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
       const caseRow = await prisma.case.create({
         data: {
           organizationId,
-          system: "zendesk",
+          system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
           externalId: "1",
           priority: "urgent",
           openedAt: OPENED,

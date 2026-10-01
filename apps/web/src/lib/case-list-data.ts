@@ -2,6 +2,7 @@ import "server-only";
 import { withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import type { CommitmentKind, CommitmentStatus } from "@sla/core";
 import { formatPriorityTier } from "./format";
+import { ISSUE_LINK_PROVIDERS } from "./providers";
 import type {
   CaseListCounts,
   CaseListData,
@@ -41,11 +42,7 @@ function worstOf<T extends { status: CommitmentStatus }>(rows: T[]): T | undefin
   )[0];
 }
 
-const LINK_SYSTEMS: Array<"jira" | "linear" | "github"> = [
-  "jira",
-  "linear",
-  "github",
-];
+const LINK_SYSTEMS = ISSUE_LINK_PROVIDERS;
 
 // Reverse of `PRIORITY_TIER_LABELS` (lib/format.ts) — the raw ticket
 // priority strings that map to each Stitch severity tier.
@@ -380,7 +377,7 @@ async function getCaseListDataInner(
       assigneeName: row.assigneeName,
       primaryLink: link
         ? {
-            system: link.system as "jira" | "linear" | "github",
+            system: link.system,
             externalId: link.externalId,
             confidence: link.confidence as "certain" | "probable",
             statusName:

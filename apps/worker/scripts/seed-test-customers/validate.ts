@@ -104,7 +104,11 @@ function emptyRow(name: string): CustomerRow {
 export async function collectReport(prisma: PrismaClient, organizationId: string): Promise<Report> {
   const [customers, cases, rawEvents, policies, policyVersionCount, calendars, calendarVersionCount, policyChanges, notifications, failures, users, invitations, integrations, summary] =
     await Promise.all([
-      prisma.customer.findMany({ where: { organizationId }, orderBy: { name: "asc" } }),
+      prisma.customer.findMany({
+        where: { organizationId },
+        orderBy: { name: "asc" },
+        include: { identities: { where: { provider: "zendesk", kind: "organization" }, select: { externalId: true } } },
+      }),
       prisma.case.findMany({
         where: { organizationId },
         include: {
@@ -134,7 +138,7 @@ export async function collectReport(prisma: PrismaClient, organizationId: string
   const rows = new Map<string | null, CustomerRow>();
   for (const c of customers) {
     const row = emptyRow(c.name);
-    row.zendeskOrgId = c.zendeskOrgId;
+    row.zendeskOrgId = c.identities[0]?.externalId ?? null;
     row.tier = c.tier;
     row.hasCalendarOverride = c.calendarId !== null;
     rows.set(c.id, row);
@@ -145,7 +149,7 @@ export async function collectReport(prisma: PrismaClient, organizationId: string
   const requestersByCustomer = new Map<string | null, Set<string>>();
   const totals: Report["totals"] = {
     customers: customers.length,
-    zendeskMappings: customers.filter((c) => c.zendeskOrgId !== null).length,
+    zendeskMappings: customers.filter((c) => c.identities.length > 0).length,
     requesters: 0,
     cases: cases.length,
     caseStatus: {},
@@ -504,8 +508,9 @@ export async function collectAll(prisma: PrismaClient, tenants: TenantDef[] = TE
       SELECT count(*)::bigint AS n FROM (SELECT "externalId" FROM cases WHERE "organizationId" IN (${ids})
         GROUP BY "externalId" HAVING count(DISTINCT "organizationId") > 1) x`),
     customerZendeskOrgIds: await shared(Prisma.sql`
-      SELECT count(*)::bigint AS n FROM (SELECT "zendeskOrgId" FROM customers WHERE "organizationId" IN (${ids})
-        GROUP BY "zendeskOrgId" HAVING count(DISTINCT "organizationId") > 1) x`),
+      SELECT count(*)::bigint AS n FROM (SELECT "externalId" FROM customer_identities
+        WHERE "organizationId" IN (${ids}) AND provider = 'zendesk' AND kind = 'organization'
+        GROUP BY "externalId" HAVING count(DISTINCT "organizationId") > 1) x`),
     jiraIssueKeys: await shared(Prisma.sql`
       SELECT count(*)::bigint AS n FROM (SELECT cl."externalId" FROM case_links cl JOIN cases ca ON ca.id = cl."caseId"
         WHERE ca."organizationId" IN (${ids}) AND cl.system = 'jira'

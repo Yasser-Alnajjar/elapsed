@@ -14,6 +14,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -114,7 +115,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runNextReplyCyclePipeline (real Postgres)",
     nextExternalId += 1;
     return (
       await prisma.case.create({
-        data: { organizationId, system: "zendesk", externalId: `case-${nextExternalId}`, openedAt: at("09:00") },
+        data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: `case-${nextExternalId}`, openedAt: at("09:00") },
       })
     ).id;
   }

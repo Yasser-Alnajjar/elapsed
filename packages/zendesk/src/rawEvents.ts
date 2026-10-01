@@ -57,6 +57,20 @@ export function mapTicketToRawEvent(ticket: ZendeskTicket, users: ZendeskUser[] 
 }
 
 /**
+ * Records "this ticket is gone": Zendesk keeps deleted tickets in the
+ * incremental export for a while, reduced to `{id, status: "deleted"}`, and a
+ * direct fetch of a ticket that no longer exists answers 404. Ingestion only
+ * records the fact; normalization turns it into a case soft-delete
+ * (`CanonicalBatch.deletedCaseExternalIds`), which the projector writes.
+ * Content-hashed, so a ticket reported deleted on every poll is one row.
+ */
+export function mapTicketDeletedToRawEvent(ticketId: number): RawEventInput {
+  const payload = { ticketId };
+  const sourceHash = computeSourceHash(payload);
+  return { providerEventId: `ticket_deleted:${ticketId}:${sourceHash}`, sourceHash, payload };
+}
+
+/**
  * Only `{ id, role }` is kept, not the full sideloaded user: role is the one
  * field the normalizer reads, and it avoids storing end users' names, emails
  * and phone numbers. It also means a new snapshot lands only when the role
@@ -108,7 +122,7 @@ export interface JiraLinkManifest {
  * every run (like SLA policies — no incremental filter is available), so the
  * full set of link ids seen in one run is exactly the set of relationships
  * currently active in Zendesk. Recorded as its own snapshot, separate from
- * the per-link `jira_link:` rows, so `runZendeskJiraLinkCorrelation`
+ * the per-link `jira_link:` rows, so `correlateZendeskJiraLinks`
  * (./correlate.ts) can tell "this ticket was unlinked from this issue in
  * Zendesk" apart from "we just haven't re-fetched it yet" — a Zendesk unlink
  * has no deletion event of its own to react to, only the link's absence from

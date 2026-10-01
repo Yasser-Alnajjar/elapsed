@@ -563,6 +563,11 @@ model SLAPolicyVersion {
 model SlaImportSummary {
   id                              String   @id @default(cuid())
   organizationId                  String   @unique
+  /// The provider whose policy import this summarises: the one with the
+  /// `policyImport` capability (N2.8). Null only for a row written before the
+  /// column existed and not yet refreshed. The counters below stay in that
+  /// provider's own terms (they are Zendesk concepts, and belong to its import).
+  provider                        IntegrationProvider?
   /// Reserved for filter conditions the importer can't represent at all;
   /// currently always 0 — every condition field is preserved generically
   /// (see `extractMatchFromFilter`, packages/zendesk), though only fields

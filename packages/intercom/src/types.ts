@@ -50,7 +50,7 @@ export interface IntercomConversation {
   updated_at: number;
   state: IntercomConversationState;
   priority?: string | null;
-  /** Resolved against the workspace's admin list (`IntercomAdmin`, fetched separately) to `Case.assigneeName` — see `runIntercomNormalization`. */
+  /** Resolved against the workspace's admin list (`IntercomAdmin`, fetched separately) to `Case.assigneeName` — see `buildIntercomBatch`. */
   admin_assignee_id?: number | string | null;
   contacts?: { contacts: IntercomConversationContactRef[] };
   source?: IntercomConversationSource;

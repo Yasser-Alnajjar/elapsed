@@ -14,10 +14,10 @@ export {
   resolveGithubActor,
   sortTimelineChronologically,
   deriveNormalizedEventsForPullRequest,
-  runGithubNormalization,
+  buildGithubBatch,
   UnknownGithubTimelineItemTypeError,
 } from "./normalize";
-export type { TimelineRecord, DerivedNormalizedEvent, GithubNormalizationResult } from "./normalize";
-export { extractIssueIdentifiers, runGithubCorrelation } from "./correlate";
-export type { CorrelationResult } from "./correlate";
+export type { TimelineRecord, DerivedNormalizedEvent } from "./normalize";
+export { correlateGithub, extractIssueIdentifiers } from "./correlate";
+export { githubAdapter, githubWebAdapter } from "./adapter";
 export { GITHUB_SOURCE_ROLE } from "./source-role";

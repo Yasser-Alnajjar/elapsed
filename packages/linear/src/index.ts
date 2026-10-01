@@ -14,10 +14,10 @@ export {
   resolveLinearActor,
   sortHistoriesChronologically,
   deriveNormalizedEventsForIssue,
-  runLinearNormalization,
+  buildLinearBatch,
   UnknownLinearStateTypeError,
 } from "./normalize";
-export type { HistoryRecord, DerivedNormalizedEvent, LinearNormalizationResult } from "./normalize";
-export { runLinearCorrelation } from "./correlate";
-export type { CaseRefResolution, CaseRefResolver, CorrelationResult } from "./correlate";
+export type { HistoryRecord, DerivedNormalizedEvent } from "./normalize";
+export { correlateLinear } from "./correlate";
+export { linearAdapter, linearWebAdapter } from "./adapter";
 export { LINEAR_SOURCE_ROLE } from "./source-role";

@@ -1,5 +1,6 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
 import type { Actor, NormalizedState } from "@sla/core";
+import type { CanonicalBatch, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import type { LinearHistoryEntry, LinearIssue, LinearWorkflowState } from "./types";
 import { LINEAR_SOURCE_ROLE } from "./source-role";
 
@@ -138,13 +139,6 @@ export function deriveNormalizedEventsForIssue(
   return events;
 }
 
-export interface LinearNormalizationResult {
-  issuesProcessed: number;
-  normalizedEventsWritten: number;
-  issuesSkippedNoCaseLink: number;
-  issuesFailed: { issueIdentifier: string; error: string }[];
-}
-
 function latestIssueSnapshots(
   rows: { id: string; payload: unknown; fetchedAt: Date }[],
 ): Map<string, { rawEventId: string; value: LinearIssue; fetchedAt: Date }> {
@@ -212,29 +206,19 @@ function groupHistoriesByIssueId(
 }
 
 /**
- * Projects every Linear issue linked to a Case (via a `certain` CaseLink —
- * the correlator's job, run before this) into NormalizedEvents on that Case.
- * Idempotent: each issue's own NormalizedEvents are replaced wholesale from a
- * fresh derivation, scoped to that issue's own RawEvents only, mirroring
- * `runJiraNormalization`.
+ * Derives the events of every Linear issue linked to a Case (via a `certain`
+ * CaseLink — the correlator's job, run before this), aimed at that case. The
+ * shared projector reconciles them; each issue's group is scoped to that
+ * issue's own RawEvents only, so another provider's events on the same case
+ * are never touched. Writes nothing.
  *
  * An issue with no `certain` CaseLink yet is skipped, not an error — most
  * Linear issues are internal engineering work with no customer-facing case
  * to attach to, and correlation coverage is expected to be partial (Phase 15).
  */
-export async function runLinearNormalization(
-  prisma: PrismaClient,
-  integrationId: string,
-): Promise<LinearNormalizationResult> {
+export async function buildLinearBatch(prisma: PrismaClient, integrationId: string): Promise<CanonicalBatch> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
   const organizationId = integration.organizationId;
-
-  const result: LinearNormalizationResult = {
-    issuesProcessed: 0,
-    normalizedEventsWritten: 0,
-    issuesSkippedNoCaseLink: 0,
-    issuesFailed: [],
-  };
 
   const [issueRows, historyRows, caseLinks] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -256,19 +240,15 @@ export async function runLinearNormalization(
   const historiesByIssueId = groupHistoriesByIssueId(historyRows);
   const caseIdByIdentifier = new Map(caseLinks.map((link) => [link.externalId, link.caseId]));
 
+  const eventGroups: EventGroup[] = [];
+  const failures: ProjectionFailure[] = [];
+
   for (const { rawEventId: issueRawEventId, value: issue } of latestIssues.values()) {
     const caseId = caseIdByIdentifier.get(issue.identifier);
-    if (!caseId) {
-      result.issuesSkippedNoCaseLink += 1;
-      continue;
-    }
+    if (!caseId) continue;
 
     try {
-      const derived = deriveNormalizedEventsForIssue(
-        issue,
-        historiesByIssueId.get(issue.id) ?? [],
-        issueRawEventId,
-      );
+      const derived = deriveNormalizedEventsForIssue(issue, historiesByIssueId.get(issue.id) ?? [], issueRawEventId);
 
       const ownRawEvents = await prisma.rawEvent.findMany({
         where: {
@@ -281,35 +261,26 @@ export async function runLinearNormalization(
         select: { id: true },
       });
 
-      await prisma.$transaction([
-        prisma.normalizedEvent.deleteMany({
-          where: { caseId, sourceRawEventId: { in: ownRawEvents.map((row) => row.id) } },
-        }),
-        prisma.normalizedEvent.createMany({
-          // `derived` is emitted in source order, so its index is the source sequence.
-          data: derived.map((event, sourceSequence) => ({
-            caseId,
-            sourceRawEventId: event.sourceRawEventId,
-            type: "state_changed" as const,
-            occurredAt: new Date(event.occurredAt),
-            actor: event.actor,
-            system: "linear" as const,
-            sourceRole: LINEAR_SOURCE_ROLE,
-            fromState: event.fromState,
-            toState: event.toState,
-            sourceSequence,
-          })) satisfies Prisma.NormalizedEventCreateManyInput[],
-        }),
-      ]);
-      result.issuesProcessed += 1;
-      result.normalizedEventsWritten += derived.length;
-    } catch (error) {
-      result.issuesFailed.push({
-        issueIdentifier: issue.identifier,
-        error: error instanceof Error ? error.message : String(error),
+      eventGroups.push({
+        target: { caseId },
+        ownRawEventIds: ownRawEvents.map((row) => row.id),
+        // `derived` is emitted in source order, so its index is the source sequence.
+        events: derived.map((event, sourceSequence) => ({
+          type: "state_changed" as const,
+          occurredAt: new Date(event.occurredAt),
+          actor: event.actor,
+          sourceRole: LINEAR_SOURCE_ROLE,
+          fromState: event.fromState,
+          toState: event.toState,
+          sourceRawEventId: event.sourceRawEventId,
+          sourceSequence,
+        })),
+        recordId: issue.identifier,
       });
+    } catch (error) {
+      failures.push({ id: issue.identifier, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
-  return result;
+  return { customers: [], cases: [], eventGroups, deletedCaseExternalIds: [], failures };
 }

@@ -1,5 +1,6 @@
 import { decryptCredentials, encryptCredentials, type Prisma, type PrismaClient } from "@sla/db";
 import type { LinearCredentials } from "./types";
+import { ReauthRequiredError } from "@sla/ingestion";
 
 /**
  * Thrown when Linear rejects the access token and there is no refresh path
@@ -8,7 +9,7 @@ import type { LinearCredentials } from "./types";
  * failure — callers should surface this rather than retrying, and never
  * delete the integration for it.
  */
-export class LinearReauthRequiredError extends Error {
+export class LinearReauthRequiredError extends ReauthRequiredError {
   constructor(message = "Linear integration requires reauthorization") {
     super(message);
     this.name = "LinearReauthRequiredError";

@@ -29,6 +29,7 @@ import type {
   UnmatchedCaseRow,
 } from "./types/dashboard";
 import type { IntegrationProvider } from "./types/integrations";
+import { isIssueLinkSystem } from "./providers";
 
 const COMMITMENT_KINDS: CommitmentKind[] = [
   "first_response",
@@ -40,8 +41,6 @@ const COMMITMENT_KINDS: CommitmentKind[] = [
 const UNMATCHED_CASES_LIMIT = 10;
 const FAILED_ALERTS_LIMIT = 10;
 
-const ISSUE_TRACKER_SYSTEMS = new Set(["jira", "linear", "github"]);
-
 /** Picks one active link to show per case — `certain` over `probable` when a case somehow carries both. */
 function preferredLink(
   links: {
@@ -51,7 +50,7 @@ function preferredLink(
     method: string;
   }[],
 ): LinkedIssueRef | null {
-  const trackerLinks = links.filter((l) => ISSUE_TRACKER_SYSTEMS.has(l.system));
+  const trackerLinks = links.filter((l) => isIssueLinkSystem(l.system));
   if (trackerLinks.length === 0) return null;
   const best =
     trackerLinks.find((l) => l.confidence === "certain") ?? trackerLinks[0]!;

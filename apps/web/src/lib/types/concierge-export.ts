@@ -1,6 +1,12 @@
 /** The integrations a Concierge dataset is exported from. */
 export type ConciergeSourceProvider = "jira" | "zendesk";
 
+/** The body field each provider's export route reads the chosen integration id from. */
+export const CONCIERGE_INTEGRATION_ID_FIELD = {
+  jira: "jiraIntegrationId",
+  zendesk: "zendeskIntegrationId",
+} as const satisfies Record<ConciergeSourceProvider, string>;
+
 /** Records updated in this many days are exported unless a request says otherwise; same window as the backfills. */
 export const DEFAULT_EXPORT_SINCE_DAYS = 90;
 export const MAX_EXPORT_SINCE_DAYS = 730;

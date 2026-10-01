@@ -27,7 +27,7 @@ async function contentFingerprint(prisma: PrismaClient, organizationId: string):
     where: { organizationId },
     orderBy: { externalId: "asc" },
     include: {
-      customer: { select: { name: true, zendeskOrgId: true, tier: true } },
+      customer: { select: { name: true, tier: true, identities: { select: { externalId: true }, orderBy: { externalId: "asc" } } } },
       caseLinks: { orderBy: { externalId: "asc" } },
       normalizedEvents: { orderBy: [{ occurredAt: "asc" }, { system: "asc" }, { sourceSequence: "asc" }, { type: "asc" }] },
       commitments: {
@@ -91,8 +91,24 @@ describe.skipIf(!TEST_DATABASE_URL)("seed-test-customers: 11 independent organiz
     // An unrelated tenant that must come through the seed untouched.
     const other = await prisma.organization.create({ data: { name: "Unrelated Tenant" } });
     bystanderId = other.id;
-    const customer = await prisma.customer.create({ data: { organizationId: other.id, name: "Bystander Inc", zendeskOrgId: "7100000001" } });
-    await prisma.case.create({ data: { organizationId: other.id, customerId: customer.id, externalId: "41001", system: "zendesk", openedAt: new Date("2026-09-01T00:00:00Z") } });
+    const customer = await prisma.customer.create({
+      data: {
+        organizationId: other.id,
+        name: "Bystander Inc",
+        identities: { create: { organizationId: other.id, provider: "zendesk", kind: "organization", externalId: "7100000001" } },
+      },
+    });
+    const bystanderZendesk = await prisma.integration.create({ data: { organizationId: other.id, provider: "zendesk", credentials: {} } });
+    await prisma.case.create({
+      data: {
+        organizationId: other.id,
+        customerId: customer.id,
+        externalId: "41001",
+        system: "zendesk",
+        sourceIntegrationId: bystanderZendesk.id,
+        openedAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
     await m.seed.seedTestCustomers(prisma, { reset: true });
   }, 300_000);
 
@@ -135,7 +151,8 @@ describe.skipIf(!TEST_DATABASE_URL)("seed-test-customers: 11 independent organiz
     expect(await prisma.case.count()).toBe(1474 + 1);
     expect(await prisma.customer.count()).toBe(121 + 1);
     expect(await prisma.user.count()).toBe(22);
-    expect(await prisma.integration.count()).toBe(22);
+    // 11 tenants x (Zendesk, Jira), plus the bystander's own Zendesk integration.
+    expect(await prisma.integration.count()).toBe(22 + 1);
   });
 
   it("passes every per-organization and cross-tenant validation check", async () => {
@@ -195,7 +212,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seed-test-customers: 11 independent organiz
     expect(await prisma.customer.count({ where: { organizationId: bystanderId } })).toBe(1);
     expect(await prisma.case.count({ where: { organizationId: bystanderId } })).toBe(1);
     expect(await prisma.commitment.count({ where: { case: { organizationId: bystanderId } } })).toBe(0);
-    expect(await prisma.integration.count({ where: { organizationId: bystanderId } })).toBe(0);
+    expect(await prisma.integration.count({ where: { organizationId: bystanderId } })).toBe(1);
   });
 
   it("never sends anything: no credentials config, Slack or SMTP rows, only placeholder tokens", async () => {

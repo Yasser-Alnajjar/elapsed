@@ -11,6 +11,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -105,7 +106,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
     await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
 
     const zCase = await prisma.case.create({
-      data: { organizationId, system: "zendesk", externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
+      data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: "case-1", priority: "urgent", openedAt: new Date("2026-09-17T10:00:00.000Z") },
     });
     await commitments.runCommitmentPipeline(prisma, organizationId);
 
@@ -144,7 +145,6 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
       data: {
         organizationId,
         name: "Acme",
-        zendeskOrgId: "555",
         identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "555" } },
       },
     });
@@ -161,7 +161,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA policy position matching (real 
     const zCase = await prisma.case.create({
       data: {
         organizationId,
-        system: "zendesk",
+        system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
         externalId: "ticket-2",
         customerId: customer.id,
         tags: ["d6", "customer-visible"],

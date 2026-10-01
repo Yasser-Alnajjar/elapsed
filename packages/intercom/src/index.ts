@@ -1,4 +1,5 @@
 export {
+  buildIntercomBatch,
   deriveNormalizedEventsForConversation,
   deriveCaseClosedAt,
   deriveIntercomSubject,
@@ -7,7 +8,6 @@ export {
   normalizeIntercomPriority,
   normalizeIntercomState,
   resolveIntercomActor,
-  runIntercomNormalization,
   sortPartsChronologically,
   UnknownIntercomStateError,
 } from "./normalize";
@@ -15,9 +15,9 @@ export type {
   ConversationPartRecord,
   DerivedNormalizedEvent,
   IntercomMessageBody,
-  NormalizationResult,
 } from "./normalize";
 export {
+  mapAdminToRawEvent,
   mapCompanyToRawEvent,
   mapContactToRawEvent,
   mapConversationPartToRawEvent,
@@ -45,3 +45,5 @@ export {
   IntercomReauthRequiredError,
 } from "./tokenLifecycle";
 export { INTERCOM_SOURCE_ROLE } from "./source-role";
+export { intercomAdapter, intercomWebAdapter } from "./adapter";
+export { renderIntercomConversation } from "./conversation";

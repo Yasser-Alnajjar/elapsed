@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import {
   extractZendeskWebhookTicketId,
   isZendeskWebhookTimestampFresh,
-  runZendeskNormalization,
   runZendeskWebhookIngest,
-  verifyZendeskWebhookSecret,
   ZendeskApiError,
   ZendeskPermissionDeniedError,
   ZendeskReauthRequiredError,
 } from "@sla/zendesk";
 import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
+import { normalizeAndProject, type IntegrationRef } from "@sla/ingestion";
+import { PROVIDERS, WEB_PROVIDERS } from "@/lib/providers";
 import { getZendeskOAuthConfig } from "@/lib/zendesk-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 
@@ -45,7 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     return NextResponse.json({ error: "Unknown webhook endpoint" }, { status: 404 });
   }
 
-  if (!verifyZendeskWebhookSecret(integration.webhookSecret, request.headers.get("authorization"))) {
+  if (!(await WEB_PROVIDERS.zendesk.verifyWebhook!(request.clone(), integration.webhookSecret))) {
     return NextResponse.json({ error: "Invalid webhook credentials" }, { status: 401 });
   }
 
@@ -99,15 +99,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
       data: { status: "connected" },
     });
 
-    // The ticket is gone: its Case was just soft-deleted, there's nothing new
-    // to normalize, and the pipeline tail would only re-evaluate commitments
-    // that the now-excluded case no longer contributes to.
+    const integrationRef: IntegrationRef = {
+      id: integration.id,
+      organizationId: integration.organizationId,
+      provider: integration.provider,
+      status: integration.status,
+    };
+    const normalizeTicket = () =>
+      normalizeAndProject(PROVIDERS.zendesk, { prisma, integration: integrationRef, mode: "full", externalIds: [String(ticketId)] });
+
+    // The ticket is gone: ingest recorded the deletion, and normalizing it
+    // soft-deletes its Case. There's nothing new to derive, and the pipeline
+    // tail would only re-evaluate commitments that the now-excluded case no
+    // longer contributes to.
     if (ingest.ticketDeleted) {
+      await withOrganizationSlaLock(prisma, integration.organizationId, normalizeTicket);
       return NextResponse.json({ status: "deleted", ticketId });
     }
 
     const { result, claims } = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
-      await runZendeskNormalization(prisma, integration.id, { ticketIds: [ticketId] });
+      await normalizeTicket();
       // Only this ticket's case: the lock is held for one ticket's worth of
       // work, not the organization's.
       const cases = await prisma.case.findMany({

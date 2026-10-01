@@ -5,7 +5,7 @@ import {
   historyEntryOccurredAt,
   normalizeLinearStateType,
   resolveLinearActor,
-  runLinearNormalization,
+  buildLinearBatch,
   sortHistoriesChronologically,
   UnknownLinearStateTypeError,
   type HistoryRecord,
@@ -213,7 +213,7 @@ describe("deriveNormalizedEventsForIssue", () => {
   });
 });
 
-describe("runLinearNormalization — history entries rewritten in place", () => {
+describe("buildLinearBatch — history entries rewritten in place", () => {
   interface FakeRawEvent {
     id: string;
     providerEventId: string;
@@ -222,7 +222,6 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
   }
 
   function fakePrisma(rawEvents: FakeRawEvent[]) {
-    const created: { sourceRawEventId: string; fromState: string | null; toState: string; sourceSequence: number }[] = [];
     const prisma = {
       integration: { findUniqueOrThrow: async () => ({ id: "integ-1", organizationId: "org-1" }) },
       rawEvent: {
@@ -233,16 +232,17 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
         },
       },
       caseLink: { findMany: async () => [{ caseId: "case-1", externalId: issue.identifier }] },
-      normalizedEvent: {
-        deleteMany: () => "delete",
-        createMany: ({ data }: { data: typeof created }) => {
-          created.push(...data);
-          return "create";
-        },
-      },
-      $transaction: async (ops: unknown[]) => ops,
     } as unknown as PrismaClient;
-    return { prisma, created };
+    return { prisma };
+  }
+
+  /** The events the batch derives for the one linked issue, aimed at its case. */
+  async function derivedEvents(prisma: PrismaClient) {
+    const batch = await buildLinearBatch(prisma, "integ-1");
+    expect(batch.failures).toEqual([]);
+    expect(batch.eventGroups).toHaveLength(1);
+    expect(batch.eventGroups[0]!.target).toEqual({ caseId: "case-1" });
+    return batch.eventGroups[0]!.events;
   }
 
   it("projects the latest version of a rewritten entry, not the stale first fetch", async () => {
@@ -253,7 +253,7 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       fromState: backlogState,
       toState,
     });
-    const { prisma, created } = fakePrisma([
+    const { prisma } = fakePrisma([
       { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
       // First fetch (a row written before the hash suffix existed): Backlog -> Started.
       {
@@ -271,9 +271,8 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       },
     ]);
 
-    const result = await runLinearNormalization(prisma, "integ-1");
+    const created = await derivedEvents(prisma);
 
-    expect(result.issuesProcessed).toBe(1);
     expect(created.map((e) => [e.fromState, e.toState, e.sourceSequence])).toEqual([
       [null, "open", 0],
       ["open", "resolved", 1],
@@ -290,14 +289,14 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       fromState: backlogState,
       toState,
     });
-    const { prisma, created } = fakePrisma([
+    const { prisma } = fakePrisma([
       { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
       { id: "raw_a1", providerEventId: `issue_history:${issue.id}:h1:a1`, payload: entry(startedState, "2026-01-01T10:10:00.000Z"), fetchedAt: new Date("2026-01-01T10:11:00Z") },
       { id: "raw_b", providerEventId: `issue_history:${issue.id}:h1:b`, payload: entry(completedState, "2026-01-01T10:20:00.000Z"), fetchedAt: new Date("2026-01-01T10:21:00Z") },
       { id: "raw_a2", providerEventId: `issue_history:${issue.id}:h1:a2`, payload: entry(startedState, "2026-01-01T10:30:00.000Z"), fetchedAt: new Date("2026-01-01T10:31:00Z") },
     ]);
 
-    await runLinearNormalization(prisma, "integ-1");
+    const created = await derivedEvents(prisma);
 
     expect(created.map((e) => [e.fromState, e.toState])).toEqual([
       [null, "open"],
@@ -315,7 +314,7 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       fromState: backlogState,
       toState,
     });
-    const { prisma, created } = fakePrisma([
+    const { prisma } = fakePrisma([
       { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
       // Newer version stored first (e.g. the worker raced a manual backfill) ...
       { id: "raw_new", providerEventId: `issue_history:${issue.id}:h1:new`, payload: entry(completedState, "2026-01-01T10:30:00.000Z"), fetchedAt: new Date("2026-01-01T10:31:00Z") },
@@ -323,13 +322,13 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       { id: "raw_old", providerEventId: `issue_history:${issue.id}:h1:old`, payload: entry(startedState, "2026-01-01T10:10:00.000Z"), fetchedAt: new Date("2026-01-01T10:32:00Z") },
     ]);
 
-    await runLinearNormalization(prisma, "integ-1");
+    const created = await derivedEvents(prisma);
 
     expect(created[1]).toMatchObject({ toState: "resolved", sourceRawEventId: "raw_new" });
   });
 
   it("prefers a row carrying updatedAt over a legacy row without one, whatever their fetch order", async () => {
-    const { prisma, created } = fakePrisma([
+    const { prisma } = fakePrisma([
       { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
       {
         id: "raw_legacy",
@@ -345,7 +344,7 @@ describe("runLinearNormalization — history entries rewritten in place", () => 
       },
     ]);
 
-    await runLinearNormalization(prisma, "integ-1");
+    const created = await derivedEvents(prisma);
 
     expect(created[1]).toMatchObject({ toState: "in_progress", sourceRawEventId: "raw_current" });
   });

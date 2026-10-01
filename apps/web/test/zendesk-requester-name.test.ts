@@ -12,6 +12,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -80,7 +81,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk requester name vs. Customer (real P
   it("an organization-less ticket gets requesterName but no Customer", async () => {
     await seedTicket(ticketRawEvent({ organization_id: null, requester_name: "Ahmed" }));
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseRow = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } });
     expect(caseRow.customerId).toBeNull();
@@ -101,7 +102,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk requester name vs. Customer (real P
     });
     await seedTicket(ticketRawEvent({ organization_id: 456, requester_name: "Ahmed" }));
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseRow = await prisma.case.findFirstOrThrow({
       where: { organizationId, externalId: "1" },
@@ -118,8 +119,8 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk requester name vs. Customer (real P
   it("a ticket whose requester couldn't be resolved to a name gets requesterName: null, not an error", async () => {
     await seedTicket(ticketRawEvent({ organization_id: null, requester_name: null }));
 
-    await expect(zendesk.runZendeskNormalization(prisma, integrationId)).resolves.toMatchObject({
-      ticketsFailed: [],
+    await expect(normalizeZendesk(prisma, integrationId)).resolves.toMatchObject({
+      failures: [],
     });
 
     const caseRow = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } });
@@ -139,7 +140,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk requester name vs. Customer (real P
     });
     // First sync: as if ingested before this feature existed (no requester_name on the snapshot).
     await seedTicket(ticketRawEvent({ organization_id: 456 }));
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     let caseRow = await prisma.case.findFirstOrThrow({
       where: { organizationId, externalId: "1" },
@@ -157,7 +158,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk requester name vs. Customer (real P
         payload: ticketRawEvent({ organization_id: 456, requester_name: "Ahmed" }),
       },
     });
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     caseRow = await prisma.case.findFirstOrThrow({
       where: { organizationId, externalId: "1" },

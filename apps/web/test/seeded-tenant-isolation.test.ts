@@ -191,7 +191,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seeded multi-tenant fixture isolation (real
       const orgId = session.user.organizationId;
       expect(orgId).toBe(tenant.orgId);
 
-      const caseList = await lib.getCaseListData(prisma, orgId, { pageSize: undefined });
+      const caseList = await lib.getCaseListData(prisma, orgId, { pageSize: undefined }, now);
       const listed = caseList.cases.map((c) => c.externalId).sort();
       // 134 seeded cases, one soft-deleted (hidden from the default list) — and every one of them ours.
       expect(listed).toHaveLength(133);
@@ -249,7 +249,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seeded multi-tenant fixture isolation (real
 
   it("control: the leak detector really fires when one tenant's data is judged as another's", async () => {
     const [a, b] = tenants as [Tenant, Tenant];
-    const bsCases = await lib.getCaseListData(prisma, b.orgId, { pageSize: undefined });
+    const bsCases = await lib.getCaseListData(prisma, b.orgId, { pageSize: undefined }, now);
     expect(() => expectNoForeignData(a, bsCases)).toThrow(/leaked/);
     expect(() => expectNoForeignData(a, `ticket ${b.markers.ticketIds[0]} requested by ${b.markers.requesters[0]}`)).toThrow(/leaked/);
     expect(() => expectNoForeignData(a, `ticket ${a.markers.ticketIds[0]} requested by ${a.markers.requesters[0]}`)).not.toThrow();

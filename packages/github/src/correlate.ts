@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
+import type { CorrelationOutput, LinkFact } from "@sla/ingestion";
 import type { GithubPullRequest } from "./types";
 import { GITHUB_SOURCE_ROLE } from "./source-role";
 
@@ -44,13 +45,6 @@ function latestPullRequestsById(
   return byId;
 }
 
-export interface CorrelationResult {
-  pullRequestsEvaluated: number;
-  caseLinksCreated: number;
-  unmatchedNoIdentifier: number;
-  unmatchedNoCaseLink: number;
-}
-
 /**
  * Deterministic-tier correlator, but transitively rather than through a
  * Zendesk-shaped link object the way Jira's remote links / Linear's
@@ -67,22 +61,18 @@ export interface CorrelationResult {
  * identifier that doesn't match anything, or a PR with no identifier in its
  * title/branch at all, is left unlinked and counted, never guessed at.
  *
- * Must run before `runGithubNormalization`. Depends on Jira's/Linear's own
+ * Must be projected before `buildGithubBatch`. Depends on Jira's/Linear's own
  * correlator having already run for this organization — if it hasn't yet
  * this cycle, matches are simply deferred to the next poll (upsert-based,
  * self-healing, same as Jira/Linear).
  */
-export async function runGithubCorrelation(prisma: PrismaClient, integrationId: string): Promise<CorrelationResult> {
+export async function correlateGithub(prisma: PrismaClient, integrationId: string): Promise<CorrelationOutput> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
   const organizationId = integration.organizationId;
   const { owner, repo } = integration.credentials as unknown as { owner: string; repo: string };
 
-  const result: CorrelationResult = {
-    pullRequestsEvaluated: 0,
-    caseLinksCreated: 0,
-    unmatchedNoIdentifier: 0,
-    unmatchedNoCaseLink: 0,
-  };
+  const output: CorrelationOutput = { links: [], sweeps: [], evaluated: 0, unmatched: {} };
+  const unmatch = (reason: string) => (output.unmatched[reason] = (output.unmatched[reason] ?? 0) + 1);
 
   const pullRequestRows = await prisma.rawEvent.findMany({
     where: { integrationId, providerEventId: { startsWith: "pull_request:" } },
@@ -90,12 +80,12 @@ export async function runGithubCorrelation(prisma: PrismaClient, integrationId: 
   });
 
   const latestPullRequests = latestPullRequestsById(pullRequestRows);
-  result.pullRequestsEvaluated = latestPullRequests.size;
+  output.evaluated = latestPullRequests.size;
 
   for (const { pr, rawEventId, observedAt } of latestPullRequests.values()) {
     const identifiers = new Set([...extractIssueIdentifiers(pr.title), ...extractIssueIdentifiers(pr.headRefName)]);
     if (identifiers.size === 0) {
-      result.unmatchedNoIdentifier += 1;
+      unmatch("noIdentifier");
       continue;
     }
 
@@ -110,7 +100,7 @@ export async function runGithubCorrelation(prisma: PrismaClient, integrationId: 
     });
 
     if (matchedLinks.length === 0) {
-      result.unmatchedNoCaseLink += 1;
+      unmatch("noCaseLink");
       continue;
     }
 
@@ -118,59 +108,23 @@ export async function runGithubCorrelation(prisma: PrismaClient, integrationId: 
     const distinctCaseIds = [...new Set(matchedLinks.map((link) => link.caseId))];
 
     for (const caseId of distinctCaseIds) {
-      const where = { caseId_system_externalId: { caseId, system: "github" as const, externalId } };
-      const existing = await prisma.caseLink.findUnique({ where });
-      const evidence = {
-        title: pr.title,
-        headRefName: pr.headRefName,
-        matchedIdentifiers: [...identifiers],
-      } as unknown as Prisma.InputJsonValue;
-
-      await prisma.caseLink.upsert({
-        where,
-        update: { evidence },
-        create: {
-          caseId,
-          system: "github",
-          externalId,
-          method: "pattern",
-          confidence: "certain",
-          evidence,
-          confirmedAt: new Date(),
-        },
-      });
-
-      if (!existing) {
-        result.caseLinksCreated += 1;
-      }
-
-      // Checked independently of `existing`: a CaseLink can persist without
-      // its `issue_linked` event ever having landed (e.g. a prior run
-      // created the link but was interrupted before emitting the event),
-      // and gating solely on the link's own existence would leave that
-      // drift permanent.
-      const existingLinkEvent = await prisma.normalizedEvent.findFirst({
-        where: { caseId, type: "issue_linked", sourceRawEventId: rawEventId },
-        select: { id: true },
-      });
-
-      if (!existingLinkEvent) {
-        await prisma.normalizedEvent.create({
-          data: {
-            caseId,
-            sourceRawEventId: rawEventId,
-            type: "issue_linked",
-            occurredAt: observedAt,
-            actor: "system",
-            system: "github",
-            sourceRole: GITHUB_SOURCE_ROLE,
-            fromState: null,
-            toState: null,
-          },
-        });
-      }
+      const fact: LinkFact = {
+        caseId,
+        system: "github",
+        externalId,
+        method: "pattern",
+        methodOnUpdate: "keep",
+        evidence: { title: pr.title, headRefName: pr.headRefName, matchedIdentifiers: [...identifiers] },
+        evidenceMode: "replace",
+        sourceRole: GITHUB_SOURCE_ROLE,
+        linkedEvent: { sourceRawEventId: rawEventId, occurredAt: observedAt },
+        // A link can persist without its `issue_linked` event ever having
+        // landed (a run interrupted between the two writes of an older version).
+        repairLinkedEvent: true,
+      };
+      output.links.push(fact);
     }
   }
 
-  return result;
+  return output;
 }

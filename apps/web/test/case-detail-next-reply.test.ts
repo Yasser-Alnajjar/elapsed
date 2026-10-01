@@ -117,7 +117,7 @@ function fakePrisma(
     },
     normalizedEvent: { findMany: async () => events },
     rawEvent: { findMany: async () => [], findFirst: async () => null },
-    integration: { findUnique: async () => null },
+    integration: { findMany: async () => [] },
     organization: {
       findUnique: async () => ({ engineeringLegTargetMinutes: null }),
     },

@@ -1,5 +1,6 @@
 import { fetchWithRetry } from "@sla/http-retry";
 import type { JiraChangelogPage, JiraCredentials, JiraIssue, JiraRemoteLink, JiraSearchPage, JiraStatus } from "./types";
+import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
 const SEARCH_PAGE_SIZE = 100;
 
@@ -21,6 +22,7 @@ export class JiraApiError extends Error {
  * `JiraApiError` so existing `status` checks keep working.
  */
 export class JiraPermissionDeniedError extends JiraApiError {
+  readonly [PERMISSION_DENIED_BRAND] = true as const;
   constructor(url: string) {
     super(403, url);
     this.name = "JiraPermissionDeniedError";

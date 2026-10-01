@@ -39,23 +39,16 @@ export async function POST() {
     const backfill = await runIntercomBackfill(prisma, integration.id);
     // Projection, commitments, and evaluation — deferred while a concurrently
     // running tracker backfill hasn't finished (see projectAndEvaluateSourceSyncs).
-    const {
-      intercom,
-      jira,
-      linear,
-      commitments,
-      evaluation,
-      pendingProviders,
-    } = await projectAndEvaluateSourceSyncs(
+    const { providers, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
       prisma,
       session.user.organizationId,
     );
 
     return NextResponse.json({
       backfill,
-      normalization: intercom?.normalization,
-      jira,
-      linear,
+      normalization: providers.intercom?.normalization,
+      jira: providers.jira,
+      linear: providers.linear,
       commitments,
       evaluation,
       pendingProviders,

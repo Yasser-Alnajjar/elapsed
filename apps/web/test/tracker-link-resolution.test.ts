@@ -7,7 +7,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { correlateJira } from "./correlate-helper";
+import { correlateIntegration, correlateJira } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -159,7 +159,7 @@ describe.skipIf(!TEST_DATABASE_URL)("tracker link resolution (real Postgres)", (
       const c = await seedCase("9001", "intercom");
       await seedAttachment("https://app.intercom.com/a/apps/ws1/conversations/9001");
 
-      const result = await linear.runLinearCorrelation(prisma, linearIntegrationId, await resolver());
+      const result = await correlateIntegration(prisma, linearIntegrationId);
 
       expect(result).toMatchObject({ caseLinksCreated: 1, unmatchedUnrecognizedUrl: 0 });
       expect(await prisma.caseLink.count({ where: { caseId: c.id, system: "linear", externalId: "ENG-1" } })).toBe(1);
@@ -169,7 +169,7 @@ describe.skipIf(!TEST_DATABASE_URL)("tracker link resolution (real Postgres)", (
       await connectZendesk();
       await seedAttachment("https://old.zendesk.com/agent/tickets/1");
 
-      const result = await linear.runLinearCorrelation(prisma, linearIntegrationId, await resolver());
+      const result = await correlateIntegration(prisma, linearIntegrationId);
 
       expect(result).toMatchObject({ caseLinksCreated: 0, unmatchedUnrecognizedUrl: 1 });
     });

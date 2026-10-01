@@ -31,24 +31,24 @@ export {
   resolveJiraActor,
   sortHistoriesChronologically,
   deriveNormalizedEventsForIssue,
-  runJiraNormalization,
+  buildJiraBatch,
   UnknownJiraStatusCategoryError,
   UnknownJiraStatusError,
 } from "./normalize";
 export type {
   ChangelogRecord,
   DerivedNormalizedEvent,
-  JiraNormalizationResult,
   JiraNormalizationScope,
 } from "./normalize";
-export { runJiraCorrelation } from "./correlate";
-export type { CaseRefResolution, CaseRefResolver, CorrelationResult, JiraCorrelationScope } from "./correlate";
+export { correlateJira } from "./correlate";
+export type { JiraCorrelationScope } from "./correlate";
+export { jiraAdapter, jiraWebAdapter } from "./adapter";
 export {
   extractJiraWebhookIssueKey,
   generateWebhookSecret,
   isJiraIssueDeletedEvent,
   isJiraWebhookTimestampFresh,
-  markCaseLinksUnlinkedForIssue,
+  recordJiraIssueDeletion,
   runJiraWebhookIngest,
   shouldIngestJiraWebhookEvent,
   verifyJiraWebhookSecret,

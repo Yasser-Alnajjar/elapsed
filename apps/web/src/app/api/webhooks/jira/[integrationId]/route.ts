@@ -6,21 +6,31 @@ import {
   JiraApiError,
   JiraPermissionDeniedError,
   JiraReauthRequiredError,
-  markCaseLinksUnlinkedForIssue,
-  runJiraCorrelation,
-  runJiraNormalization,
+  recordJiraIssueDeletion,
   runJiraWebhookIngest,
   shouldIngestJiraWebhookEvent,
-  verifyJiraWebhookSecret,
-  verifyJiraWebhookSignature,
   type JiraWebhookPayload,
 } from "@sla/jira";
-import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
+import { getPrismaClient, withOrganizationSlaLock, type PrismaClient } from "@sla/db";
+import { projectIssueRemoval, syncIntegration, type IntegrationRef } from "@sla/ingestion";
+import { PROVIDERS, WEB_PROVIDERS } from "@/lib/providers";
 import { caseRefResolverFor } from "@/lib/case-ref";
 import { getJiraOAuthConfig } from "@/lib/jira-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 
 export const maxDuration = 60;
+
+/** Ends every active link to an issue the webhook reports gone, under the organization lock. */
+async function unlinkDeletedIssue(
+  prisma: PrismaClient,
+  integration: { id: string; organizationId: string },
+  issueKey: string,
+): Promise<void> {
+  await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
+    const removal = await recordJiraIssueDeletion(prisma, integration.id, issueKey);
+    if (removal) await projectIssueRemoval(prisma, removal);
+  });
+}
 
 /**
  * Jira webhook receiver (roadmap step 20). Unauthenticated by session — Jira
@@ -52,19 +62,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     return NextResponse.json({ error: "Unknown webhook endpoint" }, { status: 404 });
   }
 
-  // Read the raw body once: the signature covers these exact bytes, so it
-  // must be verified before (and independently of) JSON parsing.
-  const rawBody = await request.text();
-  const signature = request.headers.get("x-hub-signature");
-  const authenticated =
-    signature !== null
-      ? // A signed delivery must verify on its own; a bad signature never
-        // falls through to the legacy query-string check.
-        verifyJiraWebhookSignature(integration.webhookSecret, rawBody, signature)
-      : verifyJiraWebhookSecret(integration.webhookSecret, new URL(request.url).searchParams.get("secret"));
+  // The adapter reads the raw body (the signature covers those exact bytes)
+  // from a clone, so it is verified before, and independently of, JSON parsing.
+  // A signed delivery must verify on its own; a bad signature never falls
+  // through to the legacy query-string check.
+  const authenticated = await WEB_PROVIDERS.jira.verifyWebhook!(request.clone(), integration.webhookSecret);
   if (!authenticated) {
     return NextResponse.json({ error: "Invalid webhook signature or secret" }, { status: 401 });
   }
+  const rawBody = await request.text();
 
   // A disconnected integration has no credentials to ingest with — accept
   // the delivery (so it doesn't show as a failing webhook in Jira admin and
@@ -92,9 +98,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     if (deletedIssueKey === null) {
       return NextResponse.json({ error: "No issue key found in webhook payload" }, { status: 400 });
     }
-    await withOrganizationSlaLock(prisma, integration.organizationId, () =>
-      markCaseLinksUnlinkedForIssue(prisma, integration.id, deletedIssueKey),
-    );
+    await unlinkDeletedIssue(prisma, integration, deletedIssueKey);
     await prisma.integration.update({
       where: { id: integration.id },
       data: { lastSyncAt: new Date(), lastSyncError: null },
@@ -121,13 +125,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     );
   }
 
+  const integrationRef: IntegrationRef = {
+    id: integration.id,
+    organizationId: integration.organizationId,
+    provider: integration.provider,
+    status: integration.status,
+  };
+
   try {
     await runJiraWebhookIngest(prisma, integration.id, config, issueKey);
     const { result, claims } = await withOrganizationSlaLock(prisma, integration.organizationId, async () => {
-      await runJiraCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, integration.organizationId), {
-        issueKey,
+      await syncIntegration(PROVIDERS.jira, {
+        prisma,
+        integration: integrationRef,
+        mode: "full",
+        resolveCaseRef: await caseRefResolverFor(prisma, integration.organizationId),
+        externalIds: [issueKey],
       });
-      await runJiraNormalization(prisma, integration.id, { issueKeys: [issueKey] });
       // Every case this issue is (or was, if just unlinked) linked to —
       // those are the only cases the issue's events can have changed.
       const links = await prisma.caseLink.findMany({
@@ -160,9 +174,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     // explicit jira:issue_deleted event, so it gets the same handling
     // instead of being silently swallowed (roadmap task 2.6).
     if (error instanceof JiraApiError && error.status === 404) {
-      await withOrganizationSlaLock(prisma, integration.organizationId, () =>
-        markCaseLinksUnlinkedForIssue(prisma, integration.id, issueKey),
-      );
+      await unlinkDeletedIssue(prisma, integration, issueKey);
       return NextResponse.json({ status: "ignored", reason: "issue not found" });
     }
 

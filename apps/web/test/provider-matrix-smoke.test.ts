@@ -223,7 +223,7 @@ describe.skipIf(!TEST_DATABASE_URL)("provider matrix smoke (real Postgres)", () 
       const sync = await sourceSync.projectAndEvaluateSourceSyncs(prisma, organizationId);
       expect(sync.pendingProviders).toEqual([]);
       expect(sync.evaluation).not.toBeNull();
-      expect(sync[tracker]?.correlation).toMatchObject({ caseLinksCreated: 1, unmatchedUnrecognizedUrl: 0, unmatchedNoCase: 0 });
+      expect(sync.providers[tracker]?.correlation).toMatchObject({ created: 1, unmatched: {} });
 
       // ---- the case belongs to its source integration ----
       const caseRow = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId } });

@@ -27,6 +27,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -169,7 +170,6 @@ async function seedOrg(
     data: {
       organizationId,
       name: `${label} Customer`,
-      zendeskOrgId: `${label}-zd-org`,
       identities: {
         create: { organizationId, provider: "zendesk", kind: "organization", externalId: `${label}-zd-org` },
       },
@@ -179,7 +179,7 @@ async function seedOrg(
   const caseRow = await prisma.case.create({
     data: {
       organizationId,
-      system: "zendesk",
+      system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
       customerId: customer.id,
       externalId: `${label}-ticket-1`,
       subject: `${label} subject`,
@@ -325,6 +325,7 @@ async function seedExtras(
   await prisma.slaImportSummary.create({
     data: {
       organizationId: org.organizationId,
+      provider: "zendesk",
       unsupportedConditions: label === A ? 11 : 22,
     },
   });
@@ -630,7 +631,6 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       provider: "zendesk" as const,
       kind: "organization",
       externalId,
-      legacy: { zendeskOrgId: externalId },
     });
 
     it("resolves an identity only inside its own organization", async () => {

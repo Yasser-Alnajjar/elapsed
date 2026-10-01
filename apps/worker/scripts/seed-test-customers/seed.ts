@@ -32,14 +32,8 @@ import {
   type NotificationCandidate,
 } from "@sla/commitments";
 import { recordSlaImportSummary, type Prisma, type PrismaClient } from "@sla/db";
-import { runJiraCorrelation, runJiraNormalization } from "@sla/jira";
-import {
-  runZendeskBusinessCalendarImport,
-  runZendeskJiraLinkCorrelation,
-  runZendeskNormalization,
-  runZendeskSlaPolicyImport,
-  type SlaPolicyImportResult,
-} from "@sla/zendesk";
+import { correlateAndProject, normalizeAndProject, type IntegrationRef } from "@sla/ingestion";
+import { runZendeskSlaPolicyImport, type SlaPolicyImportResult } from "@sla/zendesk";
 import {
   DEFAULT_ANCHOR_ISO,
   ENGINEERING_LEG_TARGET_MINUTES,
@@ -51,6 +45,7 @@ import {
   type TenantDef,
 } from "./config";
 import { caseRefResolverFor } from "../../src/case-ref";
+import { PROVIDERS } from "../../src/providers";
 import { buildSeedDataset, NATIVE_WEEKLY, type SeedDataset, type SeedRawEvent } from "./dataset";
 import { DAY, HOUR, MIN } from "./scenarios";
 
@@ -250,6 +245,7 @@ async function seedTenant(prisma: PrismaClient, tenant: TenantDef, anchorDate: D
   const commitments = await runCommitmentPipeline(prisma, organizationId);
   if (commitments.casesFailed.length > 0) throw new Error(`commitment pipeline failed: ${JSON.stringify(commitments.casesFailed)}`);
   await recordSlaImportSummary(prisma, organizationId, {
+    provider: "zendesk",
     unsupportedConditions: slaImport.unsupportedConditions,
     unsupportedMetrics: slaImport.unsupportedMetrics,
     policiesWithNoUsableTargets: slaImport.policiesWithNoUsableTargets,
@@ -360,16 +356,26 @@ async function derive(
   jiraId: string,
   log: (message: string) => void,
 ): Promise<void> {
-  const normalization = await runZendeskNormalization(prisma, zendeskId, { mode: "full" });
-  if (normalization.ticketsFailed.length > 0) throw new Error(`Zendesk normalization failed: ${JSON.stringify(normalization.ticketsFailed)}`);
-  await runZendeskBusinessCalendarImport(prisma, zendeskId);
-  await runZendeskJiraLinkCorrelation(prisma, zendeskId);
-  const { organizationId } = await prisma.integration.findUniqueOrThrow({ where: { id: jiraId }, select: { organizationId: true } });
-  await runJiraCorrelation(prisma, jiraId, await caseRefResolverFor(prisma, organizationId));
-  const jiraNormalization = await runJiraNormalization(prisma, jiraId);
-  if (jiraNormalization.issuesFailed.length > 0) throw new Error(`Jira normalization failed: ${JSON.stringify(jiraNormalization.issuesFailed)}`);
+  const refOf = async (id: string): Promise<IntegrationRef> => {
+    const row = await prisma.integration.findUniqueOrThrow({ where: { id } });
+    return { id: row.id, organizationId: row.organizationId, provider: row.provider, status: row.status };
+  };
+  const zendesk = await refOf(zendeskId);
+  const jira = await refOf(jiraId);
+  const normalization = await normalizeAndProject(PROVIDERS.zendesk, { prisma, integration: zendesk, mode: "full" });
+  if (normalization.failures.length > 0) throw new Error(`Zendesk normalization failed: ${JSON.stringify(normalization.failures)}`);
+  await PROVIDERS.zendesk.importCalendars!({
+    prisma,
+    integration: zendesk,
+    ensureDefaultCalendarVersion: (orgId) => ensureDefaultCalendarVersion(prisma, orgId),
+  });
+  await correlateAndProject(PROVIDERS.zendesk, { prisma, integration: zendesk, resolveCaseRef: null });
+  const resolveCaseRef = await caseRefResolverFor(prisma, jira.organizationId);
+  await correlateAndProject(PROVIDERS.jira, { prisma, integration: jira, resolveCaseRef });
+  const jiraNormalization = await normalizeAndProject(PROVIDERS.jira, { prisma, integration: jira, mode: "full" });
+  if (jiraNormalization.failures.length > 0) throw new Error(`Jira normalization failed: ${JSON.stringify(jiraNormalization.failures)}`);
   log(
-    `derived: ${normalization.customersUpserted} customers, ${normalization.casesUpserted} cases, ${normalization.normalizedEventsWritten} zendesk events, ${jiraNormalization.issuesProcessed} linked jira issues (${jiraNormalization.issuesSkippedNoCaseLink} unlinked)`,
+    `derived: ${normalization.customersUpserted} customers, ${normalization.casesUpserted} cases, ${normalization.eventsDerived} zendesk events, ${jiraNormalization.eventsDerived} jira events on linked issues`,
   );
 }
 
@@ -379,8 +385,11 @@ async function derive(
  * `setCustomerCalendar`. Native calendar/policy go through the same helpers the settings UI uses.
  */
 async function applyCustomerMetadata(prisma: PrismaClient, organizationId: string, dataset: SeedDataset): Promise<void> {
-  const customers = await prisma.customer.findMany({ where: { organizationId }, select: { id: true, zendeskOrgId: true } });
-  const idByZendeskOrg = new Map(customers.map((c) => [c.zendeskOrgId, c.id]));
+  const identities = await prisma.customerIdentity.findMany({
+    where: { organizationId, provider: "zendesk", kind: "organization" },
+    select: { customerId: true, externalId: true },
+  });
+  const idByZendeskOrg = new Map(identities.map((i) => [i.externalId, i.customerId]));
 
   for (const def of dataset.customers) {
     const id = idByZendeskOrg.get(String(def.zendeskOrgId));

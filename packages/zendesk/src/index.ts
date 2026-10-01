@@ -1,6 +1,6 @@
 export {
+  buildZendeskBatch,
   deriveNormalizedEventsForTicket,
-  diffNormalizedEvents,
   findChangedTicketIds,
   isPublicCommentEvent,
   latestSnapshotById,
@@ -9,7 +9,6 @@ export {
   normalizeZendeskStatus,
   publicCommentBodiesInAudit,
   resolveActor,
-  runZendeskNormalization,
   sortAuditsChronologically,
   UnknownZendeskStatusError,
 } from "./normalize";
@@ -22,13 +21,13 @@ export {
   mapScheduleHolidaysToRawEvent,
   mapSlaPolicyManifestToRawEvent,
   mapSlaPolicyToRawEvent,
+  mapTicketDeletedToRawEvent,
   mapTicketToRawEvent,
   mapUserToRawEvent,
 } from "./rawEvents";
 export type {
   AuditRecord,
   DerivedNormalizedEvent,
-  NormalizationResult,
   ZendeskCommentBody,
   ZendeskNormalizationScope,
   ZendeskUserRoles,
@@ -81,6 +80,7 @@ export {
   verifyZendeskWebhookSecret,
 } from "./webhook";
 export type { WebhookIngestResult } from "./webhook";
-export { parseJiraLinkRecord, runZendeskJiraLinkCorrelation } from "./correlate";
-export type { JiraLinkCorrelationResult } from "./correlate";
+export { correlateZendeskJiraLinks, parseJiraLinkRecord } from "./correlate";
+export { zendeskAdapter, zendeskWebAdapter } from "./adapter";
+export { renderZendeskConversation, zendeskConversationContext } from "./conversation";
 export { JIRA_LINK_EVENT_SOURCE_ROLE, ZENDESK_SOURCE_ROLE } from "./source-role";

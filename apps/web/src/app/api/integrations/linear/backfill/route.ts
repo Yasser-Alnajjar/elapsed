@@ -29,14 +29,14 @@ export async function POST() {
     const backfill = await runLinearBackfill(prisma, integration.id);
     // Correlation needs the ticket source's cases, so when this finishes first
     // the ticket source's own backfill call re-projects Linear and evaluates.
-    const { linear, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
+    const { providers, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
       prisma,
       session.user.organizationId,
     );
     return NextResponse.json({
       backfill,
-      correlation: linear?.correlation,
-      normalization: linear?.normalization,
+      correlation: providers.linear?.correlation,
+      normalization: providers.linear?.normalization,
       commitments,
       evaluation,
       pendingProviders,

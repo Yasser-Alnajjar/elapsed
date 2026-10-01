@@ -7,6 +7,7 @@ import type {
   GithubTimelineConnection,
   GithubTimelineItem,
 } from "./types";
+import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
 const API_URL = "https://api.github.com/graphql";
 const PAGE_SIZE = 100;
@@ -32,6 +33,7 @@ export class GithubApiError extends Error {
  * `GithubApiError` so existing `status` checks keep working.
  */
 export class GithubPermissionDeniedError extends GithubApiError {
+  readonly [PERMISSION_DENIED_BRAND] = true as const;
   constructor(status: number, errors?: unknown) {
     super(status, "GitHub denied access to this repository", errors);
     this.name = "GithubPermissionDeniedError";

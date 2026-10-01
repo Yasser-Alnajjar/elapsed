@@ -21,6 +21,7 @@
 import type { CommitmentKind, Prisma, PrismaClient } from "@sla/db";
 import type { ZendeskAudit, ZendeskTicket } from "@sla/zendesk";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 
@@ -148,7 +149,7 @@ describe.skipIf(!TEST_DATABASE_URL)("SLA golden scenarios (real Postgres)", () =
         skipDuplicates: true,
       });
     }
-    return zendesk.runZendeskNormalization(prisma, integrationId);
+    return normalizeZendesk(prisma, integrationId);
   }
 
   async function createPolicy(
@@ -191,7 +192,7 @@ describe.skipIf(!TEST_DATABASE_URL)("SLA golden scenarios (real Postgres)", () =
   }
 
   async function caseByExternalId(externalId: string) {
-    return prisma.case.findUniqueOrThrow({ where: { organizationId_externalId: { organizationId, externalId: String(externalId) } } });
+    return prisma.case.findFirstOrThrow({ where: { organizationId, externalId } });
   }
 
   // ---- 1: pending_customer -------------------------------------------------------

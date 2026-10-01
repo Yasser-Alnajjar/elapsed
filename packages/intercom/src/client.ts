@@ -8,6 +8,7 @@ import type {
   IntercomCredentials,
   IntercomMe,
 } from "./types";
+import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
 const API_URL = "https://api.intercom.io";
 const PAGE_SIZE = 50;
@@ -31,6 +32,7 @@ export class IntercomApiError extends Error {
  * `status` checks keep working.
  */
 export class IntercomPermissionDeniedError extends IntercomApiError {
+  readonly [PERMISSION_DENIED_BRAND] = true as const;
   constructor(url: string) {
     super(403, url);
     this.name = "IntercomPermissionDeniedError";

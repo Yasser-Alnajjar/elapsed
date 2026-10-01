@@ -17,6 +17,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -273,7 +274,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
         data: {
           organizationId,
           externalId: "1",
-          system: "zendesk",
+          system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
           openedAt: new Date(),
         },
       });

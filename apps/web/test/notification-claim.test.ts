@@ -19,6 +19,7 @@
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NotificationCandidate } from "@sla/commitments";
+import { sourceIntegration } from "./source-integration";
 
 vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 
@@ -85,7 +86,7 @@ describe.skipIf(!TEST_DATABASE_URL)("notification claim/deliver (real Postgres)"
         effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
       },
     });
-    caseId = (await prisma.case.create({ data: { organizationId, system: "zendesk", externalId: "7001", openedAt: new Date() } })).id;
+    caseId = (await prisma.case.create({ data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: "7001", openedAt: new Date() } })).id;
     commitmentId = (
       await prisma.commitment.create({
         data: {

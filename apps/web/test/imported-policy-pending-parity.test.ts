@@ -12,6 +12,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { ZendeskAudit, ZendeskTicket } from "@sla/zendesk";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 
@@ -112,11 +113,11 @@ describe.skipIf(!TEST_DATABASE_URL)("imported vs native policy on Pending (H-12,
       })),
       skipDuplicates: true,
     });
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
   }
 
   async function resolutionOf(externalId: string) {
-    const c = await prisma.case.findUniqueOrThrow({ where: { organizationId_externalId: { organizationId, externalId } } });
+    const c = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId } });
     const row = await prisma.commitment.findFirstOrThrow({ where: { caseId: c.id, kind: "resolution" } });
     const evaluation = await prisma.evaluation.findFirstOrThrow({
       where: { commitmentId: row.id },

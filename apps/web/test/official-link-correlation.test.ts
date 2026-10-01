@@ -25,6 +25,7 @@ import { deriveLegSpans } from "@sla/core";
 import { toNormalizedEventDomain } from "@sla/commitments";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { correlateJira } from "./correlate-helper";
+import { correlateZendeskLinks } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -174,7 +175,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       issue_key: "KAN-42",
     });
 
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     expect(result).toMatchObject({ officialLinksEvaluated: 1, caseLinksCreated: 1, unmatchedInvalidRecord: 0, unmatchedNoCase: 0 });
     const link = await findCaseLink(caseId, "KAN-42");
@@ -186,7 +187,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     const caseId = await seedCase("123");
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "123", issue_key: "KAN-38" });
 
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     expect(result).toMatchObject({ officialLinksEvaluated: 1, caseLinksCreated: 1, unmatchedInvalidRecord: 0, unmatchedNoCase: 0 });
     const link = await findCaseLink(caseId, "KAN-38");
@@ -203,7 +204,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "123", issue_key: "KAN-38" });
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 2, ticket_id: "124", issue_key: "KAN-39" });
 
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     expect(result.caseLinksCreated).toBe(2);
     expect(await findCaseLink(case1, "KAN-38")).not.toBeNull();
@@ -216,12 +217,12 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "123", issue_key: "KAN-38" });
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 2, ticket_id: "123", issue_key: "KAN-38" });
 
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
     expect(result.caseLinksCreated).toBe(1);
     expect(await prisma.caseLink.count({ where: { caseId, system: "jira", externalId: "KAN-38" } })).toBe(1);
 
     // Re-running (e.g. the next poll) against the same RawEvents is idempotent.
-    const rerun = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const rerun = await correlateZendeskLinks(prisma, zendeskIntegrationId);
     expect(rerun.caseLinksCreated).toBe(0);
     expect(await prisma.caseLink.count({ where: { caseId, system: "jira", externalId: "KAN-38" } })).toBe(1);
     expect(await prisma.normalizedEvent.count({ where: { caseId, type: "issue_linked" } })).toBe(1);
@@ -236,11 +237,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       await writeRemoteLinkRawEvent(jiraIntegrationId, issueKey, remoteLink);
 
       if (officialFirst) {
-        await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+        await correlateZendeskLinks(prisma, zendeskIntegrationId);
         await correlateJira(prisma, jiraIntegrationId);
       } else {
         await correlateJira(prisma, jiraIntegrationId);
-        await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+        await correlateZendeskLinks(prisma, zendeskIntegrationId);
       }
 
       expect(await prisma.caseLink.count({ where: { caseId, system: "jira", externalId: issueKey } })).toBe(1);
@@ -279,7 +280,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       object: { url: "https://old-subdomain.zendesk.com/agent/tickets/128", title: "Ticket 128" },
     });
 
-    const officialResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const officialResult = await correlateZendeskLinks(prisma, zendeskIntegrationId);
     const remoteResult = await correlateJira(prisma, jiraIntegrationId);
 
     expect(officialResult.caseLinksCreated).toBe(1);
@@ -298,7 +299,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 3, ticket_id: "not-a-ticket-id", issue_key: "KAN-45" }); // non-numeric ticket_id
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 4, ticket_id: null, issue_key: "KAN-46" } as never); // ticket_id not a string/number at all
 
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     expect(result).toMatchObject({ officialLinksEvaluated: 4, unmatchedInvalidRecord: 4, caseLinksCreated: 0 });
     expect(await prisma.caseLink.count({ where: { case: { organizationId } } })).toBe(0);
@@ -318,8 +319,8 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     // Only org A's Zendesk integration has an official-link RawEvent.
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "123", issue_key: "KAN-38" });
 
-    const resultA = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
-    const resultB = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskB.id);
+    const resultA = await correlateZendeskLinks(prisma, zendeskIntegrationId);
+    const resultB = await correlateZendeskLinks(prisma, zendeskB.id);
 
     expect(resultA.caseLinksCreated).toBe(1);
     expect(resultB).toMatchObject({ officialLinksEvaluated: 0, caseLinksCreated: 0 });
@@ -335,7 +336,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
     expect(await currentLegFor(caseId)).toBe("support");
 
     await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 81003289, ticket_id: "13", issue_id: "10745", issue_key: "KAN-42" });
-    const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
     expect(result.caseLinksCreated).toBe(1);
 
     expect(await currentLegFor(caseId)).toBe("engineering");
@@ -349,7 +350,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       // Zendesk currently reports link id 1 (ticket 13 <-> KAN-40).
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      const firstRun = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const firstRun = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(firstRun.caseLinksCreated).toBe(1);
       expect(await currentLegFor(caseId)).toBe("engineering");
 
@@ -359,7 +360,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       // The user clicks Unlink in Zendesk: the next full listing no longer
       // reports link id 1 at all (no deletion event — just absence).
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []);
-      const secondRun = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const secondRun = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(secondRun.caseLinksUnlinked).toBe(1);
 
       // --- Current relationship: inactive ---
@@ -388,15 +389,15 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       const caseId = await seedCase("13");
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []); // unlink KAN-40
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       // Ticket 13 is now linked to a different issue, KAN-41.
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 2, ticket_id: "13", issue_key: "KAN-41" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [2]);
-      const result = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const result = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(result.caseLinksCreated).toBe(1); // a genuinely new row, not a mutation of KAN-40's
 
       const oldLink = await findCaseLink(caseId, "KAN-40");
@@ -413,14 +414,14 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       // the common case: the old link row was deleted, a new one created.
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 2, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [2]);
-      const relinkResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const relinkResult = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(relinkResult.caseLinksCreated).toBe(0);
       expect(relinkResult.caseLinksReactivated).toBe(1);
 
@@ -432,7 +433,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       expect(await prisma.normalizedEvent.count({ where: { caseId, type: "issue_unlinked" } })).toBe(1);
 
       // Re-running with nothing new changed is a pure no-op — no further duplication.
-      const rerun = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const rerun = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(rerun.caseLinksCreated).toBe(0);
       expect(rerun.caseLinksReactivated).toBe(0);
       expect(rerun.caseLinksUnlinked).toBe(0);
@@ -443,17 +444,17 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       const caseId = await seedCase("13");
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       // Zendesk reuses the same link id 1 on re-link — a fresh snapshot with
       // its own `updated_at`, distinct content from the original so it lands
       // as its own RawEvent rather than colliding on the content hash.
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40", updated_at: "2026-03-02T00:00:00.000Z" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      const relinkResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const relinkResult = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(relinkResult.caseLinksReactivated).toBe(1);
 
       const relinked = await findCaseLink(caseId, "KAN-40");
@@ -468,7 +469,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       const caseId = await seedCase("13");
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       // A valid (non-stale-hostname) Jira remote link independently confirms the same relationship.
       await writeRemoteLinkRawEvent(jiraIntegrationId, "KAN-40", {
@@ -481,7 +482,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
 
       // The official link disappears from Zendesk's registry...
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []);
-      const sweepResult = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const sweepResult = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       // ...but the CaseLink stays active: remote_link still proves the relationship.
       expect(sweepResult.caseLinksUnlinked).toBe(0);
@@ -504,15 +505,15 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk official Jira-links correlation (re
       // Both organizations independently link the same-shaped (ticket 13, KAN-40) pair.
       await writeJiraLinkRawEvent(zendeskIntegrationId, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
       await writeJiraLinkRawEvent(zendeskB.id, { id: 1, ticket_id: "13", issue_key: "KAN-40" });
       await writeJiraLinkManifestRawEvent(zendeskB.id, [1]);
-      await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskB.id);
+      await correlateZendeskLinks(prisma, zendeskB.id);
 
       // Only org A's ticket gets unlinked.
       await writeJiraLinkManifestRawEvent(zendeskIntegrationId, []);
-      const resultA = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+      const resultA = await correlateZendeskLinks(prisma, zendeskIntegrationId);
       expect(resultA.caseLinksUnlinked).toBe(1);
 
       const linkA = await prisma.caseLink.findUnique({ where: { caseId_system_externalId: { caseId: caseA, system: "jira", externalId: "KAN-40" } } });

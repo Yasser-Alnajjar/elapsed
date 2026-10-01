@@ -13,7 +13,8 @@
   "dependencies": {
     "@sla/core": "workspace:*",
     "@sla/db": "workspace:*",
-    "@sla/http-retry": "workspace:*"
+    "@sla/http-retry": "workspace:*",
+    "@sla/ingestion": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

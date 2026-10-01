@@ -1,4 +1,4 @@
-import { recordSlaImportSummary, withOrganizationSlaLock, type PrismaClient } from "@sla/db";
+import { recordSlaImportSummary, withOrganizationSlaLock, type IntegrationProvider, type PrismaClient } from "@sla/db";
 import {
   ensureDefaultCalendarVersion,
   runCommitmentPipeline,
@@ -10,50 +10,16 @@ import {
   type EvaluationPipelineResult,
   type NextReplyCyclePipelineResult,
 } from "@sla/commitments";
-import {
-  runZendeskBusinessCalendarImport,
-  runZendeskJiraLinkCorrelation,
-  runZendeskNormalization,
-  runZendeskSlaPolicyImport,
-  type BusinessCalendarImportResult,
-  type JiraLinkCorrelationResult,
-  type NormalizationResult,
-  type SlaPolicyImportResult,
-} from "@sla/zendesk";
-import { runIntercomNormalization, type NormalizationResult as IntercomNormalizationResult } from "@sla/intercom";
-import {
-  runLinearCorrelation,
-  runLinearNormalization,
-  type CorrelationResult as LinearCorrelationResult,
-  type LinearNormalizationResult,
-} from "@sla/linear";
-import {
-  runJiraCorrelation,
-  runJiraNormalization,
-  type CorrelationResult,
-  type JiraNormalizationResult,
-} from "@sla/jira";
+import { syncIntegration, type IntegrationSyncResult } from "@sla/ingestion";
 import { caseRefResolverFor } from "@/lib/case-ref";
+import { PROVIDERS, providerRole } from "@/lib/providers";
 
-/**
- * The sources the onboarding backfill routes pull from: a ticket source
- * (Zendesk or Intercom) and a tracker (Jira or Linear). Their event sets
- * together are what a case's commitments get evaluated against, so no route
- * may finalize a commitment while another connected source's first backfill
- * is still outstanding.
- */
-type SourceProvider = "zendesk" | "intercom" | "jira" | "linear";
+/** What one connected source's projection produced: its normalization, its correlation (trackers, and Zendesk's official links), and its imports. */
+export type SourceSyncProviderResult = IntegrationSyncResult;
 
 export interface SourceSyncProjectionResult {
-  zendesk: {
-    normalization: NormalizationResult;
-    jiraLinkCorrelation: JiraLinkCorrelationResult;
-    businessCalendarImport: BusinessCalendarImportResult;
-    slaPolicyImport: SlaPolicyImportResult;
-  } | null;
-  intercom: { normalization: IntercomNormalizationResult } | null;
-  jira: { correlation: CorrelationResult; normalization: JiraNormalizationResult } | null;
-  linear: { correlation: LinearCorrelationResult; normalization: LinearNormalizationResult } | null;
+  /** Keyed by provider; only the sources whose first backfill had completed. */
+  providers: Partial<Record<IntegrationProvider, SourceSyncProviderResult>>;
   commitments: CommitmentPipelineResult;
   reResolution: CommitmentReResolutionResult;
   /**
@@ -65,8 +31,17 @@ export interface SourceSyncProjectionResult {
   nextReplyCycles: NextReplyCyclePipelineResult;
   /** Null while `pendingProviders` is non-empty — evaluation is deferred, not skipped. */
   evaluation: EvaluationPipelineResult | null;
-  pendingProviders: SourceProvider[];
+  pendingProviders: IntegrationProvider[];
 }
+
+/**
+ * The sources the onboarding backfill routes pull from: ticket sources and
+ * work trackers. Their event sets together are what a case's commitments get
+ * evaluated against, so no route may finalize a commitment while another
+ * connected source's first backfill is still outstanding. A code host is
+ * projected by its own route and never gates evaluation.
+ */
+const isOnboardingSource = (provider: IntegrationProvider) => providerRole(provider) !== "code_host";
 
 /**
  * The DB-only tail of a ticket-source or tracker backfill: project stored RawEvents
@@ -99,82 +74,58 @@ export async function projectAndEvaluateSourceSyncs(
   organizationId: string,
 ): Promise<SourceSyncProjectionResult> {
   return withOrganizationSlaLock(prisma, organizationId, async () => {
-    const integrations = await prisma.integration.findMany({
-      where: {
-        organizationId,
-        provider: { in: ["zendesk", "intercom", "jira", "linear"] },
-        status: { not: "disconnected" },
-      },
-      select: { id: true, provider: true, cursor: true },
+    const connected = await prisma.integration.findMany({
+      where: { organizationId, status: { not: "disconnected" } },
+      select: { id: true, provider: true, status: true, cursor: true },
     });
-    const byProvider = (provider: SourceProvider) => integrations.find((i) => i.provider === provider);
-    const zendesk = byProvider("zendesk");
-    const intercom = byProvider("intercom");
-    const jira = byProvider("jira");
-    const linear = byProvider("linear");
-    const backfilled = (i: { cursor: unknown } | undefined) =>
-      (i?.cursor as { backfillCompletedAt?: string } | null)?.backfillCompletedAt != null;
-    const zendeskReady = backfilled(zendesk);
-    const intercomReady = backfilled(intercom);
-    const jiraReady = backfilled(jira);
-    const linearReady = backfilled(linear);
+    // Ticket sources first: they create the Cases the trackers link onto.
+    const roleOrder = ["ticket_source", "work_tracker"] as const;
+    const integrations = connected
+      .filter((i) => isOnboardingSource(i.provider))
+      .sort((a, b) => roleOrder.indexOf(providerRole(a.provider) as "ticket_source") - roleOrder.indexOf(providerRole(b.provider) as "ticket_source"));
+    const backfilled = (i: { cursor: unknown }) =>
+      (i.cursor as { backfillCompletedAt?: string } | null)?.backfillCompletedAt != null;
 
     // With no ticket source connected there is nothing to evaluate against
-    // yet, so evaluation waits (reported as "zendesk", the historical name).
-    const pendingProviders: SourceProvider[] = [];
-    if (!zendesk && !intercom) pendingProviders.push("zendesk");
-    if (zendesk && !zendeskReady) pendingProviders.push("zendesk");
-    if (intercom && !intercomReady) pendingProviders.push("intercom");
-    if (jira && !jiraReady) pendingProviders.push("jira");
-    if (linear && !linearReady) pendingProviders.push("linear");
+    // yet, so evaluation waits (reported as the first ticket source, the
+    // historical name).
+    const pendingProviders: IntegrationProvider[] = [];
+    if (!integrations.some((i) => providerRole(i.provider) === "ticket_source")) {
+      pendingProviders.push(Object.values(PROVIDERS).find((a) => a.role === "ticket_source")!.provider);
+    }
+    for (const integration of integrations) if (!backfilled(integration)) pendingProviders.push(integration.provider);
 
-    // Ticket sources first: they create the Cases the trackers link onto.
-    const zendeskResult =
-      zendesk && zendeskReady
-        ? {
-            normalization: await runZendeskNormalization(prisma, zendesk.id),
-            // Independent of Jira's own correlation below: the official
-            // Zendesk↔Jira link signal still establishes the relationship
-            // even when a Jira remote link is stale or Jira isn't connected
-            // at all. Must run after normalization, which is what creates
-            // the Cases this looks up by ticket id.
-            jiraLinkCorrelation: await runZendeskJiraLinkCorrelation(prisma, zendesk.id),
-            businessCalendarImport: await runZendeskBusinessCalendarImport(prisma, zendesk.id),
-            slaPolicyImport: await runZendeskSlaPolicyImport(prisma, zendesk.id, (organizationId) =>
-              ensureDefaultCalendarVersion(prisma, organizationId),
-            ),
-          }
-        : null;
-    // No correlation step: Intercom is a ticket source that creates its own
-    // Cases, and has no importable SLA policies (D9).
-    const intercomResult =
-      intercom && intercomReady ? { normalization: await runIntercomNormalization(prisma, intercom.id) } : null;
+    const resolveCaseRef = integrations.some((i) => providerRole(i.provider) === "work_tracker")
+      ? await caseRefResolverFor(prisma, organizationId)
+      : null;
 
-    const resolveCaseRef = jira || linear ? await caseRefResolverFor(prisma, organizationId) : null;
-    const jiraResult =
-      jira && jiraReady
-        ? {
-            correlation: await runJiraCorrelation(prisma, jira.id, resolveCaseRef),
-            normalization: await runJiraNormalization(prisma, jira.id),
-          }
-        : null;
-    const linearResult =
-      linear && linearReady
-        ? {
-            correlation: await runLinearCorrelation(prisma, linear.id, resolveCaseRef),
-            normalization: await runLinearNormalization(prisma, linear.id),
-          }
-        : null;
+    const providers: SourceSyncProjectionResult["providers"] = {};
+    for (const integration of integrations) {
+      if (!backfilled(integration)) continue;
+      // Every source whose backfill has completed is re-projected from its
+      // stored RawEvents, not just the caller's: the other route may have
+      // fetched without projecting yet, or run a tracker's correlation before
+      // the ticket source's cases existed. All steps are idempotent.
+      providers[integration.provider] = await syncIntegration(PROVIDERS[integration.provider], {
+        prisma,
+        integration: { id: integration.id, organizationId, provider: integration.provider, status: integration.status },
+        mode: "full",
+        resolveCaseRef,
+        ensureDefaultCalendarVersion: (orgId) => ensureDefaultCalendarVersion(prisma, orgId),
+      });
+    }
 
     const asOf = new Date().toISOString();
 
     const commitments = await runCommitmentPipeline(prisma, organizationId);
     const reResolution = await runCommitmentReResolutionPipeline(prisma, organizationId, { asOf });
 
-    if (zendeskResult) {
+    for (const [provider, synced] of Object.entries(providers) as [IntegrationProvider, SourceSyncProviderResult][]) {
+      if (!synced.policyImport) continue;
       const { unsupportedConditions, unsupportedMetrics, policiesWithNoUsableTargets, policiesWithUnresolvedSchedule, policiesArchived } =
-        zendeskResult.slaPolicyImport;
+        synced.policyImport;
       await recordSlaImportSummary(prisma, organizationId, {
+        provider,
         unsupportedConditions,
         unsupportedMetrics,
         policiesWithNoUsableTargets,
@@ -189,16 +140,6 @@ export async function projectAndEvaluateSourceSyncs(
         ? await runEvaluationPipeline(prisma, organizationId, { asOf, scope: "all" })
         : null;
 
-    return {
-      zendesk: zendeskResult,
-      intercom: intercomResult,
-      jira: jiraResult,
-      linear: linearResult,
-      commitments,
-      reResolution,
-      nextReplyCycles,
-      evaluation,
-      pendingProviders,
-    };
+    return { providers, commitments, reResolution, nextReplyCycles, evaluation, pendingProviders };
   });
 }

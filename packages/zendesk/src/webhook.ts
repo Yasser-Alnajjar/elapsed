@@ -2,7 +2,13 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { Prisma, PrismaClient } from "@sla/db";
 import { ZendeskApiError, ZendeskClient } from "./client";
 import type { ZendeskOAuthConfig } from "./oauth";
-import { mapAuditToRawEvent, mapTicketToRawEvent, mapUserToRawEvent, type RawEventInput } from "./rawEvents";
+import {
+  mapAuditToRawEvent,
+  mapTicketDeletedToRawEvent,
+  mapTicketToRawEvent,
+  mapUserToRawEvent,
+  type RawEventInput,
+} from "./rawEvents";
 import { loadFreshZendeskCredentials, refreshAfterUnauthorized } from "./tokenLifecycle";
 
 /** Random per-integration secret, generated once at connect and never rotated on reconnect (see Integration.webhookSecret's doc comment). */
@@ -105,28 +111,12 @@ export function isZendeskWebhookTimestampFresh(payload: unknown, now: number = D
 export interface WebhookIngestResult {
   ticketsFetched: number;
   ticketAuditsFetched: number;
-  /** True when this call found the ticket gone (deleted, merged away) and soft-deleted its Case instead of ingesting. */
+  /**
+   * True when this call found the ticket gone (deleted, merged away). The
+   * deletion is recorded as a raw event instead of the ticket; normalizing
+   * this ticket afterwards soft-deletes its Case.
+   */
   ticketDeleted?: boolean;
-}
-
-/**
- * Marks the Case for `ticketId` (if one exists and isn't already marked) as
- * deleted. Used whenever a direct Zendesk fetch reports the ticket gone —
- * that 404 is the only reliable "this ticket no longer exists" signal we
- * have, since a webhook payload's event type isn't inspected (see
- * `extractZendeskWebhookTicketId`'s doc comment) and Zendesk's own deletion
- * webhooks carry no more than the same ticket id.
- */
-export async function markCaseDeletedForTicket(
-  prisma: PrismaClient,
-  integrationId: string,
-  ticketId: number,
-): Promise<void> {
-  const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
-  await prisma.case.updateMany({
-    where: { organizationId: integration.organizationId, externalId: String(ticketId), deletedAt: null },
-    data: { deletedAt: new Date() },
-  });
 }
 
 /**
@@ -136,7 +126,7 @@ export async function markCaseDeletedForTicket(
  * the incremental-export stream `runZendeskBackfill` advances, and a
  * single-ticket refetch must not perturb it. Writes land through the same
  * RawEvent mapping functions the poller uses, so the next
- * `runZendeskNormalization` call — poll-driven or webhook-driven — picks
+ * normalization pass — poll-driven or webhook-driven — picks
  * them up identically either way.
  */
 export async function runZendeskWebhookIngest(
@@ -156,7 +146,18 @@ export async function runZendeskWebhookIngest(
     ({ ticket, users } = await client.fetchTicket(ticketId));
   } catch (error) {
     if (error instanceof ZendeskApiError && error.status === 404) {
-      await markCaseDeletedForTicket(prisma, integrationId, ticketId);
+      const deletion = mapTicketDeletedToRawEvent(ticketId);
+      await prisma.rawEvent.createMany({
+        data: [
+          {
+            integrationId,
+            providerEventId: deletion.providerEventId,
+            sourceHash: deletion.sourceHash,
+            payload: deletion.payload as Prisma.InputJsonValue,
+          },
+        ],
+        skipDuplicates: true,
+      });
       return { ticketsFetched: 0, ticketAuditsFetched: 0, ticketDeleted: true };
     }
     throw error;

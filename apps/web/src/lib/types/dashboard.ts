@@ -7,7 +7,7 @@ import type { IntegrationProvider } from "./integrations";
  * a list row needs. Only ever built from an active (`unlinkedAt: null`) link.
  */
 export interface LinkedIssueRef {
-  system: "jira" | "linear" | "github";
+  system: IntegrationProvider;
   externalId: string;
   confidence: "certain" | "probable";
   method: "official_link" | "remote_link" | "pattern" | "manual";

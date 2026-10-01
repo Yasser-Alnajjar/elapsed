@@ -1,4 +1,4 @@
-import { findCustomerByIdentity, upsertCustomerByIdentity, type Prisma, type PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
 import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type {
   IntercomContact,
@@ -6,6 +6,7 @@ import type {
   IntercomConversationState,
   IntercomConversationWithParts,
 } from "./types";
+import type { CanonicalBatch, CaseFacts, CustomerIdentityFact, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import { intercomCompanyIdentity, intercomContactIdentity } from "./customer-identity";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
 
@@ -316,13 +317,6 @@ export function deriveIntercomSubject(
   return null;
 }
 
-export interface NormalizationResult {
-  customersUpserted: number;
-  casesUpserted: number;
-  normalizedEventsWritten: number;
-  conversationsFailed: { conversationId: string; error: string }[];
-}
-
 /**
  * Keeps, per string `id` embedded in each row's JSON payload, the row with
  * the latest fetchedAt. `rawEventIds` lists every snapshot row seen for that
@@ -363,33 +357,19 @@ function groupPartsByConversationId(
 }
 
 /**
- * Projects everything ingested so far for one integration into
- * Customer/Case/NormalizedEvent, mirroring `runZendeskNormalization`.
- * Idempotent and safe to re-run: customers and cases are upserted, and each
- * conversation's NormalizedEvents are replaced wholesale from a fresh
- * derivation rather than appended to.
+ * Derives, from everything ingested so far for one integration, the customers,
+ * cases and events the shared projector persists (`CanonicalBatch`). Writes
+ * nothing. Idempotent: the same raw events always give the same batch, and the
+ * projector writes only the difference.
  *
  * A conversation's customer is resolved by following its primary contact
  * (`conversation.contacts.contacts[0]`) to that contact's first company —
  * Intercom conversations carry no company id directly, unlike a Zendesk
  * ticket's `organization_id`. A contact with no company becomes its own
- * contact-keyed Customer; only a conversation with no contact at all gets a
- * case with `customerId: null`.
+ * contact-keyed customer; only a conversation with no contact at all gets a
+ * case with no customer.
  */
-export async function runIntercomNormalization(
-  prisma: PrismaClient,
-  integrationId: string,
-): Promise<NormalizationResult> {
-  const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
-  const organizationId = integration.organizationId;
-
-  const result: NormalizationResult = {
-    customersUpserted: 0,
-    casesUpserted: 0,
-    normalizedEventsWritten: 0,
-    conversationsFailed: [],
-  };
-
+export async function buildIntercomBatch(prisma: PrismaClient, integrationId: string): Promise<CanonicalBatch> {
   const [companyRows, contactRows, conversationRows, partRows, adminRows] = await Promise.all([
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "company:" } },
@@ -427,14 +407,21 @@ export async function runIntercomNormalization(
   );
 
   const latestCompanies = latestSnapshotById<{ id: string; name: string }>(companyRows);
-  for (const { value: company } of latestCompanies.values()) {
-    await upsertCustomerByIdentity(prisma, intercomCompanyIdentity(organizationId, company.id), company.name);
-    result.customersUpserted += 1;
-  }
+  const companyCustomers: CustomerIdentityFact[] = [...latestCompanies.values()].map(({ value: company }) => ({
+    ...intercomCompanyIdentity(company.id),
+    name: company.name,
+  }));
+  // Keyed by contact id so one person's conversations share one customer; the
+  // last conversation's name wins, as when each conversation upserted it.
+  const contactCustomers = new Map<string, CustomerIdentityFact>();
 
   const latestContacts = latestSnapshotById<IntercomContact>(contactRows);
   const latestConversations = latestSnapshotById<IntercomConversationWithParts>(conversationRows);
   const partsByConversationId = groupPartsByConversationId(partRows);
+
+  const cases: CaseFacts[] = [];
+  const eventGroups: EventGroup[] = [];
+  const failures: ProjectionFailure[] = [];
 
   for (const {
     rawEventId: conversationRawEventId,
@@ -445,12 +432,18 @@ export async function runIntercomNormalization(
       const primaryContactId = conversation.contacts?.contacts[0]?.id;
       const primaryContact = primaryContactId ? latestContacts.get(primaryContactId)?.value : undefined;
       const companyId = primaryContact?.companies?.data[0]?.id;
-      const customer = companyId
-        ? await findCustomerByIdentity(prisma, intercomCompanyIdentity(organizationId, companyId))
-        : primaryContactId
-          ? await upsertContactCustomer(primaryContactId, primaryContact, conversation)
-          : null;
-      const priority = normalizeIntercomPriority(conversation.priority);
+      let customer: CaseFacts["customer"] = null;
+      if (companyId) {
+        customer = intercomCompanyIdentity(companyId);
+      } else if (primaryContactId) {
+        const author = conversation.source?.author;
+        const authorName = author?.id === primaryContactId ? author.name || author.email : undefined;
+        const name =
+          primaryContact?.name || primaryContact?.email || authorName || `Intercom contact ${primaryContactId}`;
+        contactCustomers.set(primaryContactId, { ...intercomContactIdentity(primaryContactId), name });
+        customer = intercomContactIdentity(primaryContactId);
+      }
+
       const assigneeName =
         conversation.admin_assignee_id != null
           ? (adminNamesById.get(String(conversation.admin_assignee_id)) ?? null)
@@ -460,90 +453,48 @@ export async function runIntercomNormalization(
       const subject = deriveIntercomSubject(conversation, partsForConversation);
       const derived = deriveNormalizedEventsForConversation(conversation, partsForConversation, conversationRawEventId);
       const closedAt = deriveCaseClosedAt(conversation, derived);
-      // Every RawEvent this conversation's own derivation could ever have
-      // sourced an event from — every conversation snapshot (each changed
-      // re-fetch is a new RawEvent; an older one's case_created must not
-      // linger as a duplicate) plus its parts. Scoping the regenerate-in-place delete to
-      // just these (like @sla/zendesk's normalizer) keeps it from wiping
-      // NormalizedEvent rows another provider wrote onto the same case.
-      const ownRawEventIds = [...conversationSnapshotRawEventIds, ...partsForConversation.map((p) => p.rawEventId)];
 
-      const caseRow = await prisma.case.upsert({
-        where: {
-          organizationId_sourceIntegrationId_externalId: {
-            organizationId,
-            sourceIntegrationId: integrationId,
-            externalId: conversation.id,
-          },
-        },
-        update: {
-          sourceIntegrationId: integrationId,
-          customerId: customer?.id ?? null,
-          subject,
-          priority,
-          channel: conversation.source?.type ?? null,
-          closedAt,
-          assigneeName,
-        },
-        create: {
-          organizationId,
-          customerId: customer?.id ?? null,
-          externalId: conversation.id,
-          system: "intercom",
-          sourceIntegrationId: integrationId,
-          subject,
-          priority,
-          channel: conversation.source?.type ?? null,
-          openedAt: new Date(conversation.created_at * 1000),
-          closedAt,
-          assigneeName,
-        },
+      cases.push({
+        externalId: conversation.id,
+        subject,
+        assigneeName,
+        priority: normalizeIntercomPriority(conversation.priority),
+        channel: conversation.source?.type ?? null,
+        openedAt: new Date(conversation.created_at * 1000),
+        closedAt,
+        customer,
       });
-      result.casesUpserted += 1;
-
-      await prisma.$transaction([
-        prisma.normalizedEvent.deleteMany({
-          where: { caseId: caseRow.id, sourceRawEventId: { in: ownRawEventIds } },
-        }),
-        prisma.normalizedEvent.createMany({
-          data: derived.map((event) => ({
-            caseId: caseRow.id,
-            sourceRawEventId: event.sourceRawEventId,
-            type: event.type,
-            occurredAt: new Date(event.occurredAt),
-            actor: event.actor,
-            system: "intercom" as const,
-            sourceRole: INTERCOM_SOURCE_ROLE,
-            fromState: event.fromState,
-            toState: event.toState,
-            sourceSequence: event.sourceSequence,
-          })) satisfies Prisma.NormalizedEventCreateManyInput[],
-        }),
-      ]);
-      result.normalizedEventsWritten += derived.length;
+      eventGroups.push({
+        target: { caseExternalId: conversation.id },
+        // Every RawEvent this conversation's own derivation could ever have
+        // sourced an event from — every conversation snapshot (each changed
+        // re-fetch is a new RawEvent; an older one's case_created must not
+        // linger as a duplicate) plus its parts. Scoping the reconcile to just
+        // these keeps it from touching events another provider wrote onto the
+        // same case.
+        ownRawEventIds: [...conversationSnapshotRawEventIds, ...partsForConversation.map((p) => p.rawEventId)],
+        events: derived.map((event) => ({
+          type: event.type,
+          occurredAt: new Date(event.occurredAt),
+          actor: event.actor,
+          sourceRole: INTERCOM_SOURCE_ROLE,
+          fromState: event.fromState,
+          toState: event.toState,
+          sourceRawEventId: event.sourceRawEventId,
+          sourceSequence: event.sourceSequence,
+        })),
+        recordId: conversation.id,
+      });
     } catch (error) {
-      result.conversationsFailed.push({
-        conversationId: conversation.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      failures.push({ id: conversation.id, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
-  return result;
-
-  /**
-   * A conversation whose primary contact belongs to no company still has a
-   * real customer — the contact themself. Keyed by contact id so the same
-   * person's conversations share one Customer row.
-   */
-  async function upsertContactCustomer(
-    contactId: string,
-    contact: IntercomContact | undefined,
-    conversation: IntercomConversationWithParts,
-  ) {
-    const author = conversation.source?.author;
-    const authorName = author?.id === contactId ? author.name || author.email : undefined;
-    const name = contact?.name || contact?.email || authorName || `Intercom contact ${contactId}`;
-    return upsertCustomerByIdentity(prisma, intercomContactIdentity(organizationId, contactId), name);
-  }
+  return {
+    customers: [...companyCustomers, ...contactCustomers.values()],
+    cases,
+    eventGroups,
+    deletedCaseExternalIds: [],
+    failures,
+  };
 }

@@ -116,7 +116,7 @@ export async function runJiraBackfill(
     const links = await client.fetchRemoteLinks(issueKey);
     await writeRawEvents([
       ...links.map((link) => mapRemoteLinkToRawEvent(issueKey, link)),
-      // This full per-issue fetch is exactly the set `runJiraCorrelation`'s
+      // This full per-issue fetch is exactly the set `correlateJira`'s
       // remote-link sweep (roadmap task 2.6) needs to detect a removal —
       // see mapRemoteLinkManifestToRawEvent's doc comment.
       mapRemoteLinkManifestToRawEvent(issueKey, links.map((link) => link.id)),

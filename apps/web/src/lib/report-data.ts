@@ -10,9 +10,8 @@ import {
   type WeeklyWindow,
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
-import type { ZendeskCredentials } from "@sla/zendesk";
-import type { JiraCredentials } from "@sla/jira";
 import { buildCsvHeaderLine, buildCsvRowLines } from "./csv";
+import { REPORT_ISSUE_COLUMNS, REPORT_TICKET_URL_COLUMN, externalUrlFor } from "./providers";
 import {
   formatCommitmentKind,
   formatCommitmentStatus,
@@ -22,10 +21,10 @@ import {
 export interface ComplianceReportRow {
   customerName: string;
   externalId: string;
-  zendeskUrl: string | null;
-  jiraIssueKeys: string[];
-  linearIssueKeys: string[];
-  githubPullRequestKeys: string[];
+  /** Outbound link to the source ticket; only the provider of `REPORT_TICKET_URL_COLUMN` has one here. */
+  ticketUrl: string | null;
+  /** The linked issue or pull-request keys per provider, in `REPORT_ISSUE_COLUMNS` order. */
+  issueKeys: string[][];
   kind: CommitmentKind;
   status: CommitmentStatus;
   targetMinutes: number;
@@ -128,23 +127,11 @@ export async function* iterateComplianceReportRows(
 ): AsyncGenerator<ComplianceReportRow[]> {
   const asOf = asOfDate.toISOString();
 
-  const [zendeskIntegration, jiraIntegration] = await Promise.all([
-    prisma.integration.findUnique({
-      where: {
-        organizationId_provider: { organizationId, provider: "zendesk" },
-      },
-    }),
-    prisma.integration.findUnique({
-      where: {
-        organizationId_provider: { organizationId, provider: "jira" },
-      },
-    }),
-  ]);
-  const zendeskCredentials =
-    (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
-  // Fetched for parity with the pre-batching version, which also never used
-  // it — no jiraUrl field exists on ComplianceReportRow, only jiraIssueKeys.
-  void ((jiraIntegration?.credentials as JiraCredentials | null) ?? null);
+  const ticketUrlIntegration = await prisma.integration.findUnique({
+    where: {
+      organizationId_provider: { organizationId, provider: REPORT_TICKET_URL_COLUMN.provider },
+    },
+  });
 
   let cursor: ReportCursor | null = null;
   for (;;) {
@@ -167,7 +154,7 @@ export async function* iterateComplianceReportRows(
 
     if (commitmentRows.length === 0) return;
 
-    yield await toReportRows(prisma, commitmentRows, zendeskCredentials, asOf);
+    yield await toReportRows(prisma, commitmentRows, ticketUrlIntegration?.credentials ?? null, asOf);
 
     if (commitmentRows.length < batchSize) return;
     const last = commitmentRows[commitmentRows.length - 1]!;
@@ -195,7 +182,7 @@ export async function getComplianceReportRows(
 async function toReportRows(
   prisma: PrismaClient,
   commitmentRows: CommitmentBatchRow[],
-  zendeskCredentials: ZendeskCredentials | null,
+  ticketUrlCredentials: unknown,
   asOf: string,
 ): Promise<ComplianceReportRow[]> {
   const openCommitmentRows = commitmentRows.filter((c) => c.closedAt === null);
@@ -304,30 +291,25 @@ async function toReportRows(
   );
 
   function toRow(row: CommitmentBatchRow): ComplianceReportRow {
-    const jiraIssueKeys = row.case.caseLinks
-      .filter((l) => l.system === "jira")
-      .map((l) => l.externalId);
-    const linearIssueKeys = row.case.caseLinks
-      .filter((l) => l.system === "linear")
-      .map((l) => l.externalId);
-    const githubPullRequestKeys = row.case.caseLinks
-      .filter((l) => l.system === "github")
-      .map((l) => l.externalId);
-    // Gated on row.case.system (roadmap step 22), not just "is Zendesk
-    // connected" — see case-detail-data.ts for why. Intercom-sourced rows
-    // get no outbound link here (same gap @sla/linear already has).
-    const zendeskUrl =
-      zendeskCredentials && row.case.system === "zendesk"
-        ? `https://${zendeskCredentials.subdomain}.zendesk.com/agent/tickets/${row.case.externalId}`
+    const issueKeys = REPORT_ISSUE_COLUMNS.map(({ provider }) =>
+      row.case.caseLinks.filter((l) => l.system === provider).map((l) => l.externalId),
+    );
+    // Gated on row.case.system (roadmap step 22), not just "is the source
+    // connected" — see case-detail-data.ts for why. Cases from any other
+    // ticket source get no outbound link here (a known gap of this report).
+    const ticketUrl =
+      ticketUrlCredentials && row.case.system === REPORT_TICKET_URL_COLUMN.provider
+        ? externalUrlFor(REPORT_TICKET_URL_COLUMN.provider, {
+            externalId: row.case.externalId,
+            credentials: ticketUrlCredentials,
+          })
         : null;
 
     const base = {
       customerName: row.case.customer?.name ?? "Unknown account",
       externalId: row.case.externalId,
-      zendeskUrl,
-      jiraIssueKeys,
-      linearIssueKeys,
-      githubPullRequestKeys,
+      ticketUrl,
+      issueKeys,
       kind: row.kind,
       targetMinutes: row.targetMinutes,
       openedAt: row.case.openedAt.toISOString(),
@@ -383,10 +365,8 @@ async function toReportRows(
 export const COMPLIANCE_REPORT_CSV_HEADER = [
   "Customer",
   "Ticket",
-  "Zendesk URL",
-  "Jira issues",
-  "Linear issues",
-  "GitHub pull requests",
+  REPORT_TICKET_URL_COLUMN.header,
+  ...REPORT_ISSUE_COLUMNS.map((column) => column.header),
   "Commitment",
   "Status",
   "Target",
@@ -401,10 +381,8 @@ function toCsvRow(row: ComplianceReportRow): (string | number | null)[] {
   return [
     row.customerName,
     row.externalId,
-    row.zendeskUrl,
-    row.jiraIssueKeys.join(" "),
-    row.linearIssueKeys.join(" "),
-    row.githubPullRequestKeys.join(" "),
+    row.ticketUrl,
+    ...row.issueKeys.map((keys) => keys.join(" ")),
     formatCommitmentKind(row.kind),
     formatCommitmentStatus(row.status),
     formatMinutes(row.targetMinutes),

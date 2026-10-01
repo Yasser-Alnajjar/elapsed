@@ -44,12 +44,23 @@ vi.mock("@sla/notifications", () => ({
 }));
 // Linear's *real* backfill, client and token lifecycle run against a stubbed
 // `fetch`, so each case below starts from an actual HTTP status code. Only the
-// post-ingest DB-heavy stages are stubbed.
-vi.mock("@sla/linear", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@sla/linear")>()),
-  runLinearCorrelation: vi.fn().mockResolvedValue({}),
-  runLinearNormalization: vi.fn().mockResolvedValue({}),
-}));
+// post-ingest DB-heavy stages (the adapter's correlate and normalize) are
+// stubbed, through the registry the cycle dispatches with.
+vi.mock("../src/providers", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/providers")>();
+  return {
+    PROVIDERS: {
+      ...original.PROVIDERS,
+      linear: {
+        ...original.PROVIDERS.linear,
+        correlate: vi.fn().mockResolvedValue({ links: [], sweeps: [], evaluated: 0, unmatched: {} }),
+        normalize: vi
+          .fn()
+          .mockResolvedValue({ customers: [], cases: [], eventGroups: [], deletedCaseExternalIds: [], failures: [] }),
+      },
+    },
+  };
+});
 // `withOrganizationSlaLock` holds its advisory lock on a dedicated,
 // unpooled `pg.Client` (organization-lock.ts), not the injected Prisma
 // client — this fake DB has no real Postgres to lock against, so the lock

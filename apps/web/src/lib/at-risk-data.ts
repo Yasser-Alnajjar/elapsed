@@ -18,6 +18,7 @@ import {
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 
 import { formatPriorityTier } from "./format";
+import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem } from "./providers";
 import type {
   AtRiskCounts,
   AtRiskLinkedIssue,
@@ -31,12 +32,6 @@ import type {
 function minutesBetween(from: string, to: Date): number {
   return Math.round((to.getTime() - new Date(from).getTime()) / 60000);
 }
-
-const ISSUE_TRACKER_SYSTEMS: ("jira" | "linear" | "github")[] = [
-  "jira",
-  "linear",
-  "github",
-];
 
 // Reverse of `PRIORITY_TIER_LABELS` (lib/format.ts) — mirrors
 // `SEVERITY_RAW_PRIORITIES` in case-list-data.ts.
@@ -71,7 +66,7 @@ const DEFAULT_PARAMS: AtRiskParams = {
 function preferredLink(
   links: { system: string; externalId: string; confidence: string }[],
 ): AtRiskLinkedIssue | null {
-  const trackerLinks = links.filter((l) => ISSUE_TRACKER_SYSTEMS.includes(l.system as any));
+  const trackerLinks = links.filter((l) => isIssueLinkSystem(l.system));
   if (trackerLinks.length === 0) return null;
   const best =
     trackerLinks.find((l) => l.confidence === "certain") ?? trackerLinks[0]!;
@@ -182,7 +177,7 @@ async function getAtRiskDataInner(
         some: {
           unlinkedAt: null,
           confidence: "certain",
-          system: { in: ISSUE_TRACKER_SYSTEMS },
+          system: { in: ISSUE_LINK_PROVIDERS },
         },
       },
     },

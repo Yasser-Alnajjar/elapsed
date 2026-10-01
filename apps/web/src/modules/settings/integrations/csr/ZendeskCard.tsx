@@ -139,9 +139,9 @@ export function ZendeskBackfillButton({
           <p className="wrap-break-word">
             {result.normalization.casesUpserted} cases ·{" "}
             {result.normalization.customersUpserted} customers ·{" "}
-            {result.normalization.normalizedEventsWritten} normalized events.
-            {result.normalization.ticketsFailed.length > 0 &&
-              ` ${result.normalization.ticketsFailed.length} ticket(s) failed to normalize.`}
+            {result.normalization.eventsDerived} normalized events.
+            {result.normalization.failures.length > 0 &&
+              ` ${result.normalization.failures.length} ticket(s) failed to normalize.`}
           </p>
         </div>
       )}

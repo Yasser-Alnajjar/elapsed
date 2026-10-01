@@ -6,6 +6,8 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -78,7 +80,7 @@ describe.skipIf(!TEST_DATABASE_URL)("imported policy source scope (real Postgres
       },
     });
     await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
   });
 
   afterAll(async () => {
@@ -87,7 +89,7 @@ describe.skipIf(!TEST_DATABASE_URL)("imported policy source scope (real Postgres
 
   async function addIntercomCase() {
     return prisma.case.create({
-      data: { organizationId, externalId: "conv-9", system: "intercom", openedAt: new Date("2026-09-01T09:00:00Z") },
+      data: { organizationId, externalId: "conv-9", system: "intercom", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "intercom"), openedAt: new Date("2026-09-01T09:00:00Z") },
     });
   }
 

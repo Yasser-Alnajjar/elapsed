@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Prisma, PrismaClient } from "@sla/db";
+import type { IssueRemoval } from "@sla/ingestion";
 import { JiraClient } from "./client";
 import type { JiraOAuthConfig } from "./oauth";
 import {
@@ -56,7 +57,7 @@ export function verifyJiraWebhookSecret(expected: string, provided: string | nul
 /**
  * Jira classic webhook events this receiver refetches the issue for.
  * `jira:issue_deleted` is handled separately — see `isJiraIssueDeletedEvent`
- * and `markCaseLinksUnlinkedForIssue` below (roadmap task 2.6) — since the
+ * and `recordJiraIssueDeletion` below (roadmap task 2.6) — since the
  * issue is gone by the time a refetch would run; anything else Jira might
  * send to the same URL is accepted but ignored.
  */
@@ -106,36 +107,34 @@ export interface WebhookIngestResult {
 }
 
 /**
- * Marks every currently-active CaseLink for `issueKey` in this integration's
- * organization `unlinkedAt` and emits a matching `issue_unlinked` event for
- * each — the Jira-side mirror of `markCaseDeletedForTicket` (packages/
- * zendesk/src/webhook.ts). Unlike a Zendesk ticket, a Jira issue is never a
- * Case's anchor — only ever a linked engineering leg (see ./correlate.ts) —
- * so there's no Case to soft-delete here; ending its CaseLink(s) is the
- * complete analogue. Used both for an explicit `jira:issue_deleted` webhook
- * event and for a 404 on the targeted refetch (an issue deleted between the
- * webhook firing and the fetch) — both are the same fact from two different
- * angles (roadmap task 2.6).
+ * Records the fact "this issue was found deleted" and describes the removal
+ * for the shared projector (`projectIssueRemoval`), which ends every active
+ * CaseLink for the issue and emits the matching `issue_unlinked` events — the
+ * Jira-side mirror of a Zendesk ticket deletion. Unlike a Zendesk ticket, a
+ * Jira issue is never a Case's anchor — only ever a linked engineering leg
+ * (see ./correlate.ts) — so there is no Case to soft-delete; ending its
+ * CaseLink(s) is the complete analogue. Used both for an explicit
+ * `jira:issue_deleted` webhook event and for a 404 on the targeted refetch
+ * (an issue deleted between the webhook firing and the fetch): the same fact
+ * from two different angles (roadmap task 2.6).
  *
- * A no-op when nothing is currently linked (already unlinked, or never was)
- * — safe against a redelivered/duplicate webhook, since the query only ever
- * finds rows with `unlinkedAt: null`.
+ * Null (and nothing recorded) when nothing is currently linked — already
+ * unlinked, or never was — so a redelivered or duplicate webhook is harmless.
+ * The only write is the `RawEvent` the `issue_unlinked` events cite: the
+ * source-record FK is required, and with the issue gone there is no fetched
+ * payload to point at (see `mapIssueDeletedToRawEvent`).
  */
-export async function markCaseLinksUnlinkedForIssue(
+export async function recordJiraIssueDeletion(
   prisma: PrismaClient,
   integrationId: string,
   issueKey: string,
-): Promise<void> {
+): Promise<IssueRemoval | null> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
-  const activeCaseLinks = await prisma.caseLink.findMany({
+  const active = await prisma.caseLink.count({
     where: { system: "jira", externalId: issueKey, unlinkedAt: null, case: { organizationId: integration.organizationId } },
-    select: { id: true, caseId: true },
   });
-  if (activeCaseLinks.length === 0) return;
+  if (active === 0) return null;
 
-  // NormalizedEvent.sourceRawEventId is a required FK — there's no fetched
-  // payload to cite here (the issue is gone), so this RawEvent documents the
-  // deletion itself (see mapIssueDeletedToRawEvent's doc comment).
   const deletionEvent = mapIssueDeletedToRawEvent(issueKey);
   const rawEvent = await prisma.rawEvent.create({
     data: {
@@ -145,25 +144,14 @@ export async function markCaseLinksUnlinkedForIssue(
       payload: deletionEvent.payload as Prisma.InputJsonValue,
     },
   });
-
-  await prisma.$transaction(
-    activeCaseLinks.flatMap((caseLink) => [
-      prisma.caseLink.update({ where: { id: caseLink.id }, data: { unlinkedAt: rawEvent.fetchedAt } }),
-      prisma.normalizedEvent.create({
-        data: {
-          caseId: caseLink.caseId,
-          sourceRawEventId: rawEvent.id,
-          type: "issue_unlinked" as const,
-          occurredAt: rawEvent.fetchedAt,
-          actor: "system" as const,
-          system: "jira" as const,
-          sourceRole: JIRA_SOURCE_ROLE,
-          fromState: null,
-          toState: null,
-        },
-      }),
-    ]),
-  );
+  return {
+    organizationId: integration.organizationId,
+    system: "jira",
+    externalId: issueKey,
+    rawEventId: rawEvent.id,
+    observedAt: rawEvent.fetchedAt,
+    sourceRole: JIRA_SOURCE_ROLE,
+  };
 }
 
 /**
@@ -172,13 +160,13 @@ export async function markCaseLinksUnlinkedForIssue(
  * Deliberately never touches Integration.cursor — that watermark belongs to
  * the incremental search stream `runJiraBackfill` advances. Writes land
  * through the same RawEvent mapping functions the poller uses, so a
- * subsequent `runJiraCorrelation`/`runJiraNormalization` call picks them up
+ * subsequent correlation/normalization pass picks them up
  * identically whether the issue arrived via poll or webhook.
  *
  * Also refetches the site's full status list, same as `runJiraBackfill`'s
  * `backfillStatuses`: a tenant can add a custom status and transition an
  * issue onto it between poll cycles, and the synchronous
- * `runJiraNormalization` this feeds into (see the webhook route) needs that
+ * normalization this feeds into (see the webhook route) needs that
  * status id resolvable *now* — otherwise the issue's events fail to
  * normalize and its Timeline silently stops updating until the next poll.
  */

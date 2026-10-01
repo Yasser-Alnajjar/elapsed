@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@sla/db";
+import { providersWithCapability } from "./providers";
 import { getSlaPolicies } from "./sla-policies-data";
 import type { PolicyImportReview } from "./types/onboarding";
 
@@ -17,7 +18,12 @@ export async function getPolicyImportReview(
 ): Promise<PolicyImportReview> {
   const [policies, summary, totalOpenCases, unmatchedCaseRows] = await Promise.all([
     getSlaPolicies(prisma, organizationId),
-    prisma.slaImportSummary.findUnique({ where: { organizationId } }),
+    // The summary of the last policy import by a provider that has one (the
+    // `policyImport` capability); a row stamped with no provider is not any
+    // provider's summary.
+    prisma.slaImportSummary.findFirst({
+      where: { organizationId, provider: { in: providersWithCapability("policyImport") } },
+    }),
     prisma.case.count({ where: { organizationId, deletedAt: null, closedAt: null } }),
     prisma.case.findMany({
       where: { organizationId, deletedAt: null, closedAt: null, commitments: { none: {} } },

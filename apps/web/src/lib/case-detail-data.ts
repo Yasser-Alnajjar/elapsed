@@ -1,4 +1,4 @@
-import { perfCount, withPerfScope, type PrismaClient } from "@sla/db";
+import { perfCount, withPerfScope, type IntegrationProvider, type PrismaClient } from "@sla/db";
 import {
   BREACH_NOTIFICATION_THRESHOLD,
   sortNormalizedEvents,
@@ -21,19 +21,8 @@ import {
   type WeeklyWindow,
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
-import {
-  publicCommentBodiesInAudit,
-  type ZendeskAudit,
-  type ZendeskCommentBody,
-  type ZendeskCredentials,
-} from "@sla/zendesk";
-import {
-  buildIntercomConversationUrl,
-  extractIntercomMessageBody,
-  type IntercomConversationPart,
-  type IntercomCredentials,
-} from "@sla/intercom";
-import type { JiraCredentials } from "@sla/jira";
+import type { ConversationEventRef } from "@sla/ingestion";
+import { WEB_PROVIDERS, externalUrlFor, isIssueLinkSystem } from "@/lib/providers";
 import type {
   CaseDetailData,
   CaseLinkDetail,
@@ -43,11 +32,11 @@ import type {
   TimelineEventDetail,
 } from "./types/cases";
 
-// Every field this module actually reads off a zendesk/jira/intercom
-// `Integration` row: `id` (only to pass along to `buildConversationMessages`)
-// and `credentials` (parsed into `ZendeskCredentials`/`JiraCredentials`/
-// `IntercomCredentials` below) — never the row's other columns.
-const INTEGRATION_SELECT = { id: true, credentials: true } as const;
+// Every field this module actually reads off an `Integration` row: `provider`
+// (to pick the adapter), `id` (only to pass along to
+// `buildConversationMessages`) and `credentials` (handed to the adapter's
+// `externalUrl`) — never the row's other columns.
+const INTEGRATION_SELECT = { id: true, provider: true, credentials: true } as const;
 
 // No business calendar exists yet for a case whose SLA hasn't matched any
 // policy — fall back to an always-open calendar purely for the purpose of
@@ -128,14 +117,7 @@ async function getCaseDetailDataInner(
   // in the same round instead of waiting on `caseRow` first. The rare
   // not-found case pays for events/integrations/organization it won't use;
   // the common case (the case exists) saves a full round trip.
-  const [
-    caseRow,
-    eventRows,
-    zendeskIntegration,
-    jiraIntegration,
-    intercomIntegration,
-    organization,
-  ] = await Promise.all([
+  const [caseRow, eventRows, integrationRows, organization] = await Promise.all([
     prisma.case.findFirst({
       where: { id: caseId, organizationId, deletedAt: null },
       include: { customer: true, caseLinks: true, commitments: true },
@@ -144,22 +126,8 @@ async function getCaseDetailDataInner(
       where: { caseId },
       orderBy: [{ occurredAt: "asc" }, { sourceSequence: "asc" }],
     }),
-    prisma.integration.findUnique({
-      where: {
-        organizationId_provider: { organizationId, provider: "zendesk" },
-      },
-      select: INTEGRATION_SELECT,
-    }),
-    prisma.integration.findUnique({
-      where: {
-        organizationId_provider: { organizationId, provider: "jira" },
-      },
-      select: INTEGRATION_SELECT,
-    }),
-    prisma.integration.findUnique({
-      where: {
-        organizationId_provider: { organizationId, provider: "intercom" },
-      },
+    prisma.integration.findMany({
+      where: { organizationId },
       select: INTEGRATION_SELECT,
     }),
     prisma.organization.findUnique({
@@ -189,8 +157,9 @@ async function getCaseDetailDataInner(
 
   // Round 2: policy/calendar/history rows (depend on `caseRow.commitments`)
   // and `buildConversationMessages` (depends on `caseRow`/`domainEvents`/
-  // `zendeskIntegration`, not on this round's other three queries) run
-  // together — neither needs the other's result.
+  // the case's source integration, not on this round's other three queries)
+  // run together — neither needs the other's result.
+  const integrationOf = (provider: IntegrationProvider) => integrationRows.find((row) => row.provider === provider);
   const [
     policyVersionRows,
     calendarVersionRows,
@@ -235,7 +204,7 @@ async function getCaseDetailDataInner(
       prisma,
       caseRow,
       domainEvents,
-      zendeskIntegration?.id ?? null,
+      integrationOf(caseRow.system)?.id ?? null,
     ),
   ]);
 
@@ -473,76 +442,39 @@ async function getCaseDetailDataInner(
     shadingWindow.end,
   );
 
-  const zendeskCredentials =
-    (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
-  const jiraCredentials =
-    (jiraIntegration?.credentials as JiraCredentials | null) ?? null;
+  // The case's own provider decides its outbound link (roadmap step 22), not
+  // just "is a ticket source connected": an org with two ticket sources
+  // connected must never build one's link for the other's case, whose
+  // externalId was never that source's id. A source whose link needs data it
+  // has not recorded yet (Intercom's workspace id, from the first sync after
+  // connecting) has none until then.
+  const ticketUrl = externalUrlFor(caseRow.system, {
+    externalId: caseRow.externalId,
+    credentials: integrationOf(caseRow.system)?.credentials,
+  });
 
-  const intercomWorkspaceId =
-    (intercomIntegration?.credentials as IntercomCredentials | null)
-      ?.workspaceId ?? null;
-
-  // Gated on caseRow.system (roadmap step 22), not just "is Zendesk
-  // connected": an org with both ticket sources connected would otherwise
-  // build a Zendesk ticket link for an Intercom-sourced case whose externalId
-  // was never a Zendesk ticket id, or vice versa. Intercom's link needs the
-  // workspace id the backfill records from `GET /me` — null until the first
-  // sync after connecting.
-  const ticketUrl =
-    caseRow.system === "zendesk" && zendeskCredentials
-      ? `https://${zendeskCredentials.subdomain}.zendesk.com/agent/tickets/${caseRow.externalId}`
-      : caseRow.system === "intercom" && intercomWorkspaceId
-        ? buildIntercomConversationUrl(intercomWorkspaceId, caseRow.externalId)
-        : null;
-
-  // Every CaseLink system this page knows how to render — a Zendesk CaseLink
-  // never actually occurs (Case itself *is* the Zendesk side), but the type
-  // guard stays honest about the full IntegrationProvider union. Excludes a
-  // link whose `unlinkedAt` is set (e.g. the ticket was unlinked from the
-  // issue in Zendesk, and no independent evidence source still proves the
-  // relationship — see `runZendeskJiraLinkCorrelation`'s unlink sweep): the
-  // row, its evidence, and every event derived from it are kept for history,
-  // but this "active relationships" list must not present it as current.
-  // That history stays reachable through the timeline's own
-  // `issue_linked`/`issue_unlinked` events, not through this list.
+  // Every CaseLink system this page renders: the issue and pull-request
+  // providers (by their registry role). Excludes a link whose `unlinkedAt` is
+  // set (e.g. the ticket was unlinked from the issue in Zendesk, and no
+  // independent evidence source still proves the relationship — see the
+  // unlink sweeps in @sla/ingestion): the row, its evidence, and every event
+  // derived from it are kept for history, but this "active relationships" list
+  // must not present it as current. That history stays reachable through the
+  // timeline's own `issue_linked`/`issue_unlinked` events, not through this list.
   const links: CaseLinkDetail[] = caseRow.caseLinks
-    .filter(
-      (
-        link,
-      ): link is typeof link & {
-        system: "jira" | "zendesk" | "linear" | "github";
-      } =>
-        link.unlinkedAt === null &&
-        (link.system === "jira" ||
-          link.system === "zendesk" ||
-          link.system === "linear" ||
-          link.system === "github"),
-    )
+    .filter((link) => link.unlinkedAt === null && isIssueLinkSystem(link.system))
     .map((link) => ({
       system: link.system,
       externalId: link.externalId,
       method: link.method,
       confidence: link.confidence,
-      url:
-        link.system === "jira" && jiraCredentials
-          ? `${jiraCredentials.siteUrl.replace(/\/$/, "")}/browse/${link.externalId}`
-          : link.system === "zendesk" && zendeskCredentials
-            ? `https://${zendeskCredentials.subdomain}.zendesk.com/agent/tickets/${link.externalId}`
-            : link.system === "linear"
-              ? // Linear's stored OAuth credentials carry no workspace URL to
-                // reconstruct a browse link from (unlike Jira's `siteUrl` or
-                // Zendesk's `subdomain`), so the correlator (roadmap step 15)
-                // captures the issue's own `url` into evidence at link time.
-                ((link.evidence as { issueUrl?: string } | null)?.issueUrl ??
-                null)
-              : link.system === "github"
-                ? // Unlike Linear, a GitHub CaseLink's externalId itself
-                  // (`owner/repo#number`) is enough to build the PR URL —
-                  // no credential lookup or evidence capture needed.
-                  `https://github.com/${link.externalId.replace("#", "/pull/")}`
-                : null,
-      // Jira's live status name (e.g. "In Progress") is stashed into
-      // evidence by runJiraNormalization on every run — the timeline itself
+      url: externalUrlFor(link.system, {
+        externalId: link.externalId,
+        credentials: integrationOf(link.system)?.credentials,
+        evidence: link.evidence,
+      }),
+      // A tracker's live status name (e.g. "In Progress") is stashed into the
+      // link's evidence by its normalizer on every run — the timeline itself
       // only carries the coarse new/in_progress/resolved category.
       statusName:
         (link.evidence as { statusName?: string } | null)?.statusName ?? null,
@@ -712,250 +644,64 @@ function isReplyEvent(
 }
 
 /**
- * The case's full public conversation: every `agent_replied`/
- * `customer_replied` event (already in `domainEvents`' deterministic order,
- * with SLA relevance irrelevant to inclusion — an event that fed no
- * commitment still appears here) paired with the message text its source
- * RawEvent carries. Private/internal notes are out of scope: they're never
- * derived into a NormalizedEvent to begin with (see `isPublicCommentEvent`
- * in @sla/zendesk, `isVisibleMessagePart` in @sla/intercom), so there is no
- * normalized record to read one from yet.
- *
- * For Zendesk, this is prepended with the ticket's own opening
- * message (see `buildZendeskConversationMessages`) — the description an
- * email-created ticket carries, which `deriveNormalizedEventsForTicket`
- * deliberately never turns into an `agent_replied`/`customer_replied` event
- * (comments on the creation audit never count, so first-response/next-reply
- * SLA math can't see it either — this stays purely a display concern).
+ * The case's public conversation, rendered by its source provider's adapter
+ * from the raw events its reply events were derived from (and, for Zendesk,
+ * the ticket snapshot that carries the opening message). Presentation-only:
+ * never alters `domainEvents` or anything derived from it, and stays
+ * message-only (the Activity Timeline is separate). Private notes are out of
+ * scope: they're never derived into a NormalizedEvent to begin with (see
+ * `isPublicCommentEvent` in @sla/zendesk, `isVisibleMessagePart` in
+ * @sla/intercom), so there is no normalized record to read one from yet.
  */
 async function buildConversationMessages(
   prisma: PrismaClient,
-  caseRow: { externalId: string; system: string; requesterName: string | null },
+  caseRow: { externalId: string; system: IntegrationProvider; requesterName: string | null },
   domainEvents: NormalizedEvent[],
-  zendeskIntegrationId: string | null,
+  sourceIntegrationId: string | null,
 ): Promise<ConversationMessageDetail[]> {
+  // Only a ticket source renders a conversation; a tracker's or code host's
+  // events on this case are never replies.
+  const adapter = WEB_PROVIDERS[caseRow.system];
+  if (!adapter?.renderConversation) return [];
+
   const replyEvents = domainEvents.filter(isReplyEvent);
 
-  if (caseRow.system === "zendesk") {
-    return buildZendeskConversationMessages(
-      prisma,
-      caseRow,
-      domainEvents,
-      replyEvents,
-      zendeskIntegrationId,
-    );
-  }
-
-  if (replyEvents.length === 0) return [];
-
-  const rawEventRows = await prisma.rawEvent.findMany({
-    where: {
-      id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] },
-    },
-    select: { id: true, payload: true },
-  });
-  const payloadById = new Map(rawEventRows.map((row) => [row.id, row.payload]));
-
-  if (caseRow.system === "intercom") {
-    return buildIntercomConversationMessages(replyEvents, payloadById);
-  }
-  // Jira/Linear/GitHub cases never carry agent_replied/customer_replied
-  // events (only zendesk.ts/intercom.ts's normalizers ever derive them), so
-  // replyEvents would already be empty here — this branch is unreachable in
-  // practice, kept only so a case with a mixed-provider event stream (a
-  // linked issue's events on a Zendesk/Intercom case) can't fall through
-  // silently if that ever changes.
-  return [];
-}
-
-async function buildZendeskConversationMessages(
-  prisma: PrismaClient,
-  caseRow: { externalId: string; requesterName: string | null },
-  domainEvents: NormalizedEvent[],
-  replyEvents: (NormalizedEvent & {
-    actor: "customer" | "agent";
-    type: "agent_replied" | "customer_replied";
-  })[],
-  zendeskIntegrationId: string | null,
-): Promise<ConversationMessageDetail[]> {
-  // The ticket's own requester id, so a customer message can be attributed
-  // to the case's already-known `requesterName` — never guessed for anyone
-  // else. Zendesk's audit sideload only ever stores a comment author's role
-  // (see `mapUserToRawEvent`'s privacy-minimization comment in
-  // @sla/zendesk), never their name, so any other author stays unnamed.
-  let requesterId: number | null = null;
-  // The ticket's own opening message (its `description`), derived from the
-  // ticket snapshot rather than a comment — see the module doc comment on
-  // `buildConversationMessages`. Never sourced from a synthesized comment or
-  // written back to RawEvent/NormalizedEvent; this is purely a display-time
-  // read of data `mapTicketToRawEvent` already persisted.
-  let initialMessage: ConversationMessageDetail | null = null;
-  const caseCreatedEvent = domainEvents.find(
-    (event) => event.type === "case_created",
-  );
-
-  if (zendeskIntegrationId) {
-    const ticketRow = await prisma.rawEvent.findFirst({
-      where: {
-        integrationId: zendeskIntegrationId,
-        providerEventId: { startsWith: `ticket:${caseRow.externalId}:` },
-      },
-      orderBy: { fetchedAt: "desc" },
-      select: { payload: true },
-    });
-    const ticketPayload = ticketRow?.payload as
-      { requester_id?: number | null; description?: string | null } | undefined;
-    requesterId = ticketPayload?.requester_id ?? null;
-
-    const description = ticketPayload?.description?.trim();
-    // 3.7: shown for every actor, including "system" (a trigger/automation/
-    // rule created the ticket) — a neutral, centered bubble rather than a
-    // Customer/Agent one (see ConversationMessageBubble).
-    if (description && caseCreatedEvent) {
-      const actor = caseCreatedEvent.actor;
-      initialMessage = {
-        // Namespaced off the case_created event's own id (a cuid, unique per
-        // case) — never a raw Zendesk comment/audit event id, so this can
-        // never collide with a real agent_replied/customer_replied message.
-        id: `${caseCreatedEvent.id}:description`,
-        occurredAt: caseCreatedEvent.occurredAt,
-        actor,
-        type:
-          actor === "agent"
-            ? "agent_replied"
-            : actor === "customer"
-              ? "customer_replied"
-              : "case_created",
-        authorName: actor === "customer" ? caseRow.requesterName : null,
-        isRequester: actor === "customer" ? true : undefined,
-        body: description,
-      };
+  const context: unknown[] = [];
+  if (sourceIntegrationId) {
+    for (const prefix of adapter.conversationContext?.(caseRow.externalId) ?? []) {
+      const row = await prisma.rawEvent.findFirst({
+        where: { integrationId: sourceIntegrationId, providerEventId: { startsWith: prefix } },
+        orderBy: { fetchedAt: "desc" },
+        select: { payload: true },
+      });
+      context.push(row?.payload);
     }
   }
 
-  if (replyEvents.length === 0) {
-    return initialMessage ? [initialMessage] : [];
-  }
-
-  const rawEventRows = await prisma.rawEvent.findMany({
-    where: {
-      id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] },
-    },
-    select: { id: true, payload: true },
-  });
-  const payloadById = new Map(rawEventRows.map((row) => [row.id, row.payload]));
-
-  // Group replies by the audit they came from, in each audit's own
-  // sourceSequence order — the order `deriveNormalizedEventsForTicket`
-  // walked that audit's events in.
-  const groups = new Map<string, typeof replyEvents>();
-  for (const event of replyEvents) {
-    const group = groups.get(event.sourceRawEventId);
-    if (group) group.push(event);
-    else groups.set(event.sourceRawEventId, [event]);
-  }
-
-  const bodyByEventId = new Map<string, ZendeskCommentBody>();
-  // Explicit dedupe by the audit's own id + the comment's own id within it
-  // (3.7/C-5) — a globally stable key (unlike `sourceRawEventId`, which
-  // names a RawEvent snapshot, not the underlying Zendesk audit) — on top
-  // of, not instead of, normalization's own uniqueness: guards display
-  // against ever double-rendering the same underlying comment even if two
-  // NormalizedEvent rows, or two RawEvent snapshots, somehow both point at it.
-  const seenComments = new Set<string>();
-  for (const [rawEventId, group] of groups) {
-    const audit = payloadById.get(rawEventId) as ZendeskAudit | undefined;
-    if (!audit) continue;
-    const comments = publicCommentBodiesInAudit(audit);
-    const ordered = [...group].sort(
-      (a, b) => (a.sourceSequence ?? 0) - (b.sourceSequence ?? 0),
-    );
-    // An audit almost always carries exactly one public comment; when it
-    // carries more, both lists were built by walking that audit's events in
-    // the same order, so pairing them index-wise recovers the right text
-    // for each. A length mismatch (e.g. a comment on the ticket's own
-    // creation audit, excluded from `agent_replied`/`customer_replied` but
-    // not from this raw scan) pairs as far as the shorter list goes, rather
-    // than guessing or throwing.
-    ordered.forEach((event, index) => {
-      const comment = comments[index];
-      if (!comment) return;
-      const dedupeKey = `${audit.id}:${comment.id}`;
-      if (seenComments.has(dedupeKey)) return;
-      seenComments.add(dedupeKey);
-      bodyByEventId.set(event.id, comment);
-    });
-  }
-
-  const messages: ConversationMessageDetail[] = [];
-  for (const event of replyEvents) {
-    const comment = bodyByEventId.get(event.id);
-    if (!comment) continue;
-    const isRequester =
-      event.actor === "customer" &&
-      comment.authorId != null &&
-      comment.authorId === requesterId;
-    messages.push({
-      id: event.id,
-      occurredAt: event.occurredAt,
-      actor: event.actor,
-      type: event.type,
-      authorName: isRequester ? caseRow.requesterName : null,
-      isRequester: isRequester ? true : undefined,
-      body: comment.body,
-    });
-  }
-
-  return initialMessage ? [initialMessage, ...messages] : messages;
-}
-
-function buildIntercomConversationMessages(
-  replyEvents: (NormalizedEvent & {
-    actor: "customer" | "agent";
-    type: "agent_replied" | "customer_replied";
-  })[],
-  payloadById: Map<string, unknown>,
-): ConversationMessageDetail[] {
-  // Explicit dedupe by source part id (3.7/C-5), on top of — not instead of —
-  // normalization's own uniqueness (each RawEvent is one Intercom part).
-  const seenParts = new Set<string>();
-  return replyEvents.flatMap((event) => {
-    if (seenParts.has(event.sourceRawEventId)) return [];
-    const part = payloadById.get(event.sourceRawEventId) as
-      IntercomConversationPart | undefined;
-    if (!part) return [];
-    const message = extractIntercomMessageBody(part);
-    if (!message) return [];
-    seenParts.add(event.sourceRawEventId);
-    return [
-      {
-        id: event.id,
-        occurredAt: event.occurredAt,
-        actor: event.actor,
-        type: event.type,
-        authorName: message.authorName,
-        body: htmlToPlainText(message.bodyHtml),
+  const payloads = new Map<string, unknown>();
+  if (replyEvents.length > 0) {
+    const rawEventRows = await prisma.rawEvent.findMany({
+      where: {
+        id: { in: [...new Set(replyEvents.map((e) => e.sourceRawEventId))] },
       },
-    ];
-  });
-}
+      select: { id: true, payload: true },
+    });
+    for (const row of rawEventRows) payloads.set(row.id, row.payload);
+  }
 
-/**
- * Intercom message bodies are HTML. This strips markup down to plain text
- * for display — the conversation view never uses `dangerouslySetInnerHTML`,
- * so third-party HTML is never interpreted as markup.
- */
-function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>|<\/div>|<\/li>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return adapter.renderConversation({
+    case: { externalId: caseRow.externalId, requesterName: caseRow.requesterName },
+    events: domainEvents.map(
+      (event): ConversationEventRef => ({
+        id: event.id,
+        type: event.type,
+        actor: event.actor,
+        occurredAt: event.occurredAt,
+        sourceRawEventId: event.sourceRawEventId,
+        sourceSequence: event.sourceSequence,
+      }),
+    ),
+    payloads,
+    context,
+  });
 }

@@ -299,7 +299,6 @@ export async function seedPerfBaseline(
     id: crypto.randomUUID(),
     organizationId: organization.id,
     name: `Customer ${i + 1} (perf ${runId})`,
-    zendeskOrgId: `zendesk-org-${runId}-${i + 1}`,
     tier: pick(TIERS),
   }));
   await insertBatched(
@@ -307,6 +306,19 @@ export async function seedPerfBaseline(
     customerRows,
     batchSize,
     (batch) => prisma.customer.createMany({ data: batch }),
+    onProgress,
+  );
+  await insertBatched(
+    "customer identities",
+    customerRows.map((c, i) => ({
+      organizationId: organization.id,
+      customerId: c.id,
+      provider: IntegrationProvider.zendesk,
+      kind: "organization",
+      externalId: `zendesk-org-${runId}-${i + 1}`,
+    })),
+    batchSize,
+    (batch) => prisma.customerIdentity.createMany({ data: batch }),
     onProgress,
   );
   const customerIds = customerRows.map((c) => c.id);
@@ -373,6 +385,7 @@ export async function seedPerfBaseline(
       customerId: pick(customerIds),
       externalId: `perf-${runId}-${i}`,
       system: IntegrationProvider.zendesk,
+      sourceIntegrationId: integration.id,
       subject: `Case ${i + 1}`,
       priority: pick(PRIORITIES),
       tier: pick(TIERS),

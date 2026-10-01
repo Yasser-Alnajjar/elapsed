@@ -10,6 +10,7 @@ import type {
   ZendeskSlaPoliciesPage,
   ZendeskTicketShow,
 } from "./types";
+import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
 export class ZendeskApiError extends Error {
   readonly status: number;
@@ -29,6 +30,7 @@ export class ZendeskApiError extends Error {
  * Subclasses `ZendeskApiError` so existing `status` checks keep working.
  */
 export class ZendeskPermissionDeniedError extends ZendeskApiError {
+  readonly [PERMISSION_DENIED_BRAND] = true as const;
   constructor(url: string) {
     super(403, url);
     this.name = "ZendeskPermissionDeniedError";

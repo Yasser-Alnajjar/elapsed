@@ -13,82 +13,30 @@ import {
   recordSlaImportSummary,
   withOrganizationSlaLock,
   withPerfScope,
+  type IntegrationProvider,
   type PrismaClient,
 } from "@sla/db";
+import type { SourceRole } from "@sla/core";
 import {
-  GithubPermissionDeniedError,
-  GithubReauthRequiredError,
-  runGithubBackfill,
-  runGithubCorrelation,
-  runGithubNormalization,
-} from "@sla/github";
-import {
-  IntercomPermissionDeniedError,
-  IntercomReauthRequiredError,
-  runIntercomBackfill,
-  runIntercomNormalization,
-} from "@sla/intercom";
-import {
-  JiraPermissionDeniedError,
-  JiraReauthRequiredError,
-  runJiraBackfill,
-  runJiraCorrelation,
-  runJiraNormalization,
-} from "@sla/jira";
-import {
-  LinearPermissionDeniedError,
-  LinearReauthRequiredError,
-  runLinearBackfill,
-  runLinearCorrelation,
-  runLinearNormalization,
-} from "@sla/linear";
+  IntegrationNotConfiguredError,
+  PermissionDeniedError,
+  ReauthRequiredError,
+  syncIntegration,
+  type IntegrationRef,
+  type PolicyImportResult,
+} from "@sla/ingestion";
 import { createLogger, type Logger } from "@sla/logger";
 import {
   claimNotifications,
   deliverClaimedNotifications,
   type NotificationClaims,
 } from "@sla/notifications";
-import {
-  runZendeskBackfill,
-  runZendeskBusinessCalendarImport,
-  runZendeskJiraLinkCorrelation,
-  runZendeskNormalization,
-  runZendeskSlaPolicyImport,
-  ZendeskPermissionDeniedError,
-  ZendeskReauthRequiredError,
-  type SlaPolicyImportResult,
-} from "@sla/zendesk";
 import { caseRefResolverFor } from "./case-ref";
 import { forEachWithConcurrency, normalizeConcurrency } from "./concurrency";
 import type { WorkerConfig } from "./config";
 import { LeaseLostError, type LeaseGuard } from "./lease";
+import { PROVIDERS } from "./providers";
 import { captureException } from "./sentry";
-
-function isPermissionDeniedError(error: unknown): boolean {
-  return (
-    error instanceof ZendeskPermissionDeniedError ||
-    error instanceof JiraPermissionDeniedError ||
-    error instanceof LinearPermissionDeniedError ||
-    error instanceof IntercomPermissionDeniedError ||
-    error instanceof GithubPermissionDeniedError
-  );
-}
-
-/**
- * The organization has no OAuth app configuration for this provider, so there
- * is nothing the worker can ingest for it. That is an expected configuration
- * state, not a worker failure: the integration is skipped, the organization
- * carries on with its other integrations, and nothing is counted against the
- * run. Deliberately narrow — an *unreadable* config
- * (`IntegrationConfigUnreadableError`), a missing `NEXTAUTH_URL` (a
- * deployment problem) and every provider error stay real failures.
- */
-export class IntegrationNotConfiguredError extends Error {
-  constructor(providerLabel: string) {
-    super(`${providerLabel} is not configured for this organization`);
-    this.name = "IntegrationNotConfiguredError";
-  }
-}
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
 
@@ -165,19 +113,19 @@ const SCOPE_BY_KIND: Record<CycleKind, EvaluationScope> = {
 };
 
 /**
- * GitHub's correlator depends on that organization's Jira/Linear CaseLinks
- * already existing (it links transitively through them — see
- * packages/github/src/correlate.ts), so within one organization's
- * integrations, github is processed after jira/linear where possible. A
- * miss just self-heals on the next poll either way (upsert-based), but
- * same-cycle ordering avoids an unnecessary extra cycle's delay.
+ * Within one organization, ticket sources go first (they create the cases
+ * everything else attaches to), then work trackers (they link onto those
+ * cases), then code hosts (GitHub's correlator links transitively through the
+ * trackers' links — see packages/github/src/correlate.ts). A miss just
+ * self-heals on the next poll either way (upsert-based), but same-cycle
+ * ordering avoids an unnecessary extra cycle's delay.
  */
-const PROVIDER_CYCLE_PRIORITY: Partial<Record<string, number>> = { github: 1 };
+const ROLE_CYCLE_ORDER: Record<SourceRole, number> = { ticket_source: 0, work_tracker: 1, code_host: 2 };
 
 /** What `processOrganization` needs to know about the organization it is given. */
 export interface OrganizationToProcess {
   id: string;
-  integrations: { id: string; provider: string; credentials: unknown; status: string }[];
+  integrations: { id: string; provider: IntegrationProvider; credentials: unknown; status: string }[];
 }
 
 /**
@@ -242,10 +190,14 @@ export async function processOrganization(
   });
 
   const orderedIntegrations = [...organization.integrations].sort(
-    (a, b) =>
-      (PROVIDER_CYCLE_PRIORITY[a.provider] ?? 0) -
-      (PROVIDER_CYCLE_PRIORITY[b.provider] ?? 0),
+    (a, b) => ROLE_CYCLE_ORDER[PROVIDERS[a.provider].role] - ROLE_CYCLE_ORDER[PROVIDERS[b.provider].role],
   );
+  const integrationRef = (integration: OrganizationToProcess["integrations"][number]): IntegrationRef => ({
+    id: integration.id,
+    organizationId: organization.id,
+    provider: integration.provider,
+    status: integration.status as IntegrationRef["status"],
+  });
 
   // Phase 1: ingest only (network-bound, idempotent RawEvent upserts) —
   // deliberately outside the per-organization lock below, so a slow
@@ -274,67 +226,13 @@ export async function processOrganization(
     const providerLabel = `${integration.provider[0]!.toUpperCase()}${integration.provider.slice(1)}`;
 
     try {
-      if (integration.provider === "zendesk") {
-        if (!config.appUrl)
-          throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
-        const zendeskConfig = await getIntegrationConfig(
-          prisma,
-          organization.id,
-          "zendesk",
-        );
-        if (!zendeskConfig)
-          throw new IntegrationNotConfiguredError("Zendesk");
-        await runZendeskBackfill(
-          prisma,
-          integration.id,
-          {
-            ...zendeskConfig,
-            redirectUri: `${config.appUrl}/api/integrations/zendesk/callback`,
-          },
-          {
-            logger: orgLogger.child({
-              integrationId: integration.id,
-              provider: "zendesk",
-            }),
-          },
-        );
-      } else if (integration.provider === "jira") {
-        if (!config.appUrl)
-          throw new Error("Worker app URL is not configured (NEXTAUTH_URL)");
-        const jiraConfig = await getIntegrationConfig(
-          prisma,
-          organization.id,
-          "jira",
-        );
-        if (!jiraConfig)
-          throw new IntegrationNotConfiguredError("Jira");
-        await runJiraBackfill(prisma, integration.id, {
-          ...jiraConfig,
-          redirectUri: `${config.appUrl}/api/integrations/jira/callback`,
-        });
-      } else if (integration.provider === "linear") {
-        // Linear's backfill needs no OAuth client config to run (roadmap
-        // step 14: its tokens carry no refresh dance), unlike Jira/Zendesk.
-        await runLinearBackfill(prisma, integration.id);
-      } else if (integration.provider === "intercom") {
-        // Intercom's backfill needs no OAuth client config to run either
-        // (roadmap step 22: like Linear, its tokens carry no refresh
-        // dance) — only the connect/callback routes need the app's
-        // client id/secret.
-        await runIntercomBackfill(prisma, integration.id);
-      } else {
-        // Unlike Linear/Intercom, GitHub needs its App's client id/secret
-        // here: GitHub App user tokens expire and are refreshed like
-        // Jira's (roadmap step 38).
-        const githubConfig = await getIntegrationConfig(
-          prisma,
-          organization.id,
-          "github",
-        );
-        if (!githubConfig)
-          throw new IntegrationNotConfiguredError("GitHub");
-        await runGithubBackfill(prisma, integration.id, githubConfig);
-      }
+      await PROVIDERS[integration.provider].ingest({
+        prisma,
+        integration: integrationRef(integration),
+        logger: orgLogger.child({ integrationId: integration.id, provider: integration.provider }),
+        appUrl: config.appUrl ?? null,
+        loadOAuthConfig: () => getIntegrationConfig(prisma, organization.id, integration.provider),
+      });
     } catch (error) {
       // Not a sync failure: this worker no longer owns the organization (its
       // cursor write was fenced out). Stop the run rather than record it.
@@ -345,16 +243,11 @@ export async function processOrganization(
       // silent `continue`, so a misconfigured or disconnected-at-the-config
       // level integration shows up the same way a failed sync does, both
       // in `result.failures` and on `Integration.lastSyncError`.
-      reauthRequired =
-        error instanceof ZendeskReauthRequiredError ||
-        error instanceof JiraReauthRequiredError ||
-        error instanceof LinearReauthRequiredError ||
-        error instanceof IntercomReauthRequiredError ||
-        error instanceof GithubReauthRequiredError;
+      reauthRequired = error instanceof ReauthRequiredError;
       // A 403 (roadmap step 32): the token works but the connecting user
       // lost access provider-side — surfaced as its own status, since the
       // fix is restoring that user's permissions, not reconnecting.
-      permissionDenied = !reauthRequired && isPermissionDeniedError(error);
+      permissionDenied = !reauthRequired && error instanceof PermissionDeniedError;
       syncError = reauthRequired
         ? `${providerLabel} needs to be reconnected`
         : permissionDenied
@@ -450,7 +343,7 @@ export async function processOrganization(
   // ingest just failed: normalization is DB-local and still has whatever
   // RawEvents an earlier successful cycle already stored.
   const ingestMs = Date.now() - orgStartedAt;
-  let slaPolicyImportResult: SlaPolicyImportResult | null = null;
+  let slaPolicyImport: { provider: IntegrationProvider; result: PolicyImportResult } | null = null;
   const notification: { claims: NotificationClaims | null } = { claims: null };
 
   // Phase 2 publishes results other readers see; confirm against the database
@@ -467,43 +360,23 @@ export async function processOrganization(
           let normalizeError: string | null = null;
 
           try {
-            if (integration.provider === "zendesk") {
-              // The poll only re-derives tickets touched since the
-              // watermark; the reconciliation sweep re-derives them all (and is
-              // the backstop for anything the watermark could miss).
-              await runZendeskNormalization(prisma, integration.id, {
-                mode:
-                  kind === "active_set_poll" ? "incremental" : "full",
-              });
-              // Independent of Jira's own correlation below: the official
-              // Zendesk↔Jira link signal still establishes the relationship
-              // even when a Jira remote link is stale or Jira isn't connected
-              // at all. Must run after normalization, which is what creates
-              // the Cases this looks up by ticket id.
-              await runZendeskJiraLinkCorrelation(prisma, integration.id);
-              await runZendeskBusinessCalendarImport(prisma, integration.id);
-              slaPolicyImportResult = await runZendeskSlaPolicyImport(
-                prisma,
-                integration.id,
-                (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
-              );
-            } else if (integration.provider === "jira") {
-              await runJiraCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, organization.id));
-              await runJiraNormalization(prisma, integration.id);
-            } else if (integration.provider === "linear") {
-              await runLinearCorrelation(prisma, integration.id, await caseRefResolverFor(prisma, organization.id));
-              await runLinearNormalization(prisma, integration.id);
-            } else if (integration.provider === "intercom") {
-              // No correlation step: Intercom is a ticket source that creates
-              // its own Cases, not an engineering-leg source that links onto
-              // one.
-              await runIntercomNormalization(prisma, integration.id);
-            } else {
-              // Correlation links transitively through this org's existing
-              // Jira/Linear CaseLinks (roadmap step 23) rather than any direct
-              // Zendesk knowledge.
-              await runGithubCorrelation(prisma, integration.id);
-              await runGithubNormalization(prisma, integration.id);
+            const adapter = PROVIDERS[integration.provider];
+            const synced = await syncIntegration(adapter, {
+              prisma,
+              integration: integrationRef(integration),
+              logger: orgLogger.child({ integrationId: integration.id, provider: integration.provider }),
+              // The poll only re-derives what changed since the adapter's own
+              // watermark; the reconciliation sweep re-derives everything (and
+              // is the backstop for anything the watermark could miss).
+              mode: kind === "active_set_poll" ? "incremental" : "full",
+              // Only a work tracker links onto cases through a URL a ticket
+              // source recognizes; no need to read the sources for anyone else.
+              resolveCaseRef:
+                adapter.role === "work_tracker" ? await caseRefResolverFor(prisma, organization.id) : null,
+              ensureDefaultCalendarVersion: (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
+            });
+            if (synced.policyImport) {
+              slaPolicyImport = { provider: integration.provider, result: synced.policyImport };
             }
           } catch (error) {
             if (error instanceof LeaseLostError) throw error;
@@ -604,16 +477,17 @@ export async function processOrganization(
           );
           result.commitmentsCreated += commitments.commitmentsCreated;
 
-          if (slaPolicyImportResult) {
+          if (slaPolicyImport) {
             await recordSlaImportSummary(prisma, organization.id, {
+              provider: slaPolicyImport.provider,
               unsupportedConditions:
-                slaPolicyImportResult.unsupportedConditions,
-              unsupportedMetrics: slaPolicyImportResult.unsupportedMetrics,
+                slaPolicyImport.result.unsupportedConditions,
+              unsupportedMetrics: slaPolicyImport.result.unsupportedMetrics,
               policiesWithNoUsableTargets:
-                slaPolicyImportResult.policiesWithNoUsableTargets,
+                slaPolicyImport.result.policiesWithNoUsableTargets,
               policiesWithUnresolvedSchedule:
-                slaPolicyImportResult.policiesWithUnresolvedSchedule,
-              policiesArchived: slaPolicyImportResult.policiesArchived,
+                slaPolicyImport.result.policiesWithUnresolvedSchedule,
+              policiesArchived: slaPolicyImport.result.policiesArchived,
               casesWithNoMatchingPolicy:
                 commitments.casesWithNoMatchingPolicy,
             });
@@ -876,7 +750,7 @@ export async function runCycle(
 
   // Organizations run concurrently (bounded — see `forEachWithConcurrency`);
   // integrations within one organization stay sequential. Everything below
-  // that is per-organization (`ingestOutcomes`, `slaPolicyImportResult`,
+  // that is per-organization (`ingestOutcomes`, `slaPolicyImport`,
   // `notification`, the loggers) is declared inside this function, so
   // concurrent organizations share nothing but `result`, and every update to
   // that is a synchronous `+=` / `push` with no `await` between its read and

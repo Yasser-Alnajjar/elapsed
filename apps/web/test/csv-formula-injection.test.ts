@@ -47,10 +47,8 @@ describe("the exports that write customer-controlled text", () => {
     const row = {
       customerName: "=cmd|'/C calc'!A0",
       externalId: "@ticket",
-      zendeskUrl: "https://x.zendesk.com/agent/tickets/1",
-      jiraIssueKeys: [],
-      linearIssueKeys: [],
-      githubPullRequestKeys: [],
+      ticketUrl: "https://x.zendesk.com/agent/tickets/1",
+      issueKeys: [[], [], []],
       kind: "resolution",
       status: "breached",
       targetMinutes: 60,

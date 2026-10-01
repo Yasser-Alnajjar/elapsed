@@ -12,6 +12,19 @@
  *   4. the Jira, Linear and GitHub packages hold no Zendesk/Intercom host
  *      literal and no `provider: "zendesk" | "intercom"` lookup (V9).
  *
+ * N2.9 extends it to the apps and to what provider packages may import:
+ *
+ *   5. `apps/worker/src` holds no `provider === "…"` comparison outside the
+ *      registry (`providers.ts`);
+ *   6. provider-name literals in `apps/web/src` appear only in the registry,
+ *      the OAuth/env, webhook, concierge, integration-settings and internal
+ *      surfaces (and the onboarding wizard, until N5 rebuilds it from the
+ *      adapters' capabilities);
+ *   7. provider packages import only types and error classes from
+ *      `@sla/ingestion`, never the projector;
+ *   8. no provider package writes a `Case`, `Customer`, `CustomerIdentity`,
+ *      `CaseLink` or `NormalizedEvent` row: the projector does.
+ *
  * It is a ratchet. `ALLOWLIST` lists today's violations, each tagged with the
  * N1 task that removes it. The test fails on a NEW violation, and also when an
  * allowlisted entry no longer violates, so the list can only shrink. N1 exits
@@ -32,7 +45,11 @@ type Rule =
   | "domain-depends-on-provider"
   | "provider-depends-on-commitments"
   | "provider-literal-in-domain"
-  | "ticket-source-host-or-lookup-in-tracker";
+  | "ticket-source-host-or-lookup-in-tracker"
+  | "worker-provider-comparison"
+  | "web-provider-literal"
+  | "provider-imports-projector"
+  | "provider-writes-domain-table";
 
 interface Violation {
   rule: Rule;
@@ -130,8 +147,87 @@ function scanSources(packages: readonly string[], test: (code: string) => boolea
   );
 }
 
+const WORKER_PROVIDER_COMPARISON = /\bprovider\s*[!=]==\s*["'`](zendesk|jira|intercom|linear|github)["'`]/;
+
+/** Where `apps/web/src` may name a provider (paths relative to it). */
+const WEB_PROVIDER_NAME_ALLOWED: RegExp[] = [
+  /^lib\/providers\.ts$/,
+  /^lib\/[^/]*-env\.ts$/,
+  // Concierge export: `lib/*concierge*`, wherever under lib.
+  /^lib\/(?:.*\/)?[^/]*concierge[^/]*$/,
+  /^modules\/settings\/integrations\//,
+  /^modules\/settings\/integration-detail\//,
+  /^modules\/internal\//,
+  /^app\/api\/integrations\//,
+  /^app\/api\/webhooks\//,
+  /^app\/api\/concierge\//,
+  /^app\/\(main\)\/internal\//,
+  // The integration-settings read models and their view types.
+  /^lib\/integrations-data\.ts$/,
+  /^lib\/integration-detail-data\.ts$/,
+  /^lib\/types\/integrations\.ts$/,
+  // The onboarding wizard is built around two ticket sources and two trackers.
+  // N5 rebuilds it from the adapters' capabilities, which is when these go.
+  /^modules\/onboarding\//,
+  /^lib\/onboarding-[^/]*\.ts$/,
+  /^lib\/types\/onboarding\.ts$/,
+  /^actions\/onboarding\.ts$/,
+];
+
+/** What a provider package may import from `@sla/ingestion` as a value: error classes and their brand. */
+const INGESTION_VALUE_EXPORTS_FOR_PROVIDERS = new Set([
+  "ReauthRequiredError",
+  "PermissionDeniedError",
+  "ProviderUnavailableError",
+  "IntegrationNotConfiguredError",
+  "PERMISSION_DENIED_BRAND",
+]);
+
+const DOMAIN_TABLE_WRITE =
+  /\.(?:case|customer|customerIdentity|caseLink|normalizedEvent)\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\(|\bupsertCustomerByIdentity\b/;
+
+/** `@sla/ingestion` imports that are not a type or an error class. */
+function badIngestionImports(code: string): string[] {
+  const bad: string[] = [];
+  for (const match of code.matchAll(/import\s+(type\s+)?\{([^}]*)\}\s+from\s+["']@sla\/ingestion(\/[^"']*)?["']/g)) {
+    if (match[3]) bad.push(`deep import @sla/ingestion${match[3]}`);
+    if (match[1]) continue; // `import type { … }`
+    for (const part of match[2]!.split(",")) {
+      const name = part.trim();
+      if (name === "" || name.startsWith("type ")) continue;
+      if (!INGESTION_VALUE_EXPORTS_FOR_PROVIDERS.has(name.split(/\s+as\s+/)[0]!)) bad.push(name);
+    }
+  }
+  for (const match of code.matchAll(/import\s+(?:\*\s+as\s+\w+|\w+)\s+from\s+["']@sla\/ingestion["']/g)) bad.push(match[0]);
+  return bad;
+}
+
 function findViolations(): Violation[] {
   const violations: Violation[] = [];
+
+  for (const file of sourceFiles(join(ROOT, "apps", "worker", "src"))) {
+    if (file.endsWith("/providers.ts")) continue;
+    if (WORKER_PROVIDER_COMPARISON.test(stripComments(readFileSync(file, "utf8")))) {
+      violations.push({ rule: "worker-provider-comparison", file: repoPath(file) });
+    }
+  }
+
+  const webSrc = join(ROOT, "apps", "web", "src");
+  for (const file of sourceFiles(webSrc)) {
+    const inWeb = relative(webSrc, file).split("\\").join("/");
+    if (WEB_PROVIDER_NAME_ALLOWED.some((allowed) => allowed.test(inWeb))) continue;
+    if (PROVIDER_LITERAL.test(stripComments(readFileSync(file, "utf8")))) {
+      violations.push({ rule: "web-provider-literal", file: repoPath(file) });
+    }
+  }
+
+  for (const name of PROVIDER_PACKAGES) {
+    for (const file of sourceFiles(join(ROOT, "packages", name, "src"))) {
+      const code = stripComments(readFileSync(file, "utf8"));
+      if (badIngestionImports(code).length > 0) violations.push({ rule: "provider-imports-projector", file: repoPath(file) });
+      if (DOMAIN_TABLE_WRITE.test(code)) violations.push({ rule: "provider-writes-domain-table", file: repoPath(file) });
+    }
+  }
 
   for (const name of DOMAIN_PACKAGES) {
     const providerDeps = dependencyNames(name).filter((dep) =>
@@ -168,9 +264,11 @@ const key = (v: Violation) => `${v.rule} :: ${v.file}`;
 
 describe("provider boundary ratchet", () => {
   it("scans real files (guards against a vacuous pass)", () => {
-    for (const name of [...DOMAIN_PACKAGES, ...TRACKER_PACKAGES]) {
+    for (const name of [...DOMAIN_PACKAGES, ...PROVIDER_PACKAGES]) {
       expect(sourceFiles(join(ROOT, "packages", name, "src")).length, name).toBeGreaterThan(0);
     }
+    expect(sourceFiles(join(ROOT, "apps", "worker", "src")).length).toBeGreaterThan(0);
+    expect(sourceFiles(join(ROOT, "apps", "web", "src")).length).toBeGreaterThan(100);
     for (const name of [...DOMAIN_PACKAGES, ...PROVIDER_PACKAGES]) {
       expect(dependencyNames(name), name).toEqual(expect.any(Array));
     }
@@ -219,6 +317,25 @@ describe("stripComments", () => {
   });
 });
 
+describe("N2.9 rule helpers", () => {
+  it("flags a provider comparison and an ingestion import that is not a type or an error", () => {
+    expect(WORKER_PROVIDER_COMPARISON.test('if (integration.provider === "zendesk") {}')).toBe(true);
+    expect(WORKER_PROVIDER_COMPARISON.test('if (provider !== "linear") {}')).toBe(true);
+    expect(WORKER_PROVIDER_COMPARISON.test('const x = PROVIDERS[integration.provider];')).toBe(false);
+
+    expect(badIngestionImports('import { projectCanonicalBatch } from "@sla/ingestion";')).toEqual(["projectCanonicalBatch"]);
+    expect(badIngestionImports('import { ReauthRequiredError, type ProviderAdapter } from "@sla/ingestion";')).toEqual([]);
+    expect(badIngestionImports('import type { projectLinkFacts } from "@sla/ingestion";')).toEqual([]);
+    expect(badIngestionImports('import { x } from "@sla/ingestion/src/projector";')).toContain("deep import @sla/ingestion/src/projector");
+  });
+
+  it("recognises a domain-table write", () => {
+    expect(DOMAIN_TABLE_WRITE.test("await prisma.case.updateMany({})")).toBe(true);
+    expect(DOMAIN_TABLE_WRITE.test("await prisma.rawEvent.createMany({})")).toBe(false);
+    expect(DOMAIN_TABLE_WRITE.test("prisma.caseLink.findMany({})")).toBe(false);
+  });
+});
+
 describe("NormalizedEvent writers", () => {
   it("every create / createMany sets sourceRole (N1.5)", () => {
     const packagesDir = join(ROOT, "packages");
@@ -239,7 +356,8 @@ describe("NormalizedEvent writers", () => {
         }
       }
     }
-    expect(sites).toBeGreaterThanOrEqual(14);
+    // The writers are the projector (events, links, sweeps, removals) and the seed scripts.
+    expect(sites).toBeGreaterThanOrEqual(4);
     expect(missing).toEqual([]);
   });
 });

@@ -15,6 +15,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import type { ZendeskAudit, ZendeskTicket } from "@sla/zendesk";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 
@@ -161,12 +162,12 @@ describe.skipIf(!TEST_DATABASE_URL)("first-response creation actor (H-11, real P
         skipDuplicates: true,
       });
     }
-    return zendesk.runZendeskNormalization(prisma, integrationId);
+    return normalizeZendesk(prisma, integrationId);
   }
 
   const runPipeline = () => commitments.runCommitmentPipeline(prisma, organizationId);
   const caseId = async (externalId: string) =>
-    (await prisma.case.findUniqueOrThrow({ where: { organizationId_externalId: { organizationId, externalId } } })).id;
+    (await prisma.case.findFirstOrThrow({ where: { organizationId, externalId } })).id;
   const firstResponse = async (externalId: string) =>
     prisma.commitment.findMany({ where: { caseId: await caseId(externalId), kind: "first_response" } });
   const creatorOf = async (externalId: string) =>
@@ -250,8 +251,8 @@ describe.skipIf(!TEST_DATABASE_URL)("first-response creation actor (H-11, real P
     const snapshot = { a: await eventSnapshot("54"), b: await eventSnapshot("1") };
     const commitmentIds = (await prisma.commitment.findMany({ orderBy: { id: "asc" } })).map((c) => c.id);
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
-    await zendesk.runZendeskNormalization(prisma, integrationId, { mode: "incremental" });
+    await normalizeZendesk(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId, { mode: "incremental" });
     await ingest({}); // a third full replay
     const created = await runPipeline();
 

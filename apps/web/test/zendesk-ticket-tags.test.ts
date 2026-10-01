@@ -11,6 +11,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -77,7 +78,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk ticket tags -> Case.tags (real Post
   it("stores a ticket's tags on the Case", async () => {
     await seedTicket(ticketRawEvent({ tags: ["d6", "customer-visible"] }));
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseRow = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } });
     expect(caseRow.tags).toEqual(["d6", "customer-visible"]);
@@ -86,7 +87,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk ticket tags -> Case.tags (real Post
   it("defaults to no tags when the Zendesk payload doesn't carry any", async () => {
     await seedTicket(ticketRawEvent({}));
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseRow = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } });
     expect(caseRow.tags).toEqual([]);
@@ -94,11 +95,11 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk ticket tags -> Case.tags (real Post
 
   it("re-normalizing an existing case updates its tags to match the latest ticket snapshot", async () => {
     await seedTicket(ticketRawEvent({ tags: ["d6"] }));
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     expect((await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } })).tags).toEqual(["d6"]);
 
     await seedTicket(ticketRawEvent({ tags: ["d6", "escalated"] }), "ticket:1:hash-2");
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     expect((await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } })).tags).toEqual([
       "d6",
       "escalated",

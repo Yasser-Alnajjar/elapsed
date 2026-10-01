@@ -1,4 +1,5 @@
 import type { CommitmentKind, PolicyCondition, SLAPolicyMatch } from "@sla/core";
+import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
 
 /** Formats a signed minute count as "1d 2h 3m", dropping leading zero units. */
 export function formatMinutes(totalMinutes: number): string {
@@ -402,9 +403,7 @@ export function formatCaseLinkMethod(method: string): string {
   return CASE_LINK_METHOD_LABELS[method] ?? method;
 }
 
-/** The ticket source's display name — the only two systems a Case's own source (as opposed to a linked issue) can be. */
-export function formatTicketSource(
-  system: "zendesk" | "intercom" | "jira" | "linear" | "github",
-): string {
-  return system === "intercom" ? "Intercom" : "Zendesk";
+/** The provider's display name; for a Case, the ticket source that created it. */
+export function formatTicketSource(system: IntegrationProvider): string {
+  return INTEGRATION_PROVIDER_LABELS[system];
 }

@@ -95,9 +95,9 @@ describe.skipIf(!TEST_DATABASE_URL)("onboarding with an Intercom-only organizati
 
     const sync = await sourceSync.projectAndEvaluateSourceSyncs(prisma, organizationId);
 
-    expect(sync.zendesk).toBeNull();
-    expect(sync.intercom?.normalization.casesUpserted).toBe(1);
-    expect(sync.linear).toBeNull();
+    expect(sync.providers.zendesk).toBeUndefined();
+    expect(sync.providers.intercom?.normalization.casesUpserted).toBe(1);
+    expect(sync.providers.linear).toBeUndefined();
     expect(sync.pendingProviders).toEqual(["linear"]);
     expect(sync.evaluation).toBeNull();
     expect(await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "9001" } })).toMatchObject({
@@ -115,7 +115,7 @@ describe.skipIf(!TEST_DATABASE_URL)("onboarding with an Intercom-only organizati
 
     expect(sync.pendingProviders).toEqual([]);
     expect(sync.evaluation).not.toBeNull();
-    expect(sync.linear).not.toBeNull();
+    expect(sync.providers.linear).toBeDefined();
   });
 
   it("waits for a ticket source when only a tracker is connected", async () => {
