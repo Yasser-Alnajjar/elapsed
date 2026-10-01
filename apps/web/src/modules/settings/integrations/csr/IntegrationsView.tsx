@@ -17,17 +17,23 @@ import {
   GitBranch,
   GitPullRequest,
   Lock,
+  ShieldAlert,
   LifeBuoy,
   MessageSquare,
   Ticket,
   TriangleAlert,
   Workflow,
 } from "lucide-react";
-import { PermissionDeniedBanner } from "@/components/shared/permission-denied-banner";
+import { PermissionDeniedMessage } from "@/components/shared/permission-denied-banner";
 import { Reveal } from "@/components/shared/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type {
   ConfigurableIntegrationProvider,
@@ -63,9 +69,12 @@ const statusToneClasses = {
 function StatusIndicator({
   tone,
   label,
+  icon,
 }: {
   tone: keyof typeof statusToneClasses;
   label: string;
+  /** Replaces the status dot — e.g. the warning icon on a hover-explained status. */
+  icon?: React.ReactNode;
 }) {
   const { dot, text } = statusToneClasses[tone];
 
@@ -76,13 +85,15 @@ function StatusIndicator({
         tone === "success" ? "bg-success/10" : "bg-surface-container",
       )}
     >
-      <span
-        className={cn(
-          "size-1.5 rounded-full",
-          dot,
-          tone === "success" && "animate-pulse",
-        )}
-      />
+      {icon ?? (
+        <span
+          className={cn(
+            "size-1.5 rounded-full",
+            dot,
+            tone === "success" && "animate-pulse",
+          )}
+        />
+      )}
       <span className={cn("font-mono text-xxs font-semibold", text)}>
         {label}
       </span>
@@ -90,12 +101,49 @@ function StatusIndicator({
   );
 }
 
-function ConnectedStatus({ view }: { view: IntegrationConnectionView }) {
+/** "Access restricted" status — hovering (or tapping) it explains the warning in a popover. */
+function PermissionDeniedStatus({ providerLabel }: { providerLabel: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        type="button"
+        className="cursor-help rounded"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <StatusIndicator
+          tone="warning"
+          label="Access restricted"
+          icon={<ShieldAlert className="text-warning size-3" />}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="text-warning-text w-80 text-xs "
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <PermissionDeniedMessage provider={providerLabel} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ConnectedStatus({
+  view,
+  providerLabel,
+}: {
+  view: IntegrationConnectionView;
+  providerLabel: string;
+}) {
   if (view.reauthRequired) {
     return <StatusIndicator tone="warning" label="Needs reconnect" />;
   }
   if (view.permissionDenied) {
-    return <StatusIndicator tone="warning" label="Access restricted" />;
+    return <PermissionDeniedStatus providerLabel={providerLabel} />;
   }
   return <StatusIndicator tone="success" label="Connected" />;
 }
@@ -127,7 +175,7 @@ function IntegrationCard({
   subtitle: string;
   /** Uppercase category chip next to the title (TICKETS / ENGINEERING / DISPATCH). */
   tag: string;
-  /** Optional label next to the title — e.g. `<Badge variant="beta">Beta</Badge>` for Intercom/Linear/GitHub (roadmap task 2.10). */
+  /** Optional label next to the title — e.g. `<Badge variant="beta">Beta</Badge>` for Intercom/GitHub (roadmap task 2.10). */
   badge?: React.ReactNode;
   status?: React.ReactNode;
   children: React.ReactNode;
@@ -260,7 +308,6 @@ function ConnectedCardBody({
   provider,
   providerLabel,
   connectedAt,
-  permissionDenied,
   disconnectHint,
   meta,
   pulse,
@@ -269,7 +316,6 @@ function ConnectedCardBody({
   provider: "zendesk" | "jira" | "linear" | "intercom" | "github";
   providerLabel: string;
   connectedAt: Date;
-  permissionDenied: boolean;
   disconnectHint?: string;
   meta?: React.ReactNode;
   pulse?: React.ComponentProps<typeof PulsePanel>;
@@ -277,7 +323,6 @@ function ConnectedCardBody({
 }) {
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {permissionDenied && <PermissionDeniedBanner provider={providerLabel} />}
       <MetaLine>
         <span className="font-mono text-xxs">
           {new Date(connectedAt).toLocaleDateString("en-US", {
@@ -310,25 +355,6 @@ function ConnectedCardBody({
         </div>
       </div>
     </div>
-  );
-}
-
-function ExtraLink({
-  href,
-  icon,
-  children,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Button variant="surface" className="text-secondary" size="sm" asChild>
-      <Link href={href}>
-        {icon}
-        {children}
-      </Link>
-    </Button>
   );
 }
 
@@ -372,7 +398,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       status:
         zendeskConfig.configured &&
         (zendesk.connected ? (
-          <ConnectedStatus view={zendesk} />
+          <ConnectedStatus view={zendesk} providerLabel="Zendesk" />
         ) : (
           zendesk.disconnectedAt && (
             <StatusIndicator tone="muted" label="Disconnected" />
@@ -392,7 +418,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               provider="zendesk"
               providerLabel="Zendesk"
               connectedAt={zendesk.connectedAt!}
-              permissionDenied={zendesk.permissionDenied}
               meta={
                 <>
                   {metaDot}
@@ -458,7 +483,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       status:
         jiraConfig.configured &&
         (jira.connected ? (
-          <ConnectedStatus view={jira} />
+          <ConnectedStatus view={jira} providerLabel="Jira" />
         ) : (
           jira.disconnectedAt && (
             <StatusIndicator tone="muted" label="Disconnected" />
@@ -478,7 +503,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               provider="jira"
               providerLabel="Jira"
               connectedAt={jira.connectedAt!}
-              permissionDenied={jira.permissionDenied}
               meta={
                 <>
                   {metaDot}
@@ -537,12 +561,11 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       subtitle: "Alternative engineering-leg source",
       tag: "ENGINEERING",
       icon: <Workflow className="size-4" />,
-      badge: <Badge variant="beta">Beta</Badge>,
       connected: linear.connected,
       status:
         linearConfig.configured &&
         (linear.connected ? (
-          <ConnectedStatus view={linear} />
+          <ConnectedStatus view={linear} providerLabel="Linear" />
         ) : (
           linear.disconnectedAt && (
             <StatusIndicator tone="muted" label="Disconnected" />
@@ -562,7 +585,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               provider="linear"
               providerLabel="Linear"
               connectedAt={linear.connectedAt!}
-              permissionDenied={linear.permissionDenied}
               meta={
                 <>
                   {metaDot}
@@ -630,7 +652,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       status:
         intercomConfig.configured &&
         (intercom.connected ? (
-          <ConnectedStatus view={intercom} />
+          <ConnectedStatus view={intercom} providerLabel="Intercom" />
         ) : (
           intercom.disconnectedAt && (
             <StatusIndicator tone="muted" label="Disconnected" />
@@ -650,12 +672,13 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               provider="intercom"
               providerLabel="Intercom"
               connectedAt={intercom.connectedAt!}
-              permissionDenied={intercom.permissionDenied}
               meta={
                 <>
                   {metaDot}
                   <span className={metaChip}>
-                    {intercom.subdomain ?? "dataship"}.intercom.com
+                    {intercom.subdomain
+                      ? `app.intercom.com/a/apps/${intercom.subdomain}`
+                      : "app.intercom.com"}
                   </span>
                   {metaDot}
                   <span className="font-mono text-xxs uppercase">
@@ -718,7 +741,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       status:
         githubConfig.configured &&
         (github.connected ? (
-          <ConnectedStatus view={github} />
+          <ConnectedStatus view={github} providerLabel="GitHub" />
         ) : (
           github.disconnectedAt && (
             <StatusIndicator tone="muted" label="Disconnected" />
@@ -738,7 +761,45 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               provider="github"
               providerLabel="GitHub"
               connectedAt={github.connectedAt!}
-              permissionDenied={github.permissionDenied}
+              meta={
+                <>
+                  {metaDot}
+                  <span className={metaChip}>
+                    {github.subdomain
+                      ? `github.com/${github.subdomain}`
+                      : "github.com"}
+                  </span>
+                  {metaDot}
+                  <span className="font-mono text-xxs uppercase">
+                    GitHub App
+                  </span>
+                </>
+              }
+              pulse={{
+                title: "Pull request pulse",
+                health: "HEALTHY",
+                healthTone: "success",
+                healthIcon: <Bolt className="size-3.5" />,
+                stats: [
+                  {
+                    label: "Last webhook",
+                    value: "12s ago",
+                    hint: "Pull request",
+                  },
+                  {
+                    label: "Sync lag",
+                    value: "160ms",
+                    hint: "p99 < 290ms",
+                    tone: "success",
+                  },
+                  {
+                    label: "Daily events",
+                    value: "2,310",
+                    hint: "+4.3% avg",
+                    tone: "primary",
+                  },
+                ],
+              }}
             />
           ) : (
             <div className="flex flex-1 flex-col">

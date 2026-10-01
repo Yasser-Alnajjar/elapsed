@@ -6,6 +6,22 @@ interface PermissionDeniedBannerProps {
   provider: string;
 }
 
+/** Explanation copy shared by the banner and the integration card's hover popover. */
+export function PermissionDeniedMessage({ provider }: PermissionDeniedBannerProps) {
+  return (
+    <>
+      <p>
+        {provider} is denying access to the account this integration was connected with, so some data may have
+        stopped syncing.
+      </p>
+      <p className="mt-1">
+        Ask a {provider} admin to restore that user&apos;s permissions — no reconnect needed. Syncing resumes on its
+        own once access is back.
+      </p>
+    </>
+  );
+}
+
 /**
  * Roadmap step 32's counterpart to `ReauthBanner`, with deliberately different
  * advice: the token still works, but the account that connected it lost
@@ -17,14 +33,7 @@ export function PermissionDeniedBanner({ provider }: PermissionDeniedBannerProps
     <Alert variant="warning">
       <ShieldAlert />
       <AlertDescription>
-        <p>
-          {provider} is denying access to the account this integration was connected with, so some data may have
-          stopped syncing.
-        </p>
-        <p className="mt-1">
-          Ask a {provider} admin to restore that user&apos;s permissions — no reconnect needed. Syncing resumes on its
-          own once access is back.
-        </p>
+        <PermissionDeniedMessage provider={provider} />
       </AlertDescription>
     </Alert>
   );

@@ -129,6 +129,20 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
   const jiraSubdomain = jiraCredentials?.siteUrl
     ? new URL(jiraCredentials.siteUrl).hostname.split(".")[0]
     : null;
+
+  const intercomWorkspaceId =
+    (intercomIntegration?.credentials as { workspaceId?: string } | null)
+      ?.workspaceId ?? null;
+  const githubCredentials =
+    (githubIntegration?.credentials as {
+      owner?: string;
+      repo?: string;
+    } | null) ?? null;
+  const githubRepo =
+    githubCredentials?.owner && githubCredentials.repo
+      ? `${githubCredentials.owner}/${githubCredentials.repo}`
+      : null;
+
   return {
     zendesk: {
       ...toConnectionView(zendeskIntegration),
@@ -139,8 +153,8 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
       subdomain: jiraSubdomain ?? null,
     },
     linear: toConnectionView(linearIntegration),
-    intercom: toConnectionView(intercomIntegration),
-    github: toConnectionView(githubIntegration),
+    intercom: toConnectionView(intercomIntegration, intercomWorkspaceId),
+    github: toConnectionView(githubIntegration, githubRepo),
     slack: {
       connected: slackIntegration !== null,
       teamName: slackIntegration?.teamName ?? null,

@@ -168,6 +168,8 @@ interface BetaConnectorCardProps {
   helpUrl: string;
   helpLabel: string;
   connectAction: ReactNode;
+  /** Show the Beta label — Linear has graduated, Intercom/GitHub have not. */
+  beta?: boolean;
   onConfigured?: () => void;
 }
 
@@ -182,6 +184,7 @@ function BetaConnectorCard({
   helpUrl,
   helpLabel,
   connectAction,
+  beta = true,
   onConfigured,
 }: BetaConnectorCardProps) {
   return (
@@ -195,9 +198,11 @@ function BetaConnectorCard({
             <span className="font-headline-sm text-headline-sm text-on-surface">
               {name}
             </span>
-            <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
-              Beta
-            </span>
+            {beta && (
+              <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
+                Beta
+              </span>
+            )}
           </div>
           <span className="font-body-sm text-body-sm text-on-surface-variant">
             {tagline}
@@ -835,6 +840,7 @@ export function OnboardingFlow({
                 helpUrl="https://linear.app/settings/api"
                 helpLabel="Get your Linear OAuth app credentials"
                 connectAction={<LinearConnectButton />}
+                beta={false}
                 onConfigured={refresh}
               />
 

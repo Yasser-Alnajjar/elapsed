@@ -144,12 +144,12 @@ The product connects to two kinds of systems: **ticket sources**, which create C
 | [Zendesk](#6-zendesk-integration) | Ticket source | OAuth2, read-only | Poll (5 min / 60 min) + webhook | Yes |
 | [Jira](#7-jira-integration) | Engineering source | OAuth2, read-only | Poll (5 min / 60 min) + webhook | Yes |
 | [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk) | OAuth2, read-only | Poll only | No |
-| [Linear](/docs/integrations/linear) **(Beta)** | Engineering source (alternative to Jira) | OAuth2, read-only | Poll only | No |
+| [Linear](/docs/integrations/linear) | Engineering source (alternative to Jira) | OAuth2, read-only | Poll only | No |
 | [GitHub](/docs/integrations/github) **(Beta)** | Engineering source (pull requests) | OAuth2 | Poll only | No |
 | Slack | Alert channel | OAuth2 (bot token) | Outbound only | — |
 | Email | Alert channel | SMTP (self-service, per organization) | Outbound only | — |
 
-Intercom, Linear, and GitHub are **Beta**: built and usable, but with known gaps (see each one's "Known limitations" section on its own integration page, linked above) and no onboarding-progress reporting (Zendesk and Jira only — see below). Zendesk and Jira are the only integrations covered by task 2.9's live-account verification checklist so far.
+Intercom and GitHub are **Beta**: built and usable, but with known gaps (see each one's "Known limitations" section on its own integration page, linked above) and no onboarding-progress reporting (Zendesk and Jira only — see below). Zendesk and Jira are the only integrations covered by task 2.9's live-account verification checklist so far.
 
 Every connection shares the same shape:
 

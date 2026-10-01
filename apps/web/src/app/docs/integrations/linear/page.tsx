@@ -30,7 +30,6 @@ export default function LinearIntegrationPage() {
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Integrations</Badge>
-            <Badge variant="beta">Beta</Badge>
           </div>
 
           <div className="space-y-3">
@@ -39,7 +38,7 @@ export default function LinearIntegrationPage() {
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
               An alternative engineering-leg source alongside Jira, not a
               replacement — connect whichever tracker your engineers actually
-              use. This integration is in Beta — see{" "}
+              use. See{" "}
               <Link href="#limitations" className="underline underline-offset-4">
                 Known limitations
               </Link>
