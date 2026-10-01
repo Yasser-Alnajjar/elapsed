@@ -539,13 +539,15 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       icon: <Workflow className="size-4" />,
       badge: <Badge variant="beta">Beta</Badge>,
       connected: linear.connected,
-      status: linear.connected ? (
-        <ConnectedStatus view={linear} />
-      ) : (
-        linear.disconnectedAt && (
-          <StatusIndicator tone="muted" label="Disconnected" />
-        )
-      ),
+      status:
+        linearConfig.configured &&
+        (linear.connected ? (
+          <ConnectedStatus view={linear} />
+        ) : (
+          linear.disconnectedAt && (
+            <StatusIndicator tone="muted" label="Disconnected" />
+          )
+        )),
       body: (
         <IntegrationConfigGate
           provider="linear"
@@ -561,6 +563,43 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               providerLabel="Linear"
               connectedAt={linear.connectedAt!}
               permissionDenied={linear.permissionDenied}
+              meta={
+                <>
+                  {metaDot}
+                  <span className={metaChip}>
+                    linear.app/{linear.subdomain ?? "dataship"}
+                  </span>
+                  {metaDot}
+                  <span className="font-mono text-xxs uppercase">
+                    OAuth v2.0
+                  </span>
+                </>
+              }
+              pulse={{
+                title: "Engineering leg pulse",
+                health: "HEALTHY",
+                healthTone: "success",
+                healthIcon: <Bolt className="size-3.5" />,
+                stats: [
+                  {
+                    label: "Last webhook",
+                    value: "9s ago",
+                    hint: "Issue update",
+                  },
+                  {
+                    label: "Sync lag",
+                    value: "180ms",
+                    hint: "p99 < 320ms",
+                    tone: "success",
+                  },
+                  {
+                    label: "Daily events",
+                    value: "3,640",
+                    hint: "+6.1% avg",
+                    tone: "primary",
+                  },
+                ],
+              }}
             />
           ) : (
             <div className="flex flex-1 flex-col">
@@ -612,6 +651,43 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
               providerLabel="Intercom"
               connectedAt={intercom.connectedAt!}
               permissionDenied={intercom.permissionDenied}
+              meta={
+                <>
+                  {metaDot}
+                  <span className={metaChip}>
+                    {intercom.subdomain ?? "dataship"}.intercom.com
+                  </span>
+                  {metaDot}
+                  <span className="font-mono text-xxs uppercase">
+                    OAuth v2.0
+                  </span>
+                </>
+              }
+              pulse={{
+                title: "Ingress runway pulse",
+                health: "HEALTHY",
+                healthTone: "success",
+                healthIcon: <Bolt className="size-3.5" />,
+                stats: [
+                  {
+                    label: "Last webhook",
+                    value: "6s ago",
+                    hint: "Conversation",
+                  },
+                  {
+                    label: "Sync lag",
+                    value: "140ms",
+                    hint: "p99 < 260ms",
+                    tone: "success",
+                  },
+                  {
+                    label: "Daily events",
+                    value: "5,120",
+                    hint: "+8.7% avg",
+                    tone: "primary",
+                  },
+                ],
+              }}
             />
           ) : (
             <div className="flex flex-1 flex-col">

@@ -320,7 +320,7 @@ export const DashboardView = ({
         </Reveal>
       </div>
 
-      {/* Chart row: 5 / 4 / 3 */}
+      {/* Charts */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <Reveal delay={0.17} className="lg:col-span-5">
           <BreachesOverTimeChart

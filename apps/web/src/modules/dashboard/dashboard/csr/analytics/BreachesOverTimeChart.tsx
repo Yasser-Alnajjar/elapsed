@@ -21,13 +21,6 @@ function formatDayLabel(date: string): string {
   });
 }
 
-/**
- * Stitch's "Breaches Over Time" chart: a stacked bar, split by which leg
- * owned the case when it breached (Support vs. Engineering) — the
- * pre-reconstruction dashboard plotted one undifferentiated line. Uses
- * `breachesOverTimeByLeg` (`analytics-data.ts`'s `bucketBreachesByDayAndLeg`),
- * a new field kept separate from the tested `breachesOverTime` shape.
- */
 export function BreachesOverTimeChart({
   data,
   periodDays,
