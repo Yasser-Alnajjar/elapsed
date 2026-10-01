@@ -39,6 +39,7 @@ import { LinearBackfillButton } from "../../integrations/csr/LinearCard";
 import { IntercomBackfillButton } from "../../integrations/csr/IntercomCard";
 import { GithubBackfillButton } from "../../integrations/csr/GithubCard";
 import { DisconnectButton } from "../../integrations/csr/DisconnectButton";
+import type { ConciergeSourceProvider } from "@/lib/types/concierge-export";
 import { WebhookInfo } from "../../integrations/csr/WebhookInfo";
 import Link from "next/link";
 
@@ -195,12 +196,12 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
     lastSyncError,
     backfillCompletedAt,
     webhookSecret,
+    webhooks: hasWebhook,
     subdomain,
     repo,
   } = data;
 
   const label = INTEGRATION_PROVIDER_LABELS[provider];
-  const hasWebhook = provider === "zendesk" || provider === "jira";
   const unhealthy = reauthRequired || permissionDenied || !!lastSyncError;
 
   /** Where an admin manages this provider's OAuth app / developer account — shown always, not just while unconfigured, so it's easy to find again later. */
@@ -509,7 +510,7 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
                 className="text-nowrap"
                 asChild
               >
-                <Link href={CONCIERGE_PROVIDER_COPY[provider].exportHref}>
+                <Link href={CONCIERGE_PROVIDER_COPY[provider as ConciergeSourceProvider].exportHref}>
                   Open export
                   <ChevronRight className="size-3.5" />
                 </Link>

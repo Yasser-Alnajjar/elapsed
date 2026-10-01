@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
+import type { CanonicalBatch, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import type { Actor, NormalizedState } from "@sla/core";
 import type { JiraChangelogHistory, JiraIssue, JiraStatus } from "./types";
 import { JIRA_SOURCE_ROLE } from "./source-role";
@@ -171,13 +172,6 @@ export function deriveNormalizedEventsForIssue(
   return events;
 }
 
-export interface JiraNormalizationResult {
-  issuesProcessed: number;
-  normalizedEventsWritten: number;
-  issuesSkippedNoCaseLink: number;
-  issuesFailed: { issueKey: string; error: string }[];
-}
-
 function latestIssueSnapshots(
   rows: { id: string; payload: unknown; fetchedAt: Date }[],
 ): Map<string, { rawEventId: string; value: JiraIssue; fetchedAt: Date }> {
@@ -232,17 +226,6 @@ function groupHistoriesByIssueKey(
   return byIssueKey;
 }
 
-/**
- * Projects every Jira issue linked to a Case (via a `certain` CaseLink — the
- * correlator's job, run before this) into NormalizedEvents on that Case.
- * Idempotent: each issue's own NormalizedEvents are replaced wholesale from a
- * fresh derivation, scoped to that issue's own RawEvents only so a case's
- * `issue_linked` event and any other linked issue's events are left alone.
- *
- * An issue with no `certain` CaseLink yet is skipped, not an error — most
- * Jira issues are internal engineering work with no customer-facing case to
- * attach to, and correlation coverage is expected to be partial (Phase 15).
- */
 export interface JiraNormalizationScope {
   /**
    * Limits the run to these issues' own RawEvents/CaseLinks — used by the
@@ -256,23 +239,28 @@ export interface JiraNormalizationScope {
   issueKeys?: string[];
 }
 
-export async function runJiraNormalization(
+/**
+ * Derives the events of every Jira issue linked to a Case (via a `certain`
+ * CaseLink — the correlator's job, run before this), aimed at that case. The
+ * shared projector reconciles them, scoped to each issue's own RawEvents so a
+ * case's `issue_linked` event and any other linked issue's events are left
+ * alone. Each issue also carries its live status name as a patch to its
+ * CaseLink's evidence, written in the same transaction. Writes nothing.
+ *
+ * An issue with no `certain` CaseLink yet is skipped, not an error — most
+ * Jira issues are internal engineering work with no customer-facing case to
+ * attach to, and correlation coverage is expected to be partial (Phase 15).
+ */
+export async function buildJiraBatch(
   prisma: PrismaClient,
   integrationId: string,
   scope: JiraNormalizationScope = {},
-): Promise<JiraNormalizationResult> {
+): Promise<CanonicalBatch> {
   const integration = await prisma.integration.findUniqueOrThrow({
     where: { id: integrationId },
   });
   const organizationId = integration.organizationId;
   const { issueKeys } = scope;
-
-  const result: JiraNormalizationResult = {
-    issuesProcessed: 0,
-    normalizedEventsWritten: 0,
-    issuesSkippedNoCaseLink: 0,
-    issuesFailed: [],
-  };
 
   const [issueRows, historyRows, statusRows, caseLinks] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -305,27 +293,21 @@ export async function runJiraNormalization(
         case: { organizationId },
         ...(issueKeys ? { externalId: { in: issueKeys } } : {}),
       },
-      select: { id: true, caseId: true, externalId: true, evidence: true },
+      select: { caseId: true, externalId: true },
     }),
   ]);
 
   const statusById = buildStatusLookup(latestStatusSnapshots(statusRows));
   const latestIssues = latestIssueSnapshots(issueRows);
   const historiesByIssueKey = groupHistoriesByIssueKey(historyRows);
-  const caseLinkByIssueKey = new Map(
-    caseLinks.map((link) => [link.externalId, link]),
-  );
+  const caseIdByIssueKey = new Map(caseLinks.map((link) => [link.externalId, link.caseId]));
 
-  for (const {
-    rawEventId: issueRawEventId,
-    value: issue,
-  } of latestIssues.values()) {
-    const caseLink = caseLinkByIssueKey.get(issue.key);
-    if (!caseLink) {
-      result.issuesSkippedNoCaseLink += 1;
-      continue;
-    }
-    const caseId = caseLink.caseId;
+  const eventGroups: EventGroup[] = [];
+  const failures: ProjectionFailure[] = [];
+
+  for (const { rawEventId: issueRawEventId, value: issue } of latestIssues.values()) {
+    const caseId = caseIdByIssueKey.get(issue.key);
+    if (!caseId) continue;
 
     try {
       const derived = deriveNormalizedEventsForIssue(
@@ -340,58 +322,35 @@ export async function runJiraNormalization(
           integrationId,
           OR: [
             { providerEventId: { startsWith: `issue:${issue.key}:` } },
-            {
-              providerEventId: { startsWith: `issue_changelog:${issue.key}:` },
-            },
+            { providerEventId: { startsWith: `issue_changelog:${issue.key}:` } },
           ],
         },
         select: { id: true },
       });
 
-      const existingEvidence =
-        (caseLink.evidence as Record<string, unknown> | null) ?? {};
-
-      await prisma.$transaction([
-        prisma.normalizedEvent.deleteMany({
-          where: {
-            caseId,
-            sourceRawEventId: { in: ownRawEvents.map((row) => row.id) },
-          },
-        }),
-        prisma.normalizedEvent.createMany({
-          // `derived` is emitted in source order, so its index is the source sequence.
-          data: derived.map((event, sourceSequence) => ({
-            caseId,
-            sourceRawEventId: event.sourceRawEventId,
-            type: "state_changed" as const,
-            occurredAt: new Date(event.occurredAt),
-            actor: event.actor,
-            system: "jira" as const,
-            sourceRole: JIRA_SOURCE_ROLE,
-            fromState: event.fromState,
-            toState: event.toState,
-            sourceSequence,
-          })) satisfies Prisma.NormalizedEventCreateManyInput[],
-        }),
-        prisma.caseLink.update({
-          where: { id: caseLink.id },
-          data: {
-            evidence: {
-              ...existingEvidence,
-              statusName: issue.fields.status.name,
-            } as Prisma.InputJsonValue,
-          },
-        }),
-      ]);
-      result.issuesProcessed += 1;
-      result.normalizedEventsWritten += derived.length;
-    } catch (error) {
-      result.issuesFailed.push({
-        issueKey: issue.key,
-        error: error instanceof Error ? error.message : String(error),
+      eventGroups.push({
+        target: { caseId },
+        ownRawEventIds: ownRawEvents.map((row) => row.id),
+        // `derived` is emitted in source order, so its index is the source sequence.
+        events: derived.map((event, sourceSequence) => ({
+          type: "state_changed" as const,
+          occurredAt: new Date(event.occurredAt),
+          actor: event.actor,
+          sourceRole: JIRA_SOURCE_ROLE,
+          fromState: event.fromState,
+          toState: event.toState,
+          sourceRawEventId: event.sourceRawEventId,
+          sourceSequence,
+        })),
+        // The timeline carries only the coarse new/in_progress/resolved
+        // category; the live name ("In Progress") rides on the link's evidence.
+        linkEvidencePatch: { externalId: issue.key, patch: { statusName: issue.fields.status.name } },
+        recordId: issue.key,
       });
+    } catch (error) {
+      failures.push({ id: issue.key, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
-  return result;
+  return { customers: [], cases: [], eventGroups, deletedCaseExternalIds: [], failures };
 }

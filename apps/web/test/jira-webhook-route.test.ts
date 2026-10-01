@@ -12,6 +12,7 @@
 import { createHmac } from "node:crypto";
 import type { PrismaClient } from "@sla/db";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 const ORIGINAL_NEXTAUTH_URL = process.env.NEXTAUTH_URL;
@@ -204,7 +205,7 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/jira/[integrationId] (re
 
   it("jira:issue_deleted unlinks every active CaseLink for that issue, without attempting a refetch", async () => {
     const caseRow = await prisma.case.create({
-      data: { organizationId, externalId: "9", system: "zendesk", subject: "Ticket 9", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "9", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "Ticket 9", openedAt: new Date("2026-03-01") },
     });
     await prisma.caseLink.create({
       data: { caseId: caseRow.id, system: "jira", externalId: "ENG-2", method: "remote_link", confidence: "certain" },
@@ -234,7 +235,7 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/jira/[integrationId] (re
 
   it("a 404 on the targeted refetch unlinks every active CaseLink for that issue (2.6b — the same fact as jira:issue_deleted)", async () => {
     const caseRow = await prisma.case.create({
-      data: { organizationId, externalId: "10", system: "zendesk", subject: "Ticket 10", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "10", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "Ticket 10", openedAt: new Date("2026-03-01") },
     });
     await prisma.caseLink.create({
       data: { caseId: caseRow.id, system: "jira", externalId: "ENG-3", method: "remote_link", confidence: "certain" },
@@ -269,10 +270,10 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/jira/[integrationId] (re
 
   it("a webhook for one issue never rewrites a different issue's already-normalized Case (2.4 scoping, wired through the route)", async () => {
     const caseA = await prisma.case.create({
-      data: { organizationId, externalId: "11", system: "zendesk", subject: "Case A", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "11", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "Case A", openedAt: new Date("2026-03-01") },
     });
     const caseB = await prisma.case.create({
-      data: { organizationId, externalId: "12", system: "zendesk", subject: "Case B", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "12", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "Case B", openedAt: new Date("2026-03-01") },
     });
     await prisma.caseLink.create({
       data: { caseId: caseA.id, system: "jira", externalId: "ENG-4", method: "official_link", confidence: "certain" },

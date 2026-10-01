@@ -19,6 +19,7 @@ import type { IUser } from "@/lib/types/user";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 import type { InvitationPreview } from "@/lib/types/invitations";
 import type { UserRole } from "@/lib/types/user";
+import { CONCIERGE_INTEGRATION_ID_FIELD } from "@/lib/types/concierge-export";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
 import type {
   ConciergeExportSelectionRequest,
@@ -310,10 +311,10 @@ export const Actions = {
       | { ok: true; zip: Blob; summary: ConciergeExportSummary }
       | { ok: false; error: string }
     > {
-      const payload: JiraConciergeExportRequest | ZendeskConciergeExportRequest =
-        provider === "jira"
-          ? { organizationId, jiraIntegrationId: integrationId }
-          : { organizationId, zendeskIntegrationId: integrationId };
+      const payload: JiraConciergeExportRequest | ZendeskConciergeExportRequest = {
+        organizationId,
+        [CONCIERGE_INTEGRATION_ID_FIELD[provider]]: integrationId,
+      } as unknown as JiraConciergeExportRequest | ZendeskConciergeExportRequest;
       const response = await fetch(`/api/concierge/${provider}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

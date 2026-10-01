@@ -10,6 +10,8 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { sourceIntegration } from "./source-integration";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 const ORIGINAL_NEXTAUTH_URL = process.env.NEXTAUTH_URL;
@@ -176,7 +178,7 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/zendesk/[integrationId] 
   it("soft-deletes the Case when the ticket 404s on refetch", async () => {
     // Ticket 2 already exists as a Case (from an earlier normal sync).
     await prisma.case.create({
-      data: { organizationId, externalId: "2", system: "zendesk", subject: "Old ticket", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "2", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "Old ticket", openedAt: new Date("2026-03-01") },
     });
 
     const fetchMock = vi.fn(async (input: string | URL) => {
@@ -207,7 +209,7 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/zendesk/[integrationId] 
         payload: ticket(3, "Ticket three original subject"),
       },
     });
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     const caseThreeBefore = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "3" } });
     expect(caseThreeBefore.subject).toBe("Ticket three original subject");
 

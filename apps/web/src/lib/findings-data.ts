@@ -12,6 +12,7 @@ import {
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 import type { FindingsAccountRow, FindingsData } from "./types/findings";
+import { ISSUE_LINK_PROVIDERS } from "./providers";
 
 // Matches the historical backfill window (Phase 10/11) — the findings
 // screen only ever talks about "the last 90 days" because that's exactly
@@ -47,7 +48,7 @@ export async function getFindingsData(
       organizationId,
       deletedAt: null,
       openedAt: { gte: periodStart },
-      caseLinks: { some: { system: { in: ["jira", "linear", "github"] } } },
+      caseLinks: { some: { system: { in: ISSUE_LINK_PROVIDERS } } },
     },
     include: { customer: true, commitments: true },
   });

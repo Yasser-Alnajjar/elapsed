@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { IntegrationProvider } from "@/lib/types/integrations";
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,7 +52,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
 }
 
 interface WebhookInfoProps {
-  provider: "zendesk" | "jira";
+  provider: IntegrationProvider;
   integrationId: string;
   webhookSecret: string | null;
 }

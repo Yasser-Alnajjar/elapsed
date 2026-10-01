@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@sla/db";
+import { PROVIDERS } from "./providers";
 import type {
   IntegrationDetailData,
   IntegrationProvider,
@@ -61,6 +62,7 @@ export async function getIntegrationDetailData(
     lastSyncError: integration.lastSyncError,
     backfillCompletedAt: cursor?.backfillCompletedAt ?? null,
     webhookSecret: integration.webhookSecret,
+    webhooks: PROVIDERS[provider].capabilities.webhooks,
     subdomain,
     repo:
       provider === "github" && credentials.owner && credentials.repo

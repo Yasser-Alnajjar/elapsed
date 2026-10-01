@@ -1,5 +1,6 @@
 import { decryptCredentials, encryptCredentials, type Prisma, type PrismaClient } from "@sla/db";
 import type { IntercomCredentials } from "./types";
+import { ReauthRequiredError } from "@sla/ingestion";
 
 /**
  * Thrown when Intercom rejects the access token and there is no refresh path
@@ -8,7 +9,7 @@ import type { IntercomCredentials } from "./types";
  * a transient/network failure — callers should surface this rather than
  * retrying, and never delete the integration for it.
  */
-export class IntercomReauthRequiredError extends Error {
+export class IntercomReauthRequiredError extends ReauthRequiredError {
   constructor(message = "Intercom integration requires reauthorization") {
     super(message);
     this.name = "IntercomReauthRequiredError";

@@ -22,6 +22,7 @@
     "@sla/db": "workspace:*",
     "@sla/email": "workspace:*",
     "@sla/github": "workspace:*",
+    "@sla/ingestion": "workspace:*",
     "@sla/intercom": "workspace:*",
     "@sla/jira": "workspace:*",
     "@sla/linear": "workspace:*",

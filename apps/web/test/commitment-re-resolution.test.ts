@@ -10,6 +10,7 @@
  */
 import type { CommitmentKind, Prisma, PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -113,7 +114,7 @@ describe.skipIf(!TEST_DATABASE_URL)("commitment re-resolution (real Postgres)", 
 
   async function createCase(overrides: Record<string, unknown> = {}) {
     return prisma.case.create({
-      data: { organizationId, system: "zendesk", externalId: `case-${Math.random()}`, openedAt: at("10:00"), ...overrides },
+      data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: `case-${Math.random()}`, openedAt: at("10:00"), ...overrides },
     });
   }
 

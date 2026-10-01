@@ -13,6 +13,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -95,12 +96,12 @@ describe.skipIf(!TEST_DATABASE_URL)("SLA import summary persistence (real Postgr
       },
     });
     await prisma.case.create({
-      data: { organizationId, system: "zendesk", externalId: "case-1", openedAt: at("09:00"), priority: "urgent" },
+      data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: "case-1", openedAt: at("09:00"), priority: "urgent" },
     });
 
     const first = await sourceSync.projectAndEvaluateSourceSyncs(prisma, organizationId);
-    expect(first.zendesk?.slaPolicyImport.unsupportedConditions).toBe(1);
-    expect(first.zendesk?.slaPolicyImport.unsupportedMetrics).toBe(1);
+    expect(first.providers.zendesk?.policyImport?.unsupportedConditions).toBe(1);
+    expect(first.providers.zendesk?.policyImport?.unsupportedMetrics).toBe(1);
     expect(first.commitments.casesWithNoMatchingPolicy).toBe(1);
 
     const summary = await prisma.slaImportSummary.findUniqueOrThrow({ where: { organizationId } });

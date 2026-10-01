@@ -11,6 +11,7 @@ import type { Session } from "next-auth";
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -181,7 +182,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
         data: {
           organizationId,
           externalId: "1",
-          system: "zendesk",
+          system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
           priority: "urgent",
           openedAt: new Date(),
         },

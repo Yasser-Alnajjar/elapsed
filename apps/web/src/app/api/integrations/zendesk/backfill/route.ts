@@ -40,17 +40,17 @@ export async function POST() {
     const backfill = await runZendeskBackfill(prisma, integration.id, config);
     // Projection, commitments, and evaluation — deferred while a concurrently
     // running Jira backfill hasn't finished (see projectAndEvaluateSourceSyncs).
-    const { zendesk, jira, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
+    const { providers, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
       prisma,
       session.user.organizationId,
     );
     return NextResponse.json({
       backfill,
-      normalization: zendesk?.normalization,
-      jiraLinkCorrelation: zendesk?.jiraLinkCorrelation,
-      businessCalendarImport: zendesk?.businessCalendarImport,
-      slaPolicyImport: zendesk?.slaPolicyImport,
-      jira,
+      normalization: providers.zendesk?.normalization,
+      jiraLinkCorrelation: providers.zendesk?.correlation,
+      businessCalendarImport: providers.zendesk?.calendarImport,
+      slaPolicyImport: providers.zendesk?.policyImport,
+      jira: providers.jira,
       commitments,
       evaluation,
       pendingProviders,

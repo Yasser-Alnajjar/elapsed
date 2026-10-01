@@ -19,7 +19,9 @@ const last = TENANTS[10]!;
 
 afterEach(() => vi.useRealTimers());
 
-describe("tenants (organizations)", () => {
+// These build whole datasets: 1-2s alone, but CPU-bound, so several times slower when the
+// full suite runs in parallel. They get an explicit budget instead of the 5s default.
+describe("tenants (organizations)", { timeout: 60_000 }, () => {
   it("defines exactly 11 independent organizations with deterministic names, ids and logins", () => {
     expect(TENANTS).toHaveLength(11);
     expect(TENANTS.map((t) => t.name)).toEqual([
@@ -87,7 +89,7 @@ describe("tenants (organizations)", () => {
   });
 });
 
-describe("seed-test-customers fixtures (one tenant's dataset)", () => {
+describe("seed-test-customers fixtures (one tenant's dataset)", { timeout: 60_000 }, () => {
   const dataset = buildSeedDataset(anchor, first);
 
   it("is deterministic: same anchor and tenant, same dataset — independent of the clock and Math.random", () => {
@@ -204,7 +206,7 @@ describe("seed-test-customers fixtures (one tenant's dataset)", () => {
   });
 });
 
-describe("the same fixture, generated independently per tenant", () => {
+describe("the same fixture, generated independently per tenant", { timeout: 60_000 }, () => {
   let a: SeedDataset;
   let b: SeedDataset;
   let z: SeedDataset;

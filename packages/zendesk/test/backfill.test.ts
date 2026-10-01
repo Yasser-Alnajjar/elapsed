@@ -31,9 +31,6 @@ function createFakePrisma(cursor: ZendeskCursor | null = null) {
         return { count: data.length };
       }),
     },
-    case: {
-      updateMany: vi.fn(async () => ({ count: 0 })),
-    },
     _rawEvents: rawEvents,
   } as const;
 }
@@ -104,7 +101,7 @@ describe("runZendeskBackfill", () => {
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("\"ticketId\":1"));
   });
 
-  it("soft-deletes the Case for a ticket the incremental export reports as deleted, without fetching its audits", async () => {
+  it("records a deletion (not a ticket) for a ticket the incremental export reports as deleted, without fetching its audits", async () => {
     const deletedTicket: ZendeskTicket = { ...ticket(3), status: "deleted" };
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = input.toString();
@@ -137,13 +134,10 @@ describe("runZendeskBackfill", () => {
     const result = await runZendeskBackfill(prisma as never, "integration-1", config);
 
     expect(result.ticketsFetched).toBe(1);
-    expect(prisma.case.updateMany).toHaveBeenCalledWith({
-      where: { organizationId: "org-1", externalId: "3", deletedAt: null },
-      data: { deletedAt: expect.any(Date) },
-    });
-    expect(prisma._rawEvents.some((e) => (e as { providerEventId: string }).providerEventId.startsWith("ticket:3:"))).toBe(
-      false,
-    );
+    const providerEventIds = prisma._rawEvents.map((e) => (e as { providerEventId: string }).providerEventId);
+    // Normalization turns the record into the Case soft-delete; ingestion writes no Case.
+    expect(providerEventIds.some((id) => id.startsWith("ticket_deleted:3:"))).toBe(true);
+    expect(providerEventIds.some((id) => id.startsWith("ticket:3:"))).toBe(false);
   });
 });
 

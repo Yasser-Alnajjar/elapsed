@@ -56,9 +56,6 @@ function createFakePrisma(cursor: ZendeskCursor | null = null) {
         return { count: data.length };
       }),
     },
-    case: {
-      updateMany: vi.fn(async () => ({ count: 1 })),
-    },
     _rawEvents: rawEvents,
   } as const;
 }
@@ -233,7 +230,7 @@ describe("runZendeskWebhookIngest", () => {
     expect(prisma.integration.update).not.toHaveBeenCalled();
   });
 
-  it("soft-deletes the Case and skips ingestion when the ticket 404s", async () => {
+  it("records the deletion (and writes no Case) instead of ingesting when the ticket 404s", async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = input.toString();
       if (url.includes("/api/v2/tickets/42.json")) {
@@ -247,10 +244,7 @@ describe("runZendeskWebhookIngest", () => {
     const result = await runZendeskWebhookIngest(prisma as never, "integration-1", config, 42);
 
     expect(result).toEqual({ ticketsFetched: 0, ticketAuditsFetched: 0, ticketDeleted: true });
-    expect(prisma.case.updateMany).toHaveBeenCalledWith({
-      where: { organizationId: "org-1", externalId: "42", deletedAt: null },
-      data: { deletedAt: expect.any(Date) },
-    });
-    expect(prisma._rawEvents).toHaveLength(0);
+    // Normalization turns the record into the Case soft-delete; ingestion writes no Case.
+    expect(prisma._rawEvents.map((e) => e.providerEventId)).toEqual([expect.stringContaining("ticket_deleted:42:")]);
   });
 });

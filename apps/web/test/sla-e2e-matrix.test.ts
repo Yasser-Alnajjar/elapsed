@@ -31,6 +31,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 
@@ -215,7 +216,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
           skipDuplicates: true,
         });
       }
-      return zendesk.runZendeskNormalization(prisma, integrationId);
+      return normalizeZendesk(prisma, integrationId);
     }
 
     async function createPolicy(
@@ -284,13 +285,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
     }
 
     async function caseByExternalId(externalId: string) {
-      return prisma.case.findUniqueOrThrow({
-        where: {
-          organizationId_externalId: {
-            organizationId,
-            externalId: String(externalId),
-          },
-        },
+      return prisma.case.findFirstOrThrow({
+        where: { organizationId, externalId: String(externalId) },
       });
     }
 
@@ -419,10 +415,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
       ]);
       const acme = organization(9001, "Acme");
       await ingest({ organizations: [acme] });
-      const acmeCustomer = await prisma.customer.findUniqueOrThrow({
-        where: {
-          organizationId_zendeskOrgId: { organizationId, zendeskOrgId: "9001" },
-        },
+      const acmeCustomer = await prisma.customer.findFirstOrThrow({
+        where: { organizationId, identities: { some: { provider: "zendesk", kind: "organization", externalId: "9001" } } },
       });
       // Acme's policy only ever configured a First Response target.
       await createPolicy("Acme", { customerIds: [acmeCustomer.id] }, [
@@ -674,10 +668,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
 
       const acme = organization(9002, "Acme");
       await ingest({ organizations: [acme] });
-      const acmeCustomer = await prisma.customer.findUniqueOrThrow({
-        where: {
-          organizationId_zendeskOrgId: { organizationId, zendeskOrgId: "9002" },
-        },
+      const acmeCustomer = await prisma.customer.findFirstOrThrow({
+        where: { organizationId, identities: { some: { provider: "zendesk", kind: "organization", externalId: "9002" } } },
       });
 
       const t = ticket(7, { priority: "normal", organization_id: 9002 });

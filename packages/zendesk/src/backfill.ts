@@ -11,12 +11,12 @@ import {
   mapScheduleHolidaysToRawEvent,
   mapSlaPolicyManifestToRawEvent,
   mapSlaPolicyToRawEvent,
+  mapTicketDeletedToRawEvent,
   mapTicketToRawEvent,
   mapUserToRawEvent,
   type RawEventInput,
 } from "./rawEvents";
 import { loadFreshZendeskCredentials, refreshAfterUnauthorized } from "./tokenLifecycle";
-import { markCaseDeletedForTicket } from "./webhook";
 import type {
   ZendeskCursor,
   ZendeskIncrementalOrganizationExport,
@@ -38,7 +38,7 @@ export interface BackfillResult {
 
 /**
  * Pulls tickets, ticket audits, organizations, and SLA policies into
- * RawEvent. Raw ingestion only — see `runZendeskNormalization` in
+ * RawEvent. Raw ingestion only — see `buildZendeskBatch` in
  * `./normalize` for RawEvent → NormalizedEvent/Case/Customer. Resumable: the
  * cursor is persisted after every page, so a crash or restart continues from
  * the last completed page rather than the start.
@@ -103,17 +103,16 @@ export async function runZendeskBackfill(
       // Zendesk keeps deleted tickets in the incremental export for a period,
       // reduced to just `{id, status: "deleted", ...}` — the only signal this
       // stream ever gives that a previously-seen ticket is now gone. They
-      // carry no meaningful audit history, so route them straight to
-      // soft-deleting their Case instead of through the normal RawEvent path
-      // (normalizeZendeskStatus has no mapping for "deleted" and would throw).
+      // carry no meaningful audit history, so record the deletion on its own
+      // instead of as a ticket snapshot (normalizeZendeskStatus has no mapping
+      // for "deleted" and would throw); normalization soft-deletes the Case.
       const deletedTickets = page.tickets.filter((ticket) => ticket.status === "deleted");
       const liveTickets = page.tickets.filter((ticket) => ticket.status !== "deleted");
 
-      for (const ticket of deletedTickets) {
-        await markCaseDeletedForTicket(prisma, integrationId, ticket.id);
-      }
-
-      const rawEvents: RawEventInput[] = liveTickets.map((ticket) => mapTicketToRawEvent(ticket, page.users));
+      const rawEvents: RawEventInput[] = [
+        ...deletedTickets.map((ticket) => mapTicketDeletedToRawEvent(ticket.id)),
+        ...liveTickets.map((ticket) => mapTicketToRawEvent(ticket, page.users)),
+      ];
       await writeRawEvents(rawEvents);
       result.ticketsFetched += liveTickets.length;
 
@@ -145,7 +144,7 @@ export async function runZendeskBackfill(
         // rather than aborting the whole backfill run over one unreachable ticket.
         if (error instanceof ZendeskApiError && error.status === 404) {
           logger.warn("backfill_ticket_audits_not_found", { ticketId, status: 404 });
-          await markCaseDeletedForTicket(prisma, integrationId, ticketId);
+          await writeRawEvents([mapTicketDeletedToRawEvent(ticketId)]);
           return count;
         }
         throw error;
@@ -209,7 +208,7 @@ export async function runZendeskBackfill(
    * endpoint has no `next_page` URL. Any fetch failure here propagates like
    * every other list endpoint's (no try/catch swallowing it into an empty
    * page): the correlator that reads these RawEvents
-   * (`runZendeskJiraLinkCorrelation`, ./correlate.ts) must never read "the
+   * (`correlateZendeskJiraLinks`, ./correlate.ts) must never read "the
    * API errored" as "there are no Jira links."
    *
    * Also writes a full-manifest RawEvent of every link id seen this run

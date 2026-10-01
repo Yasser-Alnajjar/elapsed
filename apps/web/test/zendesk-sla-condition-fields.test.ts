@@ -15,6 +15,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -104,7 +105,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
 
   async function importAndMatch() {
     await zendesk.runZendeskSlaPolicyImport(prisma, integrationId, ensureDefaultCalendar);
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     await commitments.runCommitmentPipeline(prisma, organizationId);
   }
 
@@ -223,7 +224,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
     await prisma.commitment.deleteMany({});
     await prisma.case.deleteMany({});
     await seedTicket(ticketRawEvent({ group_id: 99, tags: ["vip"] }), "hash-2");
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     await commitments.runCommitmentPipeline(prisma, organizationId);
     const noMatchCase = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "2" } });
     expect(await prisma.commitment.findFirst({ where: { caseId: noMatchCase.id } })).toBeNull();
@@ -243,7 +244,6 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk SLA condition field coverage (real 
       data: {
         organizationId,
         name: "D6 Test Company",
-        zendeskOrgId: "555",
         identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "555" } },
       },
     });

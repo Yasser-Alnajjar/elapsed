@@ -24,6 +24,7 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { correlateJira } from "./correlate-helper";
+import { correlateZendeskLinks, unlinkJiraIssue } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -159,7 +160,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("2");
     await writeJiraLinkRawEvent({ id: 1, ticket_id: "2", issue_key: "KAN-2" });
     await writeJiraLinkManifestRawEvent([1]);
-    await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     await writeRemoteLinkRawEvent("KAN-2", remoteLink(1, "2"));
     await writeRemoteLinkManifestRawEvent("KAN-2", [1]);
@@ -186,7 +187,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     // The webhook route calls this exact function both for an explicit
     // jira:issue_deleted event and for a 404 on the targeted refetch (the
     // same fact from two different angles) — proven here directly.
-    await jira.markCaseLinksUnlinkedForIssue(prisma, jiraIntegrationId, "KAN-3");
+    await unlinkJiraIssue(prisma, jiraIntegrationId, "KAN-3");
 
     const link = await findCaseLink(caseId, "KAN-3");
     expect(link!.unlinkedAt).not.toBeNull();
@@ -194,7 +195,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
 
     // A redelivered/duplicate event (or a second 404) is a no-op, not a
     // second unlinkedAt write or a second event.
-    await jira.markCaseLinksUnlinkedForIssue(prisma, jiraIntegrationId, "KAN-3");
+    await unlinkJiraIssue(prisma, jiraIntegrationId, "KAN-3");
     expect(await prisma.normalizedEvent.count({ where: { caseId, type: "issue_unlinked" } })).toBe(1);
   });
 
@@ -202,7 +203,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("4");
     await writeJiraLinkRawEvent({ id: 1, ticket_id: "4", issue_key: "KAN-4" });
     await writeJiraLinkManifestRawEvent([1]);
-    await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    await correlateZendeskLinks(prisma, zendeskIntegrationId);
     await writeRemoteLinkRawEvent("KAN-4", remoteLink(1, "4"));
     await writeRemoteLinkManifestRawEvent("KAN-4", [1]);
     await correlateJira(prisma, jiraIntegrationId);
@@ -210,7 +211,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
 
     // The official link disappears first — exempted, since the remote link still proves it.
     await writeJiraLinkManifestRawEvent([]);
-    const zendeskSweep = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const zendeskSweep = await correlateZendeskLinks(prisma, zendeskIntegrationId);
     expect(zendeskSweep.caseLinksUnlinked).toBe(0);
     expect((await findCaseLink(caseId, "KAN-4"))!.unlinkedAt).toBeNull();
 
@@ -227,7 +228,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
     const caseId = await seedCase("5");
     await writeJiraLinkRawEvent({ id: 1, ticket_id: "5", issue_key: "KAN-5" });
     await writeJiraLinkManifestRawEvent([1]);
-    await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    await correlateZendeskLinks(prisma, zendeskIntegrationId);
     await writeRemoteLinkRawEvent("KAN-5", remoteLink(1, "5"));
     await writeRemoteLinkManifestRawEvent("KAN-5", [1]);
     await correlateJira(prisma, jiraIntegrationId);
@@ -240,7 +241,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira remote-link unlink lifecycle (real Pos
 
     // Now the official link disappears too.
     await writeJiraLinkManifestRawEvent([]);
-    const zendeskSweep = await zendesk.runZendeskJiraLinkCorrelation(prisma, zendeskIntegrationId);
+    const zendeskSweep = await correlateZendeskLinks(prisma, zendeskIntegrationId);
 
     expect(zendeskSweep.caseLinksUnlinked).toBe(1);
     expect((await findCaseLink(caseId, "KAN-5"))!.unlinkedAt).not.toBeNull();

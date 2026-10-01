@@ -13,6 +13,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -103,7 +104,11 @@ describe.skipIf(!TEST_DATABASE_URL)("getCycleTimeAnomalies (real Postgres)", () 
     policyVersionId = policy.versions[0]!.id;
 
     const customer = await prisma.customer.create({
-      data: { organizationId, name: "Customer 1", zendeskOrgId: "zd-org-1" },
+      data: {
+        organizationId,
+        name: "Customer 1",
+        identities: { create: { organizationId, provider: "zendesk", kind: "organization", externalId: "zd-org-1" } },
+      },
     });
     customerId = customer.id;
     caseCounter = 0;
@@ -131,7 +136,7 @@ describe.skipIf(!TEST_DATABASE_URL)("getCycleTimeAnomalies (real Postgres)", () 
     const caseRow = await prisma.case.create({
       data: {
         organizationId,
-        system: "zendesk",
+        system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"),
         customerId,
         externalId: `case-${caseCounter}`,
         subject: `Case ${caseCounter}`,

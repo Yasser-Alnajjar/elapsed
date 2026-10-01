@@ -687,7 +687,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
 
         const jiraBody = await postJiraBackfill();
         expect(jiraBody.pendingProviders).toEqual([]);
-        expect(jiraBody.correlation.caseLinksCreated).toBe(1);
+        expect(jiraBody.correlation.created).toBe(1);
 
         await expectFinalizedOverCompleteEventSet();
       });
@@ -696,11 +696,11 @@ describe.skipIf(!TEST_DATABASE_URL)(
         const jiraBody = await postJiraBackfill();
         expect(jiraBody.pendingProviders).toEqual(["zendesk"]);
         expect(jiraBody.evaluation).toBeNull();
-        expect(jiraBody.correlation.unmatchedNoCase).toBe(1);
+        expect(jiraBody.correlation.unmatched.noCase).toBe(1);
 
         const zendeskBody = await postZendeskBackfill();
         expect(zendeskBody.pendingProviders).toEqual([]);
-        expect(zendeskBody.jira.correlation.caseLinksCreated).toBe(1);
+        expect(zendeskBody.jira.correlation.created).toBe(1);
 
         await expectFinalizedOverCompleteEventSet();
       });

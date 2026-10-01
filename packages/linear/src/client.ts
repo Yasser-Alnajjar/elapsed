@@ -8,6 +8,7 @@ import type {
   LinearIssueConnection,
   LinearPageInfo,
 } from "./types";
+import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
 const API_URL = "https://api.linear.app/graphql";
 const PAGE_SIZE = 100;
@@ -32,6 +33,7 @@ export class LinearApiError extends Error {
  * grant. Subclasses `LinearApiError` so existing `status` checks keep working.
  */
 export class LinearPermissionDeniedError extends LinearApiError {
+  readonly [PERMISSION_DENIED_BRAND] = true as const;
   constructor() {
     super(403, "Linear API error 403: access denied");
     this.name = "LinearPermissionDeniedError";

@@ -129,10 +129,7 @@ function fakePrisma(options: {
         options.rawEvents.filter((row) => where.id.in.includes(row.id)),
       findFirst: async () => (options.ticket === null ? null : options.ticket ?? ticketRawEvent()),
     },
-    integration: {
-      findUnique: async ({ where }: { where: { organizationId_provider: { provider: string } } }) =>
-        where.organizationId_provider.provider === "zendesk" ? { id: "int-zendesk-1", credentials: null } : null,
-    },
+    integration: { findMany: async () => [{ id: "int-zendesk-1", provider: "zendesk", credentials: null }] },
     organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null }) },
     sLAPolicyVersion: { findMany: async () => [] },
     businessCalendarVersion: { findMany: async () => [] },

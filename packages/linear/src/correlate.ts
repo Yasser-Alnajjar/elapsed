@@ -1,17 +1,7 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
+import type { CaseRefResolver, CorrelationOutput, LinkFact } from "@sla/ingestion";
 import type { LinearAttachment, LinearIssue } from "./types";
 import { LINEAR_SOURCE_ROLE } from "./source-role";
-
-/**
- * What an external URL points at, decided by the caller (N1.13): this package
- * knows nothing about ticket sources. Structurally the same as
- * `CaseRefResolver` in `@sla/commitments`, which builds it.
- */
-export type CaseRefResolution =
-  | { kind: "case"; caseId: string }
-  | { kind: "unrecognized" }
-  | { kind: "no_case" };
-export type CaseRefResolver = (url: string) => Promise<CaseRefResolution>;
 
 interface LatestAttachment {
   attachment: LinearAttachment;
@@ -71,18 +61,8 @@ function latestIssuesById(rows: { payload: unknown; fetchedAt: Date }[]): Map<st
   return new Map([...byId.entries()].map(([id, entry]) => [id, entry.value]));
 }
 
-export interface CorrelationResult {
-  attachmentsEvaluated: number;
-  caseLinksCreated: number;
-  /** Attachments whose URL no connected ticket source recognizes as its own. */
-  unmatchedUnrecognizedUrl: number;
-  unmatchedNoCase: number;
-  /** An attachment observed before its issue's own snapshot was ingested — the backfill always writes the issue first, so this should stay at zero in practice; counted rather than assumed impossible. */
-  unmatchedNoIssueSnapshot: number;
-}
-
 /**
- * Deterministic-tier correlator (Phase 15), mirroring `runJiraCorrelation`:
+ * Deterministic-tier correlator (Phase 15), mirroring `correlateJira`:
  * reads Linear attachments already ingested by the backfill/poll, and for
  * each one whose URL the caller's `resolveCaseRef` recognizes as a ticket of
  * one of this organization's own connected ticket sources, creates a
@@ -92,7 +72,7 @@ export interface CorrelationResult {
  * and counted, never guessed at. Which hosts and URL shapes count is each
  * ticket-source adapter's business (N1.13).
  *
- * Must run before `runLinearNormalization`, which relies on the CaseLinks
+ * Must run before `buildLinearBatch` is projected, which relies on the CaseLinks
  * created here to know which Case a Linear issue's events belong to.
  *
  * The CaseLink's `evidence` stores the linked issue's own `url` alongside
@@ -101,25 +81,17 @@ export interface CorrelationResult {
  * to reconstruct a browse link from later, so the URL is captured here at
  * correlation time instead.
  */
-export async function runLinearCorrelation(
+export async function correlateLinear(
   prisma: PrismaClient,
   integrationId: string,
   resolveCaseRef: CaseRefResolver | null,
-): Promise<CorrelationResult> {
-  const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
-  const organizationId = integration.organizationId;
-
-  const result: CorrelationResult = {
-    attachmentsEvaluated: 0,
-    caseLinksCreated: 0,
-    unmatchedUnrecognizedUrl: 0,
-    unmatchedNoCase: 0,
-    unmatchedNoIssueSnapshot: 0,
-  };
+): Promise<CorrelationOutput> {
+  const output: CorrelationOutput = { links: [], sweeps: [], evaluated: 0, unmatched: {} };
+  const unmatch = (reason: string) => (output.unmatched[reason] = (output.unmatched[reason] ?? 0) + 1);
 
   // No connected ticket source (the caller builds the resolver from the
   // organization's ticket-source integrations): nothing to correlate onto.
-  if (!resolveCaseRef) return result;
+  if (!resolveCaseRef) return output;
 
   const [attachmentRows, issueRows] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -134,76 +106,44 @@ export async function runLinearCorrelation(
 
   const latestAttachments = latestAttachmentsByKey(attachmentRows);
   const issuesById = latestIssuesById(issueRows);
-  result.attachmentsEvaluated = latestAttachments.size;
+  output.evaluated = latestAttachments.size;
 
   for (const { issueId, attachment, firstRawEventId, firstObservedAt } of latestAttachments.values()) {
     const ref = await resolveCaseRef(attachment.url);
     if (ref.kind === "unrecognized") {
-      result.unmatchedUnrecognizedUrl += 1;
+      unmatch("unrecognizedUrl");
       continue;
     }
 
     const issue = issuesById.get(issueId);
     if (!issue) {
-      result.unmatchedNoIssueSnapshot += 1;
+      unmatch("noIssueSnapshot");
       continue;
     }
 
     if (ref.kind === "no_case") {
-      result.unmatchedNoCase += 1;
+      unmatch("noCase");
       continue;
     }
-    const caseId = ref.caseId;
 
-    const where = {
-      caseId_system_externalId: { caseId, system: "linear" as const, externalId: issue.identifier },
+    const fact: LinkFact = {
+      caseId: ref.caseId,
+      system: "linear",
+      externalId: issue.identifier,
+      method: "remote_link",
+      methodOnUpdate: "keep",
+      // The issue's own `url` is captured at link time because Linear's stored
+      // OAuth credentials carry no workspace URL to rebuild a browse link from.
+      evidence: { attachment, issueUrl: issue.url },
+      evidenceMode: "replace",
+      sourceRole: LINEAR_SOURCE_ROLE,
+      linkedEvent: { sourceRawEventId: firstRawEventId, occurredAt: firstObservedAt },
+      // A link can persist without its `issue_linked` event ever having landed
+      // (a run interrupted between the two writes of an older version).
+      repairLinkedEvent: true,
     };
-    const existing = await prisma.caseLink.findUnique({ where });
-    const evidence = { attachment, issueUrl: issue.url } as unknown as Prisma.InputJsonValue;
-
-    await prisma.caseLink.upsert({
-      where,
-      update: { evidence },
-      create: {
-        caseId,
-        system: "linear",
-        externalId: issue.identifier,
-        method: "remote_link",
-        confidence: "certain",
-        evidence,
-        confirmedAt: new Date(),
-      },
-    });
-
-    if (!existing) {
-      result.caseLinksCreated += 1;
-    }
-
-    // Checked independently of `existing`: a CaseLink can persist without
-    // its `issue_linked` event ever having landed (e.g. a prior run created
-    // the link but was interrupted before emitting the event), and gating
-    // solely on the link's own existence would leave that drift permanent.
-    const existingLinkEvent = await prisma.normalizedEvent.findFirst({
-      where: { caseId, type: "issue_linked", sourceRawEventId: firstRawEventId },
-      select: { id: true },
-    });
-
-    if (!existingLinkEvent) {
-      await prisma.normalizedEvent.create({
-        data: {
-          caseId,
-          sourceRawEventId: firstRawEventId,
-          type: "issue_linked",
-          occurredAt: firstObservedAt,
-          actor: "system",
-          system: "linear",
-          sourceRole: LINEAR_SOURCE_ROLE,
-          fromState: null,
-          toState: null,
-        },
-      });
-    }
+    output.links.push(fact);
   }
 
-  return result;
+  return output;
 }

@@ -7,10 +7,8 @@ import type { BackfillResult as GithubBackfillResult } from "@sla/github";
 import type { BackfillResult as IntercomBackfillResult } from "@sla/intercom";
 import type { BackfillResult as JiraBackfillResult } from "@sla/jira";
 import type { BackfillResult as LinearBackfillResult } from "@sla/linear";
-import type {
-  BackfillResult as ZendeskBackfillResult,
-  NormalizationResult,
-} from "@sla/zendesk";
+import type { ProjectionResult } from "@sla/ingestion";
+import type { BackfillResult as ZendeskBackfillResult } from "@sla/zendesk";
 
 /**
  * Narrow, display-only view of one Zendesk/Jira/Linear `Integration` row for
@@ -62,7 +60,7 @@ export type { ConfigurableIntegrationProvider, IntegrationConfigStatus };
 
 export interface ZendeskSyncResult {
   backfill: ZendeskBackfillResult;
-  normalization: NormalizationResult;
+  normalization: ProjectionResult;
 }
 
 export type {
@@ -106,7 +104,8 @@ export const INTEGRATION_PROVIDER_LABELS: Record<IntegrationProvider, string> =
 /**
  * Read model for `/settings/integrations/[provider]` (roadmap step 20
  * follow-up): everything beyond connect/disconnect for one already-connected
- * integration — backfill and, for Zendesk/Jira, the real-time webhook setup.
+ * integration — backfill and, for a provider with the `webhooks` capability,
+ * the real-time webhook setup.
  * Display-only scalars derived server-side from the `Integration` row and its
  * JSON `credentials`/`cursor` — neither ever reaches the client directly.
  * `webhookSecret` is the one exception to "no secrets to the client": it's
@@ -124,6 +123,8 @@ export interface IntegrationDetailData {
   /** ISO 8601, matching the provider cursor's own `backfillCompletedAt`. */
   backfillCompletedAt: Date | null;
   webhookSecret: string | null;
+  /** The provider receives webhooks (its adapter's `webhooks` capability). */
+  webhooks: boolean;
   /** Zendesk only. */
   subdomain?: string;
   /** GitHub only — the single `owner/repo` this integration is scoped to. */

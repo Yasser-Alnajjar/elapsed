@@ -11,6 +11,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -105,7 +106,7 @@ describe.skipIf(!TEST_DATABASE_URL)("evaluation persistence (real Postgres)", ()
     });
 
     const caseRow = await prisma.case.create({
-      data: { organizationId, system: "zendesk", externalId: "45", priority: "urgent", openedAt: OPENED },
+      data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: "45", priority: "urgent", openedAt: OPENED },
     });
     caseId = caseRow.id;
     await normalize();

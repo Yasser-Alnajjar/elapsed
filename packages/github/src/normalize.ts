@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
+import type { CanonicalBatch, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import type { Actor, NormalizedState } from "@sla/core";
 import type { GithubActor, GithubPullRequest, GithubTimelineItem, GithubTimelineItemType } from "./types";
 import { GITHUB_SOURCE_ROLE } from "./source-role";
@@ -110,13 +111,6 @@ export function deriveNormalizedEventsForPullRequest(
   return events;
 }
 
-export interface GithubNormalizationResult {
-  pullRequestsProcessed: number;
-  normalizedEventsWritten: number;
-  pullRequestsSkippedNoCaseLink: number;
-  pullRequestsFailed: { pullRequestExternalId: string; error: string }[];
-}
-
 /** Latest snapshot per PR node id, from `pull_request:{owner}/{repo}#{number}:{hash}` RawEvents. */
 function latestPullRequestSnapshots(
   rows: { id: string; payload: unknown; fetchedAt: Date }[],
@@ -149,30 +143,19 @@ function groupTimelineByPullRequestKey(
 }
 
 /**
- * Projects every GitHub pull request linked to a Case (via a `certain`
- * CaseLink — the correlator's job, run before this) into NormalizedEvents on
- * that Case. Idempotent: each PR's own NormalizedEvents are replaced
- * wholesale from a fresh derivation, scoped to that PR's own RawEvents only,
- * mirroring `runJiraNormalization`/`runLinearNormalization`.
+ * Derives the events of every GitHub pull request linked to a Case (via a
+ * `certain` CaseLink — the correlator's job, run before this), aimed at that
+ * case. The shared projector reconciles them, scoped to each PR's own
+ * RawEvents, mirroring Jira's and Linear's builders. Writes nothing.
  *
  * A PR with no `certain` CaseLink yet is skipped, not an error — most GitHub
  * pull requests are internal engineering work with no customer-facing case
  * to attach to, and correlation coverage is expected to be partial.
  */
-export async function runGithubNormalization(
-  prisma: PrismaClient,
-  integrationId: string,
-): Promise<GithubNormalizationResult> {
+export async function buildGithubBatch(prisma: PrismaClient, integrationId: string): Promise<CanonicalBatch> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
   const organizationId = integration.organizationId;
   const { owner, repo } = integration.credentials as unknown as { owner: string; repo: string };
-
-  const result: GithubNormalizationResult = {
-    pullRequestsProcessed: 0,
-    normalizedEventsWritten: 0,
-    pullRequestsSkippedNoCaseLink: 0,
-    pullRequestsFailed: [],
-  };
 
   const [pullRequestRows, timelineRows, caseLinks] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -194,20 +177,16 @@ export async function runGithubNormalization(
   const timelineByKey = groupTimelineByPullRequestKey(timelineRows);
   const caseIdByExternalId = new Map(caseLinks.map((link) => [link.externalId, link.caseId]));
 
+  const eventGroups: EventGroup[] = [];
+  const failures: ProjectionFailure[] = [];
+
   for (const { rawEventId: pullRequestRawEventId, value: pr } of latestPullRequests.values()) {
     const externalId = `${owner}/${repo}#${pr.number}`;
     const caseId = caseIdByExternalId.get(externalId);
-    if (!caseId) {
-      result.pullRequestsSkippedNoCaseLink += 1;
-      continue;
-    }
+    if (!caseId) continue;
 
     try {
-      const derived = deriveNormalizedEventsForPullRequest(
-        pr,
-        timelineByKey.get(externalId) ?? [],
-        pullRequestRawEventId,
-      );
+      const derived = deriveNormalizedEventsForPullRequest(pr, timelineByKey.get(externalId) ?? [], pullRequestRawEventId);
 
       const ownRawEvents = await prisma.rawEvent.findMany({
         where: {
@@ -220,35 +199,26 @@ export async function runGithubNormalization(
         select: { id: true },
       });
 
-      await prisma.$transaction([
-        prisma.normalizedEvent.deleteMany({
-          where: { caseId, sourceRawEventId: { in: ownRawEvents.map((row) => row.id) } },
-        }),
-        prisma.normalizedEvent.createMany({
-          // `derived` is emitted in source order, so its index is the source sequence.
-          data: derived.map((event, sourceSequence) => ({
-            caseId,
-            sourceRawEventId: event.sourceRawEventId,
-            type: "state_changed" as const,
-            occurredAt: new Date(event.occurredAt),
-            actor: event.actor,
-            system: "github" as const,
-            sourceRole: GITHUB_SOURCE_ROLE,
-            fromState: event.fromState,
-            toState: event.toState,
-            sourceSequence,
-          })) satisfies Prisma.NormalizedEventCreateManyInput[],
-        }),
-      ]);
-      result.pullRequestsProcessed += 1;
-      result.normalizedEventsWritten += derived.length;
-    } catch (error) {
-      result.pullRequestsFailed.push({
-        pullRequestExternalId: externalId,
-        error: error instanceof Error ? error.message : String(error),
+      eventGroups.push({
+        target: { caseId },
+        ownRawEventIds: ownRawEvents.map((row) => row.id),
+        // `derived` is emitted in source order, so its index is the source sequence.
+        events: derived.map((event, sourceSequence) => ({
+          type: "state_changed" as const,
+          occurredAt: new Date(event.occurredAt),
+          actor: event.actor,
+          sourceRole: GITHUB_SOURCE_ROLE,
+          fromState: event.fromState,
+          toState: event.toState,
+          sourceRawEventId: event.sourceRawEventId,
+          sourceSequence,
+        })),
+        recordId: externalId,
       });
+    } catch (error) {
+      failures.push({ id: externalId, error: error instanceof Error ? error.message : String(error) });
     }
   }
 
-  return result;
+  return { customers: [], cases: [], eventGroups, deletedCaseExternalIds: [], failures };
 }

@@ -1,4 +1,5 @@
 import { Leg, CommitmentKind, CommitmentStatus } from "@sla/core";
+import type { IntegrationProvider } from "./integrations";
 
 /**
  * A case's linked Jira/Linear/GitHub issue as surfaced to this row — only
@@ -6,7 +7,7 @@ import { Leg, CommitmentKind, CommitmentStatus } from "@sla/core";
  * `certain` confidence when a case somehow carries more than one.
  */
 export interface AtRiskLinkedIssue {
-  system: "jira" | "linear" | "github";
+  system: IntegrationProvider;
   externalId: string;
   confidence: "certain" | "probable";
 }

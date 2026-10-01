@@ -1,0 +1,70 @@
+--- a/packages/db/prisma/schema.prisma
++++ b/packages/db/prisma/schema.prisma
+@@ -296,18 +296,6 @@
+   id                String       @id @default(cuid())
+   organizationId    String
+   name              String
+-  zendeskOrgId      String?
+-  /// Intercom company id (roadmap step 22) — a separate optional key from
+-  /// `zendeskOrgId` rather than a shared generic column, since an org that
+-  /// somehow connected both ticket sources must never collide a Zendesk
+-  /// organization and an unrelated Intercom company onto the same Customer
+-  /// row just because they reused the same upstream numeric id.
+-  intercomCompanyId String?
+-  /// Intercom contact id — the fallback key for a conversation whose primary
+-  /// contact belongs to no company (common for self-serve/Messenger users),
+-  /// so the case still gets a real customer instead of none. Only ever set
+-  /// when `intercomCompanyId` is not.
+-  intercomContactId String?
+   tier              String?
+   /// Optional override (roadmap step 24): which `BusinessCalendar` this
+   /// customer's commitments are anchored to, in place of whatever the
+@@ -333,17 +321,13 @@
+   calendarVersion   BusinessCalendarVersion? @relation("CustomerCalendarVersion", fields: [calendarVersionId], references: [id], onDelete: SetNull)
+   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+ 
+-  @@unique([organizationId, zendeskOrgId])
+-  @@unique([organizationId, intercomCompanyId])
+-  @@unique([organizationId, intercomContactId])
+   @@map("customers")
+ }
+ 
+ /// How a provider names a Customer (N1.14). One row per provider-side identity
+ /// — a Zendesk organization, an Intercom company or contact — so provider
+-/// knowledge lives in data instead of one column per provider on `Customer`.
+-/// The legacy `Customer.zendeskOrgId` / `intercomCompanyId` /
+-/// `intercomContactId` columns are dual-written until they are dropped in N2.10.
++/// knowledge lives in data instead of one column per provider on `Customer`
++/// (the legacy columns were dropped in N2.10).
+ model CustomerIdentity {
+   id             String              @id @default(cuid())
+   organizationId String
+@@ -378,11 +362,9 @@
+   /// `Integration` rows are never deleted (disconnect is soft) and are unique
+   /// per (organization, provider), so this stays stable across reconnects.
+   /// Together with `externalId` it names a case: two ticket sources may reuse
+-  /// an id without colliding. Nullable only so a row written by pre-N1.15 code
+-  /// (after a code rollback) is still valid; re-run the migration's backfill
+-  /// `UPDATE` to repair such rows. Lookups use the compound key below; the old
+-  /// `(organizationId, externalId)` key stays until N2.10.
+-  sourceIntegrationId String?
++  /// an id without colliding (N1.15 added it, N2.10 made it required and
++  /// dropped the source-less `(organizationId, externalId)` key).
++  sourceIntegrationId String
+   /// The source ticket's subject/title (e.g. Zendesk's `subject` field).
+   /// Display-only — never used for matching or correlation. Null for cases
+   /// whose source system was ingested before this column existed, or whose
+@@ -436,12 +418,11 @@
+   caseLinks        CaseLink[]
+   customer         Customer?         @relation(fields: [customerId], references: [id])
+   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+-  sourceIntegration Integration?     @relation(fields: [sourceIntegrationId], references: [id], onDelete: SetNull)
++  sourceIntegration Integration      @relation(fields: [sourceIntegrationId], references: [id], onDelete: NoAction)
+   commitments      Commitment[]
+   legSpans         LegSpan[]
+   normalizedEvents NormalizedEvent[]
+ 
+-  @@unique([organizationId, externalId])
+   @@unique([organizationId, sourceIntegrationId, externalId])
+   @@index([organizationId, openedAt])
+   @@map("cases")

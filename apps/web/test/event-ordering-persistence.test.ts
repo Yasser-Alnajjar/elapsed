@@ -9,6 +9,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -125,7 +126,7 @@ describe.skipIf(!TEST_DATABASE_URL)("normalized event ordering (real Postgres)",
     `${row.sourceRawEvent.providerEventId}:${row.type}${row.toState ? `→${row.toState}` : ""}#${row.sourceSequence}`;
 
   it("persists a same-second audit's comment and status change in source audit order", async () => {
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     expect((await loadPersisted()).map(describeRow)).toEqual([
       "ticket_audit:101:case_created→open#0",
@@ -137,9 +138,9 @@ describe.skipIf(!TEST_DATABASE_URL)("normalized event ordering (real Postgres)",
   });
 
   it("is idempotent: renormalizing leaves the rows untouched, with identical ordering and sequences", async () => {
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     const first = await loadPersisted();
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     const second = await loadPersisted();
 
     // Reconciled against what's stored, not deleted and recreated: an
@@ -149,7 +150,7 @@ describe.skipIf(!TEST_DATABASE_URL)("normalized event ordering (real Postgres)",
   });
 
   it("evaluates persisted rows identically whatever order they are loaded in", async () => {
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
     const rows = await loadPersisted();
     const caseId = rows[0]!.caseId;
     const commitment: import("@sla/core").Commitment = {

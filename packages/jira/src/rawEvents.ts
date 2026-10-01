@@ -67,7 +67,7 @@ export interface RemoteLinkManifest {
  * as its own per-issue snapshot, separate from the per-link `remote_link:`
  * rows, mirroring `mapJiraLinkManifestToRawEvent` (packages/zendesk/src/
  * rawEvents.ts) — the same reasoning applies here, just scoped to one issue
- * instead of the whole Zendesk account: `runJiraCorrelation`'s manifest-diff
+ * instead of the whole Zendesk account: `correlateJira`'s manifest-diff
  * sweep needs to tell "this remote link was removed from this issue" apart
  * from "we just haven't re-fetched it yet", and a Jira remote-link removal
  * has no deletion event of its own.
@@ -86,7 +86,7 @@ export function mapRemoteLinkManifestToRawEvent(issueKey: string, linkIds: numbe
 }
 
 /**
- * Records the fact "this issue was found deleted", so `markCaseLinksUnlinkedForIssue`
+ * Records the fact "this issue was found deleted", so `recordJiraIssueDeletion`
  * (./webhook.ts) has a real RawEvent to cite as `NormalizedEvent.sourceRawEventId`
  * — required, not nullable — for the `issue_unlinked` event(s) it emits.
  * There's no fetched payload to snapshot (the issue is gone), unlike every

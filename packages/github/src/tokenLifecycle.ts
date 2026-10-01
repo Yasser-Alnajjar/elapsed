@@ -1,6 +1,7 @@
 import { decryptCredentials, encryptCredentials, type Prisma, type PrismaClient } from "@sla/db";
 import { GithubOAuthError, refreshAccessToken, type GithubOAuthConfig } from "./oauth";
 import type { GithubCredentials } from "./types";
+import { ReauthRequiredError } from "@sla/ingestion";
 
 /** Refresh this far ahead of the recorded expiry, to absorb request latency. */
 const EXPIRY_SAFETY_MARGIN_MS = 2 * 60 * 1000;
@@ -12,7 +13,7 @@ const EXPIRY_SAFETY_MARGIN_MS = 2 * 60 * 1000;
  * from a transient/network failure. Callers should surface this rather than
  * retrying, and never delete the integration for it.
  */
-export class GithubReauthRequiredError extends Error {
+export class GithubReauthRequiredError extends ReauthRequiredError {
   constructor(message = "GitHub integration requires reauthorization") {
     super(message);
     this.name = "GithubReauthRequiredError";

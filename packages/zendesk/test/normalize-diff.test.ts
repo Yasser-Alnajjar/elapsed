@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffNormalizedEvents } from "../src/normalize";
+import { diffNormalizedEvents } from "@sla/ingestion";
 
 const base = {
   sourceRawEventId: "raw_1",

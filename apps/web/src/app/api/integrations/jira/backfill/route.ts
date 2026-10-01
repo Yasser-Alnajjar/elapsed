@@ -40,15 +40,15 @@ export async function POST() {
     const backfill = await runJiraBackfill(prisma, integration.id, config);
     // Correlation needs Zendesk's cases, so when this finishes first the
     // Zendesk route's own call re-projects Jira and evaluates instead.
-    const { zendesk, jira, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
+    const { providers, commitments, evaluation, pendingProviders } = await projectAndEvaluateSourceSyncs(
       prisma,
       session.user.organizationId,
     );
     return NextResponse.json({
       backfill,
-      correlation: jira?.correlation,
-      normalization: jira?.normalization,
-      zendesk,
+      correlation: providers.jira?.correlation,
+      normalization: providers.jira?.normalization,
+      zendesk: providers.zendesk,
       commitments,
       evaluation,
       pendingProviders,

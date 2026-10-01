@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { GithubReauthRequiredError, runGithubBackfill, runGithubCorrelation, runGithubNormalization } from "@sla/github";
-import { getPrismaClient } from "@sla/db";
+import { GithubReauthRequiredError, githubAdapter, runGithubBackfill } from "@sla/github";
+import { getPrismaClient, withOrganizationSlaLock } from "@sla/db";
+import { syncIntegration } from "@sla/ingestion";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 import { getGithubOAuthConfig } from "@/lib/github-env";
@@ -37,8 +38,17 @@ export async function POST() {
 
   try {
     const backfill = await runGithubBackfill(prisma, integration.id, config);
-    const correlation = await runGithubCorrelation(prisma, integration.id);
-    const normalization = await runGithubNormalization(prisma, integration.id);
+    // Correlation links through the trackers' links, then the PRs' events land
+    // on those cases; both project under the organization lock, like the worker.
+    const integrationRef = {
+      id: integration.id,
+      organizationId: integration.organizationId,
+      provider: integration.provider,
+      status: integration.status,
+    };
+    const { correlation, normalization } = await withOrganizationSlaLock(prisma, integration.organizationId, () =>
+      syncIntegration(githubAdapter, { prisma, integration: integrationRef, mode: "full", resolveCaseRef: null }),
+    );
     return NextResponse.json({ backfill, correlation, normalization });
   } catch (error) {
     if (error instanceof GithubReauthRequiredError) {

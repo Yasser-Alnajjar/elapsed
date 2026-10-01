@@ -68,7 +68,7 @@ function fakePrisma(
           ...e,
         })),
     },
-    integration: { findUnique: async () => null },
+    integration: { findMany: async () => [] },
     organization: {
       findUnique: async () => ({ engineeringLegTargetMinutes: null }),
     },

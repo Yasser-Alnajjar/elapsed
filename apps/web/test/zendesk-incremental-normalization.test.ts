@@ -18,13 +18,14 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 const CREATED_AT = "2026-09-01T09:00:00Z";
 const AGENT = 900;
 
-describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization incremental mode (real Postgres)", () => {
+describe.skipIf(!TEST_DATABASE_URL)("Zendesk normalization, incremental mode (real Postgres)", () => {
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
 
@@ -131,10 +132,10 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization incremental mode (r
       fetchedAt,
     );
 
-  const incremental = () => zendesk.runZendeskNormalization(prisma, integrationId, { mode: "incremental" });
-  const full = () => zendesk.runZendeskNormalization(prisma, integrationId, { mode: "full" });
+  const incremental = () => normalizeZendesk(prisma, integrationId, { mode: "incremental" });
+  const full = () => normalizeZendesk(prisma, integrationId, { mode: "full" });
   const caseFor = (externalId: string) =>
-    prisma.case.findUniqueOrThrow({ where: { organizationId_externalId: { organizationId, externalId } } });
+    prisma.case.findFirstOrThrow({ where: { organizationId, externalId } });
   const integration = () => prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
 
   it("does a full pass on the first run and records the watermark", async () => {
@@ -255,6 +256,18 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization incremental mode (r
     expect((await caseFor("1")).subject).toBe("A renamed");
   });
 
+  it("soft-deletes a case the source reports gone, though no snapshot or audit of it changed", async () => {
+    await seedTicket(1, "A", 1, OLD);
+    await incremental();
+    expect((await caseFor("1")).deletedAt).toBeNull();
+
+    // The incremental export reports the ticket deleted: ingestion records it, normalization applies it.
+    await seed("ticket_deleted:1:h", { ticketId: 1 });
+    await incremental();
+
+    expect((await caseFor("1")).deletedAt).not.toBeNull();
+  });
+
   it("does nothing when nothing changed, and an unchanged ticket keeps its event rows", async () => {
     await seedTicket(1, "A", 1, OLD);
     await seedAudit(500, 1, OLD);
@@ -293,7 +306,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization incremental mode (r
     const before = await integration();
 
     await seedTicket(1, "A webhook", 2);
-    await zendesk.runZendeskNormalization(prisma, integrationId, { ticketIds: [1] });
+    await normalizeZendesk(prisma, integrationId, { ticketIds: [1] });
 
     const after = await integration();
     expect(after.normalizedThroughFetchedAt).toEqual(before.normalizedThroughFetchedAt);

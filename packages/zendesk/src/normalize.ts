@@ -1,6 +1,7 @@
-import { Prisma, findCustomerByIdentity, upsertCustomerByIdentity, type PrismaClient } from "@sla/db";
+import { Prisma, type PrismaClient } from "@sla/db";
 import type { Actor, CanonicalPriority, NormalizedEventType, NormalizedState } from "@sla/core";
 import type { ZendeskAudit, ZendeskOrganization, ZendeskTicket, ZendeskUser, ZendeskUserRole } from "./types";
+import type { CanonicalBatch, CaseFacts, CustomerIdentityFact, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import { zendeskOrganizationIdentity } from "./customer-identity";
 import { ZENDESK_SOURCE_ROLE } from "./source-role";
 
@@ -436,13 +437,6 @@ export function zendeskConditionAttributes(
   };
 }
 
-export interface NormalizationResult {
-  customersUpserted: number;
-  casesUpserted: number;
-  normalizedEventsWritten: number;
-  ticketsFailed: { ticketId: number; error: string }[];
-}
-
 /**
  * Keeps, per numeric `id` embedded in each row's JSON payload, the row with
  * the latest fetchedAt. `rawEventIds` lists every snapshot row seen for that
@@ -478,57 +472,6 @@ function groupAuditsByTicketId(
     else byTicketId.set(audit.ticket_id, [record]);
   }
   return byTicketId;
-}
-
-/** Everything that identifies a derived event's content — two events with the same key are interchangeable. */
-function normalizedEventKey(event: {
-  sourceRawEventId: string;
-  sourceSequence: number;
-  type: string;
-  occurredAt: Date | string;
-  actor: string;
-  sourceRole?: string | null;
-  fromState: string | null;
-  toState: string | null;
-}): string {
-  return [
-    event.sourceRawEventId,
-    event.sourceSequence,
-    event.type,
-    new Date(event.occurredAt).getTime(),
-    event.actor,
-    // A stored row with no role (written before N1.5's backfill) never matches
-    // its derived twin, so it is replaced by one that has it.
-    event.sourceRole ?? "",
-    event.fromState ?? "",
-    event.toState ?? "",
-  ].join("|");
-}
-
-/**
- * The write needed to turn `stored` into `derived`: derived events with no
- * identical stored twin are created, stored events with no identical derived
- * twin are deleted, the rest are left alone. Multiset-aware, so two events
- * with the same content are matched one-to-one rather than collapsed.
- */
-export function diffNormalizedEvents<D extends Parameters<typeof normalizedEventKey>[0]>(
-  stored: readonly (Parameters<typeof normalizedEventKey>[0] & { id: string })[],
-  derived: readonly D[],
-): { toCreate: D[]; toDeleteIds: string[] } {
-  const storedIdsByKey = new Map<string, string[]>();
-  for (const row of stored) {
-    const key = normalizedEventKey(row);
-    const ids = storedIdsByKey.get(key);
-    if (ids) ids.push(row.id);
-    else storedIdsByKey.set(key, [row.id]);
-  }
-  const toCreate: D[] = [];
-  for (const event of derived) {
-    const ids = storedIdsByKey.get(normalizedEventKey(event));
-    if (ids && ids.length > 0) ids.pop();
-    else toCreate.push(event);
-  }
-  return { toCreate, toDeleteIds: [...storedIdsByKey.values()].flat() };
 }
 
 export interface ZendeskNormalizationScope {
@@ -654,25 +597,26 @@ export async function findChangedTicketIds(
 }
 
 /**
- * Projects everything ingested so far for one integration into
- * Customer/Case/NormalizedEvent. Idempotent and safe to re-run: customers
- * and cases are upserted, and each case's NormalizedEvents are re-derived
- * and reconciled against what's stored (only the difference is written).
+ * Derives, from everything ingested so far for one integration, the customers,
+ * cases and events the shared projector persists (`CanonicalBatch`). Writes
+ * nothing but the incremental watermark, and that only through the batch's
+ * `afterProject` hook. Idempotent and safe to re-run: the projector reconciles
+ * each case's events against what is stored and writes only the difference.
  *
  * The incremental mode's correctness rests on that idempotence: the
  * watermark only decides *which* tickets get re-derived, and re-deriving a
  * ticket that didn't actually change writes nothing.
  */
-export async function runZendeskNormalization(
+export async function buildZendeskBatch(
   prisma: PrismaClient,
   integrationId: string,
   scope: ZendeskNormalizationScope = {},
-): Promise<NormalizationResult> {
+): Promise<CanonicalBatch> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
 
   // A ticket-scoped run (webhook) isn't a view of the whole integration, so
   // it neither narrows by nor advances the watermark.
-  if (scope.ticketIds) return normalizeTickets(prisma, integration, scope.ticketIds);
+  if (scope.ticketIds) return deriveTickets(prisma, integration, scope.ticketIds, scope.ticketIds);
 
   // Read before deriving, so a RawEvent that lands mid-run is above the new
   // watermark and picked up next time rather than skipped.
@@ -684,36 +628,50 @@ export async function runZendeskNormalization(
     ticketIds = (await findChangedTicketIds(prisma, integrationId, since)) ?? undefined;
   }
 
-  const result = await normalizeTickets(prisma, integration, ticketIds);
-
+  const batch = await deriveTickets(prisma, integration, ticketIds);
   if (highWater) {
-    await prisma.integration.update({
-      where: { id: integrationId },
-      data: { normalizedThroughFetchedAt: highWater.fetchedAt, normalizedThroughId: highWater.id },
-    });
+    batch.afterProject = async () => {
+      await prisma.integration.update({
+        where: { id: integrationId },
+        data: { normalizedThroughFetchedAt: highWater.fetchedAt, normalizedThroughId: highWater.id },
+      });
+    };
   }
-  return result;
+  return batch;
+}
+
+/** The tickets `ticket_deleted:` raw events record as gone, optionally narrowed to some ids. */
+async function findDeletedTicketIds(prisma: PrismaClient, integrationId: string, ticketIds?: number[]): Promise<string[]> {
+  const rows = await prisma.rawEvent.findMany({
+    where: {
+      integrationId,
+      providerEventId: { startsWith: "ticket_deleted:" },
+      ...(ticketIds ? { OR: ticketIds.map((id) => ({ providerEventId: { startsWith: `ticket_deleted:${id}:` } })) } : {}),
+    },
+    select: { payload: true },
+  });
+  return [...new Set(rows.map((row) => String((row.payload as { ticketId: number }).ticketId)))];
 }
 
 /**
  * Derives the given tickets (or every ticket when `ticketIds` is omitted)
  * from their stored RawEvents.
  */
-async function normalizeTickets(
+async function deriveTickets(
   prisma: PrismaClient,
   integration: { id: string; organizationId: string },
   ticketIds?: number[],
-): Promise<NormalizationResult> {
+  /** Narrows which deletions are read: a webhook's own tickets. Omitted, every recorded deletion is, even when `ticketIds` narrows the rest (a deletion's ticket has no new snapshot, so the watermark's changed set never names it). */
+  deletionScope?: number[],
+): Promise<CanonicalBatch> {
   const integrationId = integration.id;
-  const organizationId = integration.organizationId;
 
-  const result: NormalizationResult = {
-    customersUpserted: 0,
-    casesUpserted: 0,
-    normalizedEventsWritten: 0,
-    ticketsFailed: [],
-  };
-  if (ticketIds && ticketIds.length === 0) return result;
+  const batch: CanonicalBatch = { customers: [], cases: [], eventGroups: [], deletedCaseExternalIds: [], failures: [] };
+  // Tickets the source reports gone (the incremental export's `deleted` status,
+  // a 404 on refetch) are recorded as raw events by ingestion; the projector
+  // soft-deletes their cases. Always read, whatever the scope narrows to.
+  batch.deletedCaseExternalIds = await findDeletedTicketIds(prisma, integrationId, deletionScope);
+  if (ticketIds && ticketIds.length === 0) return batch;
 
   const [orgRows, userRows] = await Promise.all([
     prisma.rawEvent.findMany({
@@ -728,10 +686,10 @@ async function normalizeTickets(
   ]);
 
   const latestOrgs = latestSnapshotById<ZendeskOrganization>(orgRows);
-  for (const { value: org } of latestOrgs.values()) {
-    await upsertCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, org.id), org.name);
-    result.customersUpserted += 1;
-  }
+  batch.customers = [...latestOrgs.values()].map(({ value: org }): CustomerIdentityFact => ({
+    ...zendeskOrganizationIdentity(org.id),
+    name: org.name,
+  }));
 
   const userRoles: ZendeskUserRoles = new Map(
     [...latestSnapshotById<ZendeskUser>(userRows).values()].map(({ value }) => [value.id, value.role]),
@@ -741,13 +699,13 @@ async function normalizeTickets(
   if (ticketIds) for (let i = 0; i < ticketIds.length; i += TICKET_BATCH_SIZE) batches.push(ticketIds.slice(i, i + TICKET_BATCH_SIZE));
   else batches.push(undefined);
 
-  for (const batch of batches) {
+  for (const ids of batches) {
     const [ticketRows, auditRows] = await Promise.all([
       prisma.rawEvent.findMany({
         where: {
           integrationId,
           providerEventId: { startsWith: "ticket:" },
-          ...(batch ? { OR: batch.map((id) => ({ providerEventId: { startsWith: `ticket:${id}:` } })) } : {}),
+          ...(ids ? { OR: ids.map((id) => ({ providerEventId: { startsWith: `ticket:${id}:` } })) } : {}),
         },
         select: { id: true, payload: true, fetchedAt: true },
         orderBy: { fetchedAt: "asc" },
@@ -759,7 +717,7 @@ async function normalizeTickets(
           // Audits carry no ticket id in their own providerEventId (they're
           // keyed by the audit's own id — see rawEvents.ts) — the ticket
           // scope has to go through the JSON payload instead.
-          ...(batch ? { OR: batch.map((id) => ({ payload: { path: ["ticket_id"], equals: id } })) } : {}),
+          ...(ids ? { OR: ids.map((id) => ({ payload: { path: ["ticket_id"], equals: id } })) } : {}),
         },
         select: { id: true, payload: true, fetchedAt: true },
       }),
@@ -767,147 +725,79 @@ async function normalizeTickets(
 
     const latestTickets = latestSnapshotById<ZendeskTicket>(ticketRows);
     const auditsByTicketId = groupAuditsByTicketId(auditRows);
-
-    await deriveTickets(prisma, organizationId, integrationId, latestTickets, auditsByTicketId, userRoles, result);
+    deriveTicketFacts(latestTickets, auditsByTicketId, userRoles, batch);
   }
 
-  return result;
+  return batch;
 }
 
-async function deriveTickets(
-  prisma: PrismaClient,
-  organizationId: string,
-  integrationId: string,
+function deriveTicketFacts(
   latestTickets: ReturnType<typeof latestSnapshotById<ZendeskTicket>>,
   auditsByTicketId: Map<number, AuditRecord[]>,
   userRoles: ZendeskUserRoles,
-  result: NormalizationResult,
-): Promise<void> {
+  batch: CanonicalBatch,
+): void {
+  const cases: CaseFacts[] = batch.cases;
+  const eventGroups: EventGroup[] = batch.eventGroups;
+  const failures: ProjectionFailure[] = batch.failures;
+
   for (const { rawEventId: ticketRawEventId, value: ticket, rawEventIds: ticketSnapshotRawEventIds } of latestTickets.values()) {
     try {
-      // Defense in depth: `runZendeskBackfill` routes "deleted"-status tickets
-      // to soft-delete directly and never writes them as RawEvents, but a row
-      // ingested before that filter existed could still be sitting here —
+      // Defense in depth: ingestion records "deleted"-status tickets as
+      // `ticket_deleted:` raw events and never as tickets, but a row ingested
+      // before that existed could still be sitting here —
       // normalizeZendeskStatus has no mapping for "deleted" and would throw.
       if (ticket.status === "deleted") {
-        await prisma.case.updateMany({
-          where: { organizationId, externalId: String(ticket.id), deletedAt: null },
-          data: { deletedAt: new Date() },
-        });
+        batch.deletedCaseExternalIds.push(String(ticket.id));
         continue;
       }
-
-      const customer =
-        ticket.organization_id != null
-          ? await findCustomerByIdentity(prisma, zendeskOrganizationIdentity(organizationId, ticket.organization_id))
-          : null;
 
       const auditsForTicket = auditsByTicketId.get(ticket.id) ?? [];
       const derived = deriveNormalizedEventsForTicket(ticket, auditsForTicket, ticketRawEventId, userRoles);
       const closedAt = deriveCaseClosedAt(ticket, derived);
-      // Every RawEvent this ticket's own derivation could ever have sourced
-      // an event from — every ticket snapshot (each re-fetch with changes is
-      // a new RawEvent, and an older one's case_created must not linger)
-      // plus its own audits. Scoping the
-      // regenerate-in-place delete to just these (like jira/normalize.ts and
-      // linear/normalize.ts already do) keeps it from wiping NormalizedEvent
-      // rows another provider (Jira/Linear) wrote onto the same case.
-      const ownRawEventIds = [...ticketSnapshotRawEventIds, ...auditsForTicket.map((a) => a.rawEventId)];
 
-      const caseRow = await prisma.case.upsert({
-        where: {
-          organizationId_sourceIntegrationId_externalId: {
-            organizationId,
-            sourceIntegrationId: integrationId,
-            externalId: String(ticket.id),
-          },
-        },
-        update: {
-          sourceIntegrationId: integrationId,
-          customerId: customer?.id ?? null,
-          subject: ticket.subject,
-          priority: ticket.priority,
-          channel: ticket.via?.channel ?? null,
-          // Generic SLA policy match input (`SLAPolicyMatch.conditions`,
-          // field `"tags"`) — see `extractMatchFromFilter` in ./policies.
-          tags: ticket.tags ?? [],
-          // Every other Zendesk SLA condition field this importer can
-          // resolve (status, type, group_id, assignee_id, ...) — see
-          // `zendeskConditionAttributes` above.
-          attributes: zendeskConditionAttributes(ticket) as Prisma.InputJsonValue,
-          closedAt,
-          // Display-only, like `subject` — never feeds Customer resolution,
-          // SLA matching, calendar overrides, or anomaly grouping (see
-          // Customer resolution above, which this never touches).
-          requesterName: ticket.requester_name ?? null,
-          assigneeName: ticket.assignee_name ?? null,
-        },
-        create: {
-          organizationId,
-          customerId: customer?.id ?? null,
-          externalId: String(ticket.id),
-          system: "zendesk",
-          sourceIntegrationId: integrationId,
-          subject: ticket.subject,
-          priority: ticket.priority,
-          channel: ticket.via?.channel ?? null,
-          tags: ticket.tags ?? [],
-          attributes: zendeskConditionAttributes(ticket) as Prisma.InputJsonValue,
-          openedAt: new Date(ticket.created_at),
-          closedAt,
-          requesterName: ticket.requester_name ?? null,
-          assigneeName: ticket.assignee_name ?? null,
-        },
+      cases.push({
+        externalId: String(ticket.id),
+        subject: ticket.subject,
+        priority: ticket.priority,
+        channel: ticket.via?.channel ?? null,
+        openedAt: new Date(ticket.created_at),
+        closedAt,
+        customer: ticket.organization_id != null ? zendeskOrganizationIdentity(ticket.organization_id) : null,
+        // Generic SLA policy match input (`SLAPolicyMatch.conditions`, field
+        // `"tags"`) — see `extractMatchFromFilter` in ./policies.
+        tags: ticket.tags ?? [],
+        // Every other Zendesk SLA condition field this importer can resolve
+        // (status, type, group_id, assignee_id, ...) — see
+        // `zendeskConditionAttributes` above.
+        attributes: zendeskConditionAttributes(ticket),
+        // Display-only, like `subject` — never feeds customer resolution, SLA
+        // matching, calendar overrides, or anomaly grouping.
+        requesterName: ticket.requester_name ?? null,
+        assigneeName: ticket.assignee_name ?? null,
       });
-      result.casesUpserted += 1;
-
-      // Reconcile against what's stored instead of deleting and recreating
-      // every event: unchanged events keep their id and `createdAt` (which
-      // the worker's "cases with new events" lookback relies on), and an
-      // unchanged ticket writes nothing at all.
-      const stored = await prisma.normalizedEvent.findMany({
-        where: { caseId: caseRow.id, sourceRawEventId: { in: ownRawEventIds } },
-        select: {
-          id: true,
-          sourceRawEventId: true,
-          type: true,
-          occurredAt: true,
-          actor: true,
-          sourceRole: true,
-          fromState: true,
-          toState: true,
-          sourceSequence: true,
-        },
+      eventGroups.push({
+        target: { caseExternalId: String(ticket.id) },
+        // Every RawEvent this ticket's own derivation could ever have sourced
+        // an event from — every ticket snapshot (each re-fetch with changes is
+        // a new RawEvent, and an older one's case_created must not linger) plus
+        // its own audits. Scoping the reconcile to just these keeps it from
+        // wiping events another provider (Jira/Linear) wrote onto the same case.
+        ownRawEventIds: [...ticketSnapshotRawEventIds, ...auditsForTicket.map((a) => a.rawEventId)],
+        events: derived.map((event) => ({
+          type: event.type,
+          occurredAt: new Date(event.occurredAt),
+          actor: event.actor,
+          sourceRole: ZENDESK_SOURCE_ROLE,
+          fromState: event.fromState,
+          toState: event.toState,
+          sourceRawEventId: event.sourceRawEventId,
+          sourceSequence: event.sourceSequence,
+        })),
+        recordId: String(ticket.id),
       });
-      const { toCreate, toDeleteIds } = diffNormalizedEvents(
-        stored,
-        derived.map((event) => ({ ...event, sourceRole: ZENDESK_SOURCE_ROLE })),
-      );
-      if (toDeleteIds.length > 0 || toCreate.length > 0) {
-        await prisma.$transaction([
-          prisma.normalizedEvent.deleteMany({ where: { id: { in: toDeleteIds } } }),
-          prisma.normalizedEvent.createMany({
-            data: toCreate.map((event) => ({
-              caseId: caseRow.id,
-              sourceRawEventId: event.sourceRawEventId,
-              type: event.type,
-              occurredAt: new Date(event.occurredAt),
-              actor: event.actor,
-              system: "zendesk" as const,
-              sourceRole: ZENDESK_SOURCE_ROLE,
-              fromState: event.fromState,
-              toState: event.toState,
-              sourceSequence: event.sourceSequence,
-            })) satisfies Prisma.NormalizedEventCreateManyInput[],
-          }),
-        ]);
-      }
-      result.normalizedEventsWritten += derived.length;
     } catch (error) {
-      result.ticketsFailed.push({
-        ticketId: ticket.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      failures.push({ id: String(ticket.id), error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

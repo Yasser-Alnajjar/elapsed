@@ -12,10 +12,12 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
+import { normalizeJira } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
-describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Postgres)", () => {
+describe.skipIf(!TEST_DATABASE_URL)("Jira normalization issue scoping (real Postgres)", () => {
   let prisma: PrismaClient;
   let jira: typeof import("@sla/jira");
 
@@ -54,11 +56,11 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Po
     integrationId = integration.id;
 
     const caseA = await prisma.case.create({
-      data: { organizationId, externalId: "ticket-a", system: "zendesk", subject: "A", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "ticket-a", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "A", openedAt: new Date("2026-03-01") },
     });
     caseAId = caseA.id;
     const caseB = await prisma.case.create({
-      data: { organizationId, externalId: "ticket-b", system: "zendesk", subject: "B", openedAt: new Date("2026-03-01") },
+      data: { organizationId, externalId: "ticket-b", system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), subject: "B", openedAt: new Date("2026-03-01") },
     });
     caseBId = caseB.id;
 
@@ -112,7 +114,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Po
     await seedIssue("PROJ-1", "issue:PROJ-1:hash-1");
     await seedIssue("PROJ-2", "issue:PROJ-2:hash-1");
 
-    await jira.runJiraNormalization(prisma, integrationId, { issueKeys: ["PROJ-1"] });
+    await normalizeJira(prisma, integrationId, { issueKeys: ["PROJ-1"] });
 
     const eventsA = await prisma.normalizedEvent.count({ where: { caseId: caseAId } });
     const eventsB = await prisma.normalizedEvent.count({ where: { caseId: caseBId } });
@@ -123,7 +125,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Po
   it("a scoped run ignores a different issue's newer changelog entry sitting in the same integration", async () => {
     await seedIssue("PROJ-1", "issue:PROJ-1:hash-1");
     await seedIssue("PROJ-2", "issue:PROJ-2:hash-1");
-    await jira.runJiraNormalization(prisma, integrationId);
+    await normalizeJira(prisma, integrationId);
 
     const eventsBBefore = await prisma.normalizedEvent.count({ where: { caseId: caseBId } });
 
@@ -143,7 +145,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Po
       },
     });
 
-    await jira.runJiraNormalization(prisma, integrationId, { issueKeys: ["PROJ-1"] });
+    await normalizeJira(prisma, integrationId, { issueKeys: ["PROJ-1"] });
 
     const eventsBAfter = await prisma.normalizedEvent.count({ where: { caseId: caseBId } });
     expect(eventsBAfter).toBe(eventsBBefore);
@@ -153,7 +155,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runJiraNormalization issue scoping (real Po
     await seedIssue("PROJ-1", "issue:PROJ-1:hash-1");
     await seedIssue("PROJ-2", "issue:PROJ-2:hash-1");
 
-    await jira.runJiraNormalization(prisma, integrationId);
+    await normalizeJira(prisma, integrationId);
 
     const eventsA = await prisma.normalizedEvent.count({ where: { caseId: caseAId } });
     const eventsB = await prisma.normalizedEvent.count({ where: { caseId: caseBId } });

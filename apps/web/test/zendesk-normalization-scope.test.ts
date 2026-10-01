@@ -11,12 +11,13 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { normalizeZendesk } from "./ingest-helpers";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 const CREATED_AT = "2026-09-01T09:00:00Z";
 
-describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (real Postgres)", () => {
+describe.skipIf(!TEST_DATABASE_URL)("Zendesk normalization ticket scoping (real Postgres)", () => {
   let prisma: PrismaClient;
   let zendesk: typeof import("@sla/zendesk");
 
@@ -78,7 +79,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (rea
     await seedTicket(1, ticketRawEvent(1, "Ticket A"), "ticket:1:hash-1");
     await seedTicket(2, ticketRawEvent(2, "Ticket B"), "ticket:2:hash-1");
 
-    await zendesk.runZendeskNormalization(prisma, integrationId, { ticketIds: [1] });
+    await normalizeZendesk(prisma, integrationId, { ticketIds: [1] });
 
     const caseA = await prisma.case.findFirst({ where: { organizationId, externalId: "1" } });
     const caseB = await prisma.case.findFirst({ where: { organizationId, externalId: "2" } });
@@ -90,14 +91,14 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (rea
   it("a scoped run never rewrites a different ticket's already-existing Case, even with a newer unprocessed snapshot", async () => {
     await seedTicket(1, ticketRawEvent(1, "Ticket A v1"), "ticket:1:hash-1");
     await seedTicket(2, ticketRawEvent(2, "Ticket B v1"), "ticket:2:hash-1");
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     // Ticket B gets a new snapshot (as if Zendesk changed it), but only
     // ticket A's webhook fires.
     await seedTicket(1, ticketRawEvent(1, "Ticket A v2"), "ticket:1:hash-2");
     await seedTicket(2, ticketRawEvent(2, "Ticket B v2"), "ticket:2:hash-2");
 
-    await zendesk.runZendeskNormalization(prisma, integrationId, { ticketIds: [1] });
+    await normalizeZendesk(prisma, integrationId, { ticketIds: [1] });
 
     const caseA = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "1" } });
     const caseB = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "2" } });
@@ -110,7 +111,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (rea
     await seedTicket(1, ticketRawEvent(1, "Ticket A"), "ticket:1:hash-1");
     await seedTicket(2, ticketRawEvent(2, "Ticket B"), "ticket:2:hash-1");
 
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseA = await prisma.case.findFirst({ where: { organizationId, externalId: "1" } });
     const caseB = await prisma.case.findFirst({ where: { organizationId, externalId: "2" } });
@@ -121,7 +122,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (rea
   it("scoping also filters audits, which carry no ticket id in their own providerEventId — a new audit for a different ticket is ignored by a scoped run", async () => {
     await seedTicket(1, ticketRawEvent(1, "Ticket A"), "ticket:1:hash-1");
     await seedTicket(2, ticketRawEvent(2, "Ticket B"), "ticket:2:hash-1");
-    await zendesk.runZendeskNormalization(prisma, integrationId);
+    await normalizeZendesk(prisma, integrationId);
 
     const caseB = await prisma.case.findFirstOrThrow({ where: { organizationId, externalId: "2" } });
     const eventsBefore = await prisma.normalizedEvent.count({ where: { caseId: caseB.id } });
@@ -144,7 +145,7 @@ describe.skipIf(!TEST_DATABASE_URL)("runZendeskNormalization ticket scoping (rea
       },
     });
 
-    await zendesk.runZendeskNormalization(prisma, integrationId, { ticketIds: [1] });
+    await normalizeZendesk(prisma, integrationId, { ticketIds: [1] });
 
     const eventsAfter = await prisma.normalizedEvent.count({ where: { caseId: caseB.id } });
     expect(eventsAfter).toBe(eventsBefore);

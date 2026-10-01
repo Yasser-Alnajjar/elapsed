@@ -24,7 +24,7 @@ export interface BackfillResult {
 /**
  * Pulls conversations, conversation parts (status transitions), contacts (for
  * company resolution), and companies into RawEvent. Raw ingestion only — see
- * `runIntercomNormalization` in ./normalize for RawEvent →
+ * `buildIntercomBatch` in ./normalize for RawEvent →
  * NormalizedEvent/Case/Customer. Resumable: the cursor is persisted after
  * every page, so a crash or restart continues from the last completed page
  * rather than the start. Mirrors `runZendeskBackfill`'s shape, but Intercom's

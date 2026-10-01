@@ -75,6 +75,9 @@ importers:
       '@sla/github':
         specifier: workspace:*
         version: link:../../packages/github
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../../packages/ingestion
       '@sla/intercom':
         specifier: workspace:*
         version: link:../../packages/intercom
@@ -208,6 +211,9 @@ importers:
       '@sla/github':
         specifier: workspace:*
         version: link:../../packages/github
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../../packages/ingestion
       '@sla/intercom':
         specifier: workspace:*
         version: link:../../packages/intercom
@@ -350,6 +356,9 @@ importers:
       '@sla/http-retry':
         specifier: workspace:*
         version: link:../http-retry
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -373,6 +382,28 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13))
 
+  packages/ingestion:
+    dependencies:
+      '@sla/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sla/db':
+        specifier: workspace:*
+        version: link:../db
+      '@sla/logger':
+        specifier: workspace:*
+        version: link:../logger
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.4.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13))
+
   packages/intercom:
     dependencies:
       '@sla/core':
@@ -384,6 +415,9 @@ importers:
       '@sla/http-retry':
         specifier: workspace:*
         version: link:../http-retry
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -406,6 +440,9 @@ importers:
       '@sla/http-retry':
         specifier: workspace:*
         version: link:../http-retry
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -428,6 +465,9 @@ importers:
       '@sla/http-retry':
         specifier: workspace:*
         version: link:../http-retry
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -502,6 +542,9 @@ importers:
       '@sla/http-retry':
         specifier: workspace:*
         version: link:../http-retry
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
       '@sla/logger':
         specifier: workspace:*
         version: link:../logger

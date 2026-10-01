@@ -12,6 +12,7 @@ import type {
   SLAPolicyMatch,
   WeeklyWindow,
 } from "@sla/core";
+import type { IntegrationProvider } from "./integrations";
 
 export interface CommitmentDetail {
   id: string;
@@ -97,7 +98,7 @@ export interface CommitmentDetail {
 }
 
 export interface CaseLinkDetail {
-  system: "zendesk" | "jira" | "linear" | "github";
+  system: IntegrationProvider;
   externalId: string;
   url: string | null;
   method: string;
@@ -218,7 +219,7 @@ export interface CaseListRow {
    * "other" system, mirroring `CaseDetailData.links[0]`.
    */
   primaryLink: {
-    system: "jira" | "linear" | "github";
+    system: IntegrationProvider;
     externalId: string;
     confidence: "certain" | "probable";
     /** Jira's live status name (e.g. "In Progress"), stashed into evidence by the normalizer — see `CaseLinkDetail.statusName`. Null when unavailable. */
@@ -331,7 +332,7 @@ export interface CaseDetailData {
      */
     status: NormalizedState | null;
     /** Which ticket source created this case. */
-    system: "zendesk" | "jira" | "linear" | "intercom" | "github";
+    system: IntegrationProvider;
     /** Outbound link to the source ticket (Zendesk ticket or Intercom conversation), when buildable. */
     ticketUrl: string | null;
   };

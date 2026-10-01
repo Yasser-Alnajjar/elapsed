@@ -13,6 +13,7 @@
  */
 import type { PrismaClient } from "@sla/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { sourceIntegration } from "./source-integration";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -98,7 +99,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Zendesk next_reply_time -> frozen Commitmen
     // anchored to the imported policy/calendar version — the same shape
     // runCommitmentPipeline would have created the anchor commitment as.
     const caseRow = await prisma.case.create({
-      data: { organizationId, system: "zendesk", externalId: "case-1", openedAt: at("09:00") },
+      data: { organizationId, system: "zendesk", sourceIntegrationId: await sourceIntegration(prisma, organizationId, "zendesk"), externalId: "case-1", openedAt: at("09:00") },
     });
     const rawTicketEvent = await prisma.rawEvent.create({
       data: { integrationId, providerEventId: "ticket:1", sourceHash: "h2", payload: { id: 1 } },

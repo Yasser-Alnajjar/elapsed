@@ -6,14 +6,8 @@ import type { Customer, IntegrationProvider, PrismaClient } from "../generated/p
  *
  * A provider names a Customer by an *identity* — (provider, kind, externalId),
  * e.g. a Zendesk `organization` or an Intercom `company` — stored as a
- * `CustomerIdentity` row. Adapters resolve and create customers through these
- * helpers instead of through one column per provider on `Customer`.
- *
- * `legacy` is the matching legacy column (`zendeskOrgId`, `intercomCompanyId`,
- * `intercomContactId`). It is dual-written for one release so a code rollback
- * still finds its customers, and read as a fallback so a customer created by
- * rolled-back code (no identity row) is adopted rather than duplicated. Both
- * go away in N2.10.
+ * `CustomerIdentity` row. Customers are resolved and created through these
+ * helpers; `Customer` itself carries no provider columns (dropped in N2.10).
  */
 export interface CustomerIdentityRef {
   organizationId: string;
@@ -21,8 +15,6 @@ export interface CustomerIdentityRef {
   /** Adapter-defined: "organization", "company", "contact". */
   kind: string;
   externalId: string;
-  /** The legacy Customer column dual-written alongside the identity row. */
-  legacy: { zendeskOrgId: string } | { intercomCompanyId: string } | { intercomContactId: string };
 }
 
 type Client = Pick<PrismaClient, "customer" | "customerIdentity">;
@@ -37,16 +29,7 @@ export async function findCustomerByIdentity(prisma: Client, ref: CustomerIdenti
     where: identityKey(ref),
     include: { customer: true },
   });
-  if (identity) return identity.customer;
-
-  // No identity row: a customer written by pre-N1.14 code (after a rollback).
-  // Adopt it so the two stores converge.
-  const legacyCustomer = await prisma.customer.findFirst({
-    where: { organizationId: ref.organizationId, ...ref.legacy },
-  });
-  if (!legacyCustomer) return null;
-  await createIdentity(prisma, legacyCustomer.id, ref);
-  return legacyCustomer;
+  return identity?.customer ?? null;
 }
 
 /**
@@ -68,7 +51,6 @@ export async function upsertCustomerByIdentity(
       data: {
         organizationId: ref.organizationId,
         name,
-        ...ref.legacy,
         identities: {
           create: {
             organizationId: ref.organizationId,
@@ -84,22 +66,6 @@ export async function upsertCustomerByIdentity(
     const winner = await findCustomerByIdentity(prisma, ref);
     if (!winner) throw error;
     return winner;
-  }
-}
-
-async function createIdentity(prisma: Client, customerId: string, ref: CustomerIdentityRef) {
-  try {
-    await prisma.customerIdentity.create({
-      data: {
-        organizationId: ref.organizationId,
-        customerId,
-        provider: ref.provider,
-        kind: ref.kind,
-        externalId: ref.externalId,
-      },
-    });
-  } catch (error) {
-    if (!isUniqueViolation(error)) throw error;
   }
 }
 

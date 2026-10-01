@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
+import type { CorrelationOutput, LinkFact } from "@sla/ingestion";
 import type { ZendeskJiraLink } from "./types";
 import { JIRA_LINK_EVENT_SOURCE_ROLE } from "./source-role";
 
@@ -18,7 +19,7 @@ import { JIRA_LINK_EVENT_SOURCE_ROLE } from "./source-role";
  * CaseLinks in production despite valid data being ingested. Also accepts an
  * actual number defensively, in case Zendesk's response ever changes.
  * `Case.externalId` is itself a decimal string (`String(ticket.id)` — see
- * `runZendeskNormalization`), so a numeric-looking string here needs no
+ * ``buildZendeskBatch`'s projection`), so a numeric-looking string here needs no
  * further conversion to match it.
  */
 export function parseJiraLinkRecord(link: ZendeskJiraLink): { ticketId: string; issueKey: string } | null {
@@ -78,51 +79,9 @@ function latestJiraLinksById(
   return byId;
 }
 
-export interface JiraLinkCorrelationResult {
-  officialLinksEvaluated: number;
-  caseLinksCreated: number;
-  /** A CaseLink that was `unlinkedAt`-marked and became active again this run (same row — see `CaseLink.unlinkedAt`'s doc comment). Not counted in `caseLinksCreated`. */
-  caseLinksReactivated: number;
-  /** A previously-active official-link CaseLink whose link id no longer appears in Zendesk's current registry (and has no independent `remote_link` evidence), marked `unlinkedAt` this run. */
-  caseLinksUnlinked: number;
-  unmatchedInvalidRecord: number;
-  unmatchedNoCase: number;
-}
-
-/**
- * A CaseLink's `evidence` as a small bag of merged fields rather than one
- * source's raw payload — `runJiraNormalization` (packages/jira/src/normalize.ts)
- * already treats it this way, spreading the existing value and grafting on
- * `statusName`. Both correlation producers (this one and `runJiraCorrelation`
- * in packages/jira/src/correlate.ts) extend that same pattern: each nests its
- * own raw evidence under its own key instead of overwriting the whole field,
- * so a CaseLink discovered by both an official link and a remote link keeps
- * both, never just whichever producer ran last.
- */
-interface CaseLinkEvidence {
-  officialLink?: ZendeskJiraLink;
-  remoteLink?: unknown;
-  /**
-   * Set by `runJiraCorrelation`'s own remote-link sweep (packages/jira/src/
-   * correlate.ts, roadmap task 2.6) the moment it detects `remoteLink` above
-   * is gone from the issue's current manifest — even while this CaseLink
-   * stays active because `officialLink` still proves it. Lets
-   * `sweepUnlinkedOfficialLinks` below tell "the other source still proves
-   * this" from "the other source was ALSO removed, it just hasn't been
-   * swept yet" — without this marker, a CaseLink whose official link and
-   * remote link are *both* eventually removed would stay linked forever,
-   * since each sweep's `!= null` exemption check alone can never tell the
-   * difference (each only ever adds this evidence key, never clears it).
-   */
-  remoteLinkRemovedAt?: string;
-  /** The mirror image, set by this file's own sweep — see `remoteLinkRemovedAt`. */
-  officialLinkRemovedAt?: string;
-  [key: string]: unknown;
-}
-
 /**
  * Deterministic-tier correlator, the Zendesk-side counterpart to
- * `runJiraCorrelation` (packages/jira/src/correlate.ts): reads Zendesk's
+ * `correlateJira` (packages/jira/src/correlate.ts): reads Zendesk's
  * official Jira-links registry (`GET /api/v2/jira/links`, already ingested by
  * `runZendeskBackfill`) and, for each valid `{ticket_id, issue_key}` pair,
  * creates a `certain`/`official_link` CaseLink plus an `issue_linked`
@@ -137,9 +96,9 @@ interface CaseLinkEvidence {
  *
  * CaseLink identity is `(caseId, system, externalId)` (no `method` in the
  * unique key — see the `CaseLink` model), so when both this producer and
- * `runJiraCorrelation` discover the same (case, issue) relationship they
+ * `correlateJira` discover the same (case, issue) relationship they
  * upsert the very same row rather than minting two: each merges onto the
- * other's evidence (see `CaseLinkEvidence`), and `official_link` always wins
+ * other's evidence (under `officialLink` here, `remoteLink` there), and `official_link` always wins
  * the `method` field once present, in either write order.
  *
  * Unlink lifecycle: a Zendesk unlink has no deletion event of its own — the
@@ -159,8 +118,7 @@ interface CaseLinkEvidence {
  *  2. Sweep every currently-active official-link CaseLink for this
  *     organization whose link id is missing from that same manifest and
  *     mark it `unlinkedAt` — unless a `remote_link` still independently
- *     evidences the same relationship (see `CaseLinkEvidence` and
- *     `runJiraCorrelation`'s doc comment: one source disappearing must never
+ *     evidences the same relationship (see `correlateJira`'s doc comment: one source disappearing must never
  *     delete a relationship another source still proves). Only runs when a
  *     manifest exists, for the same reason pass 1 falls back above.
  * Neither pass ever deletes the CaseLink row, its `evidence`, or any
@@ -171,24 +129,15 @@ interface CaseLinkEvidence {
  * rewriting any span that already closed — historical leg/SLA timing is
  * untouched by design, not by any special-casing here.
  *
- * Must run after `runZendeskNormalization`, which is what creates the Cases
- * this correlator looks up by ticket id.
+ * Must be projected after the ticket batch (`buildZendeskBatch`), which is what
+ * creates the Cases this correlator looks up by ticket id.
  */
-export async function runZendeskJiraLinkCorrelation(
-  prisma: PrismaClient,
-  integrationId: string,
-): Promise<JiraLinkCorrelationResult> {
+export async function correlateZendeskJiraLinks(prisma: PrismaClient, integrationId: string): Promise<CorrelationOutput> {
   const integration = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
   const organizationId = integration.organizationId;
 
-  const result: JiraLinkCorrelationResult = {
-    officialLinksEvaluated: 0,
-    caseLinksCreated: 0,
-    caseLinksReactivated: 0,
-    caseLinksUnlinked: 0,
-    unmatchedInvalidRecord: 0,
-    unmatchedNoCase: 0,
-  };
+  const output: CorrelationOutput = { links: [], sweeps: [], evaluated: 0, unmatched: {} };
+  const unmatch = (reason: string) => (output.unmatched[reason] = (output.unmatched[reason] ?? 0) + 1);
 
   const manifest = await latestJiraLinkManifest(prisma, integrationId);
 
@@ -198,15 +147,15 @@ export async function runZendeskJiraLinkCorrelation(
   });
 
   const latestLinks = latestJiraLinksById(jiraLinkRows);
-  result.officialLinksEvaluated = latestLinks.size;
+  output.evaluated = latestLinks.size;
 
   // RawEvents are append-only — every link ever seen is still queryable
   // here, unlinked ones included. Without this filter, a link Zendesk no
   // longer reports would still get "reconfirmed" (and, if already marked
   // unlinked, spuriously re-linked) by its own stale history on every run,
-  // for the unlink sweep below to immediately undo again. Only when a
-  // manifest exists is a link id actually excluded here — with none, every
-  // latest snapshot is treated as active, the original (pre-unlink-tracking)
+  // for the unlink sweep to immediately undo again. Only when a manifest
+  // exists is a link id actually excluded here — with none, every latest
+  // snapshot is treated as active, the original (pre-unlink-tracking)
   // behavior, so a caller that never models a manifest (e.g. a test seeding
   // `jira_link:` RawEvents directly) sees no change here at all.
   const currentlyActive =
@@ -217,7 +166,7 @@ export async function runZendeskJiraLinkCorrelation(
   for (const { link, firstRawEventId, firstObservedAt, latestRawEventId, latestObservedAt } of currentlyActive) {
     const parsed = parseJiraLinkRecord(link);
     if (!parsed) {
-      result.unmatchedInvalidRecord += 1;
+      unmatch("invalidRecord");
       continue;
     }
     const { ticketId, issueKey } = parsed;
@@ -226,87 +175,44 @@ export async function runZendeskJiraLinkCorrelation(
       where: {
         organizationId_sourceIntegrationId_externalId: { organizationId, sourceIntegrationId: integrationId, externalId: ticketId },
       },
+      select: { id: true, deletedAt: true },
     });
     if (!zendeskCase || zendeskCase.deletedAt) {
-      result.unmatchedNoCase += 1;
+      unmatch("noCase");
       continue;
     }
 
-    const where = { caseId_system_externalId: { caseId: zendeskCase.id, system: "jira" as const, externalId: issueKey } };
-    const existing = await prisma.caseLink.findUnique({ where });
-    const existingEvidence = (existing?.evidence as CaseLinkEvidence | null) ?? {};
-    const evidence: CaseLinkEvidence = { ...existingEvidence, officialLink: link };
-    const wasUnlinked = existing != null && existing.unlinkedAt != null;
-
-    // CaseLink upsert and its `issue_linked` event are written atomically so
-    // the two can never land only one of them — a crash in between would
-    // otherwise leave a CaseLink with no event, indistinguishable from one
-    // this correlator just hasn't reached yet.
-    await prisma.$transaction([
-      prisma.caseLink.upsert({
-        where,
-        update: { method: "official_link", evidence: evidence as Prisma.InputJsonValue, unlinkedAt: null },
-        create: {
-          caseId: zendeskCase.id,
-          system: "jira",
-          externalId: issueKey,
-          method: "official_link",
-          confidence: "certain",
-          evidence: evidence as Prisma.InputJsonValue,
-          confirmedAt: new Date(),
-        },
-      }),
-      ...(!existing
-        ? [
-            prisma.normalizedEvent.create({
-              data: {
-                caseId: zendeskCase.id,
-                sourceRawEventId: firstRawEventId,
-                type: "issue_linked" as const,
-                occurredAt: firstObservedAt,
-                actor: "system" as const,
-                system: "jira" as const,
-                sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
-                fromState: null,
-                toState: null,
-              },
-            }),
-          ]
-        : wasUnlinked
-          ? [
-              // Re-link: a fresh `issue_linked` event at the moment this run
-              // reconfirmed it (not the original link time), so
-              // `deriveLegSpans` (packages/core) opens a new engineering span
-              // here rather than reusing the closed one.
-              prisma.normalizedEvent.create({
-                data: {
-                  caseId: zendeskCase.id,
-                  sourceRawEventId: latestRawEventId,
-                  type: "issue_linked" as const,
-                  occurredAt: latestObservedAt,
-                  actor: "system" as const,
-                  system: "jira" as const,
-                  sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
-                  fromState: null,
-                  toState: null,
-                },
-              }),
-            ]
-          : []),
-    ]);
-
-    if (!existing) {
-      result.caseLinksCreated += 1;
-    } else if (wasUnlinked) {
-      result.caseLinksReactivated += 1;
-    }
+    const fact: LinkFact = {
+      caseId: zendeskCase.id,
+      // The relationship is to a Jira issue, though Zendesk is the producer.
+      system: "jira",
+      externalId: issueKey,
+      method: "official_link",
+      methodOnUpdate: "official_link",
+      evidence: { officialLink: link },
+      evidenceMode: "merge",
+      sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
+      linkedEvent: { sourceRawEventId: firstRawEventId, occurredAt: firstObservedAt },
+      // A re-link is a fresh event at the moment this run reconfirmed it (not
+      // the original link time), so the engine opens a new engineering span.
+      relinkedEvent: { sourceRawEventId: latestRawEventId, occurredAt: latestObservedAt },
+      repairLinkedEvent: false,
+    };
+    output.links.push(fact);
   }
 
   if (manifest) {
-    await sweepUnlinkedOfficialLinks(prisma, organizationId, manifest, result);
+    output.sweeps.push({
+      system: "jira",
+      evidenceKey: "officialLink",
+      otherEvidenceKey: "remoteLink",
+      sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
+      // One registry listing covers every link, so the same manifest answers for any issue.
+      manifestFor: () => manifest,
+    });
   }
 
-  return result;
+  return output;
 }
 
 interface JiraLinkManifestSnapshot {
@@ -328,80 +234,4 @@ async function latestJiraLinkManifest(prisma: PrismaClient, integrationId: strin
     fetchedAt: row.fetchedAt,
     activeLinkIds: new Set((row.payload as { linkIds?: number[] }).linkIds ?? []),
   };
-}
-
-/**
- * Detects a Zendesk unlink: a currently-active, official-link-evidenced
- * CaseLink whose link id is missing from the latest full `jira_link_manifest:`
- * listing.
- *
- * A `remote_link` still present in the same CaseLink's evidence exempts it
- * from actually unlinking — one evidence source disappearing must never
- * delete a relationship another source still proves (see
- * `runJiraCorrelation`'s doc comment) — **unless** that remote link was
- * itself already marked removed by `runJiraCorrelation`'s own sweep
- * (`evidence.remoteLinkRemovedAt`). Without that second check, a CaseLink
- * whose official link and remote link are both eventually removed — just
- * not in the same run — would stay linked forever: each sweep's evidence
- * only ever gains a `*Link` key, never loses it, so a naive `!= null`
- * exemption can't otherwise distinguish "still proven" from "also gone, not
- * yet swept". An exempted-but-since-removed official link stamps
- * `evidence.officialLinkRemovedAt` (not `unlinkedAt`, only this bookkeeping
- * field) so a later remote-link removal sees it and finishes the unlink.
- */
-async function sweepUnlinkedOfficialLinks(
-  prisma: PrismaClient,
-  organizationId: string,
-  manifest: JiraLinkManifestSnapshot,
-  result: JiraLinkCorrelationResult,
-): Promise<void> {
-  const activeOfficialLinks = await prisma.caseLink.findMany({
-    where: { system: "jira", unlinkedAt: null, case: { organizationId } },
-    select: { id: true, caseId: true, evidence: true },
-  });
-
-  for (const caseLink of activeOfficialLinks) {
-    const evidence = caseLink.evidence as CaseLinkEvidence | null;
-    const officialLinkId = evidence?.officialLink?.id;
-    if (officialLinkId == null) continue; // never had official-link evidence — nothing for this sweep to say
-    if (manifest.activeLinkIds.has(officialLinkId)) continue; // still current
-
-    const remoteLinkStillProvesIt = evidence?.remoteLink != null && evidence?.remoteLinkRemovedAt == null;
-    if (remoteLinkStillProvesIt) {
-      // Record that the official link is gone, without unlinking — a later
-      // remote-link removal (packages/jira's sweep) needs this to finish the
-      // job instead of exempting forever on stale `remoteLink != null` evidence.
-      if (evidence?.officialLinkRemovedAt == null) {
-        await prisma.caseLink.update({
-          where: { id: caseLink.id },
-          data: { evidence: { ...evidence, officialLinkRemovedAt: manifest.fetchedAt.toISOString() } as Prisma.InputJsonValue },
-        });
-      }
-      continue;
-    }
-
-    await prisma.$transaction([
-      prisma.caseLink.update({
-        where: { id: caseLink.id },
-        data: {
-          unlinkedAt: manifest.fetchedAt,
-          evidence: { ...evidence, officialLinkRemovedAt: manifest.fetchedAt.toISOString() } as Prisma.InputJsonValue,
-        },
-      }),
-      prisma.normalizedEvent.create({
-        data: {
-          caseId: caseLink.caseId,
-          sourceRawEventId: manifest.rawEventId,
-          type: "issue_unlinked" as const,
-          occurredAt: manifest.fetchedAt,
-          actor: "system" as const,
-          system: "jira" as const,
-          sourceRole: JIRA_LINK_EVENT_SOURCE_ROLE,
-          fromState: null,
-          toState: null,
-        },
-      }),
-    ]);
-    result.caseLinksUnlinked += 1;
-  }
 }

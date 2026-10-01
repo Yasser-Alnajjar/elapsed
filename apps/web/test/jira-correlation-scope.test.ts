@@ -16,7 +16,7 @@ import { correlateJira } from "./correlate-helper";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
-describe.skipIf(!TEST_DATABASE_URL)("runJiraCorrelation issue scoping (real Postgres)", () => {
+describe.skipIf(!TEST_DATABASE_URL)("Jira correlation issue scoping (real Postgres)", () => {
   let prisma: PrismaClient;
   let jira: typeof import("@sla/jira");
 
