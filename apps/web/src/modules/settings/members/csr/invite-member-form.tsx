@@ -6,6 +6,7 @@ import * as Yup from "yup";
 
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EntitlementWarningAlert, type EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,8 @@ export function InviteMemberForm({ onInvited }: InviteMemberFormProps) {
       setStatus({
         type: "success",
         message: body.resent ? "Invitation resent." : "Invitation sent.",
+        // Soft limit (N6.3): the invitation went out; this only tells the owner where they stand.
+        warning: body.entitlementWarning,
       });
 
       onInvited();
@@ -54,7 +57,7 @@ export function InviteMemberForm({ onInvited }: InviteMemberFormProps) {
   });
 
   const status = formik.status as
-    | { type: "success" | "error"; message: string }
+    | { type: "success" | "error"; message: string; warning?: EntitlementWarningPayload }
     | undefined;
 
   return (
@@ -117,6 +120,12 @@ export function InviteMemberForm({ onInvited }: InviteMemberFormProps) {
 
             <AlertDescription>{status.message}</AlertDescription>
           </Alert>
+        )}
+
+        {status?.type === "success" && status.warning && (
+          <div className="mt-3">
+            <EntitlementWarningAlert warning={status.warning} />
+          </div>
         )}
       </CardContent>
     </Card>

@@ -42,12 +42,35 @@ describe("gateCreation", () => {
     expect(await gateCreation("org-a", "seats")).toEqual({ proceed: true, warning: null });
   });
 
-  it("proceeds with a warning that names the usage and an upgrade path when over a limit", async () => {
+  it("warns, without blocking, when the creation reaches the limit", async () => {
     state.decision = { outcome: "warn", resource: "seats", used: 5, limit: 5 };
     const { gateCreation } = await import("../src/lib/entitlements");
     const gate = await gateCreation("org-a", "seats");
-    expect(gate).toMatchObject({ proceed: true, warning: { resource: "seats", upgradeUrl: "/pricing" } });
-    expect(gate.proceed && gate.warning?.message).toContain("5 of 5 seats");
+    expect(gate).toMatchObject({ proceed: true, warning: { resource: "seats", level: "reached" } });
+    expect(gate.proceed && gate.warning?.message).toContain("reached your plan's limit: 5 of 5 seats");
+  });
+
+  it("warns, without blocking, when the creation goes past the limit", async () => {
+    state.decision = { outcome: "warn", resource: "nativePolicies", used: 4, limit: 3 };
+    const { gateCreation } = await import("../src/lib/entitlements");
+    const gate = await gateCreation("org-a", "nativePolicies");
+    expect(gate).toMatchObject({ proceed: true, warning: { level: "exceeded" } });
+    expect(gate.proceed && gate.warning?.message).toContain("over your plan's limit: 4 of 3 SLA policies");
+  });
+
+  it("points upgrade requests at the configured contact, never at /sign-up or /pricing, and at nothing when none is set", async () => {
+    state.decision = { outcome: "warn", resource: "seats", used: 6, limit: 5 };
+    vi.stubEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "help@elapsed.test");
+    let { gateCreation } = await import("../src/lib/entitlements");
+    let gate = await gateCreation("org-a", "seats");
+    expect(gate.proceed && gate.warning?.upgradeUrl).toMatch(/^mailto:help@elapsed\.test/);
+
+    vi.stubEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "");
+    vi.resetModules();
+    ({ gateCreation } = await import("../src/lib/entitlements"));
+    gate = await gateCreation("org-a", "seats");
+    expect(gate.proceed && gate.warning?.upgradeUrl).toBeNull();
+    vi.unstubAllEnvs();
   });
 
   it("stops with 402 and says monitoring continues once the trial has ended", async () => {
@@ -58,8 +81,9 @@ describe("gateCreation", () => {
     if (gate.proceed) return;
     expect(gate.response.status).toBe(402);
     const body = await gate.response.json();
-    expect(body).toMatchObject({ code: "trial_expired", upgradeUrl: "/pricing" });
-    expect(body.error).toContain("monitoring");
+    expect(body).toMatchObject({ code: "trial_expired" });
+    expect(body.error).toContain("SLA monitoring, alerts and history keep working");
+    expect(JSON.stringify(body)).not.toMatch(/sign-up|\/pricing/);
   });
 });
 
@@ -93,6 +117,6 @@ describe("connect routes", () => {
     const { GET } = await import("../src/app/api/integrations/jira/connect/route");
     const response = await GET(new Request("http://localhost/api/integrations/jira/connect"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("http://localhost/settings/integrations?entitlement=trial_expired");
+    expect(response.headers.get("location")).toBe("http://localhost/settings/integrations?entitlement=trial_expired&action=connect&provider=jira");
   });
 });

@@ -11,7 +11,7 @@ import { getOrganizationUsage, type OrganizationUsage, type ProviderRoleOf } fro
  * sync, and nothing deletes or disables existing data. A tenant over every
  * limit, or with a lapsed trial, is still polled, evaluated and alerted.
  *
- * - Over a plan limit: **warn**. The creation goes ahead and the event is
+ * - Reaching or going over a plan limit: **warn**. The creation goes ahead and the event is
  *   recorded for the platform admin. D14 does not require a hard block.
  * - Trial lapsed (D27): **blocked**, for new configuration only.
  * - `WorkerSettings.entitlementsEnforced` off (the default), no plan recorded,
@@ -26,6 +26,7 @@ export interface PlanSubject {
 
 export type EntitlementDecision =
   | { outcome: "allow" }
+  /** `used` is the count after this creation: `used === limit` means the plan limit is now reached, `used > limit` exceeded. */
   | { outcome: "warn"; resource: LimitedResource; used: number; limit: number }
   | { outcome: "blocked"; reason: "trial_expired"; trialEndedAt: Date };
 
@@ -49,7 +50,9 @@ export function evaluateCreation(
 
   const limit = PLANS[subject.plan].limits[resource];
   if (limit === null) return { outcome: "allow" };
-  return usage[resource] >= limit ? { outcome: "warn", resource, used: usage[resource], limit } : { outcome: "allow" };
+  // Warn when this creation reaches the limit or goes past it; never block on it.
+  const usedAfter = usage[resource] + 1;
+  return usedAfter >= limit ? { outcome: "warn", resource, used: usedAfter, limit } : { outcome: "allow" };
 }
 
 /** Which limited resource connecting `provider` would consume. */

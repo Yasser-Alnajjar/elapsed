@@ -1,4 +1,5 @@
 import { signIn as nextAuthSignIn } from "next-auth/react";
+import type { EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
 import type { CommitmentKind } from "@sla/core";
 import { interpretCredentialsSignInResult, type SignInOutcome } from "@/lib/auth-rate-limit";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
@@ -222,6 +223,7 @@ export const Actions = {
       return postJSON<{
         policyId: string;
         version: { id: string; version: number };
+        entitlementWarning?: EntitlementWarningPayload;
       }>("/api/settings/sla-policies", input);
     },
     async updatePolicy(
@@ -345,7 +347,7 @@ export const Actions = {
 
   Invitations: {
     async invite(email: string) {
-      return postJSON<{ ok: boolean; resent: boolean }>("/api/settings/invitations", { email });
+      return postJSON<{ ok: boolean; resent: boolean; entitlementWarning?: EntitlementWarningPayload }>("/api/settings/invitations", { email });
     },
     async revoke(invitationId: string) {
       const response = await fetch(`/api/settings/invitations/${invitationId}`, { method: "DELETE" });

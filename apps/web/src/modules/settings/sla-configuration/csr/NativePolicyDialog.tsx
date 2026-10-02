@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { CommitmentKind } from "@sla/core";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EntitlementWarningAlert, type EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -125,11 +126,14 @@ export function NativePolicyDialog({
   const [state, setState] = useState<FormState>(() => initialState(policy));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A policy was created but the plan's soft limit was reached or passed (N6.3): kept open to say so.
+  const [savedWarning, setSavedWarning] = useState<EntitlementWarningPayload | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setState(initialState(policy));
     setError(null);
+    setSavedWarning(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -212,6 +216,12 @@ export function NativePolicyDialog({
         setError(result.body.error ?? "Failed to save policy.");
         return;
       }
+      // The policy exists either way; a soft-limit warning only changes what the owner is told.
+      const warning = "entitlementWarning" in result.body ? result.body.entitlementWarning : undefined;
+      if (mode === "create" && warning) {
+        setSavedWarning(warning);
+        return;
+      }
       onSaved();
     } catch {
       setError("Something went wrong while saving the policy.");
@@ -224,7 +234,18 @@ export function NativePolicyDialog({
     label: priority.charAt(0).toUpperCase() + priority.slice(1),
   }));
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Closing after a created-with-warning policy still has to refresh the list.
+        if (!next && savedWarning) {
+          setSavedWarning(null);
+          onSaved();
+          return;
+        }
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -236,6 +257,25 @@ export function NativePolicyDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {savedWarning ? (
+          <div className="space-y-4" data-testid="policy-created-with-warning">
+            <Alert variant="success">
+              <AlertDescription>Policy created.</AlertDescription>
+            </Alert>
+            <EntitlementWarningAlert warning={savedWarning} />
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => {
+                  setSavedWarning(null);
+                  onSaved();
+                }}
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="policy-name">Name</Label>
@@ -493,6 +533,7 @@ export function NativePolicyDialog({
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

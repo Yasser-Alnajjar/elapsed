@@ -18,9 +18,12 @@ const none: OrganizationUsage = { seats: 0, ticketSourceIntegrations: 0, enginee
 const subject = (overrides: Partial<PlanSubject> = {}): PlanSubject => ({ plan: "starter", planStatus: "active", trialEndsAt: null, ...overrides });
 
 describe("evaluateCreation", () => {
-  it("allows while under the limit and warns at it, never blocks over a limit", () => {
-    expect(evaluateCreation(subject(), { ...none, seats: 4 }, "seats", NOW)).toEqual({ outcome: "allow" });
-    expect(evaluateCreation(subject(), { ...none, seats: 5 }, "seats", NOW)).toEqual({ outcome: "warn", resource: "seats", used: 5, limit: 5 });
+  it("allows below the limit, warns when the creation reaches it, and warns (never blocks) beyond it", () => {
+    expect(evaluateCreation(subject(), { ...none, seats: 3 }, "seats", NOW)).toEqual({ outcome: "allow" });
+    // The 5th seat of 5: reached.
+    expect(evaluateCreation(subject(), { ...none, seats: 4 }, "seats", NOW)).toEqual({ outcome: "warn", resource: "seats", used: 5, limit: 5 });
+    // The 6th: exceeded.
+    expect(evaluateCreation(subject(), { ...none, seats: 5 }, "seats", NOW)).toEqual({ outcome: "warn", resource: "seats", used: 6, limit: 5 });
     expect(evaluateCreation(subject(), { ...none, seats: 50 }, "seats", NOW).outcome).toBe("warn");
   });
 
@@ -176,7 +179,7 @@ describe("checkEntitlement (N6.3)", () => {
   });
 
   it("warns, records one event per resource and day, and does not duplicate it", async () => {
-    const { prisma, state } = fake({ users: Array.from({ length: 5 }, (_, i) => ({ role: "member" as const, email: `${i}@x` })) });
+    const { prisma, state } = fake({ users: Array.from({ length: 4 }, (_, i) => ({ role: "member" as const, email: `${i}@x` })) });
     const first = await checkEntitlement(prisma, "org-a", "seats", { roleOf, now: NOW });
     const second = await checkEntitlement(prisma, "org-a", "seats", { roleOf, now: NOW });
     expect(first).toEqual({ outcome: "warn", resource: "seats", used: 5, limit: 5 });

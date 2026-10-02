@@ -125,6 +125,10 @@ Behaviour (`packages/db/src/entitlements.ts`), only at invite, connect and nativ
 | At or over the limit | **warn**: the creation goes ahead, the response carries `entitlementWarning` with `/pricing`, an `EntitlementEvent` is recorded for the admin tenant page, and an in-app banner appears. D14 does not require a hard block. |
 | Trial ended (D27) | **blocked** (HTTP 402; connect routes redirect to settings) for new members, integrations and policies. Cases, SLA monitoring, alerts, history and existing data are untouched. |
 
+**Open decision, D27 vs monitoring:** D27 also says new *cases* are blocked once a trial ends. Cases come from provider sync, so this plan does not block them (that would stop monitoring). Recorded in the roadmap as a decision for the owner; ingestion is unchanged.
+
+**Customer wording:** the trial banner, the blocked-connect notice and the limit warnings all say monitoring continues and use one replaceable call to action, `apps/web/src/lib/upgrade-cta.ts` (a contact link from `NEXT_PUBLIC_SUPPORT_EMAIL`, or plain text if unset). N6.5 replaces it with `/upgrade`.
+
 Switch it on with `UPDATE worker_settings SET "entitlementsEnforced" = true;` and off the same way. It is off by default and has no UI yet.
 
 ## 8. Acceptance criteria

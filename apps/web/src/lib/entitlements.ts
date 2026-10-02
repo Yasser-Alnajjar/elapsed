@@ -9,6 +9,7 @@ import {
   type LimitedResource,
 } from "@sla/db";
 import { providerRole } from "@/lib/providers";
+import { getUpgradeCta } from "@/lib/upgrade-cta";
 
 /**
  * Entitlement gate for the three creation points (N6.3): invite a member,
@@ -17,12 +18,13 @@ import { providerRole } from "@/lib/providers";
  * one settings read and returns "proceed".
  */
 
-export const UPGRADE_PATH = "/pricing";
-
 export interface EntitlementWarning {
   resource: LimitedResource;
+  /** `reached`: this creation took the organization to its limit. `exceeded`: past it. */
+  level: "reached" | "exceeded";
   message: string;
-  upgradeUrl: string;
+  /** Where to ask for an upgrade (`getUpgradeCta`), or null when no contact is configured. */
+  upgradeUrl: string | null;
 }
 
 export type CreationGate =
@@ -32,23 +34,28 @@ export type CreationGate =
   | { proceed: false; response: NextResponse };
 
 export const TRIAL_EXPIRED_MESSAGE =
-  "Your trial has ended. Existing cases, monitoring and alerts keep running, but adding new configuration needs an upgrade.";
+  "Your trial has ended. Cases, SLA monitoring, alerts and history keep working, but adding members, integrations or SLA policies needs an upgrade.";
 
 function toGate(decision: EntitlementDecision): CreationGate {
   if (decision.outcome === "allow") return { proceed: true, warning: null };
   if (decision.outcome === "warn") {
+    const exceeded = decision.used > decision.limit;
+    const label = RESOURCE_LABELS[decision.resource];
     return {
       proceed: true,
       warning: {
         resource: decision.resource,
-        message: `You are using ${decision.used} of ${decision.limit} ${RESOURCE_LABELS[decision.resource]} on your plan. Upgrade to add more without limits.`,
-        upgradeUrl: UPGRADE_PATH,
+        level: exceeded ? "exceeded" : "reached",
+        message: exceeded
+          ? `You are over your plan's limit: ${decision.used} of ${decision.limit} ${label}. Nothing is switched off.`
+          : `You have reached your plan's limit: ${decision.used} of ${decision.limit} ${label}. Adding more will put you over it. Nothing is switched off.`,
+        upgradeUrl: getUpgradeCta().href,
       },
     };
   }
   return {
     proceed: false,
-    response: NextResponse.json({ error: TRIAL_EXPIRED_MESSAGE, code: "trial_expired", upgradeUrl: UPGRADE_PATH }, { status: 402 }),
+    response: NextResponse.json({ error: TRIAL_EXPIRED_MESSAGE, code: "trial_expired", upgradeUrl: getUpgradeCta().href }, { status: 402 }),
   };
 }
 
@@ -67,5 +74,7 @@ export async function gateIntegrationConnect(organizationId: string, provider: I
   return toGate(await checkEntitlement(prisma, organizationId, integrationResource(provider, providerRole), { roleOf: providerRole }));
 }
 
-/** Where a blocked connect (a browser navigation, not a fetch) lands. */
-export const BLOCKED_CONNECT_REDIRECT = "/settings/integrations?entitlement=trial_expired";
+/** Where a blocked connect (a browser navigation, not a fetch) lands, with what was blocked so the page can say so. */
+export function blockedConnectRedirect(provider: IntegrationProvider): string {
+  return `/settings/integrations?entitlement=trial_expired&action=connect&provider=${provider}`;
+}
