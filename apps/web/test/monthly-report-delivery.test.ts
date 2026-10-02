@@ -5,6 +5,7 @@
  * whose name contains "test"; skipped when unset.
  */
 import type { PrismaClient } from "@sla/db";
+import type { MonthlyReportDeliveryOptions } from "@sla/notifications";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
@@ -32,7 +33,7 @@ describe.skipIf(!TEST_DATABASE_URL)("deliverMonthlyReport (real Postgres)", () =
     await prisma?.$disconnect();
   });
 
-  const options = { appUrl: "https://app.example.com", issueLinkProviders: [], now: NOW } as const;
+  const options: MonthlyReportDeliveryOptions = { appUrl: "https://app.example.com", issueLinkProviders: [], now: NOW };
   const org = (createdAt = new Date("2026-01-01T00:00:00Z")) =>
     prisma.organization.create({ data: { name: "Acme", createdAt } });
 
