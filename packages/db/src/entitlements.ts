@@ -79,6 +79,20 @@ async function recordEvent(
   }
 }
 
+/**
+ * The operator switch. Any failure to read it (a database or client that has
+ * not been migrated to this release yet, a transient error) means "off": plan
+ * state must never break a page or a creation point.
+ */
+async function readEnforced(prisma: PrismaClient): Promise<boolean> {
+  try {
+    const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
+    return settings?.entitlementsEnforced === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CheckEntitlementOptions {
   roleOf: ProviderRoleOf;
   now?: Date;
@@ -100,8 +114,7 @@ export async function checkEntitlement(
 ): Promise<EntitlementDecision> {
   const now = options.now ?? new Date();
 
-  const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
-  if (!settings?.entitlementsEnforced) return { outcome: "allow" };
+  if (!(await readEnforced(prisma))) return { outcome: "allow" };
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
@@ -151,8 +164,7 @@ export async function getEntitlementNotice(
   const none = { trialExpired: null, overLimit: [] };
   const now = options.now ?? new Date();
 
-  const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
-  if (!settings?.entitlementsEnforced) return none;
+  if (!(await readEnforced(prisma))) return none;
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },

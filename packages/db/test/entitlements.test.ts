@@ -264,3 +264,14 @@ describe("markTrialExpiry (N6.4)", () => {
     expect((await markTrialExpiry(prisma, "org-a", NOW)).outcome).toBe("already_handled");
   });
 });
+
+describe("an unmigrated database or client", () => {
+  it("reads as enforcement off instead of throwing, so pages and creation points keep working", async () => {
+    const { prisma } = fake();
+    (prisma as unknown as { workerSettings: { findUnique: () => Promise<never> } }).workerSettings.findUnique = async () => {
+      throw new Error("Unknown field `entitlementsEnforced`");
+    };
+    expect(await checkEntitlement(prisma, "org-a", "seats", { roleOf, now: NOW })).toEqual({ outcome: "allow" });
+    expect(await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).toEqual({ trialExpired: null, overLimit: [] });
+  });
+});
