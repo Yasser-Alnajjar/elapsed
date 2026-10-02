@@ -4,6 +4,7 @@ import { runZendeskBusinessCalendarImport } from "./calendars";
 import { renderZendeskConversation, zendeskConversationContext } from "./conversation";
 import { correlateZendeskJiraLinks } from "./correlate";
 import { buildZendeskBatch } from "./normalize";
+import { ZENDESK_OAUTH_SCOPES } from "./oauth";
 import { runZendeskSlaPolicyImport } from "./policies";
 import { ZENDESK_SOURCE_ROLE } from "./source-role";
 import { recognizeZendeskTicketUrl } from "./ticket-url";
@@ -59,6 +60,8 @@ export const zendeskAdapter: ProviderAdapter = {
 };
 
 export const zendeskWebAdapter: ProviderWebAdapter = {
+  access: { scopes: ZENDESK_OAUTH_SCOPES },
+  snapshotEventPrefix: "ticket:",
   externalUrl({ externalId, credentials }) {
     const subdomain = (credentials as Partial<ZendeskCredentials> | null | undefined)?.subdomain;
     return typeof subdomain === "string" && subdomain !== "" ? `https://${subdomain}.zendesk.com/agent/tickets/${externalId}` : null;

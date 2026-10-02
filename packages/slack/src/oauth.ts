@@ -7,7 +7,8 @@ import type { SlackCredentials, SlackOAuthConfig } from "./types";
  * bot"); `channels:read`/`groups:read` are read-only and only used to list
  * channels for the picker in settings.
  */
-const BOT_SCOPES = "chat:write,chat:write.public,channels:read,groups:read";
+export const SLACK_BOT_SCOPES = ["chat:write", "chat:write.public", "channels:read", "groups:read"] as const;
+const BOT_SCOPES = SLACK_BOT_SCOPES.join(",");
 
 const AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize";
 const TOKEN_URL = "https://slack.com/api/oauth.v2.access";

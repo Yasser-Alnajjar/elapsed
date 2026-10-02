@@ -1,7 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getPrismaClient, getEmailSettingsStatus } from "@sla/db";
-import type { ZendeskCredentials } from "@sla/zendesk";
 import { getRequestContext } from "@/lib/request-context";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getFindingsData } from "@/lib/findings-data";
@@ -9,6 +8,7 @@ import { getIntegrationsData } from "@/lib/integrations-data";
 import { getOnboardingStatus } from "@/lib/onboarding-data";
 import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
 import { getPolicyImportReview } from "@/lib/policy-import-review-data";
+import { recordFirstFindingsViewed } from "@/lib/usage-tracking";
 import type {
   ActivationPageData,
   OnboardingPageData,
@@ -20,15 +20,7 @@ export const OnboardingActions = {
     const { organizationId } = await getRequestContext();
 
     const prisma = getPrismaClient();
-    const [status, zendeskIntegration] = await Promise.all([
-      getOnboardingStatus(prisma, organizationId),
-      prisma.integration.findUnique({
-        where: { organizationId_provider: { organizationId, provider: "zendesk" } },
-      }),
-    ]);
-    const zendeskCredentials = (zendeskIntegration?.credentials as ZendeskCredentials | null) ?? null;
-
-    return { status, zendeskSubdomain: zendeskCredentials?.subdomain ?? null };
+    return { status: await getOnboardingStatus(prisma, organizationId) };
   },
 
   async getPolicyImportReview(): Promise<PolicyImportReview> {
@@ -38,7 +30,7 @@ export const OnboardingActions = {
     return getPolicyImportReview(prisma, organizationId);
   },
 
-  /** Reached only once onboarding is actually done (Step 4) — redirects back to the flow otherwise rather than rendering a half-set-up completion screen. */
+  /** Reached once a ticket source is connected and backfilled (Step 4). A tracker is optional (N5.2); without a ticket source it redirects back to the flow rather than rendering a half-set-up completion screen. */
   async getActivationData(): Promise<ActivationPageData> {
     const { organizationId } = await getRequestContext();
 
@@ -46,7 +38,7 @@ export const OnboardingActions = {
 
     const status = await getOnboardingStatus(prisma, organizationId);
 
-    if (!deriveOnboardingProgress(status).complete) {
+    if (!deriveOnboardingProgress(status).ticketSourceReady) {
       redirect("/onboarding");
     }
 
@@ -58,6 +50,9 @@ export const OnboardingActions = {
         getPolicyImportReview(prisma, organizationId),
         getFindingsData(prisma, organizationId),
       ]);
+
+    // Time to first value (N5.7): the activation screen is where findings first appear.
+    void recordFirstFindingsViewed(prisma, organizationId);
 
     return {
       status,

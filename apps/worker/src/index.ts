@@ -87,6 +87,7 @@ async function main(): Promise<void> {
       config,
       logger,
       activePollMs: async () => (await readSettings()).activePollIntervalMs,
+      monthlyReportEnabled: async () => (await readSettings()).monthlyReportEnabled,
     }),
     intervals: async () => {
       const current = await readSettings();

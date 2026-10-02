@@ -66,7 +66,7 @@ export { runZendeskBackfill } from "./backfill";
 export type { BackfillResult } from "./backfill";
 export type { JiraLinkManifest, RawEventInput, ScheduleHolidaysSnapshot, SlaPolicyManifest } from "./rawEvents";
 export type { ZendeskOAuthConfig } from "./oauth";
-export { buildAuthorizeUrl, exchangeCodeForToken, refreshAccessToken, ZendeskOAuthError } from "./oauth";
+export { buildAuthorizeUrl, exchangeCodeForToken, refreshAccessToken, ZENDESK_OAUTH_SCOPES, ZendeskOAuthError } from "./oauth";
 export {
   loadFreshZendeskCredentials,
   refreshAfterUnauthorized,

@@ -49,6 +49,13 @@ model Organization {
   users             User[]
   invitations       OrganizationInvitation[]
   workState         OrganizationWorkState?
+  reportDeliveries  ReportDelivery[]
+  connectLinks      IntegrationConnectLink[]
+  /// Time to first value (N5.7): the first time any member saw the findings, on
+  /// the activation screen or the dashboard once cases existed. Set once,
+  /// best-effort, never read by monitoring. First value minus `createdAt` is
+  /// how long onboarding took.
+  firstFindingsViewedAt DateTime?
   /// Manual plan record (N4.3), written only by a platform operator from
   /// `/admin`. Plan identifier (`starter` | `team` | `enterprise`, D14); kept a
   /// string so a later billing phase can tighten it without a migration. Null
@@ -93,6 +100,10 @@ model User {
   /// Null for users created before this field existed or via invitation
   /// (roadmap 5.2), which has no terms checkbox of its own.
   acceptedTermsAt DateTime?
+  /// Weekly-active measurement (N5.7): the last time this user loaded an
+  /// authenticated page, written at most once an hour. Best-effort, and read
+  /// only by the platform operator's usage queries.
+  lastSeenAt      DateTime?
   /// `owner` is whoever created the organization (roadmap: Worker/Monitoring
   /// settings) — the only role distinction v1 needs. Sign-up creates the
   /// owner; every invitation accepted (Phase 5 task 5.2) creates a `member`
@@ -270,6 +281,11 @@ model Integration {
   /// then clears it. Cleared compare-and-set on the value the pass started
   /// with, so a request made while the pass runs is not lost.
   renormalizeRequestedAt DateTime?
+  /// Who completed this connection when it was not a signed-in owner (N5.3):
+  /// the label of the connect link a tracker admin used. Null for a normal
+  /// owner connect. Organization-owned data, not an operator action, so it is
+  /// never written to `AdminAuditLog`.
+  connectedBy    String?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   cases          Case[]
   rawEvents      RawEvent[]
@@ -820,6 +836,9 @@ model Notification {
   threshold    Int
   channel      String
   sentAt       DateTime   @default(now())
+  /// Alert click-through (N5.7): the first time a member of the same
+  /// organization opened the case from this alert's link. Null until then.
+  openedAt     DateTime?
   commitment   Commitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
 
   @@unique([commitmentId, threshold])
@@ -1081,6 +1100,10 @@ model WorkerSettings {
   /// intervals. Kept operator-only because it changes alert caveats, not SLA
   /// calculations.
   freshnessGraceFactor       Int       @default(3)
+  /// Operator kill switch for the monthly customer report (N5.6). On by
+  /// default; off, the worker sends no report and records nothing. It never
+  /// touches monitoring or alerting.
+  monthlyReportEnabled       Boolean   @default(true)
   lastActivePollDurationMs   Int?
   lastReconciliationDurationMs Int?
 
@@ -1145,4 +1168,61 @@ model OrganizationWorkState {
   @@index([reconciliationNextDueAt])
   @@index([leaseExpiresAt])
   @@map("organization_work_states")
+}
+
+/// Delivery state of one organization's monthly report on one channel (N5.6).
+/// The unique key `(organizationId, period, channel)` is the idempotency key:
+/// claiming a month is an insert, so two ticks, or two workers, send once.
+enum ReportDeliveryStatus {
+  /// Claimed by a worker that is sending it now (or died doing so: see `updatedAt`).
+  pending
+  sent
+  /// The last attempt failed; `error` says why. Retried a bounded number of times.
+  failed
+  /// Nothing to send on this channel (no email settings, Slack not connected).
+  skipped
+}
+
+model ReportDelivery {
+  id             String               @id @default(cuid())
+  organizationId String
+  /// The calendar month reported, in the organization's own timezone: `2026-09`.
+  period         String
+  /// `email` or `slack`.
+  channel        String
+  status         ReportDeliveryStatus @default(pending)
+  attempts       Int                  @default(1)
+  deliveredAt    DateTime?
+  /// Why the last attempt failed. Never holds report content or a recipient's data.
+  error          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, period, channel])
+  @@index([status, updatedAt])
+  @@map("report_deliveries")
+}
+
+/// A signed, expiring, single-use link that lets someone who is not a member
+/// complete one provider's OAuth for one organization (N5.3, D26). The token
+/// is shown once when an owner creates it; only its hash is stored. It grants
+/// no account and no session: it can only finish that one grant.
+model IntegrationConnectLink {
+  id              String              @id @default(cuid())
+  organizationId  String
+  provider        IntegrationProvider
+  tokenHash       String              @unique
+  /// Who the owner meant it for ("Dana, platform team"). Free text, shown on the landing page.
+  intendedFor     String?
+  /// The owner who created it; null if that user was removed since.
+  createdByUserId String?
+  expiresAt       DateTime
+  /// Set, atomically, by the callback that stored the integration. A consumed link is dead.
+  consumedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, provider, createdAt])
+  @@map("integration_connect_links")
 }

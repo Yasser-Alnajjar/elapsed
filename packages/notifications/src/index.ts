@@ -4,3 +4,34 @@ export { formatSlackMessage, formatEmailMessage, DEFAULT_EMAIL_BRAND_NAME } from
 export type { NotificationContext, EmailContent, EmailBrand } from "./format";
 export { renderNotificationEmailHtml } from "./email-template";
 export type { EmailTemplateInput, EmailSeverity } from "./email-template";
+export {
+  buildMonthlyReport,
+  hasActivity,
+  MAX_REPORT_BREACH_ROWS,
+  REPORT_KIND_ORDER,
+} from "./monthly-report";
+export type {
+  BuildMonthlyReportInput,
+  MonthlyBreachRow,
+  MonthlyComplianceRow,
+  MonthlyCustomerRow,
+  MonthlyReport,
+  MonthlyStageRow,
+} from "./monthly-report";
+export {
+  formatPeriod,
+  monthlyReportCsvFilename,
+  monthlyReportSubject,
+  renderMonthlyReportCsv,
+  renderMonthlyReportHtml,
+  renderMonthlyReportSlack,
+  renderMonthlyReportText,
+} from "./monthly-report-render";
+export {
+  deliverMonthlyReport,
+  REPORT_MAX_ATTEMPTS,
+  REPORT_RETRY_AFTER_MS,
+  REPORT_STALE_CLAIM_MS,
+  scrubDeliveryError,
+} from "./monthly-report-delivery";
+export type { ChannelOutcome, MonthlyReportDeliveryOptions, MonthlyReportDeliveryResult, ReportChannel } from "./monthly-report-delivery";

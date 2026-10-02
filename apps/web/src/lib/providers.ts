@@ -39,6 +39,9 @@ export const providerRole = (provider: IntegrationProvider): SourceRole => PROVI
 /** The providers a Case can come from. */
 export const TICKET_SOURCE_PROVIDERS: IntegrationProvider[] = ALL_PROVIDERS.filter((p) => PROVIDERS[p].role === "ticket_source");
 
+/** The work trackers (issues): connecting one is the optional onboarding step that adds the engineering leg. Code hosts are extras. */
+export const WORK_TRACKER_PROVIDERS: IntegrationProvider[] = ALL_PROVIDERS.filter((p) => PROVIDERS[p].role === "work_tracker");
+
 /** The providers a Case can be linked to: work trackers and code hosts, whose issues and pull requests are its engineering legs. */
 export const ISSUE_LINK_PROVIDERS: IntegrationProvider[] = ALL_PROVIDERS.filter((p) => PROVIDERS[p].role !== "ticket_source");
 

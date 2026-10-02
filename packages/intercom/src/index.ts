@@ -37,7 +37,7 @@ export { recognizeIntercomConversationUrl } from "./ticket-url";
 export { runIntercomBackfill } from "./backfill";
 export type { BackfillResult } from "./backfill";
 export type { IntercomOAuthConfig } from "./oauth";
-export { buildAuthorizeUrl, exchangeCodeForToken, IntercomOAuthError } from "./oauth";
+export { buildAuthorizeUrl, exchangeCodeForToken, INTERCOM_ACCESS_NOTE, IntercomOAuthError } from "./oauth";
 export {
   loadFreshIntercomCredentials,
   markReauthRequired,

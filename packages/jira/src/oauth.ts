@@ -10,7 +10,8 @@ export interface JiraOAuthConfig {
  * Read-only scopes — no write access is ever requested (Phase 10: stay
  * read-only in v1). `offline_access` is required to receive a refresh token.
  */
-const SCOPE = "read:jira-work offline_access";
+export const JIRA_OAUTH_SCOPES = ["read:jira-work", "offline_access"] as const;
+const SCOPE = JIRA_OAUTH_SCOPES.join(" ");
 
 const AUTHORIZE_URL = "https://auth.atlassian.com/authorize";
 const TOKEN_URL = "https://auth.atlassian.com/oauth/token";

@@ -2,6 +2,7 @@ import { IntegrationNotConfiguredError, type ProviderAdapter, type ProviderWebAd
 import { runJiraBackfill } from "./backfill";
 import { correlateJira } from "./correlate";
 import { buildJiraBatch } from "./normalize";
+import { JIRA_OAUTH_SCOPES } from "./oauth";
 import { JIRA_SOURCE_ROLE } from "./source-role";
 import { verifyJiraWebhookSecret, verifyJiraWebhookSignature } from "./webhook";
 import type { JiraCredentials } from "./types";
@@ -43,6 +44,7 @@ export const jiraAdapter: ProviderAdapter = {
 };
 
 export const jiraWebAdapter: ProviderWebAdapter = {
+  access: { scopes: JIRA_OAUTH_SCOPES },
   externalUrl({ externalId, credentials }) {
     const siteUrl = (credentials as Partial<JiraCredentials> | null | undefined)?.siteUrl;
     return typeof siteUrl === "string" ? `${siteUrl.replace(/\/$/, "")}/browse/${externalId}` : null;

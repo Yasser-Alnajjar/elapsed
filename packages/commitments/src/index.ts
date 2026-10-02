@@ -73,3 +73,7 @@ export type {
 } from "./native-calendar";
 export { expandNativeHolidays, HOLIDAY_EXPANSION_YEARS_AHEAD } from "./holidays";
 export type { NativeHolidayInput } from "./holidays";
+export { attributeBreachLegs, findBreachesInPeriod, getPersistedBreachedAt, summarizeCompliance } from "./breach-analytics";
+export type { BreachOccurrence, BreachWithLeg, ComplianceBreakdown } from "./breach-analytics";
+export { computeLinkCoverage, LINK_COVERAGE_WINDOW_DAYS, NO_LINK_COVERAGE } from "./link-coverage";
+export type { LinkCoverage } from "./link-coverage";

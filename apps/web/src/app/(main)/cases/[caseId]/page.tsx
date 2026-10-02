@@ -7,14 +7,15 @@ export default async function CaseDetailPage({
   searchParams,
 }: {
   params: Promise<{ caseId: string }>;
-  searchParams: Promise<{ commitmentId?: string | string[] }>;
+  searchParams: Promise<{ commitmentId?: string | string[]; ref?: string | string[]; n?: string | string[] }>;
 }) {
   const { caseId } = await params;
-  const { commitmentId } = await searchParams;
+  const { commitmentId, ref, n } = await searchParams;
   return (
     <CaseDetail
       caseId={caseId}
       commitmentId={typeof commitmentId === "string" ? commitmentId : undefined}
+      alertNotificationId={ref === "alert" && typeof n === "string" ? n : undefined}
     />
   );
 }

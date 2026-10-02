@@ -43,18 +43,26 @@ export async function getFindingsData(
     asOfDate.getTime() - FINDINGS_PERIOD_DAYS * 86_400_000,
   );
 
-  const escalatedCases = await prisma.case.findMany({
-    where: {
-      organizationId,
-      deletedAt: null,
-      openedAt: { gte: periodStart },
-      caseLinks: { some: { system: { in: ISSUE_LINK_PROVIDERS } } },
-    },
-    include: { customer: true, commitments: true },
-  });
+  const [escalatedCases, connectedTrackers] = await Promise.all([
+    prisma.case.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        openedAt: { gte: periodStart },
+        caseLinks: { some: { system: { in: ISSUE_LINK_PROVIDERS } } },
+      },
+      include: { customer: true, commitments: true },
+    }),
+    prisma.integration.count({
+      where: { organizationId, provider: { in: ISSUE_LINK_PROVIDERS }, status: { not: "disconnected" } },
+    }),
+  ]);
+  // Links recorded before a tracker was disconnected still count as escalations.
+  const trackerConnected = connectedTrackers > 0 || escalatedCases.length > 0;
 
   if (escalatedCases.length === 0) {
     return {
+      trackerConnected,
       periodDays: FINDINGS_PERIOD_DAYS,
       totalEscalated: 0,
       exceededTarget: 0,
@@ -208,6 +216,7 @@ export async function getFindingsData(
     .slice(0, TOP_ACCOUNTS_LIMIT);
 
   return {
+    trackerConnected,
     periodDays: FINDINGS_PERIOD_DAYS,
     totalEscalated: escalatedCases.length,
     exceededTarget,

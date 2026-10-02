@@ -3,49 +3,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Actions } from "@/actions/client";
+import type { IntegrationProvider } from "@/lib/types/integrations";
 import type { OnboardingStatus, ProviderOnboardingStatus } from "@/lib/types/onboarding";
 
 interface UseOnboardingBackfillOptions {
   status: OnboardingStatus;
 }
 
-const PROVIDERS = ["zendesk", "intercom", "jira", "linear"] as const;
-type BackfillProvider = (typeof PROVIDERS)[number];
+/**
+ * Ticket sources and work trackers backfill as part of the guided flow. A code
+ * host is an optional extra connected from its own card: it is never started
+ * or waited on here.
+ */
+const isGuided = (p: ProviderOnboardingStatus) => p.role !== "code_host";
 
-const START_BACKFILL: Record<BackfillProvider, () => Promise<{ ok: boolean; body: { error?: string } }>> = {
-  zendesk: () => Actions.Onboarding.startZendeskBackfill(),
-  intercom: () => Actions.Onboarding.startIntercomBackfill(),
-  jira: () => Actions.Onboarding.startJiraBackfill(),
-  linear: () => Actions.Onboarding.startLinearBackfill(),
-};
+/** Connected, first backfill not finished, and not waiting on a reconnect. */
+export const isBackfillRunning = (p: ProviderOnboardingStatus) =>
+  isGuided(p) && p.connected && !p.backfillComplete && !p.reauthRequired;
 
-const PROVIDER_LABEL: Record<BackfillProvider, string> = {
-  zendesk: "Zendesk",
-  intercom: "Intercom",
-  jira: "Jira",
-  linear: "Linear",
-};
-
-const isRunning = (p: ProviderOnboardingStatus) => p.connected && !p.backfillComplete && !p.reauthRequired;
-
-export function useOnboardingBackfill({
-  status,
-}: UseOnboardingBackfillOptions) {
+export function useOnboardingBackfill({ status }: UseOnboardingBackfillOptions) {
   const [currentStatus, setCurrentStatus] = useState(status);
   const [error, setError] = useState<string | null>(null);
 
-  const startedRef = useRef<Record<BackfillProvider, boolean>>({
-    zendesk: false,
-    intercom: false,
-    jira: false,
-    linear: false,
-  });
+  const startedRef = useRef(new Set<IntegrationProvider>());
 
-  const zendeskRunning = isRunning(currentStatus.zendesk);
-  const intercomRunning = isRunning(currentStatus.intercom);
-  const jiraRunning = isRunning(currentStatus.jira);
-  const linearRunning = isRunning(currentStatus.linear);
-  const anyRunning = zendeskRunning || intercomRunning || jiraRunning || linearRunning;
+  const running = currentStatus.providers.filter(isBackfillRunning);
+  // A stable key, so the effects re-run when the set changes, not on every poll.
+  const runningKey = running.map((p) => p.provider).join(",");
+  const anyRunning = running.length > 0;
 
   const refresh = useCallback(async () => {
     const progress = await Actions.Onboarding.getProgress();
@@ -58,24 +43,19 @@ export function useOnboardingBackfill({
   }, []);
 
   useEffect(() => {
-    const running: Record<BackfillProvider, boolean> = {
-      zendesk: zendeskRunning,
-      intercom: intercomRunning,
-      jira: jiraRunning,
-      linear: linearRunning,
-    };
+    for (const p of currentStatus.providers.filter(isBackfillRunning)) {
+      if (startedRef.current.has(p.provider)) continue;
+      startedRef.current.add(p.provider);
 
-    for (const provider of PROVIDERS) {
-      if (!running[provider] || startedRef.current[provider]) continue;
-      startedRef.current[provider] = true;
-
-      void START_BACKFILL[provider]().then(({ ok, body }) => {
+      void Actions.Onboarding.startBackfill(p.provider).then(({ ok, body }) => {
         if (!ok) {
-          setError(body.error ?? `${PROVIDER_LABEL[provider]} backfill failed to start`);
+          setError(body.error ?? `${p.label} backfill failed to start`);
         }
       });
     }
-  }, [zendeskRunning, intercomRunning, jiraRunning, linearRunning]);
+    // `runningKey` is the dependency: `currentStatus` changes on every poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runningKey]);
 
   useEffect(() => {
     if (!anyRunning) {
@@ -105,10 +85,7 @@ export function useOnboardingBackfill({
   return {
     status: currentStatus,
     error,
-    zendeskRunning,
-    intercomRunning,
-    jiraRunning,
-    linearRunning,
+    isRunning: (provider: IntegrationProvider | null) => running.some((p) => p.provider === provider),
     refresh,
   };
 }

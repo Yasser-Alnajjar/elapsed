@@ -1,14 +1,18 @@
-import { perfCount, Prisma, type PrismaClient } from "@sla/db";
+import type { PrismaClient } from "@sla/db";
 import {
-  deriveLegSpans,
-  legAtTime,
   localDateKey,
   type CommitmentKind,
   type CommitmentStatus,
   type Leg,
-  type NormalizedEvent,
 } from "@sla/core";
-import { toNormalizedEventDomain, type CommitmentRecord } from "@sla/commitments";
+import {
+  attributeBreachLegs,
+  findBreachesInPeriod,
+  getPersistedBreachedAt,
+  summarizeCompliance,
+  type BreachOccurrence,
+  type CommitmentRecord,
+} from "@sla/commitments";
 import type {
   BreachedThisPeriodSummary,
   BreachesByStageRow,
@@ -16,8 +20,12 @@ import type {
   BreachesOverTimePoint,
   ComplianceTrendPoint,
   ProjectAnalyticsData,
-  SlaComplianceBreakdown,
 } from "./types/dashboard";
+
+// The breach and compliance arithmetic lives in `@sla/commitments` so the monthly
+// report uses the same code; re-exported here for the callers that import it from this file.
+export { findBreachesInPeriod, getPersistedBreachedAt, summarizeCompliance };
+export type { BreachOccurrence };
 
 // Default kept as the historical behavior (bare UTC-slice callers, and
 // every existing test) for any caller that doesn't pass a timezone.
@@ -200,104 +208,6 @@ export function computeComplianceTrend(
   });
 }
 
-export interface BreachOccurrence {
-  commitmentId: string;
-  caseId: string;
-  kind: CommitmentKind;
-  caseOpenedAt: Date;
-  breachedAt: Date;
-}
-
-interface BreachedEvaluationRow {
-  commitmentId: string;
-  breachedAt: Date;
-}
-
-/**
- * The instant each commitment's SLA clock actually crossed its target, read
- * from history instead of recomputed live: the `breachedAt` (working-minutes/
- * calendar/pause-aware target-crossing instant, `evaluateCommitment`'s
- * `effectiveDueAt`) recorded on the earliest persisted `"breached"`
- * Evaluation row per commitment that has one. `runEvaluationPipeline`
- * (packages/commitments/src/evaluate-pipeline.ts) only ever appends
- * Evaluations — id from `stableHash`, written with `skipDuplicates` — and
- * never updates or deletes one, so this is immutable across re-evaluation
- * and reconciliation.
- *
- * Deliberately NOT `evaluatedAt`: that column is only when the row was
- * computed — a poll cycle, a reconciliation sweep, or a one-off historical
- * backfill — which can land arbitrarily far after the real breach instant
- * (e.g. every commitment imported from a customer's SLA backlog gets its
- * first Evaluation, and therefore the same `evaluatedAt`, on the day it was
- * imported, regardless of when each one actually breached weeks or months
- * earlier). Using `evaluatedAt` as a breach-instant proxy silently pulls
- * every such breach onto that one day.
- *
- * A commitment with no breached Evaluation yet, or whose breached Evaluation
- * predates this column (`breachedAt IS NULL` — see
- * packages/commitments/src/scripts/backfill-breached-at.ts for backfilling
- * those), has no entry; callers fall back to `dueAt`. Same `DISTINCT ON`
- * shape as `anomaly-data.ts`'s terminal-evaluation lookup.
- */
-export async function getPersistedBreachedAt(
-  prisma: PrismaClient,
-  commitmentIds: string[],
-): Promise<Map<string, Date>> {
-  if (commitmentIds.length === 0) return new Map();
-  const rows = await prisma.$queryRaw<BreachedEvaluationRow[]>(
-    Prisma.sql`
-      SELECT DISTINCT ON (e."commitmentId") e."commitmentId", e."breachedAt"
-      FROM "evaluations" e
-      WHERE e."commitmentId" IN (${Prisma.join(commitmentIds)})
-        AND e.status = 'breached'
-        AND e."breachedAt" IS NOT NULL
-      ORDER BY e."commitmentId", e."evaluatedAt" ASC, e.id ASC
-    `,
-  );
-  return new Map(rows.map((row) => [row.commitmentId, row.breachedAt]));
-}
-
-/**
- * The commitments that actually breached inside [periodStart, asOfDate].
- * `breachedAtByCommitmentId` (`getPersistedBreachedAt`) is the source of
- * truth; a candidate missing from it (no breached Evaluation persisted yet)
- * falls back to its `dueAt`. Pure and synchronous on purpose — no event
- * loading here, so a candidate whose breach instant falls outside the
- * period never costs more than a map lookup (performance-plan.md Phase 2
- * item 2: this replaces a live, calendar-aware `computeBreachedAt` re-run
- * over every candidate's full event history).
- */
-export function findBreachesInPeriod(
-  candidates: {
-    commitmentId: string;
-    caseId: string;
-    kind: CommitmentKind;
-    caseOpenedAt: Date;
-    dueAt: Date;
-  }[],
-  breachedAtByCommitmentId: ReadonlyMap<string, Date>,
-  periodStart: Date,
-  asOfDate: Date,
-): BreachOccurrence[] {
-  const breaches: BreachOccurrence[] = [];
-  for (const candidate of candidates) {
-    const breachedAt =
-      breachedAtByCommitmentId.get(candidate.commitmentId) ?? candidate.dueAt;
-    if (breachedAt < periodStart || breachedAt > asOfDate) continue;
-
-    breaches.push({
-      commitmentId: candidate.commitmentId,
-      caseId: candidate.caseId,
-      kind: candidate.kind,
-      caseOpenedAt: candidate.caseOpenedAt,
-      breachedAt,
-    });
-  }
-  return breaches.sort(
-    (a, b) => a.breachedAt.getTime() - b.breachedAt.getTime(),
-  );
-}
-
 /**
  * The dashboard's "breached this period" KPI tile and per-kind breakdown:
  * counts only, from `findBreachesInPeriod`, the same set the Breaches Over
@@ -315,50 +225,6 @@ export function summarizeBreachedThisPeriod(
     byKind[breach.kind] = (byKind[breach.kind] ?? 0) + 1;
   }
   return { total: breaches.length, byKind };
-}
-
-type ComplianceBucket = "met" | "at_risk" | "breached";
-const SEVERITY_RANK: Record<ComplianceBucket, number> = {
-  met: 0,
-  at_risk: 1,
-  breached: 2,
-};
-
-function bucketOf(status: CommitmentStatus): ComplianceBucket | null {
-  if (status === "breached") return "breached";
-  if (status === "at_risk") return "at_risk";
-  if (status === "on_track" || status === "met") return "met";
-  return null; // cancelled — doesn't reflect an SLA outcome
-}
-
-/**
- * Worst-status-wins per case: a case with one breached and one on-track
- * commitment counts as breached, not split across two buckets. Cases whose
- * only commitments are cancelled are excluded from the total.
- */
-export function summarizeCompliance(
-  commitmentStatuses: { caseId: string; status: CommitmentStatus }[],
-): SlaComplianceBreakdown {
-  const worstByCaseId = new Map<string, ComplianceBucket>();
-  for (const { caseId, status } of commitmentStatuses) {
-    const bucket = bucketOf(status);
-    if (bucket === null) continue;
-    const existing = worstByCaseId.get(caseId);
-    if (!existing || SEVERITY_RANK[bucket] > SEVERITY_RANK[existing]) {
-      worstByCaseId.set(caseId, bucket);
-    }
-  }
-
-  let metSla = 0;
-  let atRisk = 0;
-  let breached = 0;
-  for (const bucket of worstByCaseId.values()) {
-    if (bucket === "met") metSla++;
-    else if (bucket === "at_risk") atRisk++;
-    else breached++;
-  }
-
-  return { metSla, atRisk, breached, total: worstByCaseId.size };
 }
 
 /** A commitment whose persisted `status` is already `"breached"` (open or closed-in-period) — the candidate set `getProjectAnalytics` needs the true `breachedAt` instant for. See `dashboard-data.ts`'s `getDashboardData` for how these are cheaply identified from already-loaded, narrow-select commitment rows, with zero extra queries. */
@@ -430,43 +296,10 @@ export async function getProjectAnalytics(
 
   // Events only for the cases that actually breached in-period — never the
   // full candidate set (performance-plan.md Phase 2 item 2's narrow-select
-  // ground rule).
-  const breachCaseIds = [...new Set(breaches.map((b) => b.caseId))];
-  const eventRows =
-    breachCaseIds.length > 0
-      ? await prisma.normalizedEvent.findMany({
-          where: { caseId: { in: breachCaseIds } },
-          select: {
-            id: true,
-            caseId: true,
-            type: true,
-            occurredAt: true,
-            actor: true,
-            system: true,
-            fromState: true,
-            toState: true,
-            sourceRawEventId: true,
-            sourceSequence: true,
-            sourceRole: true,
-          },
-        })
-      : [];
-  const eventsByCaseId = new Map<string, NormalizedEvent[]>();
-  for (const row of eventRows) {
-    const domainEvent = toNormalizedEventDomain(row);
-    const existing = eventsByCaseId.get(row.caseId);
-    if (existing) existing.push(domainEvent);
-    else eventsByCaseId.set(row.caseId, [domainEvent]);
-  }
-
+  // ground rule). The attribution itself is shared with the monthly report.
   const legCounts = new Map<Leg, number>();
   const breachLegs: { breachedAt: Date; leg: Leg }[] = [];
-  for (const breach of breaches) {
-    const { spans } = deriveLegSpans(eventsByCaseId.get(breach.caseId) ?? [], {
-      caseOpenedAt: breach.caseOpenedAt.toISOString(),
-    });
-    perfCount("deriveLegSpans");
-    const leg = legAtTime(spans, breach.breachedAt.toISOString());
+  for (const { breach, leg } of await attributeBreachLegs(prisma, breaches)) {
     legCounts.set(leg, (legCounts.get(leg) ?? 0) + 1);
     breachLegs.push({ breachedAt: breach.breachedAt, leg });
   }

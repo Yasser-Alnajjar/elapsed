@@ -25,6 +25,8 @@ export function createOrganizationProcessor(options: {
   config: WorkerConfig;
   logger: Logger;
   activePollMs: () => Promise<number>;
+  /** The operator kill switch for the monthly customer report (N5.6). Omitted: on. */
+  monthlyReportEnabled?: () => Promise<boolean>;
 }) {
   const { prisma, config, logger } = options;
   let inFlight = 0;
@@ -53,6 +55,7 @@ export function createOrganizationProcessor(options: {
         logger: createLogger({ cycleId, kind, workerId: claim.leaseOwner }),
         result,
         activePollMs,
+        monthlyReportEnabled: options.monthlyReportEnabled,
         position: "1/1",
         inFlight: () => inFlight,
         lease,

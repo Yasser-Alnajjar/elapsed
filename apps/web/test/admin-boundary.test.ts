@@ -168,7 +168,7 @@ describe("admin boundary (N4.6)", () => {
 
     const actions = readFileSync(join(WEB_SRC, "actions/admin.ts"), "utf8");
     const methods = [...actions.matchAll(/^ {2}async (\w+)\([^)]*\)[^{]*\{\n([\s\S]*?)\n {2}\},?$/gm)];
-    expect(methods.map((m) => m[1])).toEqual(["getOverview", "getTenants", "getTenantDetail", "getAuditLog"]);
+    expect(methods.map((m) => m[1])).toEqual(["getOverview", "getUsage", "getTenants", "getTenantDetail", "getAuditLog"]);
     for (const [, name, body] of methods) {
       expect(body!.trimStart().startsWith("const { actorEmail } = await requirePlatformAdminPage()") ||
         body!.trimStart().startsWith("await requirePlatformAdminPage()"), `${name} must call the guard first`).toBe(true);

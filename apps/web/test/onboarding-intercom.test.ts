@@ -71,20 +71,22 @@ describe.skipIf(!TEST_DATABASE_URL)("onboarding with an Intercom-only organizati
     await seedConversation(source.id, "1");
     await seedConversation(source.id, "2");
 
+    const of = (s: Awaited<ReturnType<typeof onboardingData.getOnboardingStatus>>, provider: string) =>
+      s.providers.find((p) => p.provider === provider)!;
     let status = await onboardingData.getOnboardingStatus(prisma, organizationId);
-    expect(status.intercom).toEqual({ connected: true, backfillComplete: false, reauthRequired: false });
-    expect(status.zendesk.connected).toBe(false);
+    expect(of(status, "intercom")).toMatchObject({ connected: true, backfillComplete: false, reauthRequired: false });
+    expect(of(status, "zendesk").connected).toBe(false);
     expect(status.ticketsFetched).toBe(2);
     expect(progress.deriveOnboardingProgress(status)).toMatchObject({ ticketSource: "intercom", complete: false });
 
     await prisma.integration.update({ where: { id: source.id }, data: { cursor: done } });
     status = await onboardingData.getOnboardingStatus(prisma, organizationId);
-    expect(status.intercom.backfillComplete).toBe(true);
+    expect(of(status, "intercom").backfillComplete).toBe(true);
     expect(progress.deriveOnboardingProgress(status)).toMatchObject({ ticketSourceReady: true, tracker: null, complete: false });
 
     await connect("linear");
     status = await onboardingData.getOnboardingStatus(prisma, organizationId);
-    expect(status.linear.connected).toBe(true);
+    expect(of(status, "linear").connected).toBe(true);
     expect(progress.deriveOnboardingProgress(status)).toMatchObject({ tracker: "linear", complete: true });
   });
 

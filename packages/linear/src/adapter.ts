@@ -2,6 +2,7 @@ import type { ProviderAdapter, ProviderWebAdapter } from "@sla/ingestion";
 import { runLinearBackfill } from "./backfill";
 import { correlateLinear } from "./correlate";
 import { buildLinearBatch } from "./normalize";
+import { LINEAR_OAUTH_SCOPES } from "./oauth";
 import { LINEAR_SOURCE_ROLE } from "./source-role";
 
 const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, n) => sum + n, 0);
@@ -32,6 +33,7 @@ export const linearAdapter: ProviderAdapter = {
 };
 
 export const linearWebAdapter: ProviderWebAdapter = {
+  access: { scopes: LINEAR_OAUTH_SCOPES },
   // Linear's stored OAuth credentials carry no workspace URL to rebuild a
   // browse link from, so the correlator captured the issue's own `url` into
   // the link's evidence.

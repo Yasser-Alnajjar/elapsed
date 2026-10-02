@@ -11,7 +11,8 @@ export interface LinearOAuthConfig {
  * read-only in v1). Unlike Jira's `offline_access`, Linear has no separate
  * scope for refresh tokens: its OAuth access tokens simply don't expire.
  */
-const SCOPE = "read";
+export const LINEAR_OAUTH_SCOPES = ["read"] as const;
+const SCOPE = LINEAR_OAUTH_SCOPES.join(" ");
 
 const AUTHORIZE_URL = "https://linear.app/oauth/authorize";
 const TOKEN_URL = "https://api.linear.app/oauth/token";

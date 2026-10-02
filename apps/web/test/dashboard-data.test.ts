@@ -201,7 +201,7 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
     // empty result here is enough to keep it a no-op.
     $queryRaw: async () => [],
     organization: { findUnique: async () => ({ timezone: "UTC" }) },
-    case: { findMany: async () => [], count: async () => 0 },
+    case: { findMany: async () => [], count: async () => 0, groupBy: async () => [] },
     workerSettings: { findUnique: async () => null },
     integration: { findMany: async () => [] },
     notificationFailure: { findMany: async () => [], count: async () => 0 },
@@ -217,7 +217,7 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
       findMany: async ({ where }: { where: { caseId: { in: string[] } } }) =>
         events.filter((e) => where.caseId.in.includes(e.caseId)),
     },
-    caseLink: { findMany: async () => caseLinks },
+    caseLink: { findMany: async () => caseLinks, findFirst: async () => null },
   } as unknown as PrismaClient;
 }
 

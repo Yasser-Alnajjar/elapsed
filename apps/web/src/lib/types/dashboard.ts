@@ -1,5 +1,6 @@
 import type { CommitmentKind, CommitmentStatus, Leg } from "@sla/core";
 import type { IntegrationProvider } from "./integrations";
+import type { LinkCoveragePanel } from "./link-coverage";
 
 /**
  * A case's linked Jira/Linear issue as surfaced to a dashboard-scoped row —
@@ -194,6 +195,15 @@ export interface DashboardData {
   breachedPreviousPeriodCount: number | null;
   totalEscalated: TotalEscalatedSummary;
   attributionLedger: AttributionLedger;
+  /**
+   * Whether engineering time is something this organization can have: a work
+   * tracker or code host is connected, or engineering time was already
+   * recorded. False means an engineering figure of zero would be "not
+   * measured", not a fact, so no surface may print it as one (N5.2).
+   */
+  engineeringMeasured: boolean;
+  /** N5.5: certain links over cases opened in the last 30 days, with the cases behind the gap. */
+  linkCoverage: LinkCoveragePanel;
   compliance: { current: number | null; previous: number | null };
   cycleTimeAnomalies: CycleTimeAnomalyRow[];
   analytics: ProjectAnalyticsData;

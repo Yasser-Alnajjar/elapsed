@@ -85,5 +85,8 @@ export async function sendEmail(config: EmailConfig, message: EmailMessage, opti
     subject: message.subject,
     text: message.text,
     ...(message.html ? { html: message.html } : {}),
+    ...(message.attachments?.length
+      ? { attachments: message.attachments.map(({ filename, content, contentType }) => ({ filename, content, contentType })) }
+      : {}),
   });
 }

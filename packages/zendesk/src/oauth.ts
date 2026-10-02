@@ -7,7 +7,8 @@ export interface ZendeskOAuthConfig {
 }
 
 /** Read-only scope — no write access is ever requested (Phase 10: stay read-only in v1). */
-const SCOPE = "read";
+export const ZENDESK_OAUTH_SCOPES = ["read"] as const;
+const SCOPE = ZENDESK_OAUTH_SCOPES.join(" ");
 
 /**
  * Structured OAuth failure. `requiresReauth` is only ever true for a refresh

@@ -3,6 +3,7 @@ import { runIntercomBackfill } from "./backfill";
 import { buildIntercomConversationUrl } from "./client";
 import { renderIntercomConversation } from "./conversation";
 import { buildIntercomBatch } from "./normalize";
+import { INTERCOM_ACCESS_NOTE } from "./oauth";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
 import { recognizeIntercomConversationUrl } from "./ticket-url";
 
@@ -34,6 +35,8 @@ export const intercomAdapter: ProviderAdapter = {
 };
 
 export const intercomWebAdapter: ProviderWebAdapter = {
+  access: { scopes: [], note: INTERCOM_ACCESS_NOTE },
+  snapshotEventPrefix: "conversation:",
   // The inbox link needs the workspace id the backfill records from `GET /me`:
   // null until the first sync after connecting.
   externalUrl({ externalId, credentials }) {

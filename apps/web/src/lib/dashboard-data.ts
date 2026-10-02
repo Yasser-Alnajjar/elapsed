@@ -16,6 +16,7 @@ import {
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 import { staleFields } from "./freshness-data";
+import { getLinkCoveragePanel } from "./link-coverage-data";
 import { getCycleTimeAnomalies } from "./anomaly-data";
 import { getProjectAnalytics, type BreachCandidateRow } from "./analytics-data";
 import type {
@@ -30,7 +31,7 @@ import type {
   UnmatchedCaseRow,
 } from "./types/dashboard";
 import type { IntegrationProvider } from "./types/integrations";
-import { isIssueLinkSystem } from "./providers";
+import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem } from "./providers";
 
 const COMMITMENT_KINDS: CommitmentKind[] = [
   "first_response",
@@ -81,6 +82,15 @@ function complianceOf(rows: { status: CommitmentStatus }[]): number | null {
   if (rows.length === 0) return null;
   const met = rows.filter((r) => r.status === "met").length;
   return Math.round((met / rows.length) * 1000) / 10;
+}
+
+/** Whether the dashboard shows anything real yet: a case opened in the window, an open commitment, or a breach. */
+export function dashboardHasData(data: DashboardData): boolean {
+  return (
+    data.linkCoverage.cases > 0 ||
+    data.breachedThisPeriod.total > 0 ||
+    data.healthByKind.some((kind) => kind.onTrack + kind.atRisk + kind.breached > 0)
+  );
 }
 
 /**
@@ -572,6 +582,21 @@ async function getDashboardDataInner(
     auditTimestamp: asOf,
   };
 
+  // A tracker or code host that was disconnected keeps the engineering time it
+  // recorded; one that never existed means zero is "not measured" (N5.2). The
+  // period totals above cover closed cases only, so a recorded link on any
+  // case settles it; that read is skipped while a tracker is connected.
+  const engineeringMeasured =
+    integrationRows.some((row) => isIssueLinkSystem(row.provider) && row.status !== "disconnected") ||
+    totalEscalatedCount > 0 ||
+    engineeringLegMinutesTotal > 0 ||
+    (await prisma.caseLink.findFirst({
+      where: { case: { organizationId }, system: { in: ISSUE_LINK_PROVIDERS } },
+      select: { id: true },
+    })) !== null;
+
+  const linkCoverage = await getLinkCoveragePanel(prisma, organizationId, asOfDate);
+
   const { analytics, breachedThisPeriod } = await getProjectAnalytics(
     prisma,
     periodStart,
@@ -637,6 +662,8 @@ async function getDashboardDataInner(
     breachedPreviousPeriodCount,
     totalEscalated,
     attributionLedger,
+    engineeringMeasured,
+    linkCoverage,
     compliance: {
       current: complianceOf(currentPeriodClosedRows),
       previous: complianceOf(previousPeriodClosedRows),

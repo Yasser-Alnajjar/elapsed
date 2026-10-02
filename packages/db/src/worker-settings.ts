@@ -42,6 +42,8 @@ export interface WorkerSettingsInput {
 
 export interface WorkerSettingsRecord extends WorkerSettingsInput {
   freshnessGraceFactor: number;
+  /** Operator kill switch for the monthly customer report (N5.6). On by default. */
+  monthlyReportEnabled: boolean;
   lastHeartbeatAt: Date | null;
   lastActivePollAt: Date | null;
   lastActivePollFailures: number | null;
@@ -120,6 +122,7 @@ export async function getWorkerSettingsForRead(
       readIntervalMsFromEnv("WORKER_RECONCILIATION_MS", DEFAULT_RECONCILIATION_INTERVAL_MS),
     ),
     freshnessGraceFactor: 3,
+    monthlyReportEnabled: true,
     lastHeartbeatAt: null,
     lastActivePollAt: null,
     lastActivePollFailures: null,

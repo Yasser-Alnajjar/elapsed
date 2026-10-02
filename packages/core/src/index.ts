@@ -6,7 +6,16 @@ export { calendarVersionContentEquals } from "./calendar-versions";
 export type { CalendarVersionContent } from "./calendar-versions";
 export { computeDeadline, workingMinutesBetween } from "./calendar";
 export { validateWeeklyWindows, WeeklyWindowValidationError, MINUTES_PER_DAY } from "./calendar-window-validation";
-export { isValidTimeZone, localDateKey } from "./timezone";
+export {
+  isValidTimeZone,
+  localDateKey,
+  localMonthKey,
+  monthBounds,
+  previousMonth,
+  startOfLocalDay,
+  timeZoneOffsetMs,
+} from "./timezone";
+export type { MonthBounds } from "./timezone";
 export { computeElapsedWorkingMinutes } from "./elapsed";
 export { commitmentPausesOn, eventsForPauseFold, pauseStatesFor } from "./clock-rules";
 export { deriveLegSpans, validateLegSpans, sumLegMinutes, legAtTime } from "./legs";
@@ -34,3 +43,4 @@ export type {
   CycleTimeAnomaly,
   DetectCycleTimeAnomalyOptions,
 } from "./anomaly";
+export { buildCsv, buildCsvHeaderLine, buildCsvRowLines, neutralizeFormula } from "./csv";

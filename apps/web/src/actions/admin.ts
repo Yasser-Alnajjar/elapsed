@@ -4,8 +4,9 @@ import { getPrismaClient } from "@sla/db";
 import { listAdminAuditLog, recordAdminAudit } from "@/lib/admin-audit";
 import { requirePlatformAdminPage } from "@/lib/admin-auth";
 import { getOperatorMonitoringData } from "@/lib/admin-monitoring-data";
+import { getAdminUsageData } from "@/lib/admin-usage-data";
 import { getAdminTenantDetail, getAdminTenantsData } from "@/lib/admin-tenants-data";
-import type { AdminAuditData, AdminAuditFilters, AdminTenantDetail, AdminTenantsData } from "@/lib/types/admin";
+import type { AdminAuditData, AdminAuditFilters, AdminTenantDetail, AdminTenantsData, AdminUsageData } from "@/lib/types/admin";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
 
 /**
@@ -21,6 +22,12 @@ export const AdminActions = {
   async getOverview(): Promise<OperatorMonitoringData> {
     await requirePlatformAdminPage();
     return getOperatorMonitoringData(getPrismaClient());
+  },
+
+  /** Weekly active organizations, alert click-through and time to first value (N5.7). */
+  async getUsage(): Promise<AdminUsageData> {
+    await requirePlatformAdminPage();
+    return getAdminUsageData(getPrismaClient());
   },
 
   async getTenants(): Promise<AdminTenantsData> {

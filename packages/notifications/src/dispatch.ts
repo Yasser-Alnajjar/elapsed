@@ -4,7 +4,7 @@ import { sendEmail, type EmailConfig } from "@sla/email";
 import type { NotificationCandidate } from "@sla/commitments";
 import { formatSlackMessage, formatEmailMessage } from "./format";
 
-function toEmailConfig(settings: NonNullable<Awaited<ReturnType<typeof getEmailSettings>>>): EmailConfig {
+export function toEmailConfig(settings: NonNullable<Awaited<ReturnType<typeof getEmailSettings>>>): EmailConfig {
   return {
     host: settings.host,
     port: settings.port,
@@ -192,7 +192,8 @@ export async function claimNotifications(
           subject: caseRow.subject,
           // 3.9/E-19: shared by both channels — Slack alerts previously carried
           // no case link at all.
-          caseUrl: options.appUrl ? `${options.appUrl}/cases/${caseRow.id}` : null,
+          // N5.7: `ref`/`n` let the case page record the alert's first open (click-through).
+          caseUrl: options.appUrl ? `${options.appUrl}/cases/${caseRow.id}?ref=alert&n=${claim.id}` : null,
         },
       });
     } catch (error) {

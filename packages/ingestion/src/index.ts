@@ -8,6 +8,7 @@ export {
 export type {
   ProviderAdapter,
   ProviderCapabilities,
+  ProviderAccess,
   ProviderWebAdapter,
   IntegrationRef,
   IngestContext,

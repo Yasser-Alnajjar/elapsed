@@ -18,6 +18,7 @@ export {
   buildAuthorizeUrl,
   exchangeCodeForToken,
   refreshAccessToken,
+  JIRA_OAUTH_SCOPES,
   JiraOAuthError,
 } from "./oauth";
 export {

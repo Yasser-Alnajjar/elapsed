@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@sla/db";
 import { providersWithCapability } from "./providers";
 import { getSlaPolicies } from "./sla-policies-data";
+import { INTEGRATION_PROVIDER_LABELS } from "./types/integrations";
 import type { PolicyImportReview } from "./types/onboarding";
 
 const UNMATCHED_CASES_LIMIT = 10;
@@ -16,19 +17,24 @@ export async function getPolicyImportReview(
   prisma: PrismaClient,
   organizationId: string,
 ): Promise<PolicyImportReview> {
-  const [policies, summary, totalOpenCases, unmatchedCaseRows] = await Promise.all([
+  const importers = providersWithCapability("policyImport");
+  const [policies, summary, totalOpenCases, unmatchedCaseRows, importerRow] = await Promise.all([
     getSlaPolicies(prisma, organizationId),
     // The summary of the last policy import by a provider that has one (the
     // `policyImport` capability); a row stamped with no provider is not any
     // provider's summary.
     prisma.slaImportSummary.findFirst({
-      where: { organizationId, provider: { in: providersWithCapability("policyImport") } },
+      where: { organizationId, provider: { in: importers } },
     }),
     prisma.case.count({ where: { organizationId, deletedAt: null, closedAt: null } }),
     prisma.case.findMany({
       where: { organizationId, deletedAt: null, closedAt: null, commitments: { none: {} } },
       select: { id: true, externalId: true, subject: true, openedAt: true, customer: { select: { name: true } } },
       orderBy: { openedAt: "asc" },
+    }),
+    prisma.integration.findFirst({
+      where: { organizationId, provider: { in: importers }, status: { not: "disconnected" } },
+      select: { provider: true },
     }),
   ]);
 
@@ -55,5 +61,6 @@ export async function getPolicyImportReview(
       policiesArchived: summary?.policiesArchived ?? 0,
     },
     lastImportAt: summary?.updatedAt.toISOString() ?? null,
+    sourceLabel: importerRow ? INTEGRATION_PROVIDER_LABELS[importerRow.provider] : "your helpdesk",
   };
 }
