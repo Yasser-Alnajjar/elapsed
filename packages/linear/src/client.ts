@@ -133,8 +133,9 @@ export class LinearClient {
     hasRetriedAuth = false,
   ): Promise<T> {
     const response = await fetchWithRetry(
-      () =>
+      (signal) =>
         fetch(API_URL, {
+          signal,
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.credentials.accessToken}`,

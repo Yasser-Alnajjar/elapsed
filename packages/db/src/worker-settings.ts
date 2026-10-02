@@ -41,6 +41,7 @@ export interface WorkerSettingsInput {
 }
 
 export interface WorkerSettingsRecord extends WorkerSettingsInput {
+  freshnessGraceFactor: number;
   lastHeartbeatAt: Date | null;
   lastActivePollAt: Date | null;
   lastActivePollFailures: number | null;
@@ -118,6 +119,7 @@ export async function getWorkerSettingsForRead(
     reconciliationIntervalMs: clampReconciliationIntervalMs(
       readIntervalMsFromEnv("WORKER_RECONCILIATION_MS", DEFAULT_RECONCILIATION_INTERVAL_MS),
     ),
+    freshnessGraceFactor: 3,
     lastHeartbeatAt: null,
     lastActivePollAt: null,
     lastActivePollFailures: null,

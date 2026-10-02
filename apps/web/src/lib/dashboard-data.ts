@@ -1,4 +1,4 @@
-import { perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
+import { getWorkerSettingsForRead, perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -15,6 +15,7 @@ import {
   type WeeklyWindow,
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
+import { staleFields } from "./freshness-data";
 import { getCycleTimeAnomalies } from "./anomaly-data";
 import { getProjectAnalytics, type BreachCandidateRow } from "./analytics-data";
 import type {
@@ -165,6 +166,7 @@ async function getDashboardDataInner(
     unmatchedCaseRows,
     unmatchedCaseCount,
     integrationRows,
+    workerSettings,
     failedNotificationRows,
     failedNotificationCount,
     // The one bounded, live-evaluated exception (see AT_RISK_CANDIDATE_TAKE).
@@ -261,8 +263,11 @@ async function getDashboardDataInner(
         status: true,
         lastSyncAt: true,
         lastSyncError: true,
+        lastSuccessfulSyncAt: true,
+        failingSince: true,
       },
     }),
+    getWorkerSettingsForRead(prisma),
     // Phase 6.4. Same cap-plus-count pattern as the unmatched-cases panel.
     prisma.notificationFailure.findMany({
       where: failedNotificationWhere,
@@ -585,6 +590,7 @@ async function getDashboardDataInner(
     openedAt: row.openedAt.toISOString(),
   }));
 
+  // A disconnected integration is not expected to sync, so it is never "stale".
   const integrationHealth: IntegrationHealthRow[] = integrationRows.map(
     (row) => ({
       provider: row.provider as IntegrationProvider,
@@ -592,6 +598,9 @@ async function getDashboardDataInner(
       permissionDenied: row.status === "permission_denied",
       lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
       lastSyncError: row.lastSyncError,
+      lastSuccessfulSyncAt: row.lastSuccessfulSyncAt?.toISOString() ?? null,
+      failingSince: row.failingSince?.toISOString() ?? null,
+      ...staleFields(row, asOf, workerSettings),
     }),
   );
 

@@ -43,7 +43,7 @@ export function OperatorView({ data }: OperatorViewProps) {
         <SubSection
           icon={PlugZap}
           title="Integration health"
-          description="Re-auth needed, lost provider access, or the last sync failed — any organization"
+          description="Re-auth needed, lost provider access, the last sync failed, or data has gone stale — any organization"
           badge={
             data.unhealthyIntegrations.length > 0 && (
               <span className="bg-error/15 text-error rounded px-2 py-0.5 font-mono text-xs">
@@ -78,7 +78,13 @@ export function OperatorView({ data }: OperatorViewProps) {
                       ? "Re-authentication required"
                       : row.permissionDenied
                         ? "Provider-side access lost (permission denied)"
-                        : `Last sync failed: ${row.lastSyncError}`}
+                      : row.failingSince
+                        ? `Failing since ${formatExactTimestamp(row.failingSince)} · ${row.consecutiveFailures} attempts · ${row.lastSyncDurationMs ?? "—"} ms · last success ${row.lastSuccessfulSyncAt ? formatExactTimestamp(row.lastSuccessfulSyncAt) : "never"}`
+                        : row.lastSyncError
+                          ? `Last sync failed: ${row.lastSyncError}`
+                          : row.staleSince
+                            ? `Stale since ${formatExactTimestamp(row.staleSince)} · no recent successful sync`
+                            : "Stale: no successful sync has completed yet"}
                   </span>
                 </li>
               ))}

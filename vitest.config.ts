@@ -53,6 +53,7 @@ const realDatabaseSuites = [
   "apps/web/test/email-verification-race.test.ts",
   "apps/web/test/smoke-signup-to-alert.test.ts",
   "apps/web/test/notification-claim.test.ts",
+  "apps/web/test/stale-source-notifications.test.ts",
   "apps/web/test/zendesk-incremental-normalization.test.ts",
   "apps/web/test/scoped-pipelines.test.ts",
   "apps/worker/test/seed-test-customers.db.test.ts",

@@ -229,6 +229,7 @@ function fakePrisma(cases: Seeded[], breachedAtByCommitmentId: ReadonlyMap<strin
       findMany: async () => [],
       count: async () => 0,
     },
+    workerSettings: { findUnique: async () => null },
     integration: {
       // Phase 6.3: no integrations connected in this fixture.
       findMany: async () => [],

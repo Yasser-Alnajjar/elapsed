@@ -1,6 +1,7 @@
-import { perfCount, withPerfScope, type IntegrationProvider, type PrismaClient } from "@sla/db";
+import { getWorkerSettingsForRead, perfCount, withPerfScope, type IntegrationProvider, type PrismaClient } from "@sla/db";
 import {
   BREACH_NOTIFICATION_THRESHOLD,
+  assessFreshness,
   sortNormalizedEvents,
   computeElapsedWorkingMinutes,
   deriveLegSpans,
@@ -36,7 +37,7 @@ import type {
 // (to pick the adapter), `id` (only to pass along to
 // `buildConversationMessages`) and `credentials` (handed to the adapter's
 // `externalUrl`) — never the row's other columns.
-const INTEGRATION_SELECT = { id: true, provider: true, credentials: true } as const;
+const INTEGRATION_SELECT = { id: true, provider: true, credentials: true, lastSuccessfulSyncAt: true } as const;
 
 // No business calendar exists yet for a case whose SLA hasn't matched any
 // policy — fall back to an always-open calendar purely for the purpose of
@@ -452,6 +453,20 @@ async function getCaseDetailDataInner(
     externalId: caseRow.externalId,
     credentials: integrationOf(caseRow.system)?.credentials,
   });
+  const sourceIntegration = caseRow.sourceIntegrationId
+    ? integrationRows.find((row) => row.id === caseRow.sourceIntegrationId)
+    : integrationOf(caseRow.system);
+  const workerSettings = sourceIntegration ? await getWorkerSettingsForRead(prisma) : null;
+  const sourceFreshness = sourceIntegration && workerSettings
+    ? assessFreshness({
+        lastSuccessfulSyncAt: sourceIntegration.lastSuccessfulSyncAt,
+        asOf,
+        expectedIntervalMs: workerSettings.activePollIntervalMs,
+        graceFactor: workerSettings.freshnessGraceFactor,
+      })
+    : null;
+  const sourceNeverSynced = !!sourceFreshness && !sourceFreshness.fresh && !sourceIntegration?.lastSuccessfulSyncAt;
+  const sourceStaleSince = sourceNeverSynced ? null : (sourceFreshness?.staleSince ?? null);
 
   // Every CaseLink system this page renders: the issue and pull-request
   // providers (by their registry role). Excludes a link whose `unlinkedAt` is
@@ -620,6 +635,8 @@ async function getCaseDetailDataInner(
       status,
       system: caseRow.system,
       ticketUrl,
+      sourceStaleSince,
+      sourceNeverSynced,
     },
     currentLeg,
     commitments,

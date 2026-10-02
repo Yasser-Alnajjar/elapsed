@@ -91,6 +91,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
           organizationId,
           provider: "zendesk",
           credentials: { subdomain: SUBDOMAIN },
+          lastSuccessfulSyncAt: new Date(),
         },
       });
       integrationId = integration.id;

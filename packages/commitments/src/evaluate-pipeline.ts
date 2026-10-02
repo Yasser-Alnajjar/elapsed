@@ -1,5 +1,6 @@
 import { perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
+  assessFreshness,
   evaluateCommitment,
   type BusinessCalendarVersion,
   type Commitment,
@@ -178,6 +179,7 @@ async function loadProviderEventIds(
 export function toEvaluationCreateInput(
   evaluation: Evaluation,
   providerEventIdByRawEventId: Map<string, string> = new Map(),
+  sourceStaleSince: string | null = null,
 ): Prisma.EvaluationCreateManyInput {
   const { lastEvent } = evaluation.inputs;
   const inputs = {
@@ -203,6 +205,7 @@ export function toEvaluationCreateInput(
         ? new Date(evaluation.effectiveDueAt)
         : null,
     inputs: inputs as unknown as Prisma.InputJsonValue,
+    sourceStaleSince: sourceStaleSince ? new Date(sourceStaleSince) : null,
   };
 }
 
@@ -339,6 +342,8 @@ export interface NotificationCandidate {
    * alert context: "start and breach times".
    */
   breachedAt?: string | null;
+  /** Metadata only: lets dispatch caveat at-risk alerts and hold breach alerts. */
+  sourceStaleSince?: string | null;
 }
 
 export interface EvaluationPipelineResult {
@@ -376,6 +381,8 @@ export async function runEvaluationPipeline(
     scope?: EvaluationScope;
     /** Limits the run to these cases (webhook/source-sync: only the cases the delivery touched). Omit for the whole organization. */
     caseIds?: readonly string[];
+    /** Active poll cadence and its operator-set grace multiplier. */
+    freshness?: { expectedIntervalMs: number; graceFactor?: number };
   } = {},
 ): Promise<EvaluationPipelineResult> {
   const asOf = options.asOf ?? new Date().toISOString();
@@ -416,7 +423,7 @@ export async function runEvaluationPipeline(
   ];
   const caseIds = [...new Set(commitmentRows.map((c) => c.caseId))];
 
-  const [policyVersionRows, calendarVersionRows, eventRows, latestEvaluationRows] =
+  const [policyVersionRows, calendarVersionRows, eventRows, latestEvaluationRows, caseRows, integrationRows] =
     await Promise.all([
       prisma.sLAPolicyVersion.findMany({
         where: { id: { in: policyVersionIds } },
@@ -430,7 +437,39 @@ export async function runEvaluationPipeline(
         prisma,
         commitmentRows.map((c) => c.id),
       ),
+      prisma.case.findMany({
+        where: { id: { in: caseIds } },
+        select: {
+          id: true,
+          sourceIntegrationId: true,
+          caseLinks: { where: { confidence: "certain", unlinkedAt: null }, select: { system: true } },
+        },
+      }),
+      prisma.integration.findMany({
+        where: { organizationId },
+        select: { id: true, provider: true, lastSuccessfulSyncAt: true },
+      }),
     ]);
+
+  const caseById = new Map(caseRows.map((row) => [row.id, row]));
+  const integrationById = new Map(integrationRows.map((row) => [row.id, row]));
+  const integrationByProvider = new Map(integrationRows.map((row) => [row.provider, row]));
+  const freshness = options.freshness ?? { expectedIntervalMs: 5 * 60_000, graceFactor: 3 };
+  const staleSinceForCase = (caseId: string): string | null => {
+    const caseRow = caseById.get(caseId);
+    if (!caseRow) return null;
+    const source = caseRow.sourceIntegrationId ? integrationById.get(caseRow.sourceIntegrationId) : undefined;
+    const related = [source, ...caseRow.caseLinks.map((link) => integrationByProvider.get(link.system))].filter(
+      (value): value is NonNullable<typeof value> => Boolean(value),
+    );
+    const stale = related.map((integration) => assessFreshness({
+      lastSuccessfulSyncAt: integration.lastSuccessfulSyncAt,
+      asOf,
+      expectedIntervalMs: freshness.expectedIntervalMs,
+      graceFactor: freshness.graceFactor,
+    }).staleSince).filter((value): value is string => value !== null);
+    return stale.length === 0 ? null : stale.sort()[0]!;
+  };
 
   const previousStatusByCommitmentId = new Map<string, CommitmentStatus>(
     latestEvaluationRows.map((row) => [row.commitmentId, row.status]),
@@ -497,6 +536,7 @@ export async function runEvaluationPipeline(
         );
 
       const caseEvents = eventsByCaseId.get(row.caseId) ?? [];
+      const sourceStaleSince = staleSinceForCase(row.caseId);
       const commitment = toCommitmentDomain(row);
       const evaluation = evaluateCommitment(
         commitment,
@@ -515,7 +555,10 @@ export async function runEvaluationPipeline(
 
       if (
         evaluation.warnThresholdCrossed !== undefined &&
-        canRaiseAlert(finalized, terminal)
+        canRaiseAlert(finalized, terminal) &&
+        // D13(b): a breach based on stale source data is held. At-risk
+        // alerts still reach the team, explicitly caveated by the dispatcher.
+        !(sourceStaleSince && evaluation.warnThresholdCrossed === 100)
       ) {
         result.notificationCandidates.push({
           commitmentId: row.id,
@@ -531,6 +574,7 @@ export async function runEvaluationPipeline(
           startedAt: row.startedAt.toISOString(),
           breachedAt:
             evaluation.status === "breached" ? evaluation.effectiveDueAt : null,
+          sourceStaleSince,
         });
       }
 
@@ -542,7 +586,7 @@ export async function runEvaluationPipeline(
           finalized,
         )
       ) {
-        evaluationsToCreate.push(evaluation);
+        evaluationsToCreate.push(Object.assign(evaluation, { sourceStaleSince }));
       }
 
       // A finalized commitment keeps its original closedAt when a later
@@ -575,7 +619,7 @@ export async function runEvaluationPipeline(
     );
     const created = await prisma.evaluation.createMany({
       data: evaluationsToCreate.map((evaluation) =>
-        toEvaluationCreateInput(evaluation, providerEventIdByRawEventId),
+        toEvaluationCreateInput(evaluation, providerEventIdByRawEventId, (evaluation as Evaluation & { sourceStaleSince?: string | null }).sourceStaleSince),
       ),
       skipDuplicates: true,
     });

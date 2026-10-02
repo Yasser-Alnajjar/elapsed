@@ -72,6 +72,7 @@ function contextParts(candidate: NotificationCandidate, isBreach: boolean): stri
     `Started: ${formatInstant(candidate.startedAt)}`,
   ];
   if (isBreach && candidate.breachedAt) parts.push(`Breached: ${formatInstant(candidate.breachedAt)}`);
+  if (candidate.sourceStaleSince) parts.push(`Source data stale since: ${formatInstant(candidate.sourceStaleSince)}`);
   return parts;
 }
 

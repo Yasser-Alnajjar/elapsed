@@ -200,6 +200,7 @@ describe.skipIf(!TEST_DATABASE_URL)("smoke: signup -> connect -> import -> case 
         organizationId,
         provider: "zendesk",
         status: "connected",
+        lastSuccessfulSyncAt: new Date(),
         webhookSecret,
         credentials: db.encryptCredentials({ subdomain: SUBDOMAIN, accessToken: "access-token", tokenType: "bearer", scope: "read" }),
       },
@@ -314,6 +315,8 @@ describe.skipIf(!TEST_DATABASE_URL)("smoke: signup -> connect -> import -> case 
     // clock is no longer needed past this point.
     vi.useRealTimers();
     const breachAsOf = at(RESOLUTION_TARGET_MINUTES + 30);
+    // The source is healthy at the simulated "now" (D13(b) holds breach alerts for stale sources).
+    await prisma.integration.updateMany({ where: { organizationId }, data: { lastSuccessfulSyncAt: new Date(breachAsOf) } });
     const evaluated = await commitments.runEvaluationPipeline(prisma, organizationId, { asOf: breachAsOf, scope: "all" });
     // Not `commitmentsFinalized`: a breach only "finalizes" a commitment
     // once its clock actually stops (the case closes), per

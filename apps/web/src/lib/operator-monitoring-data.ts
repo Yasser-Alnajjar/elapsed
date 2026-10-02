@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@sla/db";
+import { getWorkerSettingsForRead, type PrismaClient } from "@sla/db";
+import { staleFields } from "./freshness-data";
 import type {
   OperatorFailedAlertRow,
   OperatorIntegrationHealthRow,
@@ -23,7 +24,12 @@ const FAILED_ALERTS_LIMIT = 25;
 export async function getOperatorMonitoringData(
   prisma: PrismaClient,
 ): Promise<OperatorMonitoringData> {
-  const asOf = new Date().toISOString();
+  const asOfDate = new Date();
+  const asOf = asOfDate.toISOString();
+  const workerSettings = await getWorkerSettingsForRead(prisma);
+  const staleCutoff = new Date(
+    asOfDate.getTime() - workerSettings.activePollIntervalMs * workerSettings.freshnessGraceFactor,
+  );
 
   const [organizationCount, unhealthyIntegrationRows, failedNotificationRows] =
     await Promise.all([
@@ -33,6 +39,12 @@ export async function getOperatorMonitoringData(
           OR: [
             { status: { in: ["reauth_required", "permission_denied"] } },
             { lastSyncError: { not: null } },
+            { failingSince: { not: null } },
+            // Stale with no recorded error (e.g. the worker stopped): N3.9.
+            {
+              status: { not: "disconnected" },
+              OR: [{ lastSuccessfulSyncAt: null }, { lastSuccessfulSyncAt: { lt: staleCutoff } }],
+            },
           ],
         },
         select: {
@@ -42,6 +54,10 @@ export async function getOperatorMonitoringData(
           status: true,
           lastSyncAt: true,
           lastSyncError: true,
+          lastSuccessfulSyncAt: true,
+          consecutiveFailures: true,
+          failingSince: true,
+          lastSyncDurationMs: true,
         },
         orderBy: { lastSyncAt: "desc" },
       }),
@@ -74,6 +90,11 @@ export async function getOperatorMonitoringData(
       permissionDenied: row.status === "permission_denied",
       lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
       lastSyncError: row.lastSyncError,
+      lastSuccessfulSyncAt: row.lastSuccessfulSyncAt?.toISOString() ?? null,
+      consecutiveFailures: row.consecutiveFailures,
+      failingSince: row.failingSince?.toISOString() ?? null,
+      lastSyncDurationMs: row.lastSyncDurationMs,
+      ...staleFields(row, asOf, workerSettings),
     }),
   );
 

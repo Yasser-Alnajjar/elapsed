@@ -161,6 +161,12 @@ export interface IntegrationHealthRow {
   permissionDenied: boolean;
   lastSyncAt: string | null;
   lastSyncError: string | null;
+  lastSuccessfulSyncAt: string | null;
+  failingSince: string | null;
+  /** No successful sync within the freshness window (N3), even with no recorded error. */
+  stale: boolean;
+  /** When it went stale; null when it has never synced successfully. */
+  staleSince: string | null;
 }
 
 /** An alert that every configured channel has failed to deliver at least once and is still unresolved (Phase 6.4) — see `NotificationFailure`. Retried every worker cycle until it succeeds or the underlying commitment closes. */

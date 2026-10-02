@@ -120,6 +120,10 @@ export interface IntegrationDetailData {
   permissionDenied: boolean;
   lastSyncAt: Date | null;
   lastSyncError: string | null;
+  lastSuccessfulSyncAt: Date | null;
+  consecutiveFailures: number;
+  failingSince: Date | null;
+  lastSyncDurationMs: number | null;
   /** ISO 8601, matching the provider cursor's own `backfillCompletedAt`. */
   backfillCompletedAt: Date | null;
   webhookSecret: string | null;

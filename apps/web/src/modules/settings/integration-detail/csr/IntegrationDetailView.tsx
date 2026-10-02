@@ -194,6 +194,10 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
     permissionDenied,
     lastSyncAt,
     lastSyncError,
+    lastSuccessfulSyncAt,
+    consecutiveFailures,
+    failingSince,
+    lastSyncDurationMs,
     backfillCompletedAt,
     webhookSecret,
     webhooks: hasWebhook,
@@ -316,6 +320,10 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
                 !lastSyncAt ? undefined : lastSyncError ? "warning" : "success"
               }
             />
+            <Stat label="Last successful sync" value={lastSuccessfulSyncAt ? Utils.formatDateTimeV2(lastSuccessfulSyncAt) : "Never"} />
+            <Stat label="Failing since" value={failingSince ? Utils.formatDateTimeV2(failingSince) : "—"} tone={failingSince ? "warning" : undefined} />
+            <Stat label="Consecutive failures" value={String(consecutiveFailures)} tone={consecutiveFailures ? "warning" : undefined} />
+            <Stat label="Latest sync duration" value={lastSyncDurationMs === null ? "—" : `${lastSyncDurationMs} ms`} />
             <Stat
               label="90-day backfill"
               value={backfillCompletedAt ? "Completed" : "Not run"}

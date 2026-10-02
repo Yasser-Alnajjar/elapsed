@@ -17,6 +17,8 @@ import { AlertsPopover } from "@/components/layout/alerts-popover";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Input } from "@/components/ui/input";
 import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
+import { getStaleIntegrationData } from "@/lib/freshness-data";
+import { StaleDataBanner } from "@/components/shared/stale-data-banner";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -36,13 +38,14 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, activePollIntervalMs, alertSummary] =
+  const [user, integrations, activePollIntervalMs, alertSummary, staleIntegrations] =
     await withPerfScope("layout", () =>
       Promise.all([
         Actions.Profile.getData(),
         Actions.Integrations.getData(),
         Actions.WorkerSettings.getActivePollIntervalMs(),
         getAlertSummary(getPrismaClient(), organizationId),
+        getStaleIntegrationData(getPrismaClient(), organizationId),
       ]),
     );
 
@@ -117,6 +120,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           <UserMenu user={user} />
         </header>
         <main className="mx-auto min-w-0 w-full flex-1 px-4 py-4">
+          <StaleDataBanner integrations={staleIntegrations} />
           {children}
           <LiveDataProvider />
         </main>

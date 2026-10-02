@@ -208,10 +208,11 @@ describe.skipIf(!TEST_DATABASE_URL)("provider matrix smoke (real Postgres)", () 
           status: "connected",
           credentials: source === "zendesk" ? { subdomain: "matrix" } : { workspaceId: "matrix-ws" },
           cursor: done,
+          lastSuccessfulSyncAt: new Date(),
         },
       });
       const trackerIntegration = await prisma.integration.create({
-        data: { organizationId, provider: tracker, status: "connected", credentials: {}, cursor: done },
+        data: { organizationId, provider: tracker, status: "connected", credentials: {}, cursor: done, lastSuccessfulSyncAt: new Date() },
       });
 
       // ---- the events a backfill stored: the case, then the tracker issue linking to it ----
@@ -268,6 +269,8 @@ describe.skipIf(!TEST_DATABASE_URL)("provider matrix smoke (real Postgres)", () 
       expect(created.map((c) => c.kind).sort()).toEqual(["first_response", "resolution"]);
 
       const breachAsOf = new Date(Date.now() + (RESOLUTION_MINUTES + 30) * 60_000).toISOString();
+      // Both sources are healthy at the simulated "now" (D13(b) holds breach alerts for stale sources).
+      await prisma.integration.updateMany({ where: { organizationId }, data: { lastSuccessfulSyncAt: new Date(breachAsOf) } });
       const evaluated = await commitments.runEvaluationPipeline(prisma, organizationId, { asOf: breachAsOf, scope: "all" });
       const resolution = await prisma.commitment.findFirstOrThrow({ where: { caseId: caseRow.id, kind: "resolution" } });
       const firstResponse = await prisma.commitment.findFirstOrThrow({ where: { caseId: caseRow.id, kind: "first_response" } });

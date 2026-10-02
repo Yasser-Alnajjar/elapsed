@@ -202,6 +202,7 @@ function fakePrisma(fixtures: CaseFixture[]): PrismaClient {
     $queryRaw: async () => [],
     organization: { findUnique: async () => ({ timezone: "UTC" }) },
     case: { findMany: async () => [], count: async () => 0 },
+    workerSettings: { findUnique: async () => null },
     integration: { findMany: async () => [] },
     notificationFailure: { findMany: async () => [], count: async () => 0 },
     sLAPolicyVersion: {
@@ -339,5 +340,48 @@ describe("getDashboardData breach candidates", () => {
     const data = await getDashboardData(fakePrisma([pastDueButAtRisk]), ORG, asOf);
 
     expect(data.breachedThisPeriod).toEqual({ total: 0, byKind: {} });
+  });
+});
+
+describe("getDashboardData integration health: stale with no error (N3.8 Blind Spots)", () => {
+  const row = (provider: string, status: string, lastSuccessfulSyncAt: Date | null) => ({
+    provider,
+    status,
+    lastSyncAt: asOf,
+    lastSyncError: null,
+    lastSuccessfulSyncAt,
+    failingSince: null,
+  });
+
+  it("marks an integration stale from the worker's cadence even though nothing failed", async () => {
+    const prisma = fakePrisma([]);
+    // Operator-set cadence: 30 s poll, grace factor 3 → stale after 90 s.
+    (prisma as unknown as { workerSettings: unknown }).workerSettings = {
+      findUnique: async () => ({
+        activePollIntervalMs: 30_000,
+        reconciliationIntervalMs: 30 * 60_000,
+        freshnessGraceFactor: 3,
+      }),
+    };
+    (prisma as unknown as { integration: unknown }).integration = {
+      findMany: async () => [
+        row("zendesk", "connected", new Date(asOf.getTime() - 30_000)), // fresh: inside 30 s × 3
+        row("jira", "connected", new Date(asOf.getTime() - 10 * 60_000)), // stale, no error
+        row("linear", "connected", null), // never synced
+        row("github", "disconnected", null), // not expected to sync
+      ],
+    };
+
+    const { integrationHealth } = await getDashboardData(prisma, ORG, asOf);
+    const byProvider = Object.fromEntries(integrationHealth.map((r) => [r.provider, r]));
+
+    expect(byProvider.zendesk).toMatchObject({ stale: false, staleSince: null, lastSyncError: null });
+    expect(byProvider.jira).toMatchObject({
+      stale: true,
+      staleSince: new Date(asOf.getTime() - 10 * 60_000 + 90_000).toISOString(),
+      lastSyncError: null,
+    });
+    expect(byProvider.linear).toMatchObject({ stale: true, staleSince: null });
+    expect(byProvider.github).toMatchObject({ stale: false });
   });
 });

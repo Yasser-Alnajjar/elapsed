@@ -66,8 +66,9 @@ export class IntercomClient {
   ): Promise<T> {
     const url = path.startsWith("http") ? path : `${API_URL}${path}`;
     const response = await fetchWithRetry(
-      () =>
+      (signal) =>
         fetch(url, {
+          signal,
           ...init,
           headers: {
             Authorization: `Bearer ${this.credentials.accessToken}`,

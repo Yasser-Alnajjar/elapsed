@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     await unlinkDeletedIssue(prisma, integration, deletedIssueKey);
     await prisma.integration.update({
       where: { id: integration.id },
-      data: { lastSyncAt: new Date(), lastSyncError: null },
+      data: { lastSyncAt: new Date(), lastSuccessfulSyncAt: new Date(), lastSyncError: null, consecutiveFailures: 0, failingSince: null },
     });
     return NextResponse.json({ status: "processed", issueKey: deletedIssueKey, reason: "issue deleted" });
   }
@@ -157,7 +157,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
 
     await prisma.integration.update({
       where: { id: integration.id },
-      data: { lastSyncAt: new Date(), lastSyncError: null },
+      data: { lastSyncAt: new Date(), lastSuccessfulSyncAt: new Date(), lastSyncError: null, consecutiveFailures: 0, failingSince: null },
     });
     // Access is evidently back — same compare-and-set self-clearing rule as
     // the worker cycle (a no-op unless the row is still `permission_denied`).
@@ -181,7 +181,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     if (error instanceof JiraReauthRequiredError) {
       await prisma.integration.update({
         where: { id: integration.id },
-        data: { status: "reauth_required", lastSyncAt: new Date(), lastSyncError: "Jira needs to be reconnected" },
+        data: { status: "reauth_required", lastSyncAt: new Date(), lastSyncError: "Jira needs to be reconnected", consecutiveFailures: { increment: 1 }, failingSince: integration.failingSince ?? new Date() },
       });
       // Accepted, not retried: reconnecting requires a human, which no
       // number of Jira retries will produce.
@@ -194,6 +194,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
         data: {
           lastSyncAt: new Date(),
           lastSyncError: "Jira denied access — the connecting user's Jira permissions may have changed",
+          consecutiveFailures: { increment: 1 }, failingSince: integration.failingSince ?? new Date(),
         },
       });
       // Compare-and-set, like the worker cycle: never overwrites a concurrent disconnect/reauth.
@@ -209,7 +210,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
     const message = error instanceof Error ? error.message : String(error);
     await prisma.integration.update({
       where: { id: integration.id },
-      data: { lastSyncAt: new Date(), lastSyncError: message },
+      data: { lastSyncAt: new Date(), lastSyncError: message, consecutiveFailures: { increment: 1 }, failingSince: integration.failingSince ?? new Date() },
     });
     return NextResponse.json({ error: message }, { status: 502 });
   }

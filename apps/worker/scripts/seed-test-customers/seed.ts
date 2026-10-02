@@ -179,6 +179,7 @@ async function seedTenant(prisma: PrismaClient, tenant: TenantDef, anchorDate: D
       status: "connected",
       connectedAt,
       lastSyncAt: anchorDate,
+      lastSuccessfulSyncAt: anchorDate,
       webhookSecret: `seed-fixture-webhook-secret-zendesk-${tenant.key}`,
       credentials: {
         subdomain: tenant.zendeskSubdomain,
@@ -203,6 +204,7 @@ async function seedTenant(prisma: PrismaClient, tenant: TenantDef, anchorDate: D
       status: "connected",
       connectedAt,
       lastSyncAt: anchorDate,
+      lastSuccessfulSyncAt: anchorDate,
       webhookSecret: `seed-fixture-webhook-secret-jira-${tenant.key}`,
       credentials: {
         cloudId: tenant.jiraCloudId,
@@ -546,5 +548,5 @@ async function normalizeTimestamps(prisma: PrismaClient, organizationId: string,
       data: { confirmedAt: issue.linkedAt },
     });
   }
-  await prisma.integration.updateMany({ where: { organizationId }, data: { lastSyncAt: new Date(anchor), lastSyncError: null } });
+  await prisma.integration.updateMany({ where: { organizationId }, data: { lastSyncAt: new Date(anchor), lastSuccessfulSyncAt: new Date(anchor), lastSyncError: null } });
 }

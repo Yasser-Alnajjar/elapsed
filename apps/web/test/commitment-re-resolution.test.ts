@@ -46,7 +46,7 @@ describe.skipIf(!TEST_DATABASE_URL)("commitment re-resolution (real Postgres)", 
     const organization = await prisma.organization.create({ data: { name: "Re-Resolution Org" } });
     organizationId = organization.id;
     const zendesk = await prisma.integration.create({
-      data: { organizationId, provider: "zendesk", credentials: { subdomain: "demo" } },
+      data: { organizationId, provider: "zendesk", credentials: { subdomain: "demo" }, lastSuccessfulSyncAt: new Date() },
     });
     rawEventId = (
       await prisma.rawEvent.create({

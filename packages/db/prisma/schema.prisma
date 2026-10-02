@@ -220,6 +220,19 @@ model Integration {
   /// settings page can show real sync health instead of only stdout logs.
   lastSyncAt     DateTime?
   lastSyncError  String?
+  /// Last completed ingest + projection with no error. Unlike `lastSyncAt`,
+  /// this is never advanced by a failed attempt and is the source of truth
+  /// for customer-visible data freshness.
+  lastSuccessfulSyncAt DateTime?
+  /// Consecutive failed worker sync attempts. Customer-action states are
+  /// included: their data is stale too, even though they do not degrade the
+  /// worker process itself.
+  consecutiveFailures Int @default(0)
+  /// First failure in the current uninterrupted failure streak.
+  failingSince DateTime?
+  /// Wall-clock duration of the latest ingest attempt, used to spot a
+  /// provider slowing unrelated tenants down.
+  lastSyncDurationMs Int?
   /// Generated at first connect (roadmap step 20) and backfilled on
   /// reconnect if still null (roadmap step 26) — but never rotated once
   /// set. The customer pastes this into their Zendesk/Jira webhook config
@@ -767,6 +780,9 @@ model Evaluation {
   /// that hasn't been backfilled yet (see
   /// packages/commitments/src/scripts/backfill-breached-at.ts).
   breachedAt        DateTime?
+  /// Metadata about the inputs at this evaluation instant. It deliberately
+  /// never affects SLA clock math or the computed status.
+  sourceStaleSince  DateTime?
   inputs            Json
   createdAt         DateTime         @default(now())
   commitment        Commitment       @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
@@ -1008,6 +1024,12 @@ model WorkerSettings {
   /// so the column set stays backward compatible for a rolling deploy.
   nextActivePollAt           DateTime?
   nextReconciliationAt       DateTime?
+  /// Fresh when an integration succeeded within this many active-poll
+  /// intervals. Kept operator-only because it changes alert caveats, not SLA
+  /// calculations.
+  freshnessGraceFactor       Int       @default(3)
+  lastActivePollDurationMs   Int?
+  lastReconciliationDurationMs Int?
 
   @@map("worker_settings")
 }

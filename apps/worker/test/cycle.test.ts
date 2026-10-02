@@ -471,6 +471,76 @@ describe("runCycle — bounded organization concurrency", () => {
 });
 
 
+describe("runCycle — provider outage drill (N3.6)", () => {
+  type DrillRow = Row & { organizationId: string; lastSyncDurationMs?: number };
+  const drillRows = (): DrillRow[] =>
+    ["org_down", "org_ok_1", "org_ok_2"].map((organizationId, i) => ({
+      organizationId,
+      id: `int_${i}`,
+      provider: "linear" as const,
+      status: "connected" as Status,
+      credentials: { accessToken: `token-${organizationId}`, tokenType: "Bearer", scope: "read" },
+      cursor: null,
+      lastSyncAt: null,
+      lastSyncError: null,
+    }));
+
+  function drillDb(rows: DrillRow[]) {
+    const byId = (id: string) => rows.find((row) => row.id === id)!;
+    return {
+      organization: {
+        findMany: vi.fn(async () =>
+          rows.map((row) => ({
+            id: row.organizationId,
+            integrations: [{ id: row.id, provider: row.provider, credentials: row.credentials, status: row.status, failingSince: null }],
+          })),
+        ),
+      },
+      integration: {
+        findUniqueOrThrow: vi.fn(async ({ where }: { where: { id: string } }) => ({ ...byId(where.id) })),
+        update: vi.fn(async ({ where, data }: { where: { id: string }; data: Partial<DrillRow> }) => {
+          Object.assign(byId(where.id), data);
+          return { ...byId(where.id) };
+        }),
+        updateMany: vi.fn(async ({ where, data }: { where: { id: string }; data: Partial<DrillRow> }) => {
+          Object.assign(byId(where.id), data);
+          return { count: 1 };
+        }),
+      },
+      rawEvent: { createMany: vi.fn(async () => ({ count: 0 })) },
+    } as unknown as PrismaClient;
+  }
+
+  it("one tenant's hung provider does not slow other tenants, and the outage is recorded only against it", async () => {
+    const OUTAGE_MS = 400;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: unknown, init?: { headers?: Record<string, string> }) => {
+        const auth = JSON.stringify(init?.headers ?? {});
+        if (auth.includes("org_down")) {
+          await new Promise((resolve) => setTimeout(resolve, OUTAGE_MS));
+          return jsonResponse(400, { errors: [{ message: "provider outage" }] });
+        }
+        return jsonResponse(200, emptyIssuesPage);
+      }),
+    );
+    const rows = drillRows();
+
+    const result = await runCycle(drillDb(rows), { ...config, organizationConcurrency: 3 }, "active_set_poll");
+
+    const down = rows.find((row) => row.organizationId === "org_down")!;
+    const healthy = rows.filter((row) => row.organizationId !== "org_down");
+    expect(down.lastSyncError).not.toBeNull();
+    expect([...new Set(result.failures.map((failure) => failure.organizationId))]).toEqual(["org_down"]);
+    for (const row of healthy) {
+      expect(row.lastSyncError).toBeNull();
+      // Healthy tenants finish well inside the outage, i.e. not queued behind it.
+      expect((row as { lastSyncDurationMs?: number }).lastSyncDurationMs).toBeLessThan(OUTAGE_MS / 2);
+    }
+    expect((down as { lastSyncDurationMs?: number }).lastSyncDurationMs).toBeGreaterThanOrEqual(OUTAGE_MS);
+  });
+});
+
 describe("processOrganization — lease handling (multi-worker)", () => {
   function ctx(lease?: LeaseGuard): OrganizationRunContext {
     return {

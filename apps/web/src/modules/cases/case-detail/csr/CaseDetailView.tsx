@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { ShieldAlert } from "lucide-react";
 
 import type { CaseDetailData } from "@/lib/types/cases";
 
@@ -12,6 +13,8 @@ import { CommitmentSummary } from "./CommitmentSummary";
 import { LinkedRecords } from "./LinkedRecords";
 import { ConversationThread } from "./ConversationThread";
 import { CalculationLedger } from "./CalculationLedger";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatExactTimestamp } from "@/lib/format";
 
 /**
  * Keeps the URL's `commitmentId` pointed at the case's active Next Reply
@@ -58,6 +61,17 @@ export const CaseDetailView = ({
 
   return (
     <div className="w-full flex flex-col gap-4">
+      {(data.case.sourceStaleSince || data.case.sourceNeverSynced) && (
+        <Alert variant="warning">
+          <ShieldAlert />
+          <AlertDescription>
+            {data.case.sourceStaleSince
+              ? `Source data has been stale since ${formatExactTimestamp(data.case.sourceStaleSince)}.`
+              : "Source data is stale: its integration has not completed a successful sync yet."}{" "}
+            SLA calculations use the latest received events; breach alerts are held until the source refreshes.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* ── Sub-header breadcrumb + case identity banner ── */}
       <CaseHeader data={data} />
 

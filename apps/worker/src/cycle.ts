@@ -125,7 +125,7 @@ const ROLE_CYCLE_ORDER: Record<SourceRole, number> = { ticket_source: 0, work_tr
 /** What `processOrganization` needs to know about the organization it is given. */
 export interface OrganizationToProcess {
   id: string;
-  integrations: { id: string; provider: IntegrationProvider; credentials: unknown; status: string }[];
+  integrations: { id: string; provider: IntegrationProvider; credentials: unknown; status: string; failingSince: Date | null }[];
 }
 
 /**
@@ -139,7 +139,7 @@ export const ORGANIZATION_TO_PROCESS_SELECT = {
   id: true,
   integrations: {
     where: { status: { not: "disconnected" as const } },
-    select: { id: true, provider: true, credentials: true, status: true },
+    select: { id: true, provider: true, credentials: true, status: true, failingSince: true },
   },
 } as const;
 
@@ -209,6 +209,7 @@ export async function processOrganization(
       syncError: string | null;
       reauthRequired: boolean;
       permissionDenied: boolean;
+      durationMs: number;
     }
   >();
 
@@ -332,6 +333,7 @@ export async function processOrganization(
       syncError,
       reauthRequired,
       permissionDenied,
+      durationMs: Date.now() - integrationStartedAt,
     });
   }
 
@@ -406,6 +408,19 @@ export async function processOrganization(
             data: {
               lastSyncAt: new Date(),
               lastSyncError: syncError,
+              lastSyncDurationMs: ingestOutcome.durationMs,
+              ...(syncError === null
+                ? {
+                    lastSuccessfulSyncAt: new Date(),
+                    consecutiveFailures: 0,
+                    failingSince: null,
+                  }
+                : {
+                    consecutiveFailures: { increment: 1 },
+                    // Do not overwrite the beginning of an outage on every
+                    // retry; this is the customer-facing failure duration.
+                    failingSince: integration.failingSince === null ? new Date() : undefined,
+                  }),
               ...(ingestOutcome.reauthRequired
                 ? { status: "reauth_required" as const }
                 : {}),
@@ -603,6 +618,10 @@ export async function processOrganization(
             {
               asOf,
               scope: SCOPE_BY_KIND[kind],
+              freshness: {
+                expectedIntervalMs: ctx.activePollMs ?? DEFAULT_ACTIVE_POLL_MS,
+                graceFactor: 3,
+              },
             },
           );
           result.commitmentsConsidered += evaluations.commitmentsConsidered;

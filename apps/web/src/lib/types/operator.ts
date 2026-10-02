@@ -10,6 +10,14 @@ export interface OperatorIntegrationHealthRow {
   permissionDenied: boolean;
   lastSyncAt: string | null;
   lastSyncError: string | null;
+  lastSuccessfulSyncAt: string | null;
+  consecutiveFailures: number;
+  failingSince: string | null;
+  lastSyncDurationMs: number | null;
+  /** No successful sync within the freshness window (N3), even with no recorded error. */
+  stale: boolean;
+  /** When it went stale; null when it has never synced successfully. */
+  staleSince: string | null;
 }
 
 /** Cross-organization equivalent of `FailedAlertRow` (roadmap 7.5). */

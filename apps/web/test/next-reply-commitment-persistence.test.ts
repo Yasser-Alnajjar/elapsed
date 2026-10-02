@@ -48,7 +48,7 @@ describe.skipIf(!TEST_DATABASE_URL)("Next Reply commitment persistence (real Pos
 
     const organizationId = (await prisma.organization.create({ data: { name: "Next Reply Org" } })).id;
     const zendesk = await prisma.integration.create({
-      data: { organizationId, provider: "zendesk", credentials: { subdomain: "demo" } },
+      data: { organizationId, provider: "zendesk", credentials: { subdomain: "demo" }, lastSuccessfulSyncAt: new Date() },
     });
     rawEventId = (
       await prisma.rawEvent.create({

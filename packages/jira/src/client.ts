@@ -56,8 +56,9 @@ export class JiraClient {
   private async request<T>(path: string, hasRetriedAuth = false): Promise<T> {
     const url = path.startsWith("http") ? path : `${this.baseUrl()}${path}`;
     const response = await fetchWithRetry(
-      () =>
+      (signal) =>
         fetch(url, {
+          signal,
           headers: {
             Authorization: `Bearer ${this.credentials.accessToken}`,
             Accept: "application/json",

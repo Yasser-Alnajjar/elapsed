@@ -1,6 +1,7 @@
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_MAX_TOTAL_WAIT_MS = 60_000;
 const DEFAULT_BACKOFF_MS = 5_000;
+export const DEFAULT_ATTEMPT_TIMEOUT_MS = 30_000;
 
 export interface RetryPolicy {
   /** Including the first attempt. */
@@ -11,6 +12,8 @@ export interface RetryPolicy {
   baseBackoffMs?: number;
   /** Layers a provider's own rate-limit signal (Zendesk/Jira/Linear/Intercom's 429, GitHub's 403-with-`Retry-After`) on top of the 5xx retry every provider gets for free. */
   isRetryableStatus?: (response: Response) => boolean;
+  /** Hard ceiling for one HTTP attempt; retries retain their usual budget. */
+  attemptTimeoutMs?: number;
 }
 
 function isServerError(response: Response): boolean {
@@ -51,12 +54,13 @@ function sleep(ms: number): Promise<void> {
  * came back last.
  */
 export async function fetchWithRetry(
-  perform: () => Promise<Response>,
+  perform: (signal: AbortSignal) => Promise<Response>,
   policy: RetryPolicy = {},
 ): Promise<Response> {
   const maxAttempts = policy.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const maxTotalWaitMs = policy.maxTotalWaitMs ?? DEFAULT_MAX_TOTAL_WAIT_MS;
   const baseBackoffMs = policy.baseBackoffMs ?? DEFAULT_BACKOFF_MS;
+  const attemptTimeoutMs = policy.attemptTimeoutMs ?? DEFAULT_ATTEMPT_TIMEOUT_MS;
 
   let attempt = 0;
   let totalWaitMs = 0;
@@ -65,7 +69,7 @@ export async function fetchWithRetry(
     attempt += 1;
     let response: Response;
     try {
-      response = await perform();
+      response = await perform(AbortSignal.timeout(attemptTimeoutMs));
     } catch (error) {
       const budgetLeft = maxTotalWaitMs - totalWaitMs;
       if (attempt >= maxAttempts || budgetLeft <= 0) throw error;

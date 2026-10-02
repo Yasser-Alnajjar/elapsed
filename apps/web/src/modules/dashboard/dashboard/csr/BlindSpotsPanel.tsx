@@ -62,7 +62,7 @@ export function BlindSpotsPanel({
   failedAlertsOverflowCount,
 }: BlindSpotsPanelProps) {
   const unhealthyIntegrations = integrationHealth.filter(
-    (row) => row.reauthRequired || row.permissionDenied || row.lastSyncError,
+    (row) => row.reauthRequired || row.permissionDenied || row.lastSyncError || row.failingSince || row.stale,
   );
 
   return (
@@ -113,7 +113,7 @@ export function BlindSpotsPanel({
       <SubSection
         icon={PlugZap}
         title="Integration health"
-        description="Re-auth needed, lost provider access, or the last sync failed"
+        description="Re-auth needed, lost provider access, the last sync failed, or data has gone stale"
         badge={
           unhealthyIntegrations.length > 0 && (
             <span className="bg-error/15 text-error rounded px-2 py-0.5 font-mono text-xs">
@@ -149,7 +149,13 @@ export function BlindSpotsPanel({
                     ? "Re-authentication required"
                     : row.permissionDenied
                       ? "Provider-side access lost (permission denied)"
-                      : `Last sync failed: ${row.lastSyncError}`}
+                      : row.failingSince
+                        ? `Sync failing since ${formatExactTimestamp(row.failingSince)}`
+                        : row.lastSyncError
+                          ? `Last sync failed: ${row.lastSyncError}`
+                          : row.staleSince
+                            ? `Data stale since ${formatExactTimestamp(row.staleSince)} (no recent successful sync)`
+                            : "Data stale: no successful sync has completed yet"}
                 </span>
               </li>
             ))}

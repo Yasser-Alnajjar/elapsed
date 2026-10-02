@@ -129,6 +129,7 @@ function fakePrisma(options: {
         options.rawEvents.filter((row) => where.id.in.includes(row.id)),
       findFirst: async () => (options.ticket === null ? null : options.ticket ?? ticketRawEvent()),
     },
+    workerSettings: { findUnique: async () => null },
     integration: { findMany: async () => [{ id: "int-zendesk-1", provider: "zendesk", credentials: null }] },
     organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null }) },
     sLAPolicyVersion: { findMany: async () => [] },

@@ -138,8 +138,9 @@ export class GithubClient {
     // header, unlike Linear's plain 429 — a normal 403 (e.g. lost repo
     // access) carries no such header and falls through to the checks below.
     const response = await fetchWithRetry(
-      () =>
+      (signal) =>
         fetch(API_URL, {
+          signal,
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.credentials.accessToken}`,

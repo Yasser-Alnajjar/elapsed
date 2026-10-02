@@ -27,6 +27,8 @@ export {
   ENGINEERING_LEG_WARN_AT_PERCENT,
 } from "./evaluate";
 export type { EngineeringLegEvaluation } from "./evaluate";
+export { assessFreshness } from "./freshness";
+export type { AssessFreshnessInput, FreshnessAssessment } from "./freshness";
 export { detectCycleTimeAnomaly } from "./anomaly";
 export type {
   CycleTimeAnomaly,

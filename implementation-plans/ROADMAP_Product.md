@@ -513,7 +513,7 @@ Phase N8 — Scale                         (each item starts on its trigger)
 
 ### Phase N3 — Provider isolation + freshness
 
-**Status:** ⬜ Not started · **Estimate:** 2–3 weeks · **Priority:** P0 · **Plan:** [`03-provider-isolation-and-freshness.md`](03-provider-isolation-and-freshness.md) · **Needs:** N2, D13 (for N3.5) · **Branch:** `phase/n3-provider-isolation-and-freshness`
+**Status:** 🔄 In progress (N3.1–N3.5 foundations, 2026-10-01) · **Estimate:** 2–3 weeks · **Priority:** P0 · **Plan:** [`03-provider-isolation-and-freshness.md`](03-provider-isolation-and-freshness.md) · **Needs:** N2, D13 (for N3.5) · **Branch:** `phase/n3-provider-isolation-and-freshness`
 **Goal:** a provider outage degrades only its own integrations and tenants, and stale data is labelled, not silent.
 **Phase is done when:**
 
@@ -521,15 +521,15 @@ Phase N8 — Scale                         (each item starts on its trigger)
 - freshness is visible to customers and operators;
 - the circuit breaker is either built with trigger evidence or recorded as not needed (D22).
 
-- [ ] **N3.1** Last successful sync, consecutive failures and duration per integration.
-- [ ] **N3.2** Pure freshness function in `@sla/core`.
-- [ ] **N3.3** Freshness recorded on evaluations (metadata only; replay 0 differences when fresh).
-- [ ] **N3.4** Decide D13.
-- [ ] **N3.5** Freshness-aware notifications, per D13.
-- [ ] **N3.6** Per-request timeouts, tick/integration durations, outage drill test.
-- [ ] **N3.7** Circuit breaker, **only if N3.6 justifies it**.
-- [ ] **N3.8** Customer-visible freshness (settings, dashboard, banner, case detail).
-- [ ] **N3.9** Operator visibility of stale and failing integrations.
+- [~] **N3.1** Last successful sync, consecutive failures and duration per integration. **Code and additive migration written 2026-10-01; deployment/backfill verification remains.**
+- [x] **N3.2** Pure freshness function in `@sla/core`. **Done 2026-10-01; unit-tested.**
+- [~] **N3.3** Freshness recorded on evaluations (metadata only; replay 0 differences when fresh). **Code and migration written 2026-10-01; production-backup replay remains.**
+- [x] **N3.4** Decide D13. **Done: D13(b), already recorded above.**
+- [x] **N3.5** Freshness-aware notifications, per D13. **D13(b) implemented: stale at-risk alerts are caveated and stale breach alerts are held; dedicated real-DB test added 2026-10-01 (`stale-source-notifications.test.ts`: stale at-risk labelled, stale breach held, held breach sent exactly once after recovery).**
+- [~] **N3.6** Per-request timeouts, tick/integration durations, outage drill test. **30-second per-attempt timeout and structured per-integration duration are implemented 2026-10-01; outage drill added 2026-10-01 (`cycle.test.ts`: a hung tenant does not slow others and fails only itself); per-integration `lastSyncDurationMs` is persisted. Work is per-organization now, so there is no global tick to persist; a real two-hour production-scale drill remains.**
+- [ ] **N3.7** Circuit breaker, **only if N3.6 justifies it**. **Decision pending production measurements (D22): not built and not to be built yet. The unit drill only shows timeouts plus bounded organization concurrency isolate a hung tenant; build the breaker only if production per-integration durations/failure streaks show it is needed, otherwise record "not needed".**
+- [~] **N3.8** Customer-visible freshness (settings, dashboard, banner, case detail). **Done 2026-10-01 and browser-verified against the local stack (fresh, stale-with-timestamp and never-synced states; thresholds matched worker settings: 30 s × grace 3 = 90 s).**
+- [~] **N3.9** Operator visibility of stale and failing integrations. **Done 2026-10-01 and browser-verified (stale-with-no-error rows also listed, unit-tested): failing-since, attempt count, duration and last success per integration, across all organizations.**
 
 ### Phase N4 — Platform Admin + plan records
 

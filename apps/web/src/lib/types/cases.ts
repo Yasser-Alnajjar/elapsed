@@ -335,6 +335,10 @@ export interface CaseDetailData {
     system: IntegrationProvider;
     /** Outbound link to the source ticket (Zendesk ticket or Intercom conversation), when buildable. */
     ticketUrl: string | null;
+    /** Freshness metadata; it never changes the SLA calculation. */
+    sourceStaleSince?: string | null;
+    /** Source integration has never completed a successful sync (no meaningful stale-since instant). */
+    sourceNeverSynced?: boolean;
   };
   currentLeg: Leg;
   commitments: CommitmentDetail[];

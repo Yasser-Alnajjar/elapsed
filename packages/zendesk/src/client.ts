@@ -64,7 +64,7 @@ export class ZendeskClient {
   private async request<T>(path: string, hasRetriedAuth = false): Promise<T> {
     const url = path.startsWith("http") ? path : `${this.baseUrl()}${path}`;
     const response = await fetchWithRetry(
-      () => fetch(url, { headers: { Authorization: `Bearer ${this.credentials.accessToken}` } }),
+      (signal) => fetch(url, { signal, headers: { Authorization: `Bearer ${this.credentials.accessToken}` } }),
       { isRetryableStatus: (r) => r.status === 429 },
     );
 
