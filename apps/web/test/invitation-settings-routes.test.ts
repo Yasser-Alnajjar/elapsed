@@ -241,7 +241,7 @@ describe("POST /api/settings/invitations: plan entitlements (N6.3, N6.4)", () =>
 
   it("still sends the invitation when over the seat limit, and returns the warning with an upgrade path", async () => {
     auth.session = sessionFor("org-a");
-    const warning = { resource: "seats", message: "You are using 5 of 5 seats on your plan.", upgradeUrl: "/pricing" };
+    const warning = { resource: "seats", level: "reached", message: "You have reached your plan's limit: 5 of 5 seats.", upgradeUrl: "mailto:help@elapsed.test" };
     entitlements.gateCreation.mockResolvedValue({ proceed: true, warning });
     db.createOrResendInvitation.mockResolvedValue({ invitation: {}, token: "t", organizationName: "A", resent: false });
 
@@ -257,12 +257,12 @@ describe("POST /api/settings/invitations: plan entitlements (N6.3, N6.4)", () =>
     const { NextResponse } = await import("next/server");
     entitlements.gateCreation.mockResolvedValue({
       proceed: false,
-      response: NextResponse.json({ error: "Your trial has ended.", code: "trial_expired", upgradeUrl: "/pricing" }, { status: 402 }),
+      response: NextResponse.json({ error: "Your trial has ended.", code: "trial_expired", upgradeUrl: "mailto:help@elapsed.test" }, { status: 402 }),
     });
 
     const response = await post();
     expect(response.status).toBe(402);
-    expect(await response.json()).toMatchObject({ code: "trial_expired", upgradeUrl: "/pricing" });
+    expect(await response.json()).toMatchObject({ code: "trial_expired", upgradeUrl: "mailto:help@elapsed.test" });
     expect(db.createOrResendInvitation).not.toHaveBeenCalled();
     expect(email.sendTransactionalEmail).not.toHaveBeenCalled();
   });

@@ -11,7 +11,7 @@ import { getOrganizationUsage, type OrganizationUsage, type ProviderRoleOf } fro
  * sync, and nothing deletes or disables existing data. A tenant over every
  * limit, or with a lapsed trial, is still polled, evaluated and alerted.
  *
- * - Over a plan limit: **warn**. The creation goes ahead and the event is
+ * - Reaching or going over a plan limit: **warn**. The creation goes ahead and the event is
  *   recorded for the platform admin. D14 does not require a hard block.
  * - Trial lapsed (D27): **blocked**, for new configuration only.
  * - `WorkerSettings.entitlementsEnforced` off (the default), no plan recorded,
@@ -26,6 +26,7 @@ export interface PlanSubject {
 
 export type EntitlementDecision =
   | { outcome: "allow" }
+  /** `used` is the count after this creation: `used === limit` means the plan limit is now reached, `used > limit` exceeded. */
   | { outcome: "warn"; resource: LimitedResource; used: number; limit: number }
   | { outcome: "blocked"; reason: "trial_expired"; trialEndedAt: Date };
 
@@ -49,7 +50,9 @@ export function evaluateCreation(
 
   const limit = PLANS[subject.plan].limits[resource];
   if (limit === null) return { outcome: "allow" };
-  return usage[resource] >= limit ? { outcome: "warn", resource, used: usage[resource], limit } : { outcome: "allow" };
+  // Warn when this creation reaches the limit or goes past it; never block on it.
+  const usedAfter = usage[resource] + 1;
+  return usedAfter >= limit ? { outcome: "warn", resource, used: usedAfter, limit } : { outcome: "allow" };
 }
 
 /** Which limited resource connecting `provider` would consume. */
@@ -79,6 +82,20 @@ async function recordEvent(
   }
 }
 
+/**
+ * The operator switch. Any failure to read it (a database or client that has
+ * not been migrated to this release yet, a transient error) means "off": plan
+ * state must never break a page or a creation point.
+ */
+async function readEnforced(prisma: PrismaClient): Promise<boolean> {
+  try {
+    const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
+    return settings?.entitlementsEnforced === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CheckEntitlementOptions {
   roleOf: ProviderRoleOf;
   now?: Date;
@@ -100,8 +117,7 @@ export async function checkEntitlement(
 ): Promise<EntitlementDecision> {
   const now = options.now ?? new Date();
 
-  const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
-  if (!settings?.entitlementsEnforced) return { outcome: "allow" };
+  if (!(await readEnforced(prisma))) return { outcome: "allow" };
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
@@ -140,9 +156,17 @@ export async function checkEntitlement(
 export interface TrialStatusNotice {
   state: "trial_expired";
   trialEndedAt: Date;
+  /** Whether new configuration is actually blocked, i.e. `entitlementsEnforced` is on. Off: the notice is informational only. */
+  restricted: boolean;
 }
 
-/** The notice a signed-in member sees, or null. Cheap: one organization read, and only when enforcement is on. */
+/**
+ * The notice a signed-in member sees. An ended trial is reported from the
+ * organization's own plan state whether or not enforcement is on, because it
+ * is information, not a restriction (`restricted` says which). Over-limit
+ * resources are only reported while enforcement is on. Two reads at most:
+ * the settings row and the organization, plus usage when a limit can apply.
+ */
 export async function getEntitlementNotice(
   prisma: PrismaClient,
   organizationId: string,
@@ -151,8 +175,7 @@ export async function getEntitlementNotice(
   const none = { trialExpired: null, overLimit: [] };
   const now = options.now ?? new Date();
 
-  const settings = await prisma.workerSettings.findUnique({ where: { id: "singleton" }, select: { entitlementsEnforced: true } });
-  if (!settings?.entitlementsEnforced) return none;
+  const enforced = await readEnforced(prisma);
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
@@ -161,8 +184,9 @@ export async function getEntitlementNotice(
   if (!organization || organization.planStatus === "internal") return none;
 
   if (isTrialExpired(organization, now)) {
-    return { trialExpired: { state: "trial_expired", trialEndedAt: organization.trialEndsAt! }, overLimit: [] };
+    return { trialExpired: { state: "trial_expired", trialEndedAt: organization.trialEndsAt!, restricted: enforced }, overLimit: [] };
   }
+  if (!enforced) return none;
   if (organization.planStatus === "trial" || !isPlanId(organization.plan)) return none;
 
   const usage = await getOrganizationUsage(prisma, organizationId, options.roleOf, now);

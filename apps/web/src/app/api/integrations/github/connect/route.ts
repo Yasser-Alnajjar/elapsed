@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { buildAuthorizeUrl } from "@sla/github";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
-import { BLOCKED_CONNECT_REDIRECT, gateIntegrationConnect } from "@/lib/entitlements";
+import { blockedConnectRedirect, gateIntegrationConnect } from "@/lib/entitlements";
 import { getGithubOAuthConfig, GITHUB_STATE_COOKIE } from "@/lib/github-env";
 import { signOAuthState } from "@/lib/oauth-state";
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   // N6.3: a lapsed trial blocks a new connection (D27); an over-limit plan only warns, on the admin tenant page.
   const gate = await gateIntegrationConnect(session.user.organizationId, "github");
-  if (!gate.proceed) return NextResponse.redirect(new URL(BLOCKED_CONNECT_REDIRECT, request.url));
+  if (!gate.proceed) return NextResponse.redirect(new URL(blockedConnectRedirect("github"), request.url));
 
   const repo = new URL(request.url).searchParams.get("repo")?.trim() ?? "";
   if (!OWNER_REPO_PATTERN.test(repo)) {
