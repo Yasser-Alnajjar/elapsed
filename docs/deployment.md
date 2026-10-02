@@ -126,6 +126,9 @@ The database is the only state this stack has: both app containers are
 stateless. Back it up on a schedule, keep copies off the host, and practice
 a restore before you need one.
 
+For a one-off backup before a migration or risky deploy on the production
+EC2 host, follow [production-backup-runbook.md](production-backup-runbook.md).
+
 ### What to back up
 
 1. **The database**, with [`scripts/backup.sh`](../scripts/backup.sh).
