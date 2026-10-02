@@ -110,6 +110,20 @@ export { isPerfMetricsEnabled, perfCount, withPerfScope } from "./perf-metrics";
 
 export { generateSecureToken, hashToken } from "./secure-token";
 export {
+  CONNECT_LINK_TTL_MS,
+  CONNECT_LINK_PROVIDERS,
+  isConnectLinkProvider,
+  ConnectLinkError,
+  createConnectLink,
+  resolveConnectLink,
+  resolveConnectLinkById,
+  consumeConnectLink,
+  connectLinkLabel,
+  listActiveConnectLinks,
+  revokeConnectLink,
+} from "./connect-links";
+export type { ConnectLinkProvider, ConnectLinkFailure, ValidConnectLink } from "./connect-links";
+export {
   INVITATION_TTL_MS,
   normalizeEmail,
   createOrResendInvitation,
