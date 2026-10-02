@@ -18,8 +18,8 @@
  *      registry (`providers.ts`);
  *   6. provider-name literals in `apps/web/src` appear only in the registry,
  *      the OAuth/env, webhook, concierge, integration-settings and internal
- *      surfaces (and the onboarding wizard, until N5 rebuilds it from the
- *      adapters' capabilities);
+ *      surfaces; the onboarding wizard names none, it reads the adapters' roles
+ *      and capabilities (N5.1);
  *   7. provider packages import only types and error classes from
  *      `@sla/ingestion`, never the projector;
  *   8. no provider package writes a `Case`, `Customer`, `CustomerIdentity`,
@@ -166,12 +166,6 @@ const WEB_PROVIDER_NAME_ALLOWED: RegExp[] = [
   /^lib\/integrations-data\.ts$/,
   /^lib\/integration-detail-data\.ts$/,
   /^lib\/types\/integrations\.ts$/,
-  // The onboarding wizard is built around two ticket sources and two trackers.
-  // N5 rebuilds it from the adapters' capabilities, which is when these go.
-  /^modules\/onboarding\//,
-  /^lib\/onboarding-[^/]*\.ts$/,
-  /^lib\/types\/onboarding\.ts$/,
-  /^actions\/onboarding\.ts$/,
 ];
 
 /** What a provider package may import from `@sla/ingestion` as a value: error classes and their brand. */

@@ -19,3 +19,8 @@ export const PROVIDERS = {
   linear: linearAdapter,
   github: githubAdapter,
 } satisfies Record<IntegrationProvider, ProviderAdapter>;
+
+/** The providers a case can be linked to (trackers and code hosts): what link coverage measures. */
+export const ISSUE_LINK_PROVIDERS: IntegrationProvider[] = (Object.keys(PROVIDERS) as IntegrationProvider[]).filter(
+  (provider) => PROVIDERS[provider].role !== "ticket_source",
+);

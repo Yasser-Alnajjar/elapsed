@@ -40,6 +40,8 @@ vi.mock("@/lib/jira-env", () => ({
   getJiraOAuthConfig: vi.fn(async () => ({ clientId: "id", clientSecret: "secret", redirectUri: "https://app.example.com/api/integrations/jira/callback" })),
 }));
 vi.mock("@/lib/oauth-state", () => ({
+  // Owner-session flow only: the connect-link branch is exercised in connect-link-callback.test.ts.
+  verifyOAuthState: vi.fn(() => null),
   validateOAuthState: vi.fn(({ returnedState }: { returnedState: string | null }) => {
     if (!returnedState) return { ok: false, status: 400, error: "Invalid or expired OAuth state" };
     const state = JSON.parse(returnedState) as { organizationId: string; userId: string };

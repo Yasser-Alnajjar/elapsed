@@ -28,4 +28,12 @@ export interface EmailMessage {
   text: string;
   /** Optional HTML body. Nodemailer sends a multipart message when both `text` and `html` are set, so `text` stays the guaranteed fallback for clients that can't render HTML. */
   html?: string;
+  /** Files sent with the message, from memory: the content is the whole file, never a path or URL. */
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+  contentType: string;
 }

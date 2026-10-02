@@ -8,7 +8,14 @@ import type { AttributionLedger } from "@/lib/types/dashboard";
  * (see `dashboard-data.ts`'s `getDashboardData`), which sums the same
  * `sumLegMinutes` primitive the rest of the app uses.
  */
-export function AttributionLedgerCard({ ledger }: { ledger: AttributionLedger }) {
+export function AttributionLedgerCard({
+  ledger,
+  engineeringMeasured = true,
+}: {
+  ledger: AttributionLedger;
+  /** False without a tracker: engineering hours are "not measured", never a zero (N5.2). */
+  engineeringMeasured?: boolean;
+}) {
   const rows = [
     {
       label: "Total support leg hours",
@@ -18,7 +25,7 @@ export function AttributionLedgerCard({ ledger }: { ledger: AttributionLedger })
     },
     {
       label: "Total engineering leg hours",
-      value: ledger.engineeringLegHours,
+      value: engineeringMeasured ? ledger.engineeringLegHours : null,
       dot: "bg-error",
       valueClassName: "text-error",
     },
@@ -53,7 +60,9 @@ export function AttributionLedgerCard({ ledger }: { ledger: AttributionLedger })
                 <span className="text-on-surface text-sm">{row.label}</span>
               </div>
               <span className={`font-mono text-sm font-semibold ${row.valueClassName}`}>
-                {row.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs
+                {row.value === null
+                  ? "—"
+                  : `${row.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs`}
               </span>
             </div>
           ))}
@@ -63,9 +72,11 @@ export function AttributionLedgerCard({ ledger }: { ledger: AttributionLedger })
           <div className="text-outline flex items-center justify-between font-mono text-xxs font-semibold uppercase tracking-wider">
             <span>Linking precision</span>
             <span className="text-tertiary">
-              {ledger.linkingPrecisionPercent !== null
-                ? `${ledger.linkingPrecisionPercent}% certain`
-                : "No tracked cases yet"}
+              {!engineeringMeasured
+                ? "Needs a tracker"
+                : ledger.linkingPrecisionPercent !== null
+                  ? `${ledger.linkingPrecisionPercent}% certain`
+                  : "No tracked cases yet"}
             </span>
           </div>
           <div className="bg-surface-container-highest h-1.5 w-full overflow-hidden rounded-full">
@@ -74,10 +85,16 @@ export function AttributionLedgerCard({ ledger }: { ledger: AttributionLedger })
               style={{ width: `${ledger.linkingPrecisionPercent ?? 0}%` }}
             />
           </div>
-          <div className="text-outline flex items-center justify-between font-mono text-xxs">
-            <span>{ledger.directMatches} direct ID matches</span>
-            <span>{ledger.unlinkedOrStandalone} unlinked / standalone</span>
-          </div>
+          {engineeringMeasured ? (
+            <div className="text-outline flex items-center justify-between font-mono text-xxs">
+              <span>{ledger.directMatches} direct ID matches</span>
+              <span>{ledger.unlinkedOrStandalone} unlinked / standalone</span>
+            </div>
+          ) : (
+            <p className="text-outline font-mono text-xxs">
+              Engineering time appears once a tracker is connected.
+            </p>
+          )}
         </div>
       </div>
       <div className="border-surface-container-highest/60 text-outline mt-4 flex items-center justify-between border-t pt-2 font-mono text-xs">

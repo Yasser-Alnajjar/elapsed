@@ -15,6 +15,7 @@ import {
   Settings,
   Settings2,
   ShieldAlert,
+  ShieldCheck,
   Ticket,
   Workflow,
   Wrench,
@@ -143,6 +144,11 @@ const sections: DocsSection[] = [
         title: "Configuration",
         href: "/docs/configuration",
         icon: Settings2,
+      },
+      {
+        title: "Security summary",
+        href: "/docs/security",
+        icon: ShieldCheck,
       },
       {
         title: "Troubleshooting",

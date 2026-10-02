@@ -13,8 +13,12 @@ export const metadata: Metadata = {
  * renders; every admin page and read re-checks it too (`AdminActions`), since a
  * layout is not re-run on every client navigation.
  */
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { actorEmail } = await requirePlatformAdminPage();
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = await requirePlatformAdminPage();
 
-  return <AdminShell actorEmail={actorEmail}>{children}</AdminShell>;
+  return <AdminShell user={user}>{children}</AdminShell>;
 }

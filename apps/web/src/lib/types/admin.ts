@@ -253,3 +253,31 @@ export interface AdminTenantDetail {
   casesWithNoMatchingPolicy: number;
   work: AdminWorkRunSummary | null;
 }
+
+/** One organization's usage facts (N5.7), all read from columns the app writes best-effort. */
+export interface AdminUsageOrganizationRow {
+  organizationId: string;
+  name: string;
+  /** The latest `User.lastSeenAt` among its members, or null when none has been seen since stamping began. */
+  lastSeenAt: string | null;
+  activeThisWeek: boolean;
+  /** Alerts delivered in the last 30 days, and how many were opened from their link. */
+  alertsSent30d: number;
+  alertsOpened30d: number;
+  /** `firstFindingsViewedAt - createdAt`, in minutes; null until the findings were first viewed. */
+  minutesToFirstValue: number | null;
+}
+
+/** The validation metrics (roadmap: weekly active orgs, alert click-through, time to first value), readable without SQL. */
+export interface AdminUsageData {
+  asOf: string;
+  activeWindowDays: number;
+  alertWindowDays: number;
+  organizationCount: number;
+  weeklyActiveOrganizations: number;
+  weeklyActiveUsers: number;
+  alerts: { sent: number; opened: number; clickThroughRatio: number | null };
+  timeToFirstValue: { organizations: number; medianMinutes: number | null };
+  /** Least recently seen first, so the organizations to look into lead. */
+  organizations: AdminUsageOrganizationRow[];
+}

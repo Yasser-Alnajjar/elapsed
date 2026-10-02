@@ -1,53 +1,59 @@
-import type { IntegrationConfigStatus } from "./integrations";
+import type { SourceRole } from "@sla/core";
+import type { ProviderCapabilities } from "@sla/ingestion";
+import type { IntegrationConfigStatus, IntegrationProvider } from "./integrations";
 import type { AtRiskRow, UnmatchedCaseRow } from "./dashboard";
 import type { FindingsData } from "./findings";
 import type { SlaPolicySummary } from "./sla-configuration";
 
+/**
+ * One provider as the wizard sees it. `role` and `capabilities` come from the
+ * adapter registry, so the steps follow what a provider can do instead of
+ * which provider it is (N5.1). Plain data, so it crosses to the client; the
+ * registry itself never does.
+ */
 export interface ProviderOnboardingStatus {
+  provider: IntegrationProvider;
+  label: string;
+  role: SourceRole;
+  capabilities: ProviderCapabilities;
+  /** The read-only grant connecting this provider requests, from its adapter. */
+  access: { scopes: readonly string[]; note: string | null };
+  /** Connected with live credentials, including one that needs a reconnect; a disconnected row is not connected. */
   connected: boolean;
   backfillComplete: boolean;
   reauthRequired: boolean;
+  /** The workspace subdomain stored with the credentials, when the provider has one: some reconnect links need it. */
+  subdomain: string | null;
+  /** Whether this org has saved its own OAuth app config for the provider yet; gates the connect UI (W4). */
+  config: IntegrationConfigStatus;
 }
 
 export interface OnboardingStatus {
-  /** The two ticket sources: onboarding step 1 needs one of them (N1.16). */
-  zendesk: ProviderOnboardingStatus;
-  intercom: ProviderOnboardingStatus;
-  /** The two trackers step 3 offers: it needs one of them. */
-  jira: ProviderOnboardingStatus;
-  linear: ProviderOnboardingStatus;
-  /** Whether this org has saved its own OAuth app config for each provider yet — gates the connect UI (W4). */
-  zendeskConfig: IntegrationConfigStatus;
-  intercomConfig: IntegrationConfigStatus;
-  jiraConfig: IntegrationConfigStatus;
-  linearConfig: IntegrationConfigStatus;
-  /** Gates the onboarding step 3 "alternative issue tracker" connect button (GitHub), same as the providers above. */
-  githubConfig: IntegrationConfigStatus;
-  /** Raw ticket/conversation snapshots landed so far, across ticket sources — ticks up while backfill is in flight. */
+  /** Every provider, in registry order. */
+  providers: ProviderOnboardingStatus[];
+  /** Raw ticket/conversation snapshots landed so far, across ticket sources; ticks up while backfill is in flight. */
   ticketsFetched: number;
-  /** Cases with at least one Jira or Linear case link. */
+  /** Cases with at least one work-tracker link. */
   escalatedCases: number;
-  /** Jira and Linear case-link rows (a case can in principle hold more than one). */
+  /** Work-tracker case-link rows (a case can in principle hold more than one). */
   linkedIssues: number;
 }
 
 export interface OnboardingPageData {
   status: OnboardingStatus;
-  zendeskSubdomain: string | null;
 }
 
-export type TicketSourceProvider = "zendesk" | "intercom";
-export type TrackerProvider = "jira" | "linear";
-
-/** Where an organization is in the guided flow, derived from `OnboardingStatus` — see `deriveOnboardingProgress`. */
+/** Where an organization is in the guided flow, derived from `OnboardingStatus`; see `deriveOnboardingProgress`. */
 export interface OnboardingProgressState {
-  /** The ticket source the flow follows: one that finished backfilling, else one still running (Zendesk first), else none yet. */
-  ticketSource: TicketSourceProvider | null;
-  /** A ticket source is connected and its first backfill has completed. */
+  /** The ticket source the flow follows: one that finished backfilling, else one still running, else none yet. */
+  ticketSource: IntegrationProvider | null;
+  /** A ticket source is connected and its first backfill has completed. Enough to reach the activation screen. */
   ticketSourceReady: boolean;
-  /** Which tracker is connected (Jira preferred), or null. */
-  tracker: TrackerProvider | null;
-  /** Ticket source ready and a tracker connected. */
+  /** Whether the followed ticket source imports SLA policies; false means the step is "create a first native policy". */
+  importsPolicies: boolean;
+  /** The connected work tracker, or null. A tracker is optional (N5.2). */
+  tracker: IntegrationProvider | null;
+  /** Ticket source ready and a tracker connected: the only state that advances on its own. */
   complete: boolean;
 }
 
@@ -73,16 +79,19 @@ export interface PolicyImportReview {
   unmatchedCases: UnmatchedCaseRow[];
   unmatchedOverflowCount: number;
   warnings: PolicyImportWarnings;
-  /** Null when no import has run yet (e.g. Zendesk not connected). */
+  /** Null when no import has run yet (no policy-importing source connected). */
   lastImportAt: string | null;
+  /** The connected source whose policies are imported ("your helpdesk" when none is), for the screen's copy. */
+  sourceLabel: string;
 }
 
 /**
  * The onboarding completion screen's read model (Phase 6 "Step 4 —
- * activation"): reached once a ticket source (Zendesk or Intercom) is
- * connected with its backfill done and a tracker (Jira or Linear) is connected. Built entirely from data the product already computes
- * elsewhere (dashboard at-risk rows, integration/notification status,
- * imported policy count) — nothing here is invented for this screen.
+ * activation"): reached once a ticket source is connected with its backfill
+ * done; a tracker is optional (N5.2). Built entirely from data the product
+ * already computes elsewhere (dashboard at-risk rows, integration and
+ * notification status, imported policy count): nothing here is invented for
+ * this screen.
  */
 export interface ActivationPageData {
   status: OnboardingStatus;

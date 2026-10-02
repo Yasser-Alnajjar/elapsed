@@ -102,19 +102,9 @@ export const Actions = {
       if (!response.ok) return null;
       return response.json();
     },
-    async startZendeskBackfill() {
-      return postJSON<Record<string, never>>(
-        "/api/integrations/zendesk/backfill",
-      );
-    },
-    async startIntercomBackfill() {
-      return postJSON<Record<string, never>>("/api/integrations/intercom/backfill");
-    },
-    async startJiraBackfill() {
-      return postJSON<Record<string, never>>("/api/integrations/jira/backfill");
-    },
-    async startLinearBackfill() {
-      return postJSON<Record<string, never>>("/api/integrations/linear/backfill");
+    /** Every guided provider has a backfill route at the same path; the wizard starts whichever is connected and still empty. */
+    async startBackfill(provider: IntegrationProvider) {
+      return postJSON<Record<string, never>>(`/api/integrations/${provider}/backfill`);
     },
   },
 

@@ -19,10 +19,12 @@ import type { OnboardingStatus } from "@/lib/types/onboarding";
 
 interface OnboardingProgressProps {
   status: OnboardingStatus;
-  /** The ticket source being ingested ("Zendesk" | "Intercom") and its backfill state. */
+  /** The ticket source being ingested and its backfill state. */
   sourceLabel: string;
+  /** What the source's cases are called ("tickets", "conversations"). */
+  caseNoun: string;
   sourceRunning: boolean;
-  /** The connected tracker ("Jira" | "Linear"), or null before step 3. */
+  /** The connected tracker, or null before step 3. */
   trackerLabel: string | null;
   trackerRunning: boolean;
   error: string | null;
@@ -39,7 +41,7 @@ const statCards: StatCardSpec[] = [
   {
     key: "ticketsFetched",
     icon: Archive,
-    label: "Tickets ingested",
+    label: "Ingested",
     description: "Normalized across the 90-day backfill window",
   },
   {
@@ -66,12 +68,13 @@ interface LedgerEntry {
 function buildLedger({
   status,
   sourceLabel,
+  caseNoun,
   sourceRunning,
   trackerLabel,
   trackerRunning,
 }: Pick<
   OnboardingProgressProps,
-  "status" | "sourceLabel" | "sourceRunning" | "trackerLabel" | "trackerRunning"
+  "status" | "sourceLabel" | "caseNoun" | "sourceRunning" | "trackerLabel" | "trackerRunning"
 >): LedgerEntry[] {
   const entries: LedgerEntry[] = [
     {
@@ -85,13 +88,13 @@ function buildLedger({
     entries.push({
       icon: Archive,
       tone: "primary",
-      text: `${status.ticketsFetched.toLocaleString()} tickets ingested and normalized so far`,
+      text: `${status.ticketsFetched.toLocaleString()} ${caseNoun} ingested and normalized so far`,
     });
   } else if (sourceRunning) {
     entries.push({
       icon: RefreshCw,
       tone: "muted",
-      text: "Fetching the 90-day ticket index…",
+      text: `Fetching the 90-day ${caseNoun} index…`,
     });
   }
 
@@ -144,13 +147,14 @@ const LEDGER_TONE_CLASS: Record<LedgerEntry["tone"], string> = {
 export function OnboardingProgress({
   status,
   sourceLabel,
+  caseNoun,
   sourceRunning,
   trackerLabel,
   trackerRunning,
   error,
 }: OnboardingProgressProps) {
   const running = sourceRunning || trackerRunning;
-  const ledger = buildLedger({ status, sourceLabel, sourceRunning, trackerLabel, trackerRunning });
+  const ledger = buildLedger({ status, sourceLabel, caseNoun, sourceRunning, trackerLabel, trackerRunning });
 
   return (
     <div className="flex flex-col gap-3">
@@ -181,7 +185,7 @@ export function OnboardingProgress({
             )}
             <span className="font-mono-metric-md text-mono-metric-md text-on-surface">
               {running
-                ? "Replaying ticket history — parsing timestamps and handoffs…"
+                ? `Replaying ${caseNoun} history — parsing timestamps and handoffs…`
                 : "Historical backfill complete"}
             </span>
           </div>

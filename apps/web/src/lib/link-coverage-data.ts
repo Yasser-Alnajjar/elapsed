@@ -1,59 +1,83 @@
+import { computeLinkCoverage, LINK_COVERAGE_WINDOW_DAYS, NO_LINK_COVERAGE } from "@sla/commitments";
 import type { PrismaClient } from "@sla/db";
 import { ISSUE_LINK_PROVIDERS } from "./providers";
-import type { LinkCoverage } from "./types/link-coverage";
+import type { LinkCoverage, LinkCoveragePanel, UncoveredCaseRow } from "./types/link-coverage";
 
-/** Cases opened in this many days are measured. */
-export const LINK_COVERAGE_WINDOW_DAYS = 30;
-
-export const NO_LINK_COVERAGE: LinkCoverage = { cases: 0, linkedCases: 0, ratio: null };
+export { LINK_COVERAGE_WINDOW_DAYS, NO_LINK_COVERAGE };
 
 /**
- * Link coverage: of the cases opened in the last 30 days, the share that has
- * at least one currently-active, `certain` link to a work tracker or code
- * host. A case with no such link has no engineering leg timing, so its
- * resolution time is measured without it; the ratio says how much of a
- * tenant's data that affects.
- *
- * One function so every surface agrees: the platform admin's tenants list and
- * detail (N4.4) and, later, the customer-facing panel (N5) both call it.
- * Two `groupBy` queries cover any number of organizations (no per-tenant
- * queries). Pass `organizationIds` to restrict it; the result has an entry for
- * each of them (zeros when they have no cases), and otherwise only for
- * organizations that opened a case in the window.
+ * Link coverage (see `computeLinkCoverage` in `@sla/commitments`, shared with
+ * the monthly report) for the organizations asked about, with this app's
+ * registry deciding which providers are trackers or code hosts. Two `groupBy`
+ * queries cover any number of organizations. Pass `organizationIds` to
+ * restrict it; the result has an entry for each of them (zeros when they have
+ * no cases), and otherwise only for organizations that opened a case in the
+ * window.
  */
-export async function getLinkCoverage(
+export function getLinkCoverage(
   prisma: PrismaClient,
   options: { organizationIds?: string[]; now?: Date } = {},
 ): Promise<Map<string, LinkCoverage>> {
-  const now = options.now ?? new Date();
+  return computeLinkCoverage(prisma, { ...options, issueLinkProviders: ISSUE_LINK_PROVIDERS });
+}
+
+const UNCOVERED_CASES_LIMIT = 8;
+
+/**
+ * The customer's own link coverage (N5.5): `getLinkCoverage`'s number for one
+ * organization, plus the cases that make up the gap. The percentage is the
+ * shared function's, so the dashboard, the monthly report and the platform
+ * admin print the same figure. A `probable` link never counts as covered; the
+ * cases that hold only one are reported separately instead.
+ */
+export async function getLinkCoveragePanel(
+  prisma: PrismaClient,
+  organizationId: string,
+  now: Date = new Date(),
+): Promise<LinkCoveragePanel> {
+  const coverage = (await getLinkCoverage(prisma, { organizationIds: [organizationId], now })).get(organizationId) ?? NO_LINK_COVERAGE;
   const since = new Date(now.getTime() - LINK_COVERAGE_WINDOW_DAYS * 24 * 3_600_000);
-  const scope = {
-    openedAt: { gte: since },
+  const uncoveredWhere = {
+    organizationId,
     deletedAt: null,
-    ...(options.organizationIds ? { organizationId: { in: options.organizationIds } } : {}),
+    openedAt: { gte: since },
+    caseLinks: { none: { confidence: "certain" as const, unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } } },
   };
 
-  const [casesByOrganization, linkedByOrganization] = await Promise.all([
-    prisma.case.groupBy({ by: ["organizationId"], where: scope, _count: { _all: true } }),
-    prisma.case.groupBy({
-      by: ["organizationId"],
-      where: {
-        ...scope,
-        caseLinks: {
-          some: { confidence: "certain", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } },
-        },
+  const [rows, probableOnlyCases] = await Promise.all([
+    prisma.case.findMany({
+      where: uncoveredWhere,
+      select: {
+        id: true,
+        externalId: true,
+        subject: true,
+        openedAt: true,
+        customer: { select: { name: true } },
+        caseLinks: { where: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } }, select: { id: true }, take: 1 },
       },
-      _count: { _all: true },
+      orderBy: { openedAt: "desc" },
+      take: UNCOVERED_CASES_LIMIT,
+    }),
+    prisma.case.count({
+      where: { ...uncoveredWhere, caseLinks: { some: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } } } },
     }),
   ]);
+  const uncoveredCount = coverage.cases - coverage.linkedCases;
 
-  const linked = new Map(linkedByOrganization.map((row) => [row.organizationId, row._count._all]));
-  const coverage = new Map<string, LinkCoverage>();
-  for (const organizationId of options.organizationIds ?? []) coverage.set(organizationId, NO_LINK_COVERAGE);
-  for (const row of casesByOrganization) {
-    const cases = row._count._all;
-    const linkedCases = linked.get(row.organizationId) ?? 0;
-    coverage.set(row.organizationId, { cases, linkedCases, ratio: cases > 0 ? linkedCases / cases : null });
-  }
-  return coverage;
+  const uncovered: UncoveredCaseRow[] = rows.map((row) => ({
+    caseId: row.id,
+    externalId: row.externalId,
+    subject: row.subject,
+    customerName: row.customer?.name ?? null,
+    openedAt: row.openedAt.toISOString(),
+    hasProbableLink: row.caseLinks.length > 0,
+  }));
+
+  return {
+    ...coverage,
+    windowDays: LINK_COVERAGE_WINDOW_DAYS,
+    probableOnlyCases,
+    uncovered,
+    uncoveredOverflowCount: Math.max(0, uncoveredCount - uncovered.length),
+  };
 }

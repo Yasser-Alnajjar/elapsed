@@ -94,7 +94,7 @@ function StatTile({
  * `SlaImportSummary` (Phase 1.12) plus a live "no matching policy" case
  * list (the same query the dashboard's Blind Spots panel uses, Phase 6.2).
  * A required stop in the guided onboarding flow (Phase 6.6) between the
- * Zendesk backfill and calendar/alert configuration — silent policy gaps are
+ * backfill and calendar/alert configuration — silent policy gaps are
  * exactly what this phase's dashboard work exists to surface, so onboarding
  * shouldn't let them stay invisible either. Styled to match the rest of the
  * onboarding flow's Stitch design language instead of the generic shadcn
@@ -116,7 +116,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
   return (
     <OnboardingShell
       title="Review your imported SLA policies"
-      description="Elapsed imported your Zendesk SLA policies with zero configuration — confirm what matched before connecting Jira."
+      description={`Elapsed imported your ${review.sourceLabel} SLA policies with zero configuration — confirm what matched before connecting your work tracker.`}
       currentStep={2}
       wide
     >
@@ -147,9 +147,9 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
           <StatTile
             label="Imported policies"
             value={review.importedPolicies.length}
-            badge="Zendesk"
+            badge={review.sourceLabel}
             tone="good"
-            description="Active SLA policies pulled from Zendesk."
+            description={`Active SLA policies pulled from ${review.sourceLabel}.`}
           />
           <StatTile
             label="Matched cases"
@@ -186,7 +186,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
 
           {review.importedPolicies.length === 0 ? (
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              No policies have been imported from Zendesk yet.
+              No policies have been imported from {review.sourceLabel} yet.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -296,7 +296,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
                 <li>
                   {review.warnings.unsupportedMetrics} SLA metric
                   {review.warnings.unsupportedMetrics === 1 ? "" : "s"} from
-                  Zendesk have no equivalent here.
+                  {review.sourceLabel} have no equivalent here.
                 </li>
               )}
               {review.warnings.unsupportedConditions > 0 && (
@@ -312,7 +312,7 @@ export function ReviewPoliciesView({ review }: ReviewPoliciesViewProps) {
                   {review.warnings.policiesArchived === 1
                     ? "y was"
                     : "ies were"}{" "}
-                  archived — no longer in Zendesk.
+                  archived — no longer in {review.sourceLabel}.
                 </li>
               )}
             </ul>

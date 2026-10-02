@@ -45,3 +45,76 @@ export function localDateKey(instant: Date, timeZone: string): string {
   }
   return formatter.format(instant);
 }
+
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = offsetFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: isValidTimeZone(timeZone) ? timeZone : "UTC",
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    });
+    offsetFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+/** How far `timeZone`'s wall clock is ahead of UTC at `instant`, in milliseconds (negative to the west). */
+export function timeZoneOffsetMs(instant: Date, timeZone: string): number {
+  const parts: Record<string, number> = {};
+  for (const part of offsetFormatter(timeZone).formatToParts(instant)) {
+    if (part.type !== "literal") parts[part.type] = Number(part.value);
+  }
+  const wallAsUtc = Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!);
+  // Whole seconds only: `instant` may carry milliseconds the formatter drops.
+  return wallAsUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/** The UTC instant at which `year`-`month`-`day` begins on `timeZone`'s wall clock (`month` is 1-12). */
+export function startOfLocalDay(year: number, month: number, day: number, timeZone: string): Date {
+  const wallAsUtc = Date.UTC(year, month - 1, day);
+  const first = wallAsUtc - timeZoneOffsetMs(new Date(wallAsUtc), timeZone);
+  // The offset can differ at the answer itself when a DST change falls in between.
+  const second = wallAsUtc - timeZoneOffsetMs(new Date(first), timeZone);
+  return new Date(second);
+}
+
+/** The calendar month `instant` falls in on `timeZone`'s wall clock, as `YYYY-MM`. */
+export function localMonthKey(instant: Date, timeZone: string): string {
+  return localDateKey(instant, timeZone).slice(0, 7);
+}
+
+export interface MonthBounds {
+  /** `YYYY-MM`. */
+  period: string;
+  /** First instant of the month on the zone's wall clock. */
+  start: Date;
+  /** First instant of the next month: the exclusive end. */
+  end: Date;
+}
+
+/** The instants a calendar month (`YYYY-MM`) starts and ends at on `timeZone`'s wall clock. Months have 28-31 days and can span a DST change, so this is not a fixed number of milliseconds. */
+export function monthBounds(period: string, timeZone: string): MonthBounds {
+  const match = /^(\d{4})-(\d{2})$/.exec(period);
+  if (!match) throw new Error(`Invalid month "${period}": expected YYYY-MM`);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) throw new Error(`Invalid month "${period}": expected YYYY-MM`);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return { period, start: startOfLocalDay(year, month, 1, timeZone), end: startOfLocalDay(nextYear, nextMonth, 1, timeZone) };
+}
+
+/** The calendar month before the one `now` is in, on `timeZone`'s wall clock: the month a monthly report covers. */
+export function previousMonth(now: Date, timeZone: string): MonthBounds {
+  const [year, month] = localMonthKey(now, timeZone).split("-").map(Number) as [number, number];
+  const previous = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+  return monthBounds(`${previous.year}-${String(previous.month).padStart(2, "0")}`, timeZone);
+}

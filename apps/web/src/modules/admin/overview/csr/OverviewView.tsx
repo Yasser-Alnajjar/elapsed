@@ -7,16 +7,19 @@ import { useTransition } from "react";
 import { AuditNotice, CountBadge, MonoLabel, PageHeader, SectionTitle, ZeroState } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
 import { formatUtcTimestamp } from "@/lib/admin-format";
+import type { AdminUsageData } from "@/lib/types/admin";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 import { FailedAlerts } from "./FailedAlerts";
 import { HealthyIntegrations } from "./HealthyIntegrations";
 import { IntegrationIssues } from "./IntegrationIssues";
 import { OverviewStats } from "./OverviewStats";
+import { UsageSection } from "./UsageSection";
 
 interface OverviewViewProps {
   data: OperatorMonitoringData;
   worker: WorkerMonitoringData;
+  usage: AdminUsageData;
 }
 
 /**
@@ -27,7 +30,7 @@ interface OverviewViewProps {
  * alert deliveries as `NotificationFailure` rows, each labelled with the
  * organization it belongs to. Only reachable by `PLATFORM_ADMIN_EMAILS`.
  */
-export function OverviewView({ data, worker }: OverviewViewProps) {
+export function OverviewView({ data, worker, usage }: OverviewViewProps) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
 
@@ -106,6 +109,8 @@ export function OverviewView({ data, worker }: OverviewViewProps) {
       </section>
 
       <HealthyIntegrations rows={data.healthyIntegrations} total={data.healthyIntegrationCount} />
+
+      <UsageSection usage={usage} />
 
       <AuditNotice label="Audit rule" tone="primary">
         Every operator inspection and change is recorded in the platform{" "}

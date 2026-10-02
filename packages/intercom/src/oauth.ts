@@ -27,6 +27,10 @@ export class IntercomOAuthError extends Error {
  * same Developer Hub), not a `scope` parameter here (Phase 10: stay read-only
  * in v1).
  */
+/** Where read-only access is enforced for Intercom: the app's own permissions, not a request parameter. */
+export const INTERCOM_ACCESS_NOTE =
+  "Read-only access is set by the permissions of the Intercom app you register in the Developer Hub; Intercom takes no scope per request.";
+
 export function buildAuthorizeUrl(
   config: Pick<IntercomOAuthConfig, "clientId">,
   state: string,

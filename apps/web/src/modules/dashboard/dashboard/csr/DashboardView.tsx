@@ -25,6 +25,7 @@ import { formatCommitmentKind, formatMinutes } from "@/lib/format";
 import type { DashboardData } from "@/lib/types/dashboard";
 import { AtRiskSnapshotTable } from "./AtRiskSnapshotTable";
 import { AttributionLedgerCard } from "./AttributionLedgerCard";
+import { LinkCoveragePanel } from "./LinkCoveragePanel";
 import { BlindSpotsPanel } from "./BlindSpotsPanel";
 import { KpiTile } from "./KpiTile";
 import { SlaHealthByKindCard } from "./SlaHealthByKindCard";
@@ -165,6 +166,34 @@ export const DashboardView = ({
         </div>
       </Reveal>
 
+      {!data.engineeringMeasured && (
+        <Reveal delay={0.02}>
+          <div className="bg-surface-container-low shadow-soft relative flex flex-col gap-2 overflow-hidden rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="bg-primary absolute inset-y-0 inset-s-0 w-1.5" aria-hidden />
+            <div className="flex items-start gap-3 ps-2">
+              <span className="bg-surface-container-highest flex size-8 shrink-0 items-center justify-center rounded">
+                <Network className="text-primary size-4" />
+              </span>
+              <div>
+                <p className="text-on-surface text-sm font-medium">
+                  Engineering time appears once a tracker is connected
+                </p>
+                <p className="text-outline text-sm">
+                  Support-side commitments and breaches are measured already. Engineering figures stay blank, not
+                  zero, until a work tracker is linked.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/settings/integrations"
+              className="text-primary shrink-0 ps-2 text-sm font-medium hover:underline sm:ps-0"
+            >
+              Connect a work tracker
+            </Link>
+          </div>
+        </Reveal>
+      )}
+
       {data.cycleTimeAnomalies.length > 0 && !cycleBannerDismissed && (
         <Reveal delay={0.03}>
           <div className="bg-surface-container-low shadow-soft relative overflow-hidden rounded-xl p-4">
@@ -300,21 +329,25 @@ export const DashboardView = ({
             label="Total Escalated"
             icon={Network}
             cornerFrom="from-secondary/20"
-            value={data.totalEscalated.count}
+            value={data.engineeringMeasured ? data.totalEscalated.count : "—"}
             qualifier={
               <span className="text-outline text-base">cross-team</span>
             }
             footer={
-              <div className="flex w-full items-center justify-between">
-                <span className="text-tertiary flex items-center gap-1.5">
-                  <span className="bg-tertiary size-2 rounded-full" />
-                  {data.totalEscalated.linkedCertain} Linked — Certain
-                </span>
-                <span className="text-outline flex items-center gap-1.5">
-                  <span className="bg-outline size-1.5 rounded-full" />
-                  {data.totalEscalated.unlinkedOrOther} Unlinked
-                </span>
-              </div>
+              data.engineeringMeasured ? (
+                <div className="flex w-full items-center justify-between">
+                  <span className="text-tertiary flex items-center gap-1.5">
+                    <span className="bg-tertiary size-2 rounded-full" />
+                    {data.totalEscalated.linkedCertain} Linked — Certain
+                  </span>
+                  <span className="text-outline flex items-center gap-1.5">
+                    <span className="bg-outline size-1.5 rounded-full" />
+                    {data.totalEscalated.unlinkedOrOther} Unlinked
+                  </span>
+                </div>
+              ) : (
+                <span className="text-outline">Needs a work tracker</span>
+              )
             }
           />
         </Reveal>
@@ -374,7 +407,10 @@ export const DashboardView = ({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <AtRiskSnapshotTable rows={data.atRisk} />
+              <AtRiskSnapshotTable
+                rows={data.atRisk}
+                engineeringMeasured={data.engineeringMeasured}
+              />
             </div>
           )}
           {data.atRiskOverflowCount > 0 && (
@@ -395,9 +431,17 @@ export const DashboardView = ({
         {/* Attribution Ledger — was one half of a 12-col grid alongside the
           Aging Queue card; full-width on its own now that card is gone. */}
         <Reveal delay={0.27} className="xl:col-span-6">
-          <AttributionLedgerCard ledger={data.attributionLedger} />
+          <AttributionLedgerCard
+            ledger={data.attributionLedger}
+            engineeringMeasured={data.engineeringMeasured}
+          />
         </Reveal>
       </div>
+      {data.engineeringMeasured && (
+        <Reveal delay={0.23}>
+          <LinkCoveragePanel coverage={data.linkCoverage} />
+        </Reveal>
+      )}
       <Reveal delay={0.23}>
         <BlindSpotsPanel
           unmatchedCases={data.unmatchedCases}

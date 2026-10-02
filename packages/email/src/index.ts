@@ -6,4 +6,4 @@ export {
   resolvePublicSmtpAddress,
 } from "./destination";
 export { loadDeploymentSmtpConfig, DeploymentSmtpNotConfiguredError } from "./deployment-config";
-export type { EmailConfig, EmailMessage, EmailSecurity } from "./types";
+export type { EmailAttachment, EmailConfig, EmailMessage, EmailSecurity } from "./types";

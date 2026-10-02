@@ -1,82 +1,63 @@
 import type { PrismaClient } from "@sla/db";
 import { getIntegrationConfigStatus } from "@sla/db";
+import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
 import type { OnboardingStatus, ProviderOnboardingStatus } from "./types/onboarding";
+import { PROVIDERS, WEB_PROVIDERS, WORK_TRACKER_PROVIDERS, TICKET_SOURCE_PROVIDERS } from "./providers";
 
-const TRACKERS: ("jira" | "linear")[] = ["jira", "linear"];
+const REGISTRY_ORDER = Object.keys(PROVIDERS) as IntegrationProvider[];
 
 /**
  * Cheap counts for the onboarding progress view (roadmap step 11). Reads
  * `RawEvent`/`Case`/`CaseLink` counts directly rather than running the SLA
- * engine — this is polled every few seconds while backfill is in flight, so
+ * engine: this is polled every few seconds while backfill is in flight, so
  * it has to stay fast, and "how many rows landed so far" is all a progress
- * view needs.
+ * view needs. Built from the adapter registry (N5.1): a provider added to it
+ * appears here with no change.
  */
-export async function getOnboardingStatus(
-  prisma: PrismaClient,
-  organizationId: string,
-): Promise<OnboardingStatus> {
-  const [
-    zendeskIntegration,
-    intercomIntegration,
-    jiraIntegration,
-    linearIntegration,
-    zendeskTickets,
-    intercomConversations,
-    escalatedCases,
-    linkedIssues,
-    zendeskConfig,
-    intercomConfig,
-    jiraConfig,
-    linearConfig,
-    githubConfig,
-  ] = await Promise.all([
-    integration("zendesk"),
-    integration("intercom"),
-    integration("jira"),
-    integration("linear"),
-    prisma.rawEvent.count({
-      where: { integration: { organizationId, provider: "zendesk" }, providerEventId: { startsWith: "ticket:" } },
+export async function getOnboardingStatus(prisma: PrismaClient, organizationId: string): Promise<OnboardingStatus> {
+  const [rows, configs, ticketsFetched, escalatedCases, linkedIssues] = await Promise.all([
+    prisma.integration.findMany({ where: { organizationId } }),
+    Promise.all(REGISTRY_ORDER.map((provider) => getIntegrationConfigStatus(prisma, organizationId, provider))),
+    countSnapshots(prisma, organizationId),
+    prisma.case.count({
+      where: { organizationId, deletedAt: null, caseLinks: { some: { system: { in: WORK_TRACKER_PROVIDERS } } } },
     }),
-    prisma.rawEvent.count({
-      where: { integration: { organizationId, provider: "intercom" }, providerEventId: { startsWith: "conversation:" } },
-    }),
-    prisma.case.count({ where: { organizationId, deletedAt: null, caseLinks: { some: { system: { in: TRACKERS } } } } }),
-    prisma.caseLink.count({ where: { case: { organizationId }, system: { in: TRACKERS } } }),
-    getIntegrationConfigStatus(prisma, organizationId, "zendesk"),
-    getIntegrationConfigStatus(prisma, organizationId, "intercom"),
-    getIntegrationConfigStatus(prisma, organizationId, "jira"),
-    getIntegrationConfigStatus(prisma, organizationId, "linear"),
-    getIntegrationConfigStatus(prisma, organizationId, "github"),
+    prisma.caseLink.count({ where: { case: { organizationId }, system: { in: WORK_TRACKER_PROVIDERS } } }),
   ]);
 
-  function integration(provider: "zendesk" | "intercom" | "jira" | "linear") {
-    return prisma.integration.findUnique({ where: { organizationId_provider: { organizationId, provider } } });
-  }
-
-  const provider = (
-    row: typeof zendeskIntegration,
-  ): ProviderOnboardingStatus => {
-    const credentials = row?.credentials as { reauthRequired?: boolean } | null | undefined;
+  const providers = REGISTRY_ORDER.map((provider, index): ProviderOnboardingStatus => {
+    const row = rows.find((r) => r.provider === provider);
+    const credentials = row?.credentials as { reauthRequired?: boolean; subdomain?: unknown } | null | undefined;
     const cursor = row?.cursor as { backfillCompletedAt?: string } | null | undefined;
+    const adapter = PROVIDERS[provider];
+    const { access } = WEB_PROVIDERS[provider];
     return {
-      connected: row !== null,
+      provider,
+      label: INTEGRATION_PROVIDER_LABELS[provider],
+      role: adapter.role,
+      capabilities: adapter.capabilities,
+      access: { scopes: access.scopes, note: access.note ?? null },
+      // A disconnect is a soft transition that keeps the row; it is not connected.
+      connected: row !== undefined && row.status !== "disconnected",
       backfillComplete: cursor?.backfillCompletedAt != null,
-      reauthRequired: credentials?.reauthRequired === true,
+      reauthRequired: row?.status === "reauth_required" || credentials?.reauthRequired === true,
+      subdomain: typeof credentials?.subdomain === "string" ? credentials.subdomain : null,
+      config: configs[index]!,
     };
-  };
+  });
 
-  return {
-    zendesk: provider(zendeskIntegration),
-    intercom: provider(intercomIntegration),
-    jira: provider(jiraIntegration),
-    linear: provider(linearIntegration),
-    zendeskConfig,
-    intercomConfig,
-    jiraConfig,
-    linearConfig,
-    githubConfig,
-    ticketsFetched: zendeskTickets + intercomConversations,
-    escalatedCases,
-    linkedIssues,
-  };
+  return { providers, ticketsFetched, escalatedCases, linkedIssues };
+}
+
+/** Raw case snapshots stored so far, across the ticket sources: each adapter names the prefix of its own. */
+async function countSnapshots(prisma: PrismaClient, organizationId: string): Promise<number> {
+  const counts = await Promise.all(
+    TICKET_SOURCE_PROVIDERS.flatMap((provider) => {
+      const prefix = WEB_PROVIDERS[provider].snapshotEventPrefix;
+      return prefix === undefined
+        ? []
+        : [prisma.rawEvent.count({ where: { integration: { organizationId, provider }, providerEventId: { startsWith: prefix } } })];
+    }),
+  );
+  return counts.reduce((sum, n) => sum + n, 0);
 }

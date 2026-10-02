@@ -29,13 +29,14 @@ import { createLogger, type Logger } from "@sla/logger";
 import {
   claimNotifications,
   deliverClaimedNotifications,
+  deliverMonthlyReport,
   type NotificationClaims,
 } from "@sla/notifications";
 import { caseRefResolverFor } from "./case-ref";
 import { forEachWithConcurrency, normalizeConcurrency } from "./concurrency";
 import type { WorkerConfig } from "./config";
 import { LeaseLostError, type LeaseGuard } from "./lease";
-import { PROVIDERS } from "./providers";
+import { ISSUE_LINK_PROVIDERS, PROVIDERS } from "./providers";
 import { captureException } from "./sentry";
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
@@ -169,6 +170,8 @@ export interface OrganizationRunContext {
   result: CycleResult;
   /** The configured active-poll interval — sizes the poll's "new events" lookback. */
   activePollMs?: number;
+  /** The operator kill switch for the monthly customer report (N5.6), read when a reconciliation run reaches it. Absent: on. */
+  monthlyReportEnabled?: () => Promise<boolean>;
   /** Log label only, e.g. "3/10". */
   position: string;
   /** Organizations being processed right now (log label only). */
@@ -773,6 +776,39 @@ export async function processOrganization(
             kind,
             stage: "notifications",
           });
+        }
+      },
+      { organizationId: organization.id, kind },
+    );
+  }
+
+  // Monthly customer report (N5.6). Reconciliation runs only: it is the
+  // slower, once-per-interval tick, and a month is checked, not recomputed,
+  // each time (one organization read, one deliveries read once settled).
+  if (kind === "reconciliation_sweep") {
+    await withPerfScope(
+      "worker_monthly_report",
+      async () => {
+        try {
+          const report = await deliverMonthlyReport(prisma, organization.id, {
+            appUrl: config.appUrl ?? null,
+            issueLinkProviders: ISSUE_LINK_PROVIDERS,
+            enabled: (await ctx.monthlyReportEnabled?.()) ?? true,
+            // Sending is the one step that cannot be undone: confirm against the database that this worker still owns the organization.
+            beforeSend: async () => {
+              await lease?.assertHeld();
+            },
+          });
+          if (Object.values(report.channels).some((outcome) => outcome === "sent" || outcome === "failed")) {
+            orgLogger.info("monthly_report_delivered", { position, period: report.period, channels: report.channels });
+          }
+        } catch (error) {
+          // Not a stage failure of the SLA pipeline: a report that cannot be built or sent must
+          // not mark the worker degraded. The reason is on `ReportDelivery.error` for the operator;
+          // only losing the lease (not ours to record) is passed up.
+          if (error instanceof LeaseLostError) throw error;
+          orgLogger.warn("monthly_report_failed", { position, error: error instanceof Error ? error.message : String(error) });
+          captureException(error, { organizationId: organization.id, kind, stage: "monthly_report" });
         }
       },
       { organizationId: organization.id, kind },

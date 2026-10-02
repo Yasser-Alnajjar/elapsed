@@ -2,6 +2,7 @@ import { IntegrationNotConfiguredError, type ProviderAdapter, type ProviderWebAd
 import { runGithubBackfill } from "./backfill";
 import { correlateGithub } from "./correlate";
 import { buildGithubBatch } from "./normalize";
+import { GITHUB_ACCESS_NOTE } from "./oauth";
 import { GITHUB_SOURCE_ROLE } from "./source-role";
 
 const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, n) => sum + n, 0);
@@ -35,6 +36,7 @@ export const githubAdapter: ProviderAdapter = {
 };
 
 export const githubWebAdapter: ProviderWebAdapter = {
+  access: { scopes: [], note: GITHUB_ACCESS_NOTE },
   // A pull request's externalId (`owner/repo#number`) is enough to build its
   // URL: no credential lookup or evidence capture needed.
   externalUrl: ({ externalId }) => `https://github.com/${externalId.replace("#", "/pull/")}`,

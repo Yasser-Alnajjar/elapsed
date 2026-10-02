@@ -7,7 +7,7 @@ export { computeSourceHash } from "./hash";
 export { runLinearBackfill } from "./backfill";
 export type { BackfillResult } from "./backfill";
 export type { LinearOAuthConfig } from "./oauth";
-export { buildAuthorizeUrl, exchangeCodeForToken, LinearOAuthError } from "./oauth";
+export { buildAuthorizeUrl, exchangeCodeForToken, LINEAR_OAUTH_SCOPES, LinearOAuthError } from "./oauth";
 export { loadFreshLinearCredentials, markReauthRequired, LinearReauthRequiredError } from "./tokenLifecycle";
 export {
   normalizeLinearStateType,

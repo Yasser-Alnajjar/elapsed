@@ -300,8 +300,28 @@ export interface LinkManifest {
   activeLinkIds: ReadonlySet<number>;
 }
 
+/**
+ * What an integration is allowed to do in the provider's own system. The
+ * onboarding wizard and the public security summary both print this, so the
+ * `scopes` are the constants the authorize URL is built from, never a copy.
+ */
+export interface ProviderAccess {
+  /** OAuth scopes requested at connect time; empty when the provider takes none per request (see `note`). */
+  scopes: readonly string[];
+  /** Where read-only access is enforced when it is not a request parameter (an app registered with read-only permissions). */
+  note?: string;
+}
+
 /** Web-side rendering and webhook hooks, in `apps/web/src/lib/providers.ts`. */
 export interface ProviderWebAdapter {
+  /** What connecting this provider grants; read-only for every provider (Phase 10). */
+  access: ProviderAccess;
+  /**
+   * Ticket sources: the `providerEventId` prefix of the raw event that holds
+   * one case's snapshot. Onboarding counts these as "tickets ingested" while a
+   * backfill is in flight, before anything is normalized.
+   */
+  snapshotEventPrefix?: string;
   /** A link to the record in the provider's own UI, or null when the stored credentials or evidence cannot name one. */
   externalUrl(ref: { externalId: string; credentials: unknown; evidence?: unknown }): string | null;
   /**

@@ -13,7 +13,14 @@ import { Button } from "@/components/ui/button";
  * this component deliberately has no such chrome. Composite cells (dual-ID
  * correlation, leg-allocation bar) instead of one scalar value per cell.
  */
-export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
+export function AtRiskSnapshotTable({
+  rows,
+  engineeringMeasured = true,
+}: {
+  rows: AtRiskRow[];
+  /** False without a tracker: engineering minutes are not measured, so they are not printed as a zero (N5.2). */
+  engineeringMeasured?: boolean;
+}) {
   return (
     <table className="w-full text-start border-collapse">
       <thead>
@@ -31,7 +38,7 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
       <tbody className="divide-y divide-surface-container-highest/40 text-sm">
         {rows.map((row) => {
           const supportMinutes = row.supportLegMinutes ?? 0;
-          const engineeringMinutes = row.engineeringLegMinutes ?? 0;
+          const engineeringMinutes = engineeringMeasured ? (row.engineeringLegMinutes ?? 0) : 0;
           const legTotal = supportMinutes + engineeringMinutes;
           const supportPercent =
             legTotal > 0 ? (supportMinutes / legTotal) * 100 : 100;
@@ -101,9 +108,15 @@ export function AtRiskSnapshotTable({ rows }: { rows: AtRiskRow[] }) {
                       Support {formatMinutes(supportMinutes)}
                     </span>
                     <span className="text-muted-foreground">•</span>
-                    <span className="text-error font-medium">
-                      Eng {formatMinutes(engineeringMinutes)}
-                    </span>
+                    {engineeringMeasured ? (
+                      <span className="text-error font-medium">
+                        Eng {formatMinutes(engineeringMinutes)}
+                      </span>
+                    ) : (
+                      <span className="text-outline" title="Engineering time appears once a tracker is connected">
+                        Eng —
+                      </span>
+                    )}
                   </div>
                   <div className="bg-surface-container-highest flex h-1.5 w-32 overflow-hidden rounded-full">
                     <div

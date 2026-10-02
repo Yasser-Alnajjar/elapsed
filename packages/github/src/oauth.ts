@@ -18,6 +18,10 @@ export interface GithubOAuthConfig {
  * write-capable `repo` scope. Their stored tokens keep working until the
  * organization switches to a GitHub App and reconnects.
  */
+/** Where read-only access is enforced for GitHub: the GitHub App's registered permissions, not a request parameter. */
+export const GITHUB_ACCESS_NOTE =
+  "Read-only access is set by the permissions of the GitHub App you register (Pull requests: read, Contents: read), limited to the repositories it is installed on; GitHub ignores a scope parameter for an App.";
+
 const AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";
 

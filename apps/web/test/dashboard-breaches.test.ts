@@ -228,6 +228,8 @@ function fakePrisma(cases: Seeded[], breachedAtByCommitmentId: ReadonlyMap<strin
       // has a commitment, so nothing qualifies.
       findMany: async () => [],
       count: async () => 0,
+      // N5.5's link coverage panel: no cases in the window, so nothing to group.
+      groupBy: async () => [],
     },
     workerSettings: { findUnique: async () => null },
     integration: {
@@ -251,6 +253,7 @@ function fakePrisma(cases: Seeded[], breachedAtByCommitmentId: ReadonlyMap<strin
       // Dashboard reconstruction (Total Escalated / Attribution Ledger):
       // no case-link fixtures in these tests, so every case is unlinked.
       findMany: async () => [],
+      findFirst: async () => null,
     },
   } as unknown as PrismaClient;
 }

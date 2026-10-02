@@ -38,11 +38,12 @@ import {
 } from "@/components/ui/table";
 import { Actions } from "@/actions/client";
 import { formatMinutes } from "@/lib/format";
-import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
+import { deriveOnboardingProgress, providerStatus } from "@/lib/onboarding-progress";
 import type { ActivationPageData } from "@/lib/types/onboarding";
 import type { FindingsData } from "@/lib/types/findings";
 
 import { AtRiskSnapshotTable } from "@modules/dashboard/dashboard/csr/AtRiskSnapshotTable";
+import { providerPresentation } from "@modules/settings/integrations/csr/provider-presentation";
 
 const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
 
@@ -69,9 +70,11 @@ interface CompletedStep {
   number: string;
   label: string;
   detail: string;
+  /** A step that was optional and skipped, shown as open instead of done. Defaults to done. */
+  pending?: boolean;
 }
 
-/** The 4-step completion strip — steps 1-3 are always done by the time this screen renders (`getActivationData` redirects back to `/onboarding` otherwise). */
+/** The 4-step completion strip. Steps 1, 2 and 4 are always done by the time this screen renders (`getActivationData` redirects back to `/onboarding` otherwise); step 3, the work tracker, is optional and shows as open without one (N5.2). */
 function CompletionStrip({ steps }: { steps: CompletedStep[] }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -89,12 +92,18 @@ function CompletionStrip({ steps }: { steps: CompletedStep[] }) {
           >
             <div
               className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
-                isLast
-                  ? "bg-tertiary text-on-tertiary"
-                  : "bg-tertiary/20 text-tertiary"
+                step.pending
+                  ? "bg-surface-container-high text-on-surface-variant"
+                  : isLast
+                    ? "bg-tertiary text-on-tertiary"
+                    : "bg-tertiary/20 text-tertiary"
               }`}
             >
-              <Check className="size-3.5 shrink-0" />
+              {step.pending ? (
+                <span className="size-1.5 rounded-full bg-current" />
+              ) : (
+                <Check className="size-3.5 shrink-0" />
+              )}
             </div>
             <div className="min-w-0">
               <span className="font-body-sm text-body-sm font-medium text-on-surface-variant">
@@ -238,14 +247,37 @@ function HealthCard({
   );
 }
 
+/** Shown wherever engineering time would be, until a tracker is connected: a neutral "not yet", never a zero presented as a fact (N5.2). */
+function NoTrackerNotice({ description }: { description: string }) {
+  return (
+    <EmptyState
+      icon={Workflow}
+      title="Engineering time appears once a tracker is connected"
+      description={description}
+      action={
+        <Button asChild variant="outline" size="sm">
+          <Link href="/settings/integrations">Connect a work tracker</Link>
+        </Button>
+      }
+    />
+  );
+}
+
 /** What the 90-day backfill actually found — folded in from the old standalone "findings" page instead of a second screen. */
 function FindingsSection({
   findings,
   trackerLabel,
 }: {
   findings: FindingsData;
-  trackerLabel: string;
+  /** Null without a connected tracker: escalations cannot be counted yet. */
+  trackerLabel: string | null;
 }) {
+  if (trackerLabel === null) {
+    return (
+      <NoTrackerNotice description="Support-side commitments are tracked already. Connect Jira, Linear or another tracker to see which tickets were escalated and how long they waited in engineering." />
+    );
+  }
+
   const hasFindings = findings.totalEscalated > 0;
 
   if (!hasFindings) {
@@ -263,7 +295,7 @@ function FindingsSection({
       <p className="font-body-md text-body-md text-on-surface">
         Over the last {findings.periodDays} days,{" "}
         <strong className="text-primary">{findings.totalEscalated}</strong>{" "}
-        ticket{findings.totalEscalated === 1 ? " was" : "s were"} escalated to
+        ticket{findings.totalEscalated === 1 ? " was" : "s were"} escalated to{" "}
         {trackerLabel}. <strong className="text-error">{findings.exceededTarget}</strong>{" "}
         of {findings.exceededTarget === 1 ? "it" : "them"} exceeded{" "}
         {findings.exceededTarget === 1 ? "its" : "their"} customer resolution
@@ -411,16 +443,14 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
     findings,
   } = data;
 
-  // Names the ticket source / tracker that is actually connected (N1.16).
+  // Names the ticket source and tracker that are actually connected. The
+  // tracker is optional (N5.2): without one, engineering time is "not yet".
   const { ticketSource, tracker } = deriveOnboardingProgress(status);
-  const sourceLabel = ticketSource === "intercom" ? "Intercom" : "Zendesk";
-  const trackerLabel = tracker === "linear" ? "Linear" : "Jira";
-  const ticketNoun = ticketSource === "intercom" ? "conversations" : "tickets";
-
-  const correlationRate =
-    status.escalatedCases > 0
-      ? Math.round((status.linkedIssues / status.escalatedCases) * 100)
-      : null;
+  const source = ticketSource ? providerStatus(status, ticketSource) : null;
+  const trackerStatus = tracker ? providerStatus(status, tracker) : null;
+  const sourceLabel = source?.label ?? "Your helpdesk";
+  const trackerLabel = trackerStatus?.label ?? null;
+  const ticketNoun = source ? providerPresentation(source.provider).caseNoun : "tickets";
 
   const overflowCount = Math.max(0, atRiskTotal - atRiskPreview.length);
 
@@ -438,7 +468,7 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           steps={[
             {
               number: "01",
-              label: `${sourceLabel} ${ticketSource === "intercom" ? "Workspace" : "Helpdesk"}`,
+              label: `${sourceLabel} workspace`,
               detail: `${status.ticketsFetched.toLocaleString()} ${ticketNoun} ingested`,
             },
             {
@@ -446,11 +476,18 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               label: "90d Baseline Data",
               detail: `${status.ticketsFetched.toLocaleString()} ${ticketNoun} verified`,
             },
-            {
-              number: "03",
-              label: tracker === "linear" ? "Linear" : "Jira Software",
-              detail: `${status.linkedIssues.toLocaleString()} issue keys paired`,
-            },
+            trackerLabel !== null
+              ? {
+                  number: "03",
+                  label: trackerLabel,
+                  detail: `${status.linkedIssues.toLocaleString()} issue keys paired`,
+                }
+              : {
+                  number: "03",
+                  label: "Work tracker",
+                  detail: "Optional — not connected yet",
+                  pending: true,
+                },
             {
               number: "04",
               label: "Live SLA",
@@ -480,37 +517,39 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                 online
               </h1>
               <p className={`${DESCRIPTION_CLASS} max-w-xl`}>
-                {sourceLabel} and {trackerLabel} are deterministically paired. The continuous
-                customer SLA clock is running across every open commitment,
-                including handoffs between support and engineering.
+                {trackerLabel !== null
+                  ? `${sourceLabel} and ${trackerLabel} are deterministically paired. The continuous customer SLA clock is running across every open commitment, including handoffs between support and engineering.`
+                  : `${sourceLabel} is connected and the customer SLA clock is running across every open commitment. Engineering time appears once a tracker is connected.`}
               </p>
               <div className="font-label-caps text-label-caps flex flex-wrap items-center gap-6 pt-1 text-on-surface-variant">
                 <div className="flex items-center gap-2">
                   <Ticket className="size-4 text-primary shrink-0" />
                   <span>
-                    {ticketSource === "intercom" ? "Conversations" : "Tickets"}{" "}
+                    {ticketNoun.charAt(0).toUpperCase() + ticketNoun.slice(1)}{" "}
                     ingested:{" "}
                     <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
                       {status.ticketsFetched.toLocaleString()}
                     </strong>
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Workflow className="size-4 text-primary shrink-0" />
-                  <span>
-                    Escalated to {trackerLabel}:{" "}
-                    <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
-                      {status.escalatedCases.toLocaleString()}
-                    </strong>
-                  </span>
-                </div>
-                {correlationRate !== null && (
+                {trackerLabel !== null && (
+                  <div className="flex items-center gap-2">
+                    <Workflow className="size-4 text-primary shrink-0" />
+                    <span>
+                      Escalated to {trackerLabel}:{" "}
+                      <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
+                        {status.escalatedCases.toLocaleString()}
+                      </strong>
+                    </span>
+                  </div>
+                )}
+                {trackerLabel !== null && status.linkedIssues > 0 && (
                   <div className="flex items-center gap-2">
                     <Network className="size-4 text-tertiary shrink-0" />
                     <span>
-                      Issue correlation:{" "}
+                      Linked issues:{" "}
                       <strong className="font-mono-metric-md text-mono-metric-md text-on-surface">
-                        {correlationRate}%
+                        {status.linkedIssues.toLocaleString()}
                       </strong>
                     </span>
                   </div>
@@ -568,25 +607,37 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
               footer={[{ label: "Sync mode", value: "Read-only, incremental" }]}
             />
 
-            <HealthCard
-              icon={Workflow}
-              label={`${trackerLabel} tracker`}
-              status="Active"
-              statusTone="good"
-              value={status.linkedIssues.toLocaleString()}
-              valueUnit="issues linked"
-              description={
-                correlationRate !== null
-                  ? `${correlationRate}% of escalated cases correlated`
-                  : `No cases escalated to ${trackerLabel} yet`
-              }
-              footer={[
-                {
-                  label: "Escalated cases",
-                  value: status.escalatedCases.toLocaleString(),
-                },
-              ]}
-            />
+            {trackerLabel !== null ? (
+              <HealthCard
+                icon={Workflow}
+                label={`${trackerLabel} tracker`}
+                status="Active"
+                statusTone="good"
+                value={status.linkedIssues.toLocaleString()}
+                valueUnit="issues linked"
+                description={
+                  status.escalatedCases > 0
+                    ? `${status.escalatedCases.toLocaleString()} escalated case${status.escalatedCases === 1 ? "" : "s"} linked`
+                    : `No cases escalated to ${trackerLabel} yet`
+                }
+                footer={[
+                  {
+                    label: "Escalated cases",
+                    value: status.escalatedCases.toLocaleString(),
+                  },
+                ]}
+              />
+            ) : (
+              <HealthCard
+                icon={Workflow}
+                label="Work tracker"
+                status="Not connected"
+                statusTone="warn"
+                value="—"
+                description="Engineering time appears once a tracker is connected"
+                footer={[{ label: "Escalated cases", value: "Not measured" }]}
+              />
+            )}
 
             <HealthCard
               icon={AlarmClockCheck}
@@ -663,7 +714,10 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <AtRiskSnapshotTable rows={atRiskPreview} />
+                <AtRiskSnapshotTable
+                  rows={atRiskPreview}
+                  engineeringMeasured={trackerLabel !== null}
+                />
               </div>
               {overflowCount > 0 && (
                 <div className="border-t border-outline-variant/20 px-5 py-3">
@@ -698,7 +752,8 @@ export function ActivationView({ data }: { data: ActivationPageData }) {
                   </div>
                   <div className={DESCRIPTION_CLASS}>
                     Read-only access — nothing is ever written back to{" "}
-                    {sourceLabel} or {trackerLabel}.
+                    {sourceLabel}
+                    {trackerLabel !== null ? ` or ${trackerLabel}` : ""}.
                   </div>
                 </div>
               </div>

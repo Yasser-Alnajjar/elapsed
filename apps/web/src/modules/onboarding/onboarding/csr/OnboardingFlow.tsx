@@ -6,20 +6,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   CircleCheck,
-  Code,
-  Database,
-  History,
   Hourglass,
+  History,
   KeyRound,
-  Layers,
   ListChecks,
   Lock,
-  MessageCircle,
   Network,
   Route,
   Shield,
   ShieldCheck,
-  Ticket,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -28,17 +23,14 @@ import { OnboardingShell } from "@/components/shared/onboarding-shell";
 import { Reveal } from "@/components/shared/reveal";
 import { ReauthBanner } from "@/components/shared/reauth-banner";
 import { Button } from "@/components/ui/button";
-import { deriveOnboardingProgress } from "@/lib/onboarding-progress";
-import type { OnboardingStatus } from "@/lib/types/onboarding";
+import { deriveOnboardingProgress, providerStatus } from "@/lib/onboarding-progress";
+import type { OnboardingStatus, ProviderOnboardingStatus } from "@/lib/types/onboarding";
 
 import { IntegrationConfigGate } from "@modules/settings/integrations/csr/IntegrationConfigGate";
-import { IntercomConnectButton } from "@modules/settings/integrations/csr/IntercomCard";
-import { JiraConnectButton } from "@modules/settings/integrations/csr/JiraCard";
-import { LinearConnectButton } from "@modules/settings/integrations/csr/LinearCard";
-import { GithubConnectForm } from "@modules/settings/integrations/csr/GithubCard";
-import { ZendeskConnectForm } from "@modules/settings/integrations/csr/ZendeskCard";
+import { providerPresentation } from "@modules/settings/integrations/csr/provider-presentation";
 
 import { OnboardingProgress } from "./OnboardingProgress";
+import { RequestTrackerAccess } from "./RequestTrackerAccess";
 import { useOnboardingBackfill } from "./useOnboardingBackfill";
 
 const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
@@ -49,6 +41,8 @@ interface ConnectorHeaderProps {
   name: string;
   badge: string;
   tagline: string;
+  /** Not promoted out of Beta yet (D17). */
+  beta?: boolean;
 }
 
 /** Icon + name + connector badge above a provider's connect form — ported from the mockups' connector card header. */
@@ -57,6 +51,7 @@ function ConnectorHeader({
   name,
   badge,
   tagline,
+  beta = false,
 }: ConnectorHeaderProps) {
   return (
     <div className="flex items-center gap-3">
@@ -71,6 +66,11 @@ function ConnectorHeader({
           <span className="font-label-caps text-label-caps rounded bg-primary/10 px-1.5 py-0.5 uppercase text-primary">
             {badge}
           </span>
+          {beta && (
+            <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
+              Beta
+            </span>
+          )}
         </div>
         <span className="font-body-sm text-body-sm text-on-surface-variant">
           {tagline}
@@ -80,24 +80,32 @@ function ConnectorHeader({
   );
 }
 
-/** Read-only OAuth scope banner with the pill list from the mockups' "Permission Scope Banner". */
-function ScopeBanner({ label, scopes }: { label: string; scopes: string[] }) {
+/**
+ * Read-only access banner. The scopes are the ones the provider's authorize
+ * URL is built from (via its adapter), never a copy; a provider that takes no
+ * scope per request prints where its read-only grant is configured instead.
+ */
+function ScopeBanner({ access }: { access: ProviderOnboardingStatus["access"] }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-surface-container-lowest p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2 text-on-surface-variant">
         <ShieldCheck className="size-[18px] shrink-0 text-tertiary" />
-        <span className="font-body-sm text-body-sm">{label}</span>
+        <span className="font-body-sm text-body-sm">
+          {access.scopes.length > 0 ? "Read-only scopes enforced:" : (access.note ?? "Read-only access.")}
+        </span>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {scopes.map((scope) => (
-          <span
-            key={scope}
-            className="font-code-audit text-code-audit rounded bg-surface-container-high px-1.5 py-0.5 text-primary"
-          >
-            {scope}
-          </span>
-        ))}
-      </div>
+      {access.scopes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {access.scopes.map((scope) => (
+            <span
+              key={scope}
+              className="font-code-audit text-code-audit rounded bg-surface-container-high px-1.5 py-0.5 text-primary"
+            >
+              {scope}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -158,35 +166,15 @@ function StatStrip({ stats }: { stats: StatItem[] }) {
   );
 }
 
-interface BetaConnectorCardProps {
-  provider: "intercom" | "linear" | "github";
-  icon: LucideIcon;
-  name: string;
-  tagline: string;
-  config: OnboardingStatus["linearConfig"];
-  descriptionText: string;
-  helpUrl: string;
-  helpLabel: string;
-  connectAction: ReactNode;
-  /** Show the Beta label — Linear has graduated, Intercom/GitHub have not. */
-  beta?: boolean;
+interface ProviderCardProps {
+  provider: ProviderOnboardingStatus;
   onConfigured?: () => void;
 }
 
-/** A real, working Beta connector (Intercom as a ticket source; Linear/GitHub as engineering-leg sources) — gated the same way as Jira/Zendesk, not a "coming soon" placeholder. */
-function BetaConnectorCard({
-  provider,
-  icon: Icon,
-  name,
-  tagline,
-  config,
-  descriptionText,
-  helpUrl,
-  helpLabel,
-  connectAction,
-  beta = true,
-  onConfigured,
-}: BetaConnectorCardProps) {
+/** A compact connect card for a provider that is offered next to the primary one: gated on its OAuth app config like the primary card. */
+function AlternativeConnectorCard({ provider, onConfigured }: ProviderCardProps) {
+  const { icon: Icon, tagline, beta, help, readOnlyNote, Connect } = providerPresentation(provider.provider);
+
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface-container p-5 shadow-sm">
       <div className="flex items-center gap-3">
@@ -196,7 +184,7 @@ function BetaConnectorCard({
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <span className="font-headline-sm text-headline-sm text-on-surface">
-              {name}
+              {provider.label}
             </span>
             {beta && (
               <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
@@ -211,22 +199,64 @@ function BetaConnectorCard({
       </div>
 
       <IntegrationConfigGate
-        provider={provider}
-        providerLabel={name}
-        config={config}
-        descriptionClass="font-body-sm text-body-sm text-on-surface-variant"
-        helpUrl={helpUrl}
-        helpLabel={helpLabel}
+        provider={provider.provider}
+        providerLabel={provider.label}
+        config={provider.config}
+        descriptionClass={DESCRIPTION_CLASS}
+        helpUrl={help?.url}
+        helpLabel={help?.label}
         onConfigured={onConfigured}
       >
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {descriptionText}
+            {readOnlyNote}
           </p>
-          {connectAction}
+          <Connect returnTo="onboarding" />
         </div>
       </IntegrationConfigGate>
     </div>
+  );
+}
+
+/** The large connect card for a role's primary connector: header, read-only scopes, then the gated connect control. */
+function PrimaryConnectorCard({
+  provider,
+  description,
+  footer,
+  onConfigured,
+}: ProviderCardProps & { description: string; footer?: ReactNode }) {
+  const { icon, tagline, beta, help, Connect } = providerPresentation(provider.provider);
+
+  return (
+    <ConnectorCard>
+      <ConnectorHeader
+        icon={icon}
+        name={provider.label}
+        badge="Primary connector"
+        tagline={tagline}
+        beta={beta}
+      />
+
+      <ScopeBanner access={provider.access} />
+
+      <IntegrationConfigGate
+        provider={provider.provider}
+        providerLabel={provider.label}
+        config={provider.config}
+        descriptionClass={DESCRIPTION_CLASS}
+        helpUrl={help?.url}
+        helpLabel={help?.label}
+        onConfigured={onConfigured}
+      >
+        <p className={DESCRIPTION_CLASS}>{description}</p>
+
+        <div className="mt-4">
+          <Connect returnTo="onboarding" />
+        </div>
+      </IntegrationConfigGate>
+
+      {footer}
+    </ConnectorCard>
   );
 }
 
@@ -246,8 +276,9 @@ function NextStepPanel() {
         </h3>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           The SLA clock keeps running when a case moves into engineering.
-          Connecting Jira or Linear next links each escalated ticket to its issue so
-          that time is never silently dropped.
+          Connecting a work tracker next links each escalated ticket to its
+          issue so that time is never silently dropped. It is optional: you can
+          start without one.
         </p>
       </div>
       <span className="font-label-caps text-label-caps self-start rounded bg-primary-container/20 px-1.5 py-0.5 uppercase text-primary">
@@ -359,27 +390,23 @@ function ConnectorCard({ children }: { children: ReactNode }) {
   );
 }
 
+
 interface OnboardingFlowProps {
   initialStatus: OnboardingStatus;
-  zendeskSubdomain: string | null;
 }
 
-export function OnboardingFlow({
-  initialStatus,
-  zendeskSubdomain,
-}: OnboardingFlowProps) {
+/**
+ * The guided flow (N5.1), built from what each connected provider can do and
+ * not from which provider it is: step 1 connects a ticket source, step 2
+ * watches its backfill and then either reviews imported policies (a source
+ * with the `policyImport` capability) or offers a first native policy, step 3
+ * optionally connects a work tracker. Any supported pair takes the same path.
+ */
+export function OnboardingFlow({ initialStatus }: OnboardingFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const {
-    status,
-    error,
-    zendeskRunning,
-    intercomRunning,
-    jiraRunning,
-    linearRunning,
-    refresh,
-  } = useOnboardingBackfill({
+  const { status, error, isRunning, refresh } = useOnboardingBackfill({
     status: initialStatus,
   });
 
@@ -422,29 +449,31 @@ export function OnboardingFlow({
     router.replace("/onboarding");
   }, [searchParams, router]);
 
-  // Step 1 is "a ticket source" — Zendesk or Intercom — and step 3 is "a
-  // tracker" — Jira or Linear (N1.16).
-  const { ticketSource, ticketSourceReady, tracker, complete } =
+  const { ticketSource, ticketSourceReady, importsPolicies, tracker, complete } =
     deriveOnboardingProgress(status);
   const onboardingComplete = complete;
 
-  const sourceLabel = ticketSource === "intercom" ? "Intercom" : "Zendesk";
-  const trackerLabel =
-    tracker === "linear" ? "Linear" : tracker === "jira" ? "Jira" : null;
-  const sourceRunning =
-    ticketSource === "intercom" ? intercomRunning : zendeskRunning;
-  const trackerRunning = tracker === "linear" ? linearRunning : jiraRunning;
+  const source = ticketSource ? providerStatus(status, ticketSource) : null;
+  const trackerStatus = tracker ? providerStatus(status, tracker) : null;
+  const sourceLabel = source?.label ?? "your helpdesk";
+  const caseNoun = source ? providerPresentation(source.provider).caseNoun : "tickets";
+  const trackerLabel = trackerStatus?.label ?? null;
+  const sourceRunning = isRunning(ticketSource);
+  const trackerRunning = isRunning(tracker);
   const trackerConnected = tracker !== null;
 
-  // Zendesk imports SLA policies, so the flow stops to review them. Intercom
-  // has none to import (D9): the equivalent step is creating a first native
-  // policy, offered but never blocking.
-  const readyToReviewPolicies = ticketSourceReady && ticketSource === "zendesk";
-  const readyToCreatePolicy = ticketSourceReady && ticketSource === "intercom";
+  const ticketSources = status.providers.filter((p) => p.role === "ticket_source");
+  const trackers = status.providers.filter((p) => p.role === "work_tracker");
+  const codeHosts = status.providers.filter((p) => p.role === "code_host");
+
+  // A source that imports policies stops the flow to review them; one that
+  // does not (D9) offers creating a first native policy, never blocking.
+  const readyToReviewPolicies = ticketSourceReady && importsPolicies;
+  const readyToCreatePolicy = ticketSourceReady && !importsPolicies;
 
   const readyToConnectTracker =
     ticketSourceReady &&
-    (ticketSource !== "zendesk" || reviewedPolicies || trackerConnected);
+    (!importsPolicies || reviewedPolicies || trackerConnected);
 
   const currentStep: 1 | 2 | 3 | null = ticketSource === null
     ? 1
@@ -466,7 +495,10 @@ export function OnboardingFlow({
     return () => window.clearTimeout(timeout);
   }, [router, onboardingComplete]);
 
-  if (ticketSource === null) {
+  if (source === null) {
+    const [primarySource, ...otherSources] = ticketSources;
+    const primary = primarySource ? providerPresentation(primarySource.provider) : null;
+
     return (
       <OnboardingShell
         title="Connect your support helpdesk in 30 seconds"
@@ -482,70 +514,41 @@ export function OnboardingFlow({
       >
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-5 lg:col-span-7">
-            <Reveal>
-              <ConnectorCard>
-                <div className="flex items-start justify-between gap-3">
-                  <ConnectorHeader
-                    icon={Ticket}
-                    name="Zendesk Support"
-                    badge="Primary connector"
-                    tagline="Ticket timestamps, SLA policies, and organizations"
-                  />
-                </div>
-
-                <ScopeBanner
-                  label="Read-only scopes enforced:"
-                  scopes={["tickets:read", "users:read", "audit_logs:read"]}
-                />
-
-                <IntegrationConfigGate
-                  provider="zendesk"
-                  providerLabel="Zendesk"
-                  config={status.zendeskConfig}
-                  descriptionClass={DESCRIPTION_CLASS}
+            {primarySource && primary && (
+              <Reveal>
+                <PrimaryConnectorCard
+                  provider={primarySource}
                   onConfigured={refresh}
-                >
-                  <p className={DESCRIPTION_CLASS}>
-                    Connect Zendesk to pull your last 90 days of tickets, SLA
-                    policies, and organizations — read-only, one click.
-                  </p>
-
-                  <div className="mt-4">
-                    <ZendeskConnectForm />
-                  </div>
-                </IntegrationConfigGate>
-
-                <StatStrip
-                  stats={[
-                    {
-                      label: "Backfill horizon",
-                      value: "90",
-                      unit: "days historical",
-                    },
-                    {
-                      label: "Sync mode",
-                      value: "Read",
-                      unit: "-only, incremental",
-                    },
-                  ]}
+                  description={`Connect ${primarySource.label} to pull your last 90 days of ${primary.caseNoun}${
+                    primarySource.capabilities.policyImport
+                      ? ", SLA policies, and organizations"
+                      : ""
+                  }, read-only, one click.`}
+                  footer={
+                    <StatStrip
+                      stats={[
+                        {
+                          label: "Backfill horizon",
+                          value: "90",
+                          unit: "days historical",
+                        },
+                        {
+                          label: "Sync mode",
+                          value: "Read",
+                          unit: "-only, incremental",
+                        },
+                      ]}
+                    />
+                  }
                 />
-              </ConnectorCard>
-            </Reveal>
+              </Reveal>
+            )}
 
-            <Reveal>
-              <BetaConnectorCard
-                provider="intercom"
-                icon={MessageCircle}
-                name="Intercom"
-                tagline="Alternative ticket source — conversation timelines and reply deltas"
-                config={status.intercomConfig}
-                descriptionText="Read-only access — no conversations, contacts, or fields are ever written back to Intercom."
-                helpUrl="https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth"
-                helpLabel="Get your Intercom OAuth app credentials"
-                connectAction={<IntercomConnectButton returnTo="onboarding" />}
-                onConfigured={refresh}
-              />
-            </Reveal>
+            {otherSources.map((provider) => (
+              <Reveal key={provider.provider}>
+                <AlternativeConnectorCard provider={provider} onConfigured={refresh} />
+              </Reveal>
+            ))}
           </div>
 
           <div className="flex flex-col gap-5 lg:col-span-5">
@@ -600,8 +603,8 @@ export function OnboardingFlow({
                   Ready to begin your SLA backfill
                 </span>
                 <span className={DESCRIPTION_CLASS}>
-                  Step 1 of 3 — connect Zendesk or Intercom to calculate
-                  continuous resolution times
+                  Step 1 of 3 — connect {ticketSources.map((p) => p.label).join(" or ")}{" "}
+                  to calculate continuous resolution times
                 </span>
               </div>
             </div>
@@ -611,24 +614,18 @@ export function OnboardingFlow({
     );
   }
 
-  const sourceStatus =
-    ticketSource === "intercom" ? status.intercom : status.zendesk;
-  if (sourceStatus.reauthRequired) {
+  if (source.reauthRequired) {
     return (
       <OnboardingShell
-        title={`Reconnect ${sourceLabel}`}
+        title={`Reconnect ${source.label}`}
         currentStep={currentStep}
       >
         <Reveal>
           <ReauthBanner
-            provider={sourceLabel}
-            reconnectHref={
-              ticketSource === "intercom"
-                ? "/api/integrations/intercom/connect?returnTo=onboarding"
-                : `/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(
-                    zendeskSubdomain ?? "",
-                  )}`
-            }
+            provider={source.label}
+            reconnectHref={providerPresentation(source.provider).reconnectHref({
+              subdomain: source.subdomain,
+            })}
           />
         </Reveal>
       </OnboardingShell>
@@ -648,16 +645,19 @@ export function OnboardingFlow({
         ? "REPLAYING_RECORDS"
         : "SYNCED";
 
+  const [primaryTracker, ...otherTrackers] = trackers;
+  const sourcePresentation = providerPresentation(source.provider);
+
   return (
     <OnboardingShell
       title={
         showTrackerCard
           ? "Connect engineering to close the SLA blindspot"
-          : "Ingesting 90 days of historical tickets"
+          : `Ingesting 90 days of historical ${caseNoun}`
       }
       description={
         showTrackerCard
-          ? "When support escalates a ticket, does the SLA clock pause? Connect your issue tracker to reconstruct the continuous clock."
+          ? "When support escalates a ticket, does the SLA clock pause? Connect your issue tracker to reconstruct the continuous clock, or continue without one and add it later."
           : `Deterministic event replay in progress — parsing raw audit logs and inter-tier handoffs without mutating your ${sourceLabel} source records.`
       }
       currentStep={currentStep}
@@ -682,7 +682,7 @@ export function OnboardingFlow({
               <span className="size-2 rounded-full bg-tertiary animate-ping" />
               <span className="font-code-audit text-code-audit font-semibold uppercase">
                 {sourceLabel} linked ({status.ticketsFetched.toLocaleString()}{" "}
-                {ticketSource === "intercom" ? "conversations" : "tickets"})
+                {caseNoun})
               </span>
             </div>
           </div>
@@ -715,8 +715,8 @@ export function OnboardingFlow({
             <div className="flex items-center gap-2.5">
               <ListChecks className="size-[18px] shrink-0 text-primary" />
               <p className={DESCRIPTION_CLASS}>
-                Intercom has no SLA policies to import — create your first
-                native policy so each conversation gets First Response and
+                {sourceLabel} has no SLA policies to import — create your
+                first native policy so every case gets First Response and
                 Resolution commitments.
               </p>
             </div>
@@ -731,61 +731,44 @@ export function OnboardingFlow({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-5 lg:col-span-7">
-          {showTrackerCard ? (
+          {showTrackerCard && primaryTracker ? (
             <Reveal>
-              <ConnectorCard>
-                <ConnectorHeader
-                  icon={Database}
-                  name="Jira Software"
-                  badge="Primary connector"
-                  tagline="Engineering-leg timing for escalated cases"
-                />
-
-                <ScopeBanner
-                  label="Read-only scopes enforced:"
-                  scopes={["read:jira-work", "offline_access"]}
-                />
-
-                <IntegrationConfigGate
-                  provider="jira"
-                  providerLabel="Jira"
-                  config={status.jiraConfig}
-                  descriptionClass={DESCRIPTION_CLASS}
-                  onConfigured={refresh}
-                >
-                  <p className={DESCRIPTION_CLASS}>
-                    Connect Jira to add engineering-leg timing and correlate
-                    support cases with engineering work — or choose Linear
-                    below.
-                  </p>
-
-                  <div className="mt-4">
-                    <JiraConnectButton />
+              <PrimaryConnectorCard
+                provider={primaryTracker}
+                onConfigured={refresh}
+                description={`Connect ${primaryTracker.label} to add engineering-leg timing and correlate support cases with engineering work${
+                  otherTrackers.length > 0
+                    ? `, or choose ${otherTrackers.map((p) => p.label).join(" or ")} below`
+                    : ""
+                }.`}
+                footer={
+                  <div className="flex flex-col gap-4">
+                    <RequestTrackerAccess provider={primaryTracker.provider} label={primaryTracker.label} />
+                    <Button variant="outline" asChild className="self-start">
+                      <Link href="/onboarding/activation">
+                        Continue without a tracker
+                        <ArrowRight className="size-[18px] shrink-0" />
+                      </Link>
+                    </Button>
                   </div>
-                </IntegrationConfigGate>
-              </ConnectorCard>
+                }
+              />
             </Reveal>
           ) : (
             <Reveal>
               <ConnectorCard>
                 <ConnectorHeader
-                  icon={ticketSource === "intercom" ? MessageCircle : Ticket}
-                  name={
-                    ticketSource === "intercom"
-                      ? "Intercom"
-                      : "Zendesk Support"
-                  }
+                  icon={sourcePresentation.icon}
+                  name={source.label}
                   badge="Connected"
-                  tagline={
-                    ticketSource === "intercom"
-                      ? "Ingesting conversation timelines and reply deltas"
-                      : "Ingesting ticket timestamps and SLA policies"
-                  }
+                  tagline={`Ingesting ${sourcePresentation.caseNoun} and their timelines`}
+                  beta={sourcePresentation.beta}
                 />
 
                 <OnboardingProgress
                   status={status}
                   sourceLabel={sourceLabel}
+                  caseNoun={caseNoun}
                   sourceRunning={sourceRunning}
                   trackerLabel={trackerLabel}
                   trackerRunning={trackerRunning}
@@ -816,7 +799,7 @@ export function OnboardingFlow({
         </div>
       </div>
 
-      {showTrackerCard && (
+      {showTrackerCard && (otherTrackers.length > 0 || codeHosts.length > 0) && (
         <Reveal>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -824,38 +807,20 @@ export function OnboardingFlow({
                 Or choose another issue tracker
               </span>
               <span className="font-code-audit text-code-audit text-on-surface-variant/70">
-                Linear completes this step like Jira does; configure the rest
-                later from Settings
+                {otherTrackers.length > 0
+                  ? `${otherTrackers.map((p) => p.label).join(" or ")} completes this step like ${primaryTracker?.label ?? "the primary tracker"} does; configure the rest later from Settings`
+                  : "Configure the rest later from Settings"}
               </span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <BetaConnectorCard
-                provider="linear"
-                icon={Layers}
-                name="Linear"
-                tagline="Alternative engineering-leg source"
-                config={status.linearConfig}
-                descriptionText="Read-only access — no issues, comments, or fields are ever written back to Linear."
-                helpUrl="https://linear.app/settings/api"
-                helpLabel="Get your Linear OAuth app credentials"
-                connectAction={<LinearConnectButton />}
-                beta={false}
-                onConfigured={refresh}
-              />
-
-              <BetaConnectorCard
-                provider="github"
-                icon={Code}
-                name="GitHub"
-                tagline="Pull request lifecycle"
-                config={status.githubConfig}
-                descriptionText="Read-only access — correlated through whichever issue a pull request already references."
-                helpUrl="/docs/integrations/github#create-github-app"
-                helpLabel="Create your read-only GitHub App"
-                connectAction={<GithubConnectForm />}
-                onConfigured={refresh}
-              />
+              {[...otherTrackers, ...codeHosts].map((provider) => (
+                <AlternativeConnectorCard
+                  key={provider.provider}
+                  provider={provider}
+                  onConfigured={refresh}
+                />
+              ))}
             </div>
           </div>
         </Reveal>
