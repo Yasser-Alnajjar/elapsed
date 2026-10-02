@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { createEmailVerificationToken, getPrismaClient } from "@sla/db";
+import { createEmailVerificationToken, getPrismaClient, TRIAL_LENGTH_DAYS } from "@sla/db";
 import { signUpSchema } from "@/lib/sign-up";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildEmailVerificationEmail } from "@/lib/email-verification-email";
@@ -36,6 +36,8 @@ export async function POST(request: Request) {
   const organization = await prisma.organization.create({
     data: {
       name: organizationName,
+      // The 14-day trial the pricing page promises. Informational until the operator turns entitlements on (N6.4).
+      trialEndsAt: new Date(Date.now() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000),
       // Sign-up creates the owner directly; every invitation accepted
       // (roadmap 5.2) creates a `member` on an existing organization instead.
       users: {

@@ -44,6 +44,7 @@ const SCOPES: Record<string, Scope> = {
   IntegrationConfig: { kind: "direct" },
   OrganizationEmailSettings: { kind: "direct" },
   OrganizationWorkState: { kind: "direct" },
+  EntitlementEvent: { kind: "direct" },
   PasswordResetToken: { kind: "via", fk: "userId", parent: "User" },
   EmailVerificationToken: { kind: "via", fk: "userId", parent: "User" },
   RawEvent: { kind: "via", fk: "integrationId", parent: "Integration" },

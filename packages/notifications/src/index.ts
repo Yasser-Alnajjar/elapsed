@@ -35,3 +35,5 @@ export {
   scrubDeliveryError,
 } from "./monthly-report-delivery";
 export type { ChannelOutcome, MonthlyReportDeliveryOptions, MonthlyReportDeliveryResult, ReportChannel } from "./monthly-report-delivery";
+export { buildTrialExpiryEmail, deliverTrialExpiryNotice } from "./trial-expiry";
+export type { TrialExpiryNoticeOptions, TrialExpiryNoticeOutcome } from "./trial-expiry";

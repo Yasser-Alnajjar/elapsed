@@ -1,10 +1,11 @@
 import type { SourceRole } from "@sla/core";
-import { getWorkerSettingsForRead, Prisma, type PrismaClient } from "@sla/db";
+import { getOrganizationUsage, getWorkerSettingsForRead, isPlanId, isTrialExpired, PLANS, Prisma, type PrismaClient } from "@sla/db";
 import { staleFields } from "./freshness-data";
 import { getLinkCoverage, NO_LINK_COVERAGE } from "./link-coverage-data";
 import { providerRole } from "./providers";
 import {
   PLAN_STATUSES,
+  type AdminEntitlementEventRow,
   type AdminIntegrationDetailRow,
   type AdminIntegrationStatus,
   type AdminProviderPairCount,
@@ -263,6 +264,7 @@ export async function getAdminTenantsData(prisma: PrismaClient, now = new Date()
 }
 
 const RECENT_ALERT_FAILURES_LIMIT = 10;
+const RECENT_ENTITLEMENT_EVENTS_LIMIT = 20;
 
 /**
  * One tenant in depth, or null if there is no such organization. Reuses the
@@ -277,7 +279,7 @@ export async function getAdminTenantDetail(
   const workerSettingsRead = getWorkerSettingsForRead(prisma);
 
   const failureScope = { commitment: { case: { organizationId } } };
-  const [rows, workerSettings, integrations, failingAlertCount, failures, slaImport, casesWithNoMatchingPolicy, workState] =
+  const [rows, workerSettings, integrations, failingAlertCount, failures, slaImport, casesWithNoMatchingPolicy, workState, usage, entitlementEvents] =
     await Promise.all([
       buildTenantRows(prisma, now, workerSettingsRead, [organizationId]),
       workerSettingsRead,
@@ -328,6 +330,12 @@ export async function getAdminTenantDetail(
           lastError: true,
           activeNextDueAt: true,
         },
+      }),
+      getOrganizationUsage(prisma, organizationId, providerRole, now),
+      prisma.entitlementEvent.findMany({
+        where: { organizationId },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_ENTITLEMENT_EVENTS_LIMIT,
       }),
     ]);
   const tenant = rows[0];
@@ -386,6 +394,26 @@ export async function getAdminTenantDetail(
         }
       : null,
     casesWithNoMatchingPolicy,
+    entitlements: {
+      enforced: workerSettings.entitlementsEnforced,
+      usage,
+      limits: isPlanId(tenant.plan) ? { ...PLANS[tenant.plan].limits } : null,
+      trialExpired: isTrialExpired(
+        { plan: tenant.plan, planStatus: tenant.planStatus, trialEndsAt: tenant.trialEndsAt ? new Date(tenant.trialEndsAt) : null },
+        now,
+      ),
+      events: entitlementEvents.map(
+        (event): AdminEntitlementEventRow => ({
+          id: event.id,
+          kind: event.kind as AdminEntitlementEventRow["kind"],
+          resource: event.resource as AdminEntitlementEventRow["resource"],
+          used: event.used,
+          limit: event.limit,
+          notifiedAt: event.notifiedAt?.toISOString() ?? null,
+          createdAt: event.createdAt.toISOString(),
+        }),
+      ),
+    },
     work: workState
       ? {
           lastStartedAt: workState.lastStartedAt?.toISOString() ?? null,

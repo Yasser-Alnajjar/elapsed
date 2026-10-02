@@ -1,5 +1,6 @@
 import type { SourceRole } from "@sla/core";
 import type { PlanStatus as DbPlanStatus } from "@sla/db";
+import { formatPlanPrice, PLAN_IDS, PLAN_LIST, type LimitedResource, type PlanId } from "@sla/db/plans";
 import type { IntegrationProvider } from "./integrations";
 import type { LinkCoverage } from "./link-coverage";
 
@@ -12,26 +13,17 @@ import type { LinkCoverage } from "./link-coverage";
 // ---- Plan record (N4.3) ----------------------------------------------------
 
 /**
- * The plans the live pricing page offers (decision D14: Starter $49, Team
- * $149, Enterprise custom, seat-based). `Organization.plan` stays a string
- * column so a later billing phase can tighten it without a migration; the
- * admin API only accepts these identifiers.
+ * The plans are defined once, in `@sla/db/plans` (N6.1, decision D14), and the
+ * pricing page and entitlement checks read the same constant. `Organization.plan`
+ * stays a string column; the admin API only accepts these identifiers.
  */
-export const PLAN_IDS = ["starter", "team", "enterprise"] as const;
-export type PlanId = (typeof PLAN_IDS)[number];
+export { PLAN_IDS };
+export type { PlanId };
 
-export const PLAN_LABELS: Record<PlanId, string> = {
-  starter: "Starter",
-  team: "Team",
-  enterprise: "Enterprise",
-};
+export const PLAN_LABELS = Object.fromEntries(PLAN_LIST.map((plan) => [plan.id, plan.name])) as Record<PlanId, string>;
 
-/** The list price per seat the pricing page shows; a label for the operator, never a billing source. */
-export const PLAN_PRICE_LABELS: Record<PlanId, string> = {
-  starter: "$49",
-  team: "$149",
-  enterprise: "Custom",
-};
+/** The list price the pricing page shows; a label for the operator, never a billing source. */
+export const PLAN_PRICE_LABELS = Object.fromEntries(PLAN_LIST.map((plan) => [plan.id, formatPlanPrice(plan).price])) as Record<PlanId, string>;
 
 /** Same list as `PlanStatus` in the Prisma schema; the `satisfies` makes a drift a compile error. */
 export const PLAN_STATUSES = ["trial", "active", "past_due", "cancelled", "internal"] as const satisfies readonly DbPlanStatus[];
@@ -252,6 +244,31 @@ export interface AdminTenantDetail {
   /** Open cases with no commitment, i.e. no matching SLA policy (the dashboard's blind-spot count, same query). */
   casesWithNoMatchingPolicy: number;
   work: AdminWorkRunSummary | null;
+  entitlements: AdminEntitlements;
+}
+
+/** One entitlement check that warned, blocked, or found a lapsed trial (N6.3, N6.4). */
+export interface AdminEntitlementEventRow {
+  id: string;
+  kind: "limit_warned" | "creation_blocked" | "trial_expired";
+  /** A `LimitedResource` key, or null for `trial_expired`. */
+  resource: LimitedResource | null;
+  used: number | null;
+  limit: number | null;
+  /** `trial_expired` only: when the owner email was sent. */
+  notifiedAt: string | null;
+  createdAt: string;
+}
+
+/** What this tenant uses against its plan, and what the checks recorded (N6.2). Read-only for the operator. */
+export interface AdminEntitlements {
+  /** The operator switch (`WorkerSettings.entitlementsEnforced`). Off: usage is shown, nothing is checked. */
+  enforced: boolean;
+  usage: Record<LimitedResource, number>;
+  /** The recorded plan's limits, `null` per resource for unlimited; the whole field is null when no known plan is recorded. */
+  limits: Record<LimitedResource, number | null> | null;
+  trialExpired: boolean;
+  events: AdminEntitlementEventRow[];
 }
 
 /** One organization's usage facts (N5.7), all read from columns the app writes best-effort. */

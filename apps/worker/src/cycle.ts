@@ -30,6 +30,7 @@ import {
   claimNotifications,
   deliverClaimedNotifications,
   deliverMonthlyReport,
+  deliverTrialExpiryNotice,
   type NotificationClaims,
 } from "@sla/notifications";
 import { caseRefResolverFor } from "./case-ref";
@@ -172,6 +173,8 @@ export interface OrganizationRunContext {
   activePollMs?: number;
   /** The operator kill switch for the monthly customer report (N5.6), read when a reconciliation run reaches it. Absent: on. */
   monthlyReportEnabled?: () => Promise<boolean>;
+  /** The operator switch for plan entitlements (N6), read when a reconciliation run reaches the trial check. Absent: off. */
+  entitlementsEnforced?: () => Promise<boolean>;
   /** Log label only, e.g. "3/10". */
   position: string;
   /** Organizations being processed right now (log label only). */
@@ -809,6 +812,33 @@ export async function processOrganization(
           if (error instanceof LeaseLostError) throw error;
           orgLogger.warn("monthly_report_failed", { position, error: error instanceof Error ? error.message : String(error) });
           captureException(error, { organizationId: organization.id, kind, stage: "monthly_report" });
+        }
+      },
+      { organizationId: organization.id, kind },
+    );
+  }
+
+  // Trial lifecycle (N6.4, D27). Reconciliation runs only, once per organization
+  // and trial end date (the event claim in `markTrialExpiry` is the idempotency
+  // key). It emails the owner and records the event for the admin; it changes
+  // nothing about monitoring, evaluation or alerting for this organization.
+  if (kind === "reconciliation_sweep" && ((await ctx.entitlementsEnforced?.()) ?? false)) {
+    await withPerfScope(
+      "worker_trial_expiry",
+      async () => {
+        try {
+          const outcome = await deliverTrialExpiryNotice(prisma, organization.id, {
+            appUrl: config.appUrl ?? null,
+            beforeSend: async () => {
+              await lease?.assertHeld();
+            },
+          });
+          if (outcome === "sent" || outcome === "no_owner") orgLogger.info("trial_expiry_handled", { position, outcome });
+        } catch (error) {
+          // Not a stage failure of the SLA pipeline: a notice that cannot be sent must not mark the worker degraded.
+          if (error instanceof LeaseLostError) throw error;
+          orgLogger.warn("trial_expiry_notice_failed", { position, error: error instanceof Error ? error.message : String(error) });
+          captureException(error, { organizationId: organization.id, kind, stage: "trial_expiry" });
         }
       },
       { organizationId: organization.id, kind },

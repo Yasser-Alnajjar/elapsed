@@ -11,6 +11,7 @@ import type { AdminTenantDetail } from "@/lib/types/admin";
 import { AlertDeliverySection } from "./AlertDeliverySection";
 import { CoverageSection } from "./CoverageSection";
 import { IntegrationCard } from "./IntegrationCard";
+import { EntitlementsPanel } from "./EntitlementsPanel";
 import { PlanRecordForm } from "./PlanRecordForm";
 import { SafetyProtocolPanel } from "./SafetyProtocolPanel";
 import { TenantHeader } from "./TenantHeader";
@@ -108,6 +109,8 @@ export function TenantDetailView({ data }: TenantDetailViewProps) {
               }}
             />
           </AdminPanel>
+
+          <EntitlementsPanel entitlements={data.entitlements} />
 
           <WorkerRunPanel work={data.work} />
           <SafetyProtocolPanel />
