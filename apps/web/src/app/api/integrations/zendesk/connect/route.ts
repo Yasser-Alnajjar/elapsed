@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { buildAuthorizeUrl } from "@sla/zendesk";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { BLOCKED_CONNECT_REDIRECT, gateIntegrationConnect } from "@/lib/entitlements";
 import { getZendeskOAuthConfig, ZENDESK_STATE_COOKIE } from "@/lib/zendesk-env";
 import { signOAuthState } from "@/lib/oauth-state";
 
@@ -15,6 +16,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const denied = requireOwner(session);
   if (denied) return denied;
+
+  // N6.3: a lapsed trial blocks a new connection (D27); an over-limit plan only warns, on the admin tenant page.
+  const gate = await gateIntegrationConnect(session.user.organizationId, "zendesk");
+  if (!gate.proceed) return NextResponse.redirect(new URL(BLOCKED_CONNECT_REDIRECT, request.url));
 
   const subdomain =
     new URL(request.url).searchParams.get("subdomain")?.trim() ?? "";

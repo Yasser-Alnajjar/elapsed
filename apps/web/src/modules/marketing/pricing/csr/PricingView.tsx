@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
+import { formatPlanPrice, PLAN_LIST, planFeatureLines, TRIAL_LENGTH_DAYS } from "@sla/db/plans";
+
 import { Reveal } from "@/components/shared/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,63 +12,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { PricingFaq, PricingPlan } from "@/lib/types/marketing";
 
-const PLANS: PricingPlan[] = [
-  {
-    name: "Starter",
-    price: "$49",
-    cadence: "/month",
-    description:
-      "For a single support team getting SLA visibility for the first time.",
-    cta: "Get started",
-    href: "/sign-up",
-    highlighted: false,
-    features: [
-      "1 support integration (Zendesk or Intercom)",
-      "1 engineering integration",
-      "Up to 3 SLA policies",
-      "5 seats",
-      "Email alerts on at-risk cases",
-    ],
-  },
-  {
-    name: "Team",
-    price: "$149",
-    cadence: "/month",
-    description:
-      "For teams handing cases between support and engineering every day.",
-    cta: "Get started",
-    href: "/sign-up",
-    highlighted: true,
-    features: [
-      "Unlimited integrations (Zendesk, Jira, Linear, Intercom, GitHub)",
-      "Unlimited SLA policies and calendars",
-      "20 seats",
-      "Slack notifications before breach",
-      "Full case correlation across engineering",
-    ],
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    cadence: "",
-    description:
-      "For organizations with multiple teams, regions, or compliance needs.",
-    cta: "Talk to us",
-    href: "/sign-up",
-    highlighted: false,
-    features: [
-      "Everything in Team",
-      "Unlimited seats",
-      "Dedicated onboarding support",
-    ],
-  },
-];
+// Rendered from the one plan constant that entitlement checks also read (N6.1),
+// so the public page and what is enforced cannot drift apart.
+const PLANS: PricingPlan[] = PLAN_LIST.map((plan) => ({
+  name: plan.name,
+  ...formatPlanPrice(plan),
+  description: plan.description,
+  cta: plan.cta,
+  href: "/sign-up",
+  highlighted: plan.highlighted,
+  features: planFeatureLines(plan),
+}));
 
 const FAQS: PricingFaq[] = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes — every plan starts with a 14-day trial with full access, no credit card required.",
+      `Yes — every new organization starts with a ${TRIAL_LENGTH_DAYS}-day trial with full access, no credit card required. When it ends, your cases, monitoring and alerts keep running; adding new members, integrations or SLA policies needs a plan.`,
   },
   {
     question: "What counts as a seat?",

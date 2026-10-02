@@ -102,11 +102,30 @@ npx vitest run apps/web/test/tenant-isolation.test.ts
 
 ## 7. Entitlement table
 
-_To be completed when D14 is decided. Intentionally left blank: this plan does not invent prices or limits._
+Recorded from D14 (live pricing model, seat-based) and implemented once in `packages/db/src/plans.ts` (`PLANS`). The pricing page renders from it. `null` is unlimited.
 
-| Plan id | Price | Limits | Features |
-|---|---|---|---|
-| — | — | — | — |
+| Plan id | Price | Seats | Support integrations | Engineering integrations | Native policies |
+|---|---|---|---|---|---|
+| `starter` | $49 / month | 5 | 1 | 1 | 3 |
+| `team` | $149 / month | 20 | unlimited | unlimited | unlimited |
+| `enterprise` | Custom | unlimited | unlimited | unlimited | unlimited |
+
+Definitions (`packages/db/src/usage.ts`):
+- **Seats** = members + pending, unexpired invitations.
+- **Support integration** = a connected `ticket_source`. **Engineering integration** = a connected `work_tracker` or `code_host`. Only `disconnected` rows are not counted.
+- **Native policies** = native, non-archived. Imported policies never count (D25).
+
+Behaviour (`packages/db/src/entitlements.ts`), only at invite, connect and native-policy create, and only while `WorkerSettings.entitlementsEnforced` is on:
+
+| State | Result |
+|---|---|
+| `internal`, or no recorded plan, or a limit of `null` | allow |
+| Trial still running | allow (full access, as the pricing page says) |
+| Under the limit | allow |
+| At or over the limit | **warn**: the creation goes ahead, the response carries `entitlementWarning` with `/pricing`, an `EntitlementEvent` is recorded for the admin tenant page, and an in-app banner appears. D14 does not require a hard block. |
+| Trial ended (D27) | **blocked** (HTTP 402; connect routes redirect to settings) for new members, integrations and policies. Cases, SLA monitoring, alerts, history and existing data are untouched. |
+
+Switch it on with `UPDATE worker_settings SET "entitlementsEnforced" = true;` and off the same way. It is off by default and has no UI yet.
 
 ## 8. Acceptance criteria
 

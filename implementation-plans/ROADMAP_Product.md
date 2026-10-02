@@ -48,7 +48,7 @@ _Update this section every time a task or phase changes state._
 | [N3](#phase-n3--provider-isolation--freshness)       | Provider outages isolated; stale data labelled on evaluations, alerts and UI                         | [03](03-provider-isolation-and-freshness.md)  | N2, D13              | 2–3 wk   | P0       | ⬜ Not started                    |
 | [N4](#phase-n4--platform-admin--plan-records)        | Platform Admin: tenants, plans, health, audit log                                                    | [04](04-platform-admin-and-plan-records.md)   | N3, D14 (plan names) | 3 wk     | P1       | 🔄 In progress (N4.1–N4.6 built 2026-10-02; N4.7 is data entry) |
 | [N5](#phase-n5--customer-onboarding--retention)      | Any supported pair onboards unaided; monthly report; usage measured                                  | [05](05-customer-onboarding-and-retention.md) | N2, N4, D26          | 3–4 wk   | P1       | ⬜ Not started                    |
-| [N6](#phase-n6--entitlements--billing)               | Current pricing represented once in code; soft limits; billing provider                              | [06](06-entitlements-and-billing.md)          | N4, N5, D14, trigger | 2–3 wk   | P2       | ⏸ Trigger-based                   |
+| [N6](#phase-n6--entitlements--billing)               | Current pricing represented once in code; soft limits; billing provider                              | [06](06-entitlements-and-billing.md)          | N4, N5, D14, trigger | 2–3 wk   | P2       | 🔄 N6.1–N6.4, N6.6 built 2026-10-02; N6.5 blocked on D28 |
 | [N7](#phase-n7--third-ticket-source)                 | Third ticket source with zero core changes (contract test)                                           | [07](07-third-ticket-source.md)               | N2, N3, D29          | 3–4 wk   | P2       | ⏸ Demand-based                    |
 | [N8](#phase-n8--scale)                               | Fix the scale limit that is measured to bite next                                                    | [08](08-scale.md)                             | N3 metrics, triggers | per item | P3       | ⏸ Trigger-based                   |
 
@@ -572,16 +572,16 @@ Phase N8 — Scale                         (each item starts on its trigger)
 
 ### Phase N6 — Entitlements + billing
 
-**Status:** ⏸ Trigger-based (D20) · **Estimate:** 2–3 weeks once triggered · **Priority:** P2 · **Plan:** [`06-entitlements-and-billing.md`](06-entitlements-and-billing.md) · **Needs:** N4, N5, D14, D25, D27, D28 · **Branch:** `phase/n6-entitlements-and-billing`
+**Status:** 🔄 N6.1–N6.4 and N6.6 built (not deployed); N6.5 blocked on D28. Started before its D20 trigger fired, at the owner's request · **Estimate:** 2–3 weeks once triggered · **Priority:** P2 · **Plan:** [`06-entitlements-and-billing.md`](06-entitlements-and-billing.md) · **Needs:** N4, N5, D14, D25, D27, D28 · **Branch:** `phase/n6-entitlements-and-billing`
 **Trigger:** ≥15 paying tenants, **or** manual plan/invoice work costs more than ~2 h per month, **or** a customer asks for self-serve plan changes. The trigger counts only once D14 is resolved.
 **Goal:** the current, intentional pricing is represented once in code; limits are soft; monitoring is never gated by plan state.
 
-- [ ] **N6.1** Record D14 and a single plan constant shared by the pricing page and enforcement.
-- [ ] **N6.2** Usage read model (⛔ D25 for imported policies).
-- [ ] **N6.3** Soft enforcement at invite, integration connect and native policy creation.
-- [ ] **N6.4** Trial lifecycle (⛔ D27).
-- [ ] **N6.5** Billing provider integration (⛔ D28).
-- [ ] **N6.6** Public claims match the code.
+- [x] **N6.1** Record D14 and a single plan constant shared by the pricing page and enforcement. **Done 2026-10-02, not deployed.** `packages/db/src/plans.ts` (`PLANS`); `PricingView` and the admin plan labels render from it; table in plan §7. `Organization.plan` stays a string (not tightened to an enum: nothing needed it).
+- [x] **N6.2** Usage read model (D25: imported policies do not count). **Done 2026-10-02, not deployed.** `getOrganizationUsage` in `packages/db/src/usage.ts`; shown on the admin tenant page ("Usage vs plan"). No period argument and no `UsageSnapshot` table: the seat model needs neither.
+- [x] **N6.3** Soft enforcement at invite, integration connect and native policy creation. **Done 2026-10-02, not deployed.** Over a limit it warns (response field, in-app banner, `EntitlementEvent` on the admin tenant page); it never blocks on a limit. Behind `WorkerSettings.entitlementsEnforced`, **off by default**, set in SQL. A test shows a tenant over every limit still gets evaluated and alerted.
+- [x] **N6.4** Trial lifecycle (D27). **Done 2026-10-02, not deployed.** Sign-up now sets `trialEndsAt` to +14 days (it was never set before). When enforced and the trial has ended: new members, integrations and native policies are blocked (402); monitoring, alerts and history are untouched; in-app banner; owner email from the worker's reconciliation tick, once per org and trial end date; event on the admin tenant page. Existing organizations have no `trialEndsAt` and so never lapse until an operator sets one.
+- [ ] **N6.5** Billing provider integration (⛔ D28, provider not chosen). Not started.
+- [~] **N6.6** Public claims match the code. **Done 2026-10-02 except the change-plan FAQ, which stays "talk to us" until N6.5.** The plan bullets are generated from `PLANS`; the trial FAQ now states what happens at expiry; a test fails if the page names SSO/SAML, retention, proration or "case history".
 
 ### Phase N7 — Third ticket source
 

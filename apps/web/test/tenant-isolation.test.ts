@@ -350,6 +350,14 @@ async function seedExtras(
   });
   // Worker scheduling state (multi-worker leases): never served to a tenant, but keyed per organization.
   await prisma.organizationWorkState.create({ data: { organizationId: org.organizationId } });
+  // Monthly report delivery (N5.6) and entitlement events (N6.3, N6.4): per organization, never served to another.
+  await prisma.reportDelivery.create({ data: { organizationId: org.organizationId, period: "2026-09", channel: "email", status: "sent" } });
+  await prisma.integrationConnectLink.create({
+    data: { organizationId: org.organizationId, provider: "jira", tokenHash: `${lower}-connect-link-hash`, expiresAt: new Date(Date.now() + 3_600_000) },
+  });
+  await prisma.entitlementEvent.create({
+    data: { organizationId: org.organizationId, kind: "limit_warned", resource: "seats", dedupeKey: "seats:2026-10-02", used: 6, limit: 5 },
+  });
 
   const commitments = await prisma.commitment.findMany({
     where: { caseId: org.caseId },

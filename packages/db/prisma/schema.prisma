@@ -51,6 +51,7 @@ model Organization {
   workState         OrganizationWorkState?
   reportDeliveries  ReportDelivery[]
   connectLinks      IntegrationConnectLink[]
+  entitlementEvents EntitlementEvent[]
   /// Time to first value (N5.7): the first time any member saw the findings, on
   /// the activation screen or the dashboard once cases existed. Set once,
   /// best-effort, never read by monitoring. First value minus `createdAt` is
@@ -939,6 +940,30 @@ model OrganizationEmailSettings {
 
 /// Commercial state of an organization, recorded by hand (N4.3). Informational
 /// only: it never gates monitoring (roadmap Phase 10b principle 3).
+/// What an entitlement check found (N6.3, N6.4), shown on the admin tenant
+/// page. `dedupeKey` makes every write idempotent: one row per organization,
+/// kind and key (a resource and day for limit events, the trial end date for a
+/// lapsed trial). Never read by monitoring.
+model EntitlementEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// `limit_warned` | `creation_blocked` | `trial_expired`.
+  kind           String
+  /// `seats` | `ticket_source_integrations` | `engineering_integrations` | `native_policies`; null for `trial_expired`.
+  resource       String?
+  dedupeKey      String
+  used           Int?
+  limit          Int?
+  /// `trial_expired` only: when the owner email went out.
+  notifiedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, kind, dedupeKey])
+  @@index([organizationId, createdAt])
+  @@map("entitlement_events")
+}
+
 enum PlanStatus {
   trial
   active
@@ -1104,6 +1129,11 @@ model WorkerSettings {
   /// default; off, the worker sends no report and records nothing. It never
   /// touches monitoring or alerting.
   monthlyReportEnabled       Boolean   @default(true)
+  /// Operator switch for plan-limit enforcement (N6.3, N6.4). Off by default:
+  /// off, creation points behave exactly as before and no entitlement event is
+  /// written. On, an over-limit creation warns and a lapsed trial blocks new
+  /// configuration. It never touches ingestion, evaluation or alerting.
+  entitlementsEnforced       Boolean   @default(false)
   lastActivePollDurationMs   Int?
   lastReconciliationDurationMs Int?
 

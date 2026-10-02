@@ -12,6 +12,7 @@ import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildInvitationEmail } from "@/lib/invitation-email";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { gateCreation } from "@/lib/entitlements";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -50,6 +51,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
+  // N6.3: a lapsed trial blocks a new invitation (D27); an over-limit plan only warns.
+  const gate = await gateCreation(session.user.organizationId, "seats");
+  if (!gate.proceed) return gate.response;
+
   const prisma = getPrismaClient();
   let result;
   try {
@@ -86,5 +91,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, resent: result.resent });
+  return NextResponse.json({ ok: true, resent: result.resent, ...(gate.warning && { entitlementWarning: gate.warning }) });
 }

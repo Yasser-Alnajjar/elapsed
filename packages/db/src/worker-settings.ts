@@ -44,6 +44,8 @@ export interface WorkerSettingsRecord extends WorkerSettingsInput {
   freshnessGraceFactor: number;
   /** Operator kill switch for the monthly customer report (N5.6). On by default. */
   monthlyReportEnabled: boolean;
+  /** Operator switch for plan-limit enforcement (N6). Off by default. */
+  entitlementsEnforced: boolean;
   lastHeartbeatAt: Date | null;
   lastActivePollAt: Date | null;
   lastActivePollFailures: number | null;
@@ -123,6 +125,7 @@ export async function getWorkerSettingsForRead(
     ),
     freshnessGraceFactor: 3,
     monthlyReportEnabled: true,
+    entitlementsEnforced: false,
     lastHeartbeatAt: null,
     lastActivePollAt: null,
     lastActivePollFailures: null,

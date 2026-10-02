@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@sla/db";
 import { runCommitmentPipeline, runEvaluationPipeline, runNextReplyCyclePipeline } from "@sla/commitments";
+import { deliverMonthlyReport, deliverTrialExpiryNotice } from "@sla/notifications";
 import { emptyCycleResult, processOrganization, runCycle, type OrganizationRunContext } from "../src/cycle";
 import { createLogger } from "@sla/logger";
 import { LeaseLostError, type LeaseGuard } from "../src/lease";
@@ -41,6 +42,8 @@ vi.mock("@sla/notifications", () => ({
   deliverClaimedNotifications: vi
     .fn()
     .mockResolvedValue({ notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] }),
+  deliverMonthlyReport: vi.fn().mockResolvedValue({ period: null, built: false, channels: {} }),
+  deliverTrialExpiryNotice: vi.fn().mockResolvedValue("not_expired"),
 }));
 // Linear's *real* backfill, client and token lifecycle run against a stubbed
 // `fetch`, so each case below starts from an actual HTTP status code. Only the
@@ -49,6 +52,7 @@ vi.mock("@sla/notifications", () => ({
 vi.mock("../src/providers", async (importOriginal) => {
   const original = await importOriginal<typeof import("../src/providers")>();
   return {
+    ISSUE_LINK_PROVIDERS: original.ISSUE_LINK_PROVIDERS,
     PROVIDERS: {
       ...original.PROVIDERS,
       linear: {
@@ -604,5 +608,58 @@ describe("processOrganization — lease handling (multi-worker)", () => {
     // Ingestion happened (it is covered by the per-write fence), but nothing after the check did.
     expect(vi.mocked(runCommitmentPipeline)).not.toHaveBeenCalled();
     expect(row.lastSyncAt).toBeNull();
+  });
+});
+
+describe("processOrganization — trial lifecycle (N6.4)", () => {
+  const baseContext = (kind: "active_set_poll" | "reconciliation_sweep", overrides: Partial<OrganizationRunContext> = {}): OrganizationRunContext => ({
+    kind,
+    logger: createLogger(),
+    result: emptyCycleResult(kind),
+    position: "1/1",
+    inFlight: () => 1,
+    ...overrides,
+  });
+  const run = (context: OrganizationRunContext) => processOrganization(fakeDb("connected").prisma, config, { id: "org_1", integrations: [] }, context);
+
+  beforeEach(() => {
+    vi.mocked(deliverTrialExpiryNotice).mockReset();
+    vi.mocked(deliverTrialExpiryNotice).mockResolvedValue("not_expired");
+    captureExceptionMock.mockClear();
+  });
+
+  it("checks on the reconciliation sweep when the operator switch is on, for this organization", async () => {
+    await run(baseContext("reconciliation_sweep", { entitlementsEnforced: async () => true }));
+    expect(deliverTrialExpiryNotice).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(deliverTrialExpiryNotice).mock.calls[0]![1]).toBe("org_1");
+  });
+
+  it("does nothing while the switch is off, and never on the active poll", async () => {
+    await run(baseContext("reconciliation_sweep", { entitlementsEnforced: async () => false }));
+    await run(baseContext("reconciliation_sweep"));
+    await run(baseContext("active_set_poll", { entitlementsEnforced: async () => true }));
+    expect(deliverTrialExpiryNotice).not.toHaveBeenCalled();
+  });
+
+  it("a notice that cannot be sent does not fail the run, mark the worker degraded, or stop monitoring", async () => {
+    vi.mocked(deliverTrialExpiryNotice).mockRejectedValue(new Error("smtp down"));
+    vi.mocked(runEvaluationPipeline).mockClear();
+    const context = baseContext("reconciliation_sweep", { entitlementsEnforced: async () => true });
+
+    await expect(run(context)).resolves.toBeUndefined();
+    expect(context.result.failures).toEqual([]);
+    expect(vi.mocked(runEvaluationPipeline)).toHaveBeenCalled();
+    expect(vi.mocked(deliverMonthlyReport)).toHaveBeenCalled();
+  });
+
+  it("monitoring runs identically for a tenant whose trial has lapsed: evaluation is never gated on plan state", async () => {
+    vi.mocked(deliverTrialExpiryNotice).mockResolvedValue("sent");
+    vi.mocked(runEvaluationPipeline).mockClear();
+    vi.mocked(runCommitmentPipeline).mockClear();
+    const context = baseContext("reconciliation_sweep", { entitlementsEnforced: async () => true });
+
+    await run(context);
+    expect(vi.mocked(runCommitmentPipeline)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(runEvaluationPipeline)).toHaveBeenCalledTimes(1);
   });
 });

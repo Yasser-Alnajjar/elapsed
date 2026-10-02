@@ -164,6 +164,38 @@ export {
 } from "./email-verification";
 export type { IssueTokenResult, VerifyEmailResult } from "./email-verification";
 
+export {
+  PLAN_IDS,
+  TRIAL_LENGTH_DAYS,
+  PLANS,
+  PLAN_LIST,
+  LIMITED_RESOURCES,
+  RESOURCE_LABELS,
+  isPlanId,
+  formatPlanPrice,
+  planFeatureLines,
+} from "./plans";
+export type { PlanId, PlanDefinition, PlanLimits, LimitedResource } from "./plans";
+export { getOrganizationUsage } from "./usage";
+export type { OrganizationUsage, ProviderRoleOf } from "./usage";
+export {
+  isTrialExpired,
+  evaluateCreation,
+  integrationResource,
+  checkEntitlement,
+  getEntitlementNotice,
+  markTrialExpiry,
+  settleTrialExpiryNotice,
+  ENTITLEMENT_EVENT_KINDS,
+} from "./entitlements";
+export type {
+  PlanSubject,
+  EntitlementDecision,
+  EntitlementEventKind,
+  CheckEntitlementOptions,
+  TrialExpiryResult,
+} from "./entitlements";
+
 const DEFAULT_POOL_MAX = 20;
 const STATEMENT_TIMEOUT_MS = 30_000;
 

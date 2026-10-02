@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
 
-import { getPrismaClient, withPerfScope } from "@sla/db";
+import { getEntitlementNotice, getPrismaClient, withPerfScope } from "@sla/db";
 import {
   SidebarInset,
   SidebarProvider,
@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { LiveDataProvider } from "@/components/shared/LiveDataProvider";
 import { getStaleIntegrationData } from "@/lib/freshness-data";
 import { StaleDataBanner } from "@/components/shared/stale-data-banner";
+import { PlanNoticeBanner } from "@/components/shared/plan-notice-banner";
+import { providerRole } from "@/lib/providers";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -38,7 +40,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, activePollIntervalMs, alertSummary, staleIntegrations] =
+  const [user, integrations, activePollIntervalMs, alertSummary, staleIntegrations, entitlementNotice] =
     await withPerfScope("layout", () =>
       Promise.all([
         Actions.Profile.getData(),
@@ -46,6 +48,8 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         Actions.WorkerSettings.getActivePollIntervalMs(),
         getAlertSummary(getPrismaClient(), organizationId),
         getStaleIntegrationData(getPrismaClient(), organizationId),
+        // One settings read while enforcement is off (the default).
+        getEntitlementNotice(getPrismaClient(), organizationId, { roleOf: providerRole }),
       ]),
     );
 
@@ -120,6 +124,12 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           <UserMenu user={user} />
         </header>
         <main className="mx-auto min-w-0 w-full flex-1 px-4 py-4">
+          <PlanNoticeBanner
+            notice={{
+              trialExpiredAt: entitlementNotice.trialExpired?.trialEndedAt.toISOString() ?? null,
+              overLimit: entitlementNotice.overLimit,
+            }}
+          />
           <StaleDataBanner integrations={staleIntegrations} />
           {children}
           <LiveDataProvider />

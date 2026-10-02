@@ -17,6 +17,7 @@ const db = vi.hoisted(() => ({
   revokeInvitation: vi.fn(),
 }));
 const email = vi.hoisted(() => ({ sendTransactionalEmail: vi.fn() }));
+const entitlements = vi.hoisted(() => ({ gateCreation: vi.fn() }));
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
@@ -30,6 +31,7 @@ vi.mock("@sla/db", async (importOriginal) => {
     revokeInvitation: db.revokeInvitation,
   };
 });
+vi.mock("@/lib/entitlements", () => ({ gateCreation: entitlements.gateCreation }));
 vi.mock("@/lib/transactional-email", () => ({ sendTransactionalEmail: email.sendTransactionalEmail }));
 
 function sessionFor(organizationId: string, userId = "user-1", role: "owner" | "member" = "owner"): Session {
@@ -47,6 +49,8 @@ beforeEach(() => {
   db.listPendingInvitations.mockReset();
   db.revokeInvitation.mockReset();
   email.sendTransactionalEmail.mockReset();
+  entitlements.gateCreation.mockReset();
+  entitlements.gateCreation.mockResolvedValue({ proceed: true, warning: null });
   auth.session = null;
   process.env.NEXTAUTH_URL = "https://sla.example.com";
 });
@@ -219,5 +223,47 @@ describe("DELETE /api/settings/invitations/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(db.revokeInvitation).toHaveBeenCalledWith(expect.anything(), { organizationId: "org-a", invitationId: "inv-1" });
+  });
+});
+
+describe("POST /api/settings/invitations: plan entitlements (N6.3, N6.4)", () => {
+  const post = async (email = "new@x.com") => {
+    const { POST } = await import("../src/app/api/settings/invitations/route");
+    return POST(new Request("http://localhost/api/settings/invitations", { method: "POST", body: JSON.stringify({ email }) }));
+  };
+
+  it("checks the caller's own organization for the seat resource", async () => {
+    auth.session = sessionFor("org-a");
+    db.createOrResendInvitation.mockResolvedValue({ invitation: {}, token: "t", organizationName: "A", resent: false });
+    await post();
+    expect(entitlements.gateCreation).toHaveBeenCalledWith("org-a", "seats");
+  });
+
+  it("still sends the invitation when over the seat limit, and returns the warning with an upgrade path", async () => {
+    auth.session = sessionFor("org-a");
+    const warning = { resource: "seats", message: "You are using 5 of 5 seats on your plan.", upgradeUrl: "/pricing" };
+    entitlements.gateCreation.mockResolvedValue({ proceed: true, warning });
+    db.createOrResendInvitation.mockResolvedValue({ invitation: {}, token: "t", organizationName: "A", resent: false });
+
+    const response = await post();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, entitlementWarning: warning });
+    expect(db.createOrResendInvitation).toHaveBeenCalledTimes(1);
+    expect(email.sendTransactionalEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 402 and creates nothing once the trial has ended", async () => {
+    auth.session = sessionFor("org-a");
+    const { NextResponse } = await import("next/server");
+    entitlements.gateCreation.mockResolvedValue({
+      proceed: false,
+      response: NextResponse.json({ error: "Your trial has ended.", code: "trial_expired", upgradeUrl: "/pricing" }, { status: 402 }),
+    });
+
+    const response = await post();
+    expect(response.status).toBe(402);
+    expect(await response.json()).toMatchObject({ code: "trial_expired", upgradeUrl: "/pricing" });
+    expect(db.createOrResendInvitation).not.toHaveBeenCalled();
+    expect(email.sendTransactionalEmail).not.toHaveBeenCalled();
   });
 });
