@@ -6,6 +6,8 @@ import { UpgradeCtaLink } from "@/components/shared/entitlement-alerts";
 
 export interface PlanNotice {
   trialExpiredAt: string | null;
+  /** Whether adding configuration is actually paused. Defaults to true; false while plan enforcement is off. */
+  trialRestricted?: boolean;
   overLimit: { resource: LimitedResource; used: number; limit: number }[];
 }
 
@@ -19,8 +21,11 @@ export function PlanNoticeBanner({ notice }: { notice: PlanNotice }) {
       <Alert variant="warning" className="mb-4">
         <CreditCard />
         <AlertDescription>
-          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt)}. Cases, SLA monitoring, alerts and history keep working; adding members,
-          integrations or SLA policies is paused until you upgrade. <UpgradeCtaLink />
+          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt)}. Cases, SLA monitoring, alerts and history keep working;{" "}
+          {notice.trialRestricted === false
+            ? "choose a plan to keep adding members, integrations and SLA policies."
+            : "adding members, integrations or SLA policies is paused until you upgrade."}{" "}
+          <UpgradeCtaLink />
         </AlertDescription>
       </Alert>
     );

@@ -36,6 +36,14 @@ describe("PlanNoticeBanner: expired trial", () => {
     expect(markup).toContain("adding members, integrations or SLA policies is paused until you upgrade");
   });
 
+  it("does not claim anything is paused when enforcement is off, but still shows the notice and CTA", async () => {
+    const markup = await render({ ...expired, trialRestricted: false });
+    expect(markup).toContain("Your trial ended on");
+    expect(markup).toContain("Cases, SLA monitoring, alerts and history keep working");
+    expect(markup).not.toContain("is paused");
+    expect(markup).toContain("Contact");
+  });
+
   it("offers the contact CTA, never /sign-up or /pricing", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "help@elapsed.test");
     const withContact = await render(expired);

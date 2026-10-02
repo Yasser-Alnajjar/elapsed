@@ -127,6 +127,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           <PlanNoticeBanner
             notice={{
               trialExpiredAt: entitlementNotice.trialExpired?.trialEndedAt.toISOString() ?? null,
+              trialRestricted: entitlementNotice.trialExpired?.restricted,
               overLimit: entitlementNotice.overLimit,
             }}
           />

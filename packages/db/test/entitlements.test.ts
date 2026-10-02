@@ -207,6 +207,22 @@ describe("checkEntitlement (N6.3)", () => {
     expect(state.events).toMatchObject([{ kind: "creation_blocked", resource: "nativePolicies" }]);
   });
 
+  it("does not block or record anything for a lapsed trial while enforcement is off, while the notice still shows", async () => {
+    const { prisma, state } = fake({ enforced: false, organization: { plan: null, planStatus: "trial", trialEndsAt: new Date("2026-09-30T00:00:00Z") } });
+    for (const resource of ["seats", "ticketSourceIntegrations", "engineeringIntegrations", "nativePolicies"] as const) {
+      expect(await checkEntitlement(prisma, "org-a", resource, { roleOf, now: NOW })).toEqual({ outcome: "allow" });
+    }
+    expect(state.events).toEqual([]);
+    expect((await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).trialExpired).not.toBeNull();
+  });
+
+  it("blocks every creation point for a lapsed trial once enforcement is on", async () => {
+    const { prisma } = fake({ enforced: true, organization: { plan: null, planStatus: "trial", trialEndsAt: new Date("2026-09-30T00:00:00Z") } });
+    for (const resource of ["seats", "ticketSourceIntegrations", "engineeringIntegrations", "nativePolicies"] as const) {
+      expect((await checkEntitlement(prisma, "org-a", resource, { roleOf, now: NOW })).outcome).toBe("blocked");
+    }
+  });
+
   it("does not break the creation point when recording fails", async () => {
     const { prisma } = fake({ users: Array.from({ length: 5 }, (_, i) => ({ role: "member" as const, email: `${i}@x` })) });
     (prisma as unknown as { entitlementEvent: { create: () => Promise<never> } }).entitlementEvent.create = async () => {
@@ -217,9 +233,39 @@ describe("checkEntitlement (N6.3)", () => {
 });
 
 describe("getEntitlementNotice", () => {
-  it("is empty while enforcement is off", async () => {
+  it("is empty while enforcement is off and the organization is neither lapsed nor over a limit", async () => {
     const { prisma } = fake({ enforced: false });
     expect(await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).toEqual({ trialExpired: null, overLimit: [] });
+  });
+
+  it("still reports a lapsed trial while enforcement is off, marked informational, and never reports over-limit", async () => {
+    const lapsed = { plan: null, planStatus: "trial" as const, trialEndsAt: new Date("2026-09-30T00:00:00Z") };
+    const { prisma } = fake({ enforced: false, organization: lapsed });
+    expect(await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).toEqual({
+      trialExpired: { state: "trial_expired", trialEndedAt: lapsed.trialEndsAt, restricted: false },
+      overLimit: [],
+    });
+
+    const over = fake({ enforced: false, users: Array.from({ length: 9 }, (_, i) => ({ role: "member" as const, email: `${i}@x` })) });
+    expect((await getEntitlementNotice(over.prisma, "org-a", { roleOf, now: NOW })).overLimit).toEqual([]);
+  });
+
+  it("marks the lapsed-trial notice restricted when enforcement is on", async () => {
+    const { prisma } = fake({ organization: { plan: null, planStatus: "trial", trialEndsAt: new Date("2026-09-30T00:00:00Z") } });
+    expect((await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).trialExpired).toMatchObject({ restricted: true });
+  });
+
+  it("does not show an ended trial for a running trial, no end date, or an internal tenant, enforced or not", async () => {
+    for (const organization of [
+      { plan: null, planStatus: "trial" as const, trialEndsAt: new Date("2026-10-20T00:00:00Z") },
+      { plan: null, planStatus: "trial" as const, trialEndsAt: null },
+      { plan: null, planStatus: "internal" as const, trialEndsAt: new Date("2026-09-30T00:00:00Z") },
+    ]) {
+      for (const enforced of [true, false]) {
+        const { prisma } = fake({ enforced, organization });
+        expect((await getEntitlementNotice(prisma, "org-a", { roleOf, now: NOW })).trialExpired).toBeNull();
+      }
+    }
   });
 
   it("reports a lapsed trial, and over-limit resources only once genuinely over", async () => {

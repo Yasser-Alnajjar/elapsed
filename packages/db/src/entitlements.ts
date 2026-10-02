@@ -156,9 +156,17 @@ export async function checkEntitlement(
 export interface TrialStatusNotice {
   state: "trial_expired";
   trialEndedAt: Date;
+  /** Whether new configuration is actually blocked, i.e. `entitlementsEnforced` is on. Off: the notice is informational only. */
+  restricted: boolean;
 }
 
-/** The notice a signed-in member sees, or null. Cheap: one organization read, and only when enforcement is on. */
+/**
+ * The notice a signed-in member sees. An ended trial is reported from the
+ * organization's own plan state whether or not enforcement is on, because it
+ * is information, not a restriction (`restricted` says which). Over-limit
+ * resources are only reported while enforcement is on. Two reads at most:
+ * the settings row and the organization, plus usage when a limit can apply.
+ */
 export async function getEntitlementNotice(
   prisma: PrismaClient,
   organizationId: string,
@@ -167,7 +175,7 @@ export async function getEntitlementNotice(
   const none = { trialExpired: null, overLimit: [] };
   const now = options.now ?? new Date();
 
-  if (!(await readEnforced(prisma))) return none;
+  const enforced = await readEnforced(prisma);
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
@@ -176,8 +184,9 @@ export async function getEntitlementNotice(
   if (!organization || organization.planStatus === "internal") return none;
 
   if (isTrialExpired(organization, now)) {
-    return { trialExpired: { state: "trial_expired", trialEndedAt: organization.trialEndsAt! }, overLimit: [] };
+    return { trialExpired: { state: "trial_expired", trialEndedAt: organization.trialEndsAt!, restricted: enforced }, overLimit: [] };
   }
+  if (!enforced) return none;
   if (organization.planStatus === "trial" || !isPlanId(organization.plan)) return none;
 
   const usage = await getOrganizationUsage(prisma, organizationId, options.roleOf, now);
