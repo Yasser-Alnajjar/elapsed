@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import { notFound } from "next/navigation";
 import { isPlatformOperator } from "./authz";
 import { getRequestContext } from "./request-context";
+import { IUser } from "./types/user";
 
 /**
  * Gate for every `/admin` page and every server-side admin read (N4.1).
@@ -14,8 +15,11 @@ import { getRequestContext } from "./request-context";
  * Returns the operator's email, which is what the audit log records. A user
  * who is not signed in is redirected to sign-in by `getRequestContext`.
  */
-export async function requirePlatformAdminPage(): Promise<{ session: Session; actorEmail: string }> {
+export async function requirePlatformAdminPage(): Promise<{
+  session: Session;
+  user: IUser;
+}> {
   const { session } = await getRequestContext();
   if (!isPlatformOperator(session)) notFound();
-  return { session, actorEmail: session.user.email.toLowerCase() };
+  return { session, user: session.user };
 }
