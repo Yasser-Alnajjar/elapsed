@@ -31,6 +31,8 @@ const SCOPES: Record<string, Scope> = {
   Organization: { kind: "self" },
   User: { kind: "direct" },
   OrganizationInvitation: { kind: "direct" },
+  IntegrationConnectLink: { kind: "direct" },
+  ReportDelivery: { kind: "direct" },
   Integration: { kind: "direct" },
   Customer: { kind: "direct" },
   CustomerIdentity: { kind: "direct" },

@@ -41,6 +41,8 @@ vi.mock("@sla/notifications", () => ({
   deliverClaimedNotifications: vi
     .fn()
     .mockResolvedValue({ notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] }),
+  // The monthly report (N5.6) is covered by its own tests; this fake database has none of its tables.
+  deliverMonthlyReport: vi.fn().mockResolvedValue({ period: "2026-09", channels: {} }),
 }));
 // Linear's *real* backfill, client and token lifecycle run against a stubbed
 // `fetch`, so each case below starts from an actual HTTP status code. Only the
@@ -49,6 +51,7 @@ vi.mock("@sla/notifications", () => ({
 vi.mock("../src/providers", async (importOriginal) => {
   const original = await importOriginal<typeof import("../src/providers")>();
   return {
+    ...original,
     PROVIDERS: {
       ...original.PROVIDERS,
       linear: {
