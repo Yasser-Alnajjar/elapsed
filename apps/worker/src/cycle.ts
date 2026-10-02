@@ -125,7 +125,17 @@ const ROLE_CYCLE_ORDER: Record<SourceRole, number> = { ticket_source: 0, work_tr
 /** What `processOrganization` needs to know about the organization it is given. */
 export interface OrganizationToProcess {
   id: string;
-  integrations: { id: string; provider: IntegrationProvider; credentials: unknown; status: string; failingSince: Date | null }[];
+  integrations: {
+    id: string;
+    provider: IntegrationProvider;
+    credentials: unknown;
+    status: string;
+    failingSince: Date | null;
+    /** Set by a platform operator (N4.5): skip the provider fetch while set. */
+    pollingPausedAt?: Date | null;
+    /** Set by a platform operator (N4.5): run one full normalization pass, then clear. */
+    renormalizeRequestedAt?: Date | null;
+  }[];
 }
 
 /**
@@ -139,7 +149,15 @@ export const ORGANIZATION_TO_PROCESS_SELECT = {
   id: true,
   integrations: {
     where: { status: { not: "disconnected" as const } },
-    select: { id: true, provider: true, credentials: true, status: true, failingSince: true },
+    select: {
+      id: true,
+      provider: true,
+      credentials: true,
+      status: true,
+      failingSince: true,
+      pollingPausedAt: true,
+      renormalizeRequestedAt: true,
+    },
   },
 } as const;
 
@@ -210,6 +228,8 @@ export async function processOrganization(
       reauthRequired: boolean;
       permissionDenied: boolean;
       durationMs: number;
+      /** Ingest was skipped on purpose (operator pause): no sync attempt happened, so none is recorded. */
+      paused: boolean;
     }
   >();
 
@@ -219,6 +239,27 @@ export async function processOrganization(
     // advances the integration's cursor, so this is the gate that keeps a
     // worker that lost the organization from ingesting it.
     lease?.assertValid();
+    if (integration.pollingPausedAt) {
+      // Paused by a platform operator (N4.5): no provider fetch. Not a failure
+      // and not a sync attempt, so no sync health is written for it below;
+      // `lastSuccessfulSyncAt` therefore stops advancing and the integration
+      // goes stale, which is exactly what the customer should be told.
+      // Normalization and evaluation still run on the events already stored.
+      orgLogger.info("integration_ingest_paused", {
+        position,
+        provider: integration.provider,
+        integrationId: integration.id,
+        pausedAt: integration.pollingPausedAt.toISOString(),
+      });
+      ingestOutcomes.set(integration.id, {
+        syncError: null,
+        reauthRequired: false,
+        permissionDenied: false,
+        durationMs: 0,
+        paused: true,
+      });
+      continue;
+    }
     const integrationStartedAt = Date.now();
     let syncError: string | null = null;
     let reauthRequired = false;
@@ -334,6 +375,7 @@ export async function processOrganization(
       reauthRequired,
       permissionDenied,
       durationMs: Date.now() - integrationStartedAt,
+      paused: false,
     });
   }
 
@@ -369,8 +411,10 @@ export async function processOrganization(
               logger: orgLogger.child({ integrationId: integration.id, provider: integration.provider }),
               // The poll only re-derives what changed since the adapter's own
               // watermark; the reconciliation sweep re-derives everything (and
-              // is the backstop for anything the watermark could miss).
-              mode: kind === "active_set_poll" ? "incremental" : "full",
+              // is the backstop for anything the watermark could miss). An
+              // operator's re-normalization request (N4.5) forces the full pass
+              // on this run whichever kind it is.
+              mode: kind === "active_set_poll" && !integration.renormalizeRequestedAt ? "incremental" : "full",
               // Only a work tracker links onto cases through a URL a ticket
               // source recognizes; no need to read the sources for anyone else.
               resolveCaseRef:
@@ -397,6 +441,20 @@ export async function processOrganization(
               stage: "normalize",
             });
           }
+
+          // The requested full pass is done: clear the request, compare-and-set
+          // on the value this run started with so a request made while it ran
+          // is kept for the next one. A failed pass leaves it set to retry.
+          if (integration.renormalizeRequestedAt && normalizeError === null) {
+            await prisma.integration.updateMany({
+              where: { id: integration.id, renormalizeRequestedAt: integration.renormalizeRequestedAt },
+              data: { renormalizeRequestedAt: null },
+            });
+          }
+
+          // Nothing was fetched for a paused integration, so there is no sync
+          // attempt to record: leave sync health exactly as it was.
+          if (ingestOutcome.paused) continue;
 
           // Every attempted cycle (success or failure, in either phase)
           // updates sync health, so the settings page reflects real state

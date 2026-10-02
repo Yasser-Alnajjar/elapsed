@@ -23,6 +23,8 @@ export interface IntegrationConnectionView {
   connected: boolean;
   reauthRequired: boolean;
   permissionDenied: boolean;
+  /** A platform operator paused polling for this integration (N4.5): no new data arrives until they resume it. */
+  pollingPaused: boolean;
   connectedAt: Date | null;
   disconnectedAt: Date | null;
   subdomain: string | null;
@@ -118,6 +120,8 @@ export interface IntegrationDetailData {
   reauthRequired: boolean;
   /** The token works, but the connecting user lost provider-side access (roadmap step 32). */
   permissionDenied: boolean;
+  /** A platform operator paused polling for this integration (N4.5). */
+  pollingPaused: boolean;
   lastSyncAt: Date | null;
   lastSyncError: string | null;
   lastSuccessfulSyncAt: Date | null;

@@ -39,7 +39,10 @@ vi.mock("@sla/db", async (importOriginal) => ({
 
 const h = vi.hoisted(() => {
   const calls: string[] = [];
+  /** The `mode` each provider's normalize was called with, in call order. */
+  const normalizeModes: Record<string, string[]> = {};
   const ingestBehaviour: Record<string, () => never> = {};
+  const normalizeBehaviour: Record<string, () => never> = {};
   const emptyBatch = () => ({ customers: [], cases: [], eventGroups: [], deletedCaseExternalIds: [], failures: [] });
 
   function stub(provider: string, role: string, withCorrelate: boolean) {
@@ -60,8 +63,10 @@ const h = vi.hoisted(() => {
         ingestBehaviour[provider]?.();
         return { recordsFetched: 0, counts: {} };
       },
-      async normalize() {
+      async normalize(ctx: { mode: string }) {
         calls.push(`normalize:${provider}`);
+        (normalizeModes[provider] ??= []).push(ctx.mode);
+        normalizeBehaviour[provider]?.();
         return emptyBatch();
       },
       ...(withCorrelate
@@ -74,9 +79,9 @@ const h = vi.hoisted(() => {
         : {}),
     };
   }
-  return { calls, ingestBehaviour, stub };
+  return { calls, normalizeModes, ingestBehaviour, normalizeBehaviour, stub };
 });
-const { calls, ingestBehaviour } = h;
+const { calls, normalizeModes, ingestBehaviour, normalizeBehaviour } = h;
 
 vi.mock("../src/providers", () => ({
   PROVIDERS: {
@@ -91,7 +96,7 @@ vi.mock("../src/providers", () => ({
 const config = { appUrl: "https://app.example.com" } as WorkerConfig;
 
 /** Five integrations, listed in the worst order for the cycle: code host first, tracker before ticket source. */
-function fiveProviderDb() {
+function fiveProviderDb(operator: Partial<Record<"github" | "jira" | "linear" | "intercom" | "zendesk", { pollingPausedAt?: Date; renormalizeRequestedAt?: Date }>> = {}) {
   const rows = (["github", "jira", "linear", "intercom", "zendesk"] as const).map((provider) => ({
     id: `int_${provider}`,
     provider,
@@ -99,11 +104,24 @@ function fiveProviderDb() {
     credentials: {},
     lastSyncAt: null as Date | null,
     lastSyncError: null as string | null,
+    consecutiveFailures: 0,
+    pollingPausedAt: operator[provider]?.pollingPausedAt ?? null,
+    renormalizeRequestedAt: operator[provider]?.renormalizeRequestedAt ?? null,
   }));
   const prisma = {
     organization: {
       findMany: vi.fn(async () => [
-        { id: "org_1", integrations: rows.map(({ id, provider, status, credentials }) => ({ id, provider, status, credentials })) },
+        {
+          id: "org_1",
+          integrations: rows.map(({ id, provider, status, credentials, pollingPausedAt, renormalizeRequestedAt }) => ({
+            id,
+            provider,
+            status,
+            credentials,
+            pollingPausedAt,
+            renormalizeRequestedAt,
+          })),
+        },
       ]),
     },
     integration: {
@@ -111,7 +129,19 @@ function fiveProviderDb() {
         Object.assign(rows.find((r) => r.id === where.id)!, data);
         return {};
       }),
-      updateMany: vi.fn(async () => ({ count: 1 })),
+      // Compare-and-set clear of the re-normalize request, the only
+      // `updateMany` the cycle makes besides the permission transitions.
+      updateMany: vi.fn(
+        async ({ where, data }: { where: { id: string; renormalizeRequestedAt?: Date }; data: Record<string, unknown> }) => {
+          const row = rows.find((r) => r.id === where.id);
+          if (!row) return { count: 0 };
+          if (where.renormalizeRequestedAt && row.renormalizeRequestedAt?.getTime() !== where.renormalizeRequestedAt.getTime()) {
+            return { count: 0 };
+          }
+          Object.assign(row, data);
+          return { count: 1 };
+        },
+      ),
     },
   };
   return { rows, prisma: prisma as unknown as PrismaClient };
@@ -119,6 +149,8 @@ function fiveProviderDb() {
 
 beforeEach(() => {
   calls.length = 0;
+  for (const key of Object.keys(normalizeModes)) delete normalizeModes[key];
+  for (const key of Object.keys(normalizeBehaviour)) delete normalizeBehaviour[key];
   for (const key of Object.keys(ingestBehaviour)) delete ingestBehaviour[key];
   vi.mocked(runEvaluationPipeline).mockClear();
 });
@@ -184,5 +216,77 @@ describe("runCycle — registry dispatch (N2.4)", () => {
     ]);
     expect(rows.find((r) => r.provider === "zendesk")!.lastSyncError).toBe("Zendesk needs to be reconnected");
     expect(rows.find((r) => r.provider === "github")!.lastSyncError).toContain("Github denied access");
+  });
+});
+
+describe("runCycle — operator controls (N4.5)", () => {
+  const pausedAt = new Date("2026-10-02T09:00:00Z");
+
+  it("a paused integration is not ingested, while normalization and evaluation still run for it", async () => {
+    const { prisma, rows } = fiveProviderDb({ jira: { pollingPausedAt: pausedAt } });
+
+    const result = await runCycle(prisma, config, "active_set_poll");
+
+    expect(result.failures).toEqual([]);
+    expect(calls).not.toContain("ingest:jira");
+    expect(calls.filter((c) => c.startsWith("ingest:")).sort()).toEqual(
+      ["ingest:github", "ingest:intercom", "ingest:linear", "ingest:zendesk"],
+    );
+    expect(calls).toContain("normalize:jira");
+    expect(calls).toContain("correlate:jira");
+    expect(runEvaluationPipeline).toHaveBeenCalledTimes(1);
+    // Not a sync attempt, so sync health is untouched: nothing here may make it look fresh.
+    const jira = rows.find((r) => r.provider === "jira")!;
+    expect(jira).toMatchObject({ lastSyncAt: null, lastSyncError: null, consecutiveFailures: 0 });
+    expect(jira).not.toHaveProperty("lastSuccessfulSyncAt");
+    expect(rows.find((r) => r.provider === "linear")).toHaveProperty("lastSuccessfulSyncAt");
+  });
+
+  it("resuming (pollingPausedAt back to null) ingests it again", async () => {
+    const { prisma } = fiveProviderDb();
+
+    await runCycle(prisma, config, "active_set_poll");
+
+    expect(calls).toContain("ingest:jira");
+  });
+
+  it("a re-normalization request forces a full pass on an active poll, then clears the request", async () => {
+    const requestedAt = new Date("2026-10-02T09:30:00Z");
+    const { prisma, rows } = fiveProviderDb({ zendesk: { renormalizeRequestedAt: requestedAt } });
+
+    await runCycle(prisma, config, "active_set_poll");
+
+    expect(normalizeModes.zendesk).toEqual(["full"]);
+    expect(normalizeModes.jira).toEqual(["incremental"]);
+    expect(rows.find((r) => r.provider === "zendesk")!.renormalizeRequestedAt).toBeNull();
+
+    // The next poll is back to incremental: the request was one-shot.
+    await runCycle(prisma, config, "active_set_poll");
+    expect(normalizeModes.zendesk).toEqual(["full", "incremental"]);
+  });
+
+  it("a failed full pass keeps the request so the next run retries it", async () => {
+    const requestedAt = new Date("2026-10-02T09:30:00Z");
+    const { prisma, rows } = fiveProviderDb({ zendesk: { renormalizeRequestedAt: requestedAt } });
+    normalizeBehaviour.zendesk = () => {
+      throw new Error("boom");
+    };
+
+    const result = await runCycle(prisma, config, "active_set_poll");
+
+    expect(result.failures).toEqual([{ organizationId: "org_1", stage: "normalize:zendesk", error: "boom" }]);
+    expect(rows.find((r) => r.provider === "zendesk")!.renormalizeRequestedAt).toEqual(requestedAt);
+  });
+
+  it("works while paused: the pass runs on stored events and the request is cleared", async () => {
+    const { prisma, rows } = fiveProviderDb({
+      jira: { pollingPausedAt: pausedAt, renormalizeRequestedAt: new Date("2026-10-02T09:30:00Z") },
+    });
+
+    await runCycle(prisma, config, "active_set_poll");
+
+    expect(calls).not.toContain("ingest:jira");
+    expect(normalizeModes.jira).toEqual(["full"]);
+    expect(rows.find((r) => r.provider === "jira")!.renormalizeRequestedAt).toBeNull();
   });
 });

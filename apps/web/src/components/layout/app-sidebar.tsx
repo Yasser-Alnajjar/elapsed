@@ -38,6 +38,8 @@ import {
 
 import { BrandMark } from "../shared/brand-mark";
 import { buildNavItems, isNavItemActive, type NavItem } from "./nav-items";
+const MENU_BUTTON =
+  "h-9 rounded font-mono text-sm data-[active=true]:shadow-[inset_2px_0_0_var(--primary)] data-[active=true]:font-semibold";
 
 export function AppSidebar({
   autoSyncSeconds,
@@ -45,7 +47,7 @@ export function AppSidebar({
 }: {
   /** The worker's active poll interval, for the footer's real sync cadence — never a fabricated version number. */
   autoSyncSeconds?: number;
-  /** Adds the operator-only `/operator` group (roadmap 7.5) — see `buildNavItems`. */
+  /** Adds the operator-only link into `/admin` (N4.1) — see `buildNavItems`. */
   isPlatformOperator?: boolean;
 }) {
   const pathname = usePathname();
@@ -83,6 +85,7 @@ export function AppSidebar({
                       asChild
                       isActive={active}
                       tooltip={item.label}
+                      className={MENU_BUTTON}
                     >
                       <Link href={item.href}>
                         <Icon />
@@ -149,6 +152,7 @@ function NavGroupItem({
             <SidebarMenuButton
               isActive={isGroupRouteActive}
               tooltip={item.label}
+              className={MENU_BUTTON}
             >
               <Icon />
               <span>{item.label}</span>
@@ -174,6 +178,7 @@ function NavGroupItem({
                   key={child.href}
                   asChild
                   data-active={childActive}
+                  className={MENU_BUTTON}
                 >
                   <Link href={child.href}>
                     <ChildIcon />
@@ -202,7 +207,7 @@ function NavGroupItem({
           <SidebarMenuButton
             isActive={pathname === item.href}
             tooltip={item.label}
-            className="cursor-pointer"
+            className={MENU_BUTTON}
           >
             <Icon />
             <span>{item.label}</span>
@@ -228,7 +233,11 @@ function NavGroupItem({
 
               return (
                 <SidebarMenuSubItem key={child.href}>
-                  <SidebarMenuSubButton asChild isActive={childActive}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={childActive}
+                    className={MENU_BUTTON}
+                  >
                     <Link href={child.href}>
                       <ChildIcon />
                       <span>{child.label}</span>

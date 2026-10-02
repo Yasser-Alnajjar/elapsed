@@ -14,6 +14,15 @@ const nextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
   poweredByHeader: false,
+  // N4.1: the operator pages moved to /admin. The old paths redirect for one
+  // release so bookmarks keep working, then this block is deleted. Temporary
+  // (307) on purpose: nothing should cache a redirect that is about to go.
+  async redirects() {
+    return [
+      { source: "/operator", destination: "/admin", permanent: false },
+      { source: "/operator/monitoring", destination: "/admin/monitoring", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

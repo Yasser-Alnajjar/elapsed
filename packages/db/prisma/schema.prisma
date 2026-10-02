@@ -49,6 +49,16 @@ model Organization {
   users             User[]
   invitations       OrganizationInvitation[]
   workState         OrganizationWorkState?
+  /// Manual plan record (N4.3), written only by a platform operator from
+  /// `/admin`. Plan identifier (`starter` | `team` | `enterprise`, D14); kept a
+  /// string so a later billing phase can tighten it without a migration. Null
+  /// means "not recorded yet". These four columns never change monitoring
+  /// behaviour: nothing in the worker, evaluation or alerting reads them.
+  plan              String?
+  planStatus        PlanStatus         @default(trial)
+  trialEndsAt       DateTime?
+  /// Free text for the operator, for example an invoice or contract id.
+  billingReference  String?
 
   @@map("organizations")
 }
@@ -249,6 +259,17 @@ model Integration {
   /// Zendesk uses it so far.
   normalizedThroughFetchedAt DateTime?
   normalizedThroughId        String?
+  /// Set by a platform operator (N4.5): the worker skips *ingest* (the provider
+  /// fetch) for this integration while it is set. Normalization and
+  /// evaluation still run on the events already stored. Because no fetch
+  /// completes, `lastSuccessfulSyncAt` stops advancing and the integration
+  /// goes stale, which the customer sees. Null = polling normally.
+  pollingPausedAt DateTime?
+  /// Set by a platform operator (N4.5): the worker runs one full
+  /// (non-incremental) normalization pass for this integration on its next run,
+  /// then clears it. Cleared compare-and-set on the value the pass started
+  /// with, so a request made while the pass runs is not lost.
+  renormalizeRequestedAt DateTime?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   cases          Case[]
   rawEvents      RawEvent[]
@@ -895,6 +916,38 @@ model OrganizationEmailSettings {
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("organization_email_settings")
+}
+
+/// Commercial state of an organization, recorded by hand (N4.3). Informational
+/// only: it never gates monitoring (roadmap Phase 10b principle 3).
+enum PlanStatus {
+  trial
+  active
+  past_due
+  cancelled
+  internal
+}
+
+/// Append-only record of what a platform operator did or looked at (N4.2).
+/// Platform-level, not tenant data: no tenant read path exists, and there is no
+/// update or delete path in code (`admin-boundary.test.ts` asserts it).
+/// `organizationId` and `integrationId` are plain strings, not relations, so an
+/// audit row survives the deletion of the thing it describes.
+model AdminAuditLog {
+  id             String   @id @default(cuid())
+  actorEmail     String
+  /// `view_tenant`, `update_plan`, `pause_polling`, `resume_polling`,
+  /// `request_renormalize`, `update_worker_settings`.
+  action         String
+  organizationId String?
+  integrationId  String?
+  /// What changed (before/after for an edit); never a credential or secret.
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([organizationId, createdAt])
+  @@map("admin_audit_logs")
 }
 
 enum EmailSecurity {
