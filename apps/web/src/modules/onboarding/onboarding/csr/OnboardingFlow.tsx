@@ -30,6 +30,7 @@ import { IntegrationConfigGate } from "@modules/settings/integrations/csr/Integr
 import { providerPresentation } from "@modules/settings/integrations/csr/provider-presentation";
 
 import { OnboardingProgress } from "./OnboardingProgress";
+import { RequestTrackerAccess } from "./RequestTrackerAccess";
 import { useOnboardingBackfill } from "./useOnboardingBackfill";
 
 const DESCRIPTION_CLASS = "font-body-sm text-body-sm text-on-surface-variant";
@@ -741,12 +742,15 @@ export function OnboardingFlow({ initialStatus }: OnboardingFlowProps) {
                     : ""
                 }.`}
                 footer={
-                  <Button variant="outline" asChild className="self-start">
-                    <Link href="/onboarding/activation">
-                      Continue without a tracker
-                      <ArrowRight className="size-[18px] shrink-0" />
-                    </Link>
-                  </Button>
+                  <div className="flex flex-col gap-4">
+                    <RequestTrackerAccess provider={primaryTracker.provider} label={primaryTracker.label} />
+                    <Button variant="outline" asChild className="self-start">
+                      <Link href="/onboarding/activation">
+                        Continue without a tracker
+                        <ArrowRight className="size-[18px] shrink-0" />
+                      </Link>
+                    </Button>
+                  </div>
                 }
               />
             </Reveal>

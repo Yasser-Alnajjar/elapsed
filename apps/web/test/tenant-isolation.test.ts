@@ -272,6 +272,7 @@ async function seedOrg(
 
 interface SeededExtras {
   invitationId: string;
+  connectLinkId: string;
   invitationEmail: string;
   memberId: string;
   resetToken: string;
@@ -313,6 +314,18 @@ async function seedExtras(
       expiresAt: new Date(Date.now() + 3_600_000),
     },
   });
+  const connectLink = await prisma.integrationConnectLink.create({
+    data: {
+      organizationId: org.organizationId,
+      provider: "jira",
+      tokenHash: hashToken(`${lower}-connect-link`),
+      createdByUserId: org.userId,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+  });
+  await prisma.reportDelivery.create({
+    data: { organizationId: org.organizationId, period: "2026-09", channel: "email", status: "sent", deliveredAt: new Date() },
+  });
   // A second, non-owner member so demote/remove targets exist.
   const member = await prisma.user.create({
     data: {
@@ -350,11 +363,7 @@ async function seedExtras(
   });
   // Worker scheduling state (multi-worker leases): never served to a tenant, but keyed per organization.
   await prisma.organizationWorkState.create({ data: { organizationId: org.organizationId } });
-  // Monthly report delivery (N5.6) and entitlement events (N6.3, N6.4): per organization, never served to another.
-  await prisma.reportDelivery.create({ data: { organizationId: org.organizationId, period: "2026-09", channel: "email", status: "sent" } });
-  await prisma.integrationConnectLink.create({
-    data: { organizationId: org.organizationId, provider: "jira", tokenHash: `${lower}-connect-link-hash`, expiresAt: new Date(Date.now() + 3_600_000) },
-  });
+  // Entitlement events (N6.3, N6.4): per organization, never served to another.
   await prisma.entitlementEvent.create({
     data: { organizationId: org.organizationId, kind: "limit_warned", resource: "seats", dedupeKey: "seats:2026-10-02", used: 6, limit: 5 },
   });
@@ -394,6 +403,7 @@ async function seedExtras(
 
   return {
     invitationId: invitation.id,
+    connectLinkId: connectLink.id,
     invitationEmail,
     memberId: member.id,
     resetToken,
@@ -873,6 +883,17 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
       );
       const a = await prisma.organizationInvitation.findUniqueOrThrow({ where: { id: extraA.invitationId } });
       expect(a.status).toBe("revoked");
+    });
+
+    it("connect links: another org's link cannot be listed, revoked or consumed", async () => {
+      const db = await import("@sla/db");
+      expect((await db.listActiveConnectLinks(prisma, orgA.organizationId)).map((l) => l.id)).toEqual([extraA.connectLinkId]);
+      expect(await db.revokeConnectLink(prisma, orgA.organizationId, extraB.connectLinkId)).toBe(false);
+      expect(
+        await db.consumeConnectLink(prisma, { id: extraB.connectLinkId, organizationId: orgA.organizationId, provider: "jira" }),
+      ).toBe(false);
+      const b = await prisma.integrationConnectLink.findUniqueOrThrow({ where: { id: extraB.connectLinkId } });
+      expect(b.consumedAt).toBeNull();
     });
 
     it("changing the role of, or removing, another org's member is rejected and changes nothing", async () => {

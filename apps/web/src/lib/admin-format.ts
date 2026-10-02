@@ -29,7 +29,12 @@ export function formatUtcTimestamp(iso: string | null): string {
 /** "Oct 2, 2026" (UTC calendar date). */
 export function formatUtcDate(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /** "Oct 2, 07:12 AM": the compact form for table cells where the year is noise. */
@@ -46,7 +51,7 @@ export function formatUtcShort(iso: string | null): string {
 
 /** "07:12:27", the 24-hour UTC time of day. */
 export function formatUtcClock(date: Date): string {
-  return date.toLocaleTimeString("en-GB", { timeZone: "UTC", hour12: false });
+  return date.toLocaleTimeString("en-GB", { timeZone: "UTC", hour12: true });
 }
 
 /** First eight characters of an id, for a tight chip. The full id stays in a `title`. */
@@ -59,7 +64,8 @@ export function formatSpan(ms: number): string {
   const totalSeconds = Math.max(0, Math.round(ms / 1000));
   if (totalSeconds < 60) return `${totalSeconds}s`;
   const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes}m ${String(totalSeconds % 60).padStart(2, "0")}s`;
+  if (minutes < 60)
+    return `${minutes}m ${String(totalSeconds % 60).padStart(2, "0")}s`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ${String(minutes % 60).padStart(2, "0")}m`;
 }

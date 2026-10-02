@@ -42,7 +42,8 @@ vi.mock("@sla/notifications", () => ({
   deliverClaimedNotifications: vi
     .fn()
     .mockResolvedValue({ notificationsSent: 0, notificationsSkipped: 0, notificationsFailed: [] }),
-  deliverMonthlyReport: vi.fn().mockResolvedValue({ period: null, built: false, channels: {} }),
+  // The monthly report (N5.6) is covered by its own tests; this fake database has none of its tables.
+  deliverMonthlyReport: vi.fn().mockResolvedValue({ period: "2026-09", channels: {} }),
   deliverTrialExpiryNotice: vi.fn().mockResolvedValue("not_expired"),
 }));
 // Linear's *real* backfill, client and token lifecycle run against a stubbed
@@ -52,7 +53,7 @@ vi.mock("@sla/notifications", () => ({
 vi.mock("../src/providers", async (importOriginal) => {
   const original = await importOriginal<typeof import("../src/providers")>();
   return {
-    ISSUE_LINK_PROVIDERS: original.ISSUE_LINK_PROVIDERS,
+    ...original,
     PROVIDERS: {
       ...original.PROVIDERS,
       linear: {

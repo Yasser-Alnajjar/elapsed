@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { MonoLabel, StatusDot } from "./admin-ui";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
+import { IUser } from "@/lib/types/user";
 
 /** The mono, left-barred active state of the admin menu, on top of the shadcn menu button's own. */
 const MENU_BUTTON =
@@ -31,7 +32,7 @@ const MENU_BUTTON =
  * (with tooltips), a sheet on a phone, and `⌘B` to toggle, all from the
  * component. Only the content is ours.
  */
-export function AdminSidebar({ actorEmail }: { actorEmail: string }) {
+export function AdminSidebar({ user }: { user: IUser }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   /** A link inside the phone sheet should close it, or it stays over the page that just loaded. */
@@ -129,9 +130,9 @@ export function AdminSidebar({ actorEmail }: { actorEmail: string }) {
         </div>
         <p
           className="text-foreground truncate font-mono text-xs"
-          title={actorEmail}
+          title={user.email}
         >
-          {actorEmail}
+          {user.email}
         </p>
         <p className="text-foreground-subtle flex items-start gap-1.5 text-xxs leading-4">
           <Lock className="mt-0.5 size-3 shrink-0" aria-hidden />

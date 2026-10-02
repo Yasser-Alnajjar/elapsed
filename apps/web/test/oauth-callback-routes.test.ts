@@ -37,7 +37,7 @@ const githubMock = vi.hoisted(() => ({
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
-vi.mock("@/lib/oauth-state", () => ({ validateOAuthState: oauthState.validateOAuthState }));
+vi.mock("@/lib/oauth-state", () => ({ validateOAuthState: oauthState.validateOAuthState, verifyOAuthState: () => null }));
 
 vi.mock("@/lib/zendesk-env", () => ({ ZENDESK_STATE_COOKIE: "zendesk_oauth_state", getZendeskOAuthConfig: vi.fn(async () => ({})) }));
 vi.mock("@/lib/jira-env", () => ({ JIRA_STATE_COOKIE: "jira_oauth_state", getJiraOAuthConfig: vi.fn(async () => ({})) }));

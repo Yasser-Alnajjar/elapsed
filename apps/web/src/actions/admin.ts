@@ -41,13 +41,13 @@ export const AdminActions = {
    * shown without a record that this operator looked.
    */
   async getTenantDetail(organizationId: string): Promise<AdminTenantDetail> {
-    const { actorEmail } = await requirePlatformAdminPage();
+    const { user } = await requirePlatformAdminPage();
     const prisma = getPrismaClient();
 
     const detail = await getAdminTenantDetail(prisma, organizationId);
     if (!detail) notFound();
 
-    await recordAdminAudit(prisma, { actorEmail, action: "view_tenant", organizationId });
+    await recordAdminAudit(prisma, { actorEmail: user.email, action: "view_tenant", organizationId });
     return detail;
   },
 

@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { formatUtcClock } from "@/lib/admin-format";
+import { IUser } from "@/lib/types/user";
+import { UserMenu } from "../layout/user-menu";
 
 /**
  * The admin top bar. The search is real: it opens the Tenants list filtered to
@@ -13,7 +15,7 @@ import { formatUtcClock } from "@/lib/admin-format";
  * The clock is the browser's own, shown in UTC, because every timestamp in the
  * console is UTC.
  */
-export function AdminTopbar({ actorEmail }: { actorEmail: string }) {
+export function AdminTopbar({ user }: { user: IUser }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -33,7 +35,11 @@ export function AdminTopbar({ actorEmail }: { actorEmail: string }) {
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = query.trim();
-    router.push(trimmed ? `/admin/tenants?q=${encodeURIComponent(trimmed)}` : "/admin/tenants");
+    router.push(
+      trimmed
+        ? `/admin/tenants?q=${encodeURIComponent(trimmed)}`
+        : "/admin/tenants",
+    );
     inputRef.current?.blur();
   }
 
@@ -41,8 +47,15 @@ export function AdminTopbar({ actorEmail }: { actorEmail: string }) {
     <header className="bg-card/90 border-border sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl lg:px-6">
       <SidebarTrigger className="shrink-0" />
 
-      <form onSubmit={handleSubmit} role="search" className="relative min-w-0 max-w-xl flex-1">
-        <Search className="text-foreground-subtle pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" aria-hidden />
+      <form
+        onSubmit={handleSubmit}
+        role="search"
+        className="relative min-w-0 max-w-xl flex-1"
+      >
+        <Search
+          className="text-foreground-subtle pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          aria-hidden
+        />
         <input
           ref={inputRef}
           value={query}
@@ -59,23 +72,7 @@ export function AdminTopbar({ actorEmail }: { actorEmail: string }) {
       <div className="ml-auto flex shrink-0 items-center gap-3">
         <UtcClock />
         <div className="bg-border hidden h-4 w-px sm:block" />
-        <ThemeToggle />
-        <div className="flex items-center gap-2.5">
-          <div className="hidden min-w-0 flex-col text-right md:flex">
-            <span className="text-foreground max-w-48 truncate font-mono text-xs leading-none" title={actorEmail}>
-              {actorEmail}
-            </span>
-            <span className="text-primary mt-1 font-mono text-[10px] leading-none font-semibold tracking-[0.06em] uppercase">
-              Platform operator
-            </span>
-          </div>
-          <span
-            aria-hidden
-            className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold"
-          >
-            {actorEmail.slice(0, 2).toUpperCase()}
-          </span>
-        </div>
+        <UserMenu user={user} />
       </div>
     </header>
   );
@@ -97,7 +94,9 @@ function UtcClock() {
       title="Every timestamp in this console is UTC"
     >
       <Timer className="text-foreground-subtle size-3.5" aria-hidden />
-      <span className="text-foreground font-medium tabular-nums">UTC {now ? formatUtcClock(now) : "--:--:--"}</span>
+      <span className="text-foreground font-medium tabular-nums">
+        UTC {now ? formatUtcClock(now) : "--:--:--"}
+      </span>
     </div>
   );
 }

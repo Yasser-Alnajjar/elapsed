@@ -1,19 +1,16 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { exchangeCodeForToken, generateWebhookSecret } from "@sla/jira";
-import { encryptCredentials, getPrismaClient, type Prisma } from "@sla/db";
+import { connectLinkLabel, consumeConnectLink, encryptCredentials, getPrismaClient, type Prisma } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 import { getJiraOAuthConfig, JIRA_STATE_COOKIE } from "@/lib/jira-env";
 import { validateOAuthState } from "@/lib/oauth-state";
+import { authorizeConnectLinkCallback, isConnectLinkState } from "@/lib/connect-link";
 import { getAppUrl } from "@/lib/app-url";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.redirect(new URL("/sign-in", getAppUrl()));
-  const denied = requireOwner(session);
-  if (denied) return denied;
-
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const cookieState = request.headers
@@ -22,20 +19,38 @@ export async function GET(request: Request) {
     .find((entry) => entry.startsWith(`${JIRA_STATE_COOKIE}=`))
     ?.slice(JIRA_STATE_COOKIE.length + 1);
 
-  if (!code) {
-    return NextResponse.json({ error: "Invalid or expired OAuth state" }, { status: 400 });
+  // No session: the only other authority is a connect link (N5.3, D26), valid
+  // for this organization and provider only and consumed below.
+  let connectLink: { id: string; label: string } | null = null;
+  let state: { organizationId: string };
+  if (isConnectLinkState(cookieState)) {
+    const linkAuth = await authorizeConnectLinkCallback(getPrismaClient(), {
+      returnedState: url.searchParams.get("state"),
+      cookieState,
+      provider: "jira",
+    });
+    if (!linkAuth.ok) return NextResponse.json({ error: linkAuth.error }, { status: linkAuth.status });
+    if (!code) return NextResponse.json({ error: "Invalid or expired OAuth state" }, { status: 400 });
+    connectLink = { id: linkAuth.link.id, label: connectLinkLabel(linkAuth.link) };
+    state = linkAuth.state;
+  } else {
+    if (!session) return NextResponse.redirect(new URL("/sign-in", getAppUrl()));
+    const denied = requireOwner(session);
+    if (denied) return denied;
+    if (!code) {
+      return NextResponse.json({ error: "Invalid or expired OAuth state" }, { status: 400 });
+    }
+    const validation = validateOAuthState({
+      returnedState: url.searchParams.get("state"),
+      cookieState,
+      sessionOrganizationId: session.user.organizationId,
+      sessionUserId: session.user.id,
+    });
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
+    }
+    state = validation.state;
   }
-
-  const validation = validateOAuthState({
-    returnedState: url.searchParams.get("state"),
-    cookieState,
-    sessionOrganizationId: session.user.organizationId,
-    sessionUserId: session.user.id,
-  });
-  if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: validation.status });
-  }
-  const { state } = validation;
 
   const config = await getJiraOAuthConfig(state.organizationId);
   const credentials = await exchangeCodeForToken(code, config);
@@ -76,12 +91,27 @@ export async function GET(request: Request) {
 
   const encryptedCredentials = encryptCredentials(credentials);
 
+  // A connect link is spent exactly once, atomically, after the grant is known
+  // good; the loser of a race stores nothing.
+  if (connectLink) {
+    const claimed = await consumeConnectLink(prisma, {
+      id: connectLink.id,
+      organizationId: state.organizationId,
+      provider: "jira",
+    });
+    if (!claimed) {
+      return NextResponse.json({ error: "This connect link has already been used or has expired" }, { status: 410 });
+    }
+  }
+
+
   await prisma.integration.upsert({
     where: { organizationId_provider: { organizationId: state.organizationId, provider: "jira" } },
     create: {
       organizationId: state.organizationId,
       provider: "jira",
       credentials: encryptedCredentials as unknown as Prisma.InputJsonValue,
+      connectedBy: connectLink?.label ?? null,
       // Generated once, here, and never rotated on reconnect — see
       // Integration.webhookSecret's doc comment (roadmap step 20).
       webhookSecret: generateWebhookSecret(),
@@ -90,6 +120,7 @@ export async function GET(request: Request) {
     // and stale sync error, whether this is a first connect or a reconnect.
     update: {
       credentials: encryptedCredentials as unknown as Prisma.InputJsonValue,
+      connectedBy: connectLink?.label ?? null,
       status: "connected",
       disconnectedAt: null,
       lastSyncError: null,
@@ -108,7 +139,7 @@ export async function GET(request: Request) {
   });
 
   const response = NextResponse.redirect(
-    new URL("/onboarding?connected=jira", getAppUrl()),
+    new URL(connectLink ? "/connect/done" : "/onboarding?connected=jira", getAppUrl()),
   );
   response.cookies.delete(JIRA_STATE_COOKIE);
   return response;

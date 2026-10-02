@@ -17,7 +17,7 @@ import type { IntegrationProvider, PrismaClient } from "@sla/db";
  * and the dashboard cannot disagree.
  *
  * Language is neutral by design: it says where time was spent and how many
- * commitments were met, never who is at fault. `monthly-report.test.ts` scans
+ * commitments were met, never who is at fault. `monthly-report-render.test.ts` scans
  * the rendered output for words that assign blame.
  */
 
