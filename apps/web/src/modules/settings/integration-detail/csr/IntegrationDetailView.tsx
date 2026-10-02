@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { PermissionDeniedBanner } from "@/components/shared/permission-denied-banner";
+import { PollingPausedBanner } from "@/components/shared/polling-paused-banner";
 import { Reveal } from "@/components/shared/reveal";
 import { Button } from "@/components/ui/button";
 import { CONCIERGE_PROVIDER_COPY } from "@/lib/concierge-providers";
@@ -192,6 +193,7 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
     connectedAt,
     reauthRequired,
     permissionDenied,
+    pollingPaused,
     lastSyncAt,
     lastSyncError,
     lastSuccessfulSyncAt,
@@ -431,6 +433,8 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
             </SectionBadge>
           }
         >
+          {pollingPaused && <PollingPausedBanner provider={label} />}
+
           {permissionDenied && !reauthRequired && (
             <PermissionDeniedBanner provider={label} />
           )}

@@ -95,9 +95,15 @@ export const ForgotPasswordForm = () => {
               <div className="group relative mb-4">
                 <div className="absolute inset-0 rounded-[8px] bg-primary/20 blur-md transition-all duration-300 group-hover:blur-lg" />
                 <div className="relative flex size-14 items-center justify-center rounded-[8px] bg-surface-raised shadow-lg">
-                  <LockKeyhole aria-hidden className="size-7 fill-primary/20 text-primary" />
+                  <LockKeyhole
+                    aria-hidden
+                    className="size-7 fill-primary/20 text-primary"
+                  />
                   <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-elevated shadow-sm">
-                    <KeyRound aria-hidden className="size-3 text-primary-fixed-dim" />
+                    <KeyRound
+                      aria-hidden
+                      className="size-3 text-primary-fixed-dim"
+                    />
                   </div>
                 </div>
               </div>
@@ -146,7 +152,12 @@ export const ForgotPasswordForm = () => {
                           <Mail aria-hidden className="size-3.5 text-primary" />
                           <span>Work Email Address</span>
                         </label>
-                        <span className={cn(authLabelClass, "text-foreground-subtle")}>
+                        <span
+                          className={cn(
+                            authLabelClass,
+                            "text-foreground-subtle",
+                          )}
+                        >
                           REQUIRED
                         </span>
                       </div>
@@ -175,7 +186,12 @@ export const ForgotPasswordForm = () => {
                         message={touched.email ? errors.email : undefined}
                       />
                       <div className="flex items-center justify-between px-1 pt-0.5">
-                        <span className={cn(authLabelClass, "text-foreground-subtle")}>
+                        <span
+                          className={cn(
+                            authLabelClass,
+                            "text-foreground-subtle",
+                          )}
+                        >
                           Domain checks enabled
                         </span>
                         {domainKnown && (
@@ -277,7 +293,10 @@ export const ForgotPasswordForm = () => {
                 className="group flex items-center justify-between rounded-[2px] bg-surface-raised/50 p-2 transition-colors duration-150 hover:bg-interactive/50"
               >
                 <div className="flex items-center gap-2">
-                  <LockKeyhole aria-hidden className="size-[18px] text-primary-fixed-dim" />
+                  <LockKeyhole
+                    aria-hidden
+                    className="size-[18px] text-primary-fixed-dim"
+                  />
                   <div className="flex flex-col text-start">
                     <span
                       className={cn(
@@ -300,7 +319,7 @@ export const ForgotPasswordForm = () => {
               <div className="flex items-center justify-center pt-1">
                 <a
                   href="/sign-in"
-                  className="inline-flex items-center gap-1 rounded-[2px] px-2 py-1 font-mono text-[11px] font-semibold leading-[14px] tracking-[0.04em] text-muted-foreground transition-colors hover:bg-surface-raised hover:text-primary"
+                  className="inline-flex items-center gap-1 rounded-[2px] px-2 py-1 font-mono text-xxs font-semibold leading-[14px] tracking-[0.04em] text-muted-foreground transition-colors hover:bg-surface-raised hover:text-primary"
                 >
                   <ArrowLeft aria-hidden className="size-4" />
                   <span>Return to Sign In</span>
@@ -314,11 +333,21 @@ export const ForgotPasswordForm = () => {
                 className="mt-0.5 size-[15px] shrink-0 text-foreground-subtle"
               />
               <div className="flex flex-col gap-0.5 text-start">
-                <p className={cn(authLabelClass, "font-normal leading-normal text-foreground-subtle")}>
-                  Reset tokens expire in 1 hour and self-invalidate upon
-                  first cryptographic usage. Ingress audit trail logged.
+                <p
+                  className={cn(
+                    authLabelClass,
+                    "font-normal leading-normal text-foreground-subtle",
+                  )}
+                >
+                  Reset tokens expire in 1 hour and self-invalidate upon first
+                  cryptographic usage. Ingress audit trail logged.
                 </p>
-                <span className={cn(authLabelClass, "font-mono font-normal text-foreground-subtle/80")}>
+                <span
+                  className={cn(
+                    authLabelClass,
+                    "font-mono font-normal text-foreground-subtle/80",
+                  )}
+                >
                   HASH: sha256_secp256k1_verified
                 </span>
               </div>

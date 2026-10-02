@@ -12,14 +12,21 @@ import type { Session } from "next-auth";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ session: null as Session | null }));
-const db = vi.hoisted(() => ({ saveWorkerSettings: vi.fn(), getWorkerSettingsForRead: vi.fn() }));
+const db = vi.hoisted(() => {
+  const auditCreate = vi.fn();
+  // `$transaction` hands the callback a client with just what the route and `recordAdminAudit` touch.
+  const prisma = {
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn({ adminAuditLog: { create: auditCreate } })),
+  };
+  return { saveWorkerSettings: vi.fn(), getWorkerSettingsForRead: vi.fn(), auditCreate, prisma };
+});
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
 // The real options module pulls in bcrypt and the credentials provider;
 // the route only passes it through to the mocked getServerSession.
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@sla/db", () => ({
-  getPrismaClient: vi.fn(),
+  getPrismaClient: vi.fn(() => db.prisma),
   saveWorkerSettings: db.saveWorkerSettings,
   getWorkerSettingsForRead: db.getWorkerSettingsForRead,
   deriveWorkerStatus: vi.fn(() => "running"),
@@ -57,6 +64,10 @@ describe("POST /api/settings/worker", () => {
   beforeEach(() => {
     vi.resetModules();
     db.saveWorkerSettings.mockReset();
+    db.auditCreate.mockReset();
+    db.prisma.$transaction.mockClear();
+    db.getWorkerSettingsForRead.mockReset();
+    db.getWorkerSettingsForRead.mockResolvedValue({ activePollIntervalMs: 30_000, reconciliationIntervalMs: 900_000 });
     auth.session = null;
   });
 
@@ -73,6 +84,7 @@ describe("POST /api/settings/worker", () => {
 
     expect(response.status).toBe(403);
     expect(db.saveWorkerSettings).not.toHaveBeenCalled();
+    expect(db.auditCreate).not.toHaveBeenCalled();
   });
 
   it("rejects a signed-out request with 401", async () => {
@@ -103,6 +115,40 @@ describe("POST /api/settings/worker", () => {
 
     expect(response.status).toBe(200);
     expect(db.saveWorkerSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("audits the change, with before and after, in the same transaction (N4.2)", async () => {
+    process.env.PLATFORM_ADMIN_EMAILS = "Ops@Watchtower.test";
+    auth.session = sessionFor("ops@watchtower.test", "member");
+    db.saveWorkerSettings.mockResolvedValue({ activePollIntervalMs: 300_000, reconciliationIntervalMs: 1_800_000 });
+
+    const { POST } = await import("../src/app/api/settings/worker/route");
+    await POST(postRequest());
+
+    expect(db.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(db.auditCreate).toHaveBeenCalledTimes(1);
+    expect(db.auditCreate.mock.calls[0]![0].data).toMatchObject({
+      actorEmail: "ops@watchtower.test",
+      action: "update_worker_settings",
+      organizationId: null,
+      metadata: {
+        before: { activePollIntervalMs: 30_000, reconciliationIntervalMs: 900_000 },
+        after: { activePollIntervalMs: 300_000, reconciliationIntervalMs: 1_800_000 },
+      },
+    });
+  });
+
+  it("writes no audit row when validation rejects the change", async () => {
+    process.env.PLATFORM_ADMIN_EMAILS = "ops@watchtower.test";
+    auth.session = sessionFor("ops@watchtower.test", "member");
+    const { WorkerSettingsValidationError } = await import("@sla/db");
+    db.saveWorkerSettings.mockRejectedValue(new WorkerSettingsValidationError("too fast"));
+
+    const { POST } = await import("../src/app/api/settings/worker/route");
+    const response = await POST(postRequest());
+
+    expect(response.status).toBe(400);
+    expect(db.auditCreate).not.toHaveBeenCalled();
   });
 });
 

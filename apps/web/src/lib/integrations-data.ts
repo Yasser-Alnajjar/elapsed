@@ -12,6 +12,7 @@ type IntegrationRow = {
   disconnectedAt: Date | null;
   credentials: unknown;
   status: string;
+  pollingPausedAt: Date | null;
 } | null;
 
 const ROW_SELECT = {
@@ -19,6 +20,7 @@ const ROW_SELECT = {
   disconnectedAt: true,
   credentials: true,
   status: true,
+  pollingPausedAt: true,
 } as const;
 
 /** Never return `credentials`/the row itself — only these display-only scalars. */
@@ -31,6 +33,7 @@ function toConnectionView(
       connected: false,
       reauthRequired: false,
       permissionDenied: false,
+      pollingPaused: false,
       connectedAt: null,
       disconnectedAt: null,
       subdomain: null,
@@ -45,6 +48,7 @@ function toConnectionView(
     connected: credentials !== null,
     reauthRequired: credentials?.reauthRequired === true,
     permissionDenied: integration.status === "permission_denied",
+    pollingPaused: integration.pollingPausedAt !== null,
     connectedAt: integration.connectedAt,
     disconnectedAt: integration.disconnectedAt,
     subdomain,

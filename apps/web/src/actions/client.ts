@@ -16,7 +16,6 @@ import type {
 import type { EmailSecurity, EmailSettingsStatus } from "@/lib/types/email-settings";
 import type { SignUpInput } from "@/lib/sign-up";
 import type { IUser } from "@/lib/types/user";
-import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 import type { InvitationPreview } from "@/lib/types/invitations";
 import type { UserRole } from "@/lib/types/user";
 import { CONCIERGE_INTEGRATION_ID_FIELD } from "@/lib/types/concierge-export";
@@ -336,12 +335,6 @@ export const Actions = {
           fileName,
         },
       };
-    },
-  },
-
-  WorkerSettings: {
-    async save(input: { activePollIntervalMs: number; reconciliationIntervalMs: number }) {
-      return postJSON<WorkerMonitoringData>("/api/settings/worker", input);
     },
   },
 

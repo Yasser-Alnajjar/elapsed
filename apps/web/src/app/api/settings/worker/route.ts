@@ -4,9 +4,11 @@ import {
   deriveWorkerStatus,
   getPrismaClient,
   getWorkStateNextRuns,
+  getWorkerSettingsForRead,
   saveWorkerSettings,
   WorkerSettingsValidationError,
 } from "@sla/db";
+import { recordAdminAudit } from "@/lib/admin-audit";
 import { authOptions } from "@/lib/auth";
 import { requirePlatformOperator } from "@/lib/authz";
 import { getWorkerMonitoringData } from "@/lib/worker-settings-data";
@@ -40,9 +42,32 @@ export async function POST(request: Request) {
 
   const prisma = getPrismaClient();
   try {
-    const settings = await saveWorkerSettings(prisma, {
-      activePollIntervalMs: body.activePollIntervalMs,
-      reconciliationIntervalMs: body.reconciliationIntervalMs,
+    // Global settings shared by every organization, so this is an operator
+    // action like any other: the change and its audit row (before/after)
+    // commit together. `saveWorkerSettings` only uses model delegates, which the
+    // transaction client has too.
+    const settings = await prisma.$transaction(async (tx) => {
+      const txClient = tx as unknown as typeof prisma;
+      const before = await getWorkerSettingsForRead(txClient);
+      const saved = await saveWorkerSettings(txClient, {
+        activePollIntervalMs: body.activePollIntervalMs!,
+        reconciliationIntervalMs: body.reconciliationIntervalMs!,
+      });
+      await recordAdminAudit(tx, {
+        actorEmail: session!.user.email.toLowerCase(),
+        action: "update_worker_settings",
+        metadata: {
+          before: {
+            activePollIntervalMs: before.activePollIntervalMs,
+            reconciliationIntervalMs: before.reconciliationIntervalMs,
+          },
+          after: {
+            activePollIntervalMs: saved.activePollIntervalMs,
+            reconciliationIntervalMs: saved.reconciliationIntervalMs,
+          },
+        },
+      });
+      return saved;
     });
     const nextRuns = await getWorkStateNextRuns(prisma);
     return NextResponse.json({

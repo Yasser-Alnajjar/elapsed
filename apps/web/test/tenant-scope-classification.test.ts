@@ -22,7 +22,10 @@ type Scope =
   | { kind: "self" }
   | { kind: "direct" } // has organizationId
   | { kind: "via"; fk: string; parent: string } // scoped through a parent row
-  | { kind: "global" }; // no tenant; operator-only
+  | { kind: "global" } // no tenant; operator-only
+  // Platform-level record (N4.2): may name an organization, but only as a plain
+  // string with no relation, so it outlives it. No tenant read path exists.
+  | { kind: "platform" };
 
 const SCOPES: Record<string, Scope> = {
   Organization: { kind: "self" },
@@ -53,12 +56,17 @@ const SCOPES: Record<string, Scope> = {
   Notification: { kind: "via", fk: "commitmentId", parent: "Commitment" },
   NotificationFailure: { kind: "via", fk: "commitmentId", parent: "Commitment" },
   WorkerSettings: { kind: "global" },
+  AdminAuditLog: { kind: "platform" },
 };
+
+/** Raw body of each model, for checks on more than field names. */
+const modelBodies = new Map<string, string>();
 
 function parseModels(): Map<string, Set<string>> {
   const models = new Map<string, Set<string>>();
   for (const m of schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)) {
     const [, modelName = "", body = ""] = m;
+    modelBodies.set(modelName, body);
     const fields = new Set<string>();
     for (const line of body.split("\n")) {
       const f = line.trim().match(/^(\w+)\s+\S+/);
@@ -101,12 +109,17 @@ describe("tenant scope classification (H-10)", () => {
         expect(models.has(scope.parent)).toBe(true);
       }
       if (scope.kind === "global") expect(fields.has("organizationId")).toBe(false);
+      if (scope.kind === "platform") {
+        // A relation to Organization would let deleting a tenant cascade into, or be blocked by, the audit log.
+        expect(modelBodies.get(name)).not.toMatch(/@relation/);
+        expect(fields.has("organization")).toBe(false);
+      }
     });
   }
 
   it("every 'via' chain ends at a directly scoped model", () => {
     for (const [name, scope] of Object.entries(SCOPES)) {
-      if (scope.kind === "global") continue;
+      if (scope.kind === "global" || scope.kind === "platform") continue;
       let cur: Scope = scope;
       let hops = 0;
       while (cur.kind === "via") {
@@ -121,7 +134,7 @@ describe("tenant scope classification (H-10)", () => {
 
   it("tenant-isolation.test.ts seeds every tenant-scoped model", () => {
     const missing = Object.entries(SCOPES)
-      .filter(([, scope]) => scope.kind !== "global")
+      .filter(([, scope]) => scope.kind !== "global" && scope.kind !== "platform")
       .map(([name]) => name)
       .filter(
         (name) =>

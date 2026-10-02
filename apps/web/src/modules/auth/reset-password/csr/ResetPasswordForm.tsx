@@ -66,7 +66,7 @@ const cardClass =
 
 const fieldLabelClass = cn(
   authLabelClass,
-  "text-[11px] leading-[14px] tracking-[0.04em] text-muted-foreground",
+  "text-xxs leading-[14px] tracking-[0.04em] text-muted-foreground",
 );
 
 const fieldClass =
@@ -179,7 +179,9 @@ export const ResetPasswordForm = () => {
               <span className="inline-block size-1.5 animate-pulse rounded-full bg-success" />
               <span className="tracking-widest">TOKEN RECEIVED</span>
               <span className="text-foreground-subtle">·</span>
-              <span className="text-muted-foreground">TOKEN_HASH: {tokenHash}</span>
+              <span className="text-muted-foreground">
+                TOKEN_HASH: {tokenHash}
+              </span>
             </div>
             <div
               className={cn(
@@ -224,7 +226,9 @@ export const ResetPasswordForm = () => {
                       <label htmlFor="password" className={fieldLabelClass}>
                         New Master Password
                       </label>
-                      <span className={cn(authLabelClass, "text-foreground-subtle")}>
+                      <span
+                        className={cn(authLabelClass, "text-foreground-subtle")}
+                      >
                         MIN. 8 CHARS
                       </span>
                     </div>
@@ -369,7 +373,9 @@ export const ResetPasswordForm = () => {
                           key={check.label}
                           className={cn(
                             "flex items-center gap-1",
-                            check.met ? "text-success" : "text-foreground-subtle",
+                            check.met
+                              ? "text-success"
+                              : "text-foreground-subtle",
                           )}
                         >
                           <CheckCircle2
@@ -379,7 +385,9 @@ export const ResetPasswordForm = () => {
                           <span
                             className={cn(
                               "font-mono text-xs font-medium",
-                              check.met ? "text-foreground" : "text-muted-foreground",
+                              check.met
+                                ? "text-foreground"
+                                : "text-muted-foreground",
                             )}
                           >
                             {check.label}
@@ -457,7 +465,7 @@ export const ResetPasswordForm = () => {
                     <div className="text-center">
                       <a
                         href="/sign-in"
-                        className="inline-flex items-center gap-1 py-1 font-mono text-[11px] font-semibold leading-[14px] tracking-[0.04em] text-muted-foreground transition-colors hover:text-foreground"
+                        className="inline-flex items-center gap-1 py-1 font-mono text-xxs font-semibold leading-[14px] tracking-[0.04em] text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <ArrowLeft aria-hidden className="size-[15px]" />
                         <span>Cancel and return to Sign In</span>

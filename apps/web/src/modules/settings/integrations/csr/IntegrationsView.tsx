@@ -25,6 +25,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { PermissionDeniedMessage } from "@/components/shared/permission-denied-banner";
+import { PollingPausedBanner } from "@/components/shared/polling-paused-banner";
 import { Reveal } from "@/components/shared/reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -309,6 +310,7 @@ function ConnectedCardBody({
   providerLabel,
   connectedAt,
   disconnectHint,
+  pollingPaused = false,
   meta,
   pulse,
   extra,
@@ -317,6 +319,8 @@ function ConnectedCardBody({
   providerLabel: string;
   connectedAt: Date;
   disconnectHint?: string;
+  /** A platform operator paused polling (N4.5); the customer is told, not left to infer it from stale data. */
+  pollingPaused?: boolean;
   meta?: React.ReactNode;
   pulse?: React.ComponentProps<typeof PulsePanel>;
   extra?: React.ReactNode;
@@ -333,6 +337,7 @@ function ConnectedCardBody({
         </span>
         {meta}
       </MetaLine>
+      {pollingPaused && <PollingPausedBanner provider={providerLabel} />}
       {pulse ? (
         <PulsePanel {...pulse} />
       ) : (
@@ -416,6 +421,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
           {zendesk.connected ? (
             <ConnectedCardBody
               provider="zendesk"
+              pollingPaused={zendesk.pollingPaused}
               providerLabel="Zendesk"
               connectedAt={zendesk.connectedAt!}
               meta={
@@ -501,6 +507,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
           {jira.connected ? (
             <ConnectedCardBody
               provider="jira"
+              pollingPaused={jira.pollingPaused}
               providerLabel="Jira"
               connectedAt={jira.connectedAt!}
               meta={
@@ -583,6 +590,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
           {linear.connected ? (
             <ConnectedCardBody
               provider="linear"
+              pollingPaused={linear.pollingPaused}
               providerLabel="Linear"
               connectedAt={linear.connectedAt!}
               meta={
@@ -670,6 +678,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
           {intercom.connected ? (
             <ConnectedCardBody
               provider="intercom"
+              pollingPaused={intercom.pollingPaused}
               providerLabel="Intercom"
               connectedAt={intercom.connectedAt!}
               meta={
@@ -759,6 +768,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
           {github.connected ? (
             <ConnectedCardBody
               provider="github"
+              pollingPaused={github.pollingPaused}
               providerLabel="GitHub"
               connectedAt={github.connectedAt!}
               meta={

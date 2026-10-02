@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   Bell,
   Book,
   Building2,
@@ -21,7 +20,7 @@ export interface NavItem {
   icon: LucideIcon;
   description?: string;
   items?: NavItem[];
-  /** Active only on this exact path — for a child whose href is also the prefix of a sibling (e.g. `/operator` vs `/operator/monitoring`). */
+  /** Active only on this exact path — for a child whose href is also the prefix of a sibling (e.g. `/admin` vs `/admin/tenants`). */
   exact?: boolean;
 }
 
@@ -76,39 +75,22 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export const OPERATOR_NAV_ITEMS: NavItem[] = [
-  {
-    href: "/operator",
-    label: "Overview",
-    icon: Radar,
-    exact: true,
-    description: "Failed webhooks and syncs across every organization.",
-  },
-  {
-    href: "/operator/monitoring",
-    label: "Monitoring",
-    icon: Activity,
-    description: "Monitor worker health and adjust polling intervals.",
-  },
-];
-
 /**
- * `/operator` and its children (roadmap 7.5) only exist for
- * `PLATFORM_ADMIN_EMAILS` — see `isPlatformOperator` in `@/lib/authz`. Kept
- * out of `NAV_ITEMS` itself so a non-operator's sidebar never renders a link
- * into a page that would `notFound()` on them. Hiding the links is not the
- * gate: each operator route enforces it server-side.
+ * The platform admin area (`/admin`, N4.1) has its own shell and navigation
+ * (`components/admin/admin-nav-items.ts`); nothing of it lives in the tenant
+ * sidebar except this single way in, shown only to a platform operator (see
+ * `isPlatformOperator` in `@/lib/authz`). Hiding the link is not the gate:
+ * every `/admin` route enforces it server-side.
  */
 export function buildNavItems(isPlatformOperator: boolean): NavItem[] {
   if (!isPlatformOperator) return NAV_ITEMS;
   return [
     ...NAV_ITEMS,
     {
-      href: "/operator",
-      label: "Operator",
+      href: "/admin",
+      label: "Platform admin",
       icon: Radar,
-      description: "Failed webhooks and syncs across every organization.",
-      items: OPERATOR_NAV_ITEMS,
+      description: "Tenants, plans and health across every organization.",
     },
     { href: "/docs", label: "Documentation", icon: Book },
   ];

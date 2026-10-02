@@ -31,7 +31,10 @@ import {
 } from "@/lib/concierge-selection";
 import { CONCIERGE_PROVIDER_COPY } from "@/lib/concierge-providers";
 import { DEFAULT_EXPORT_SINCE_DAYS } from "@/lib/types/concierge-export";
-import type { ConciergeExportPageData, ConciergeExportSummary } from "@/lib/types/concierge-export";
+import type {
+  ConciergeExportPageData,
+  ConciergeExportSummary,
+} from "@/lib/types/concierge-export";
 import { SelectionField } from "./SelectionField";
 
 interface ConciergeExportViewProps {
@@ -52,7 +55,9 @@ interface CompletedExport {
 export function ConciergeExportView({ data }: ConciergeExportViewProps) {
   const { provider } = data;
   const copy = CONCIERGE_PROVIDER_COPY[provider];
-  const [selection, setSelection] = useState<ConciergeExportSelection>(() => initialSelection(data));
+  const [selection, setSelection] = useState<ConciergeExportSelection>(() =>
+    initialSelection(data),
+  );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<CompletedExport | null>(null);
@@ -72,12 +77,19 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
     clearResult();
     setSelection(next);
 
-    const result = await Actions.Concierge.listIntegrations(provider, organizationId);
+    const result = await Actions.Concierge.listIntegrations(
+      provider,
+      organizationId,
+    );
     // Applied to the latest state: a reply for an organization that's no longer selected is dropped.
     setSelection((current) =>
       result.ok && result.integrations
         ? integrationsLoaded(current, organizationId, result.integrations)
-        : integrationsFailed(current, organizationId, result.error ?? `Failed to load ${copy.label} integrations`),
+        : integrationsFailed(
+            current,
+            organizationId,
+            result.error ?? `Failed to load ${copy.label} integrations`,
+          ),
     );
   }
 
@@ -106,9 +118,13 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
 
   const request = exportRequest(selection);
   const { organizations, integrations } = selection;
-  const selectedIntegration = integrations?.find((integration) => integration.id === selection.integrationId);
+  const selectedIntegration = integrations?.find(
+    (integration) => integration.id === selection.integrationId,
+  );
   const unavailable =
-    integrations?.length === 1 && !integrations[0]!.exportable ? integrations[0]! : null;
+    integrations?.length === 1 && !integrations[0]!.exportable
+      ? integrations[0]!
+      : null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -120,7 +136,9 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
           <ArrowLeft className="size-3.5" />
           {copy.label} integration
         </Link>
-        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Read-only extract</span>
+        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Read-only extract
+        </span>
       </div>
 
       <Card className="relative overflow-hidden">
@@ -130,8 +148,12 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
             <FolderArchive className="size-7" />
           </span>
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-widest text-primary">Concierge data export</p>
-            <h2 className="mt-0.5 text-2xl font-semibold tracking-tight">{copy.title}</h2>
+            <p className="font-mono text-xxs uppercase tracking-widest text-primary">
+              Concierge data export
+            </p>
+            <h2 className="mt-0.5 text-2xl font-semibold tracking-tight">
+              {copy.title}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Export {copy.label} data for the Concierge SLA analysis.
             </p>
@@ -143,25 +165,42 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
         <div className="flex flex-col gap-6 lg:col-span-7">
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-2 border-b px-6 py-4">
-              <CardTitle className="text-sm font-semibold">Export scope</CardTitle>
+              <CardTitle className="text-sm font-semibold">
+                Export scope
+              </CardTitle>
               <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 Fixed
               </span>
             </CardHeader>
 
             <CardContent className="space-y-5 px-6 py-5">
-              <p className="text-sm text-muted-foreground">{copy.sourceDescription}</p>
+              <p className="text-sm text-muted-foreground">
+                {copy.sourceDescription}
+              </p>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <LockedField icon={Calendar} label="Date range" value={`Last ${DEFAULT_EXPORT_SINCE_DAYS} days`} hint={`${copy.scopeRecords} in this window`} />
-                <LockedField icon={History} label="History source" value={copy.historySource} hint="Status transitions only" />
+                <LockedField
+                  icon={Calendar}
+                  label="Date range"
+                  value={`Last ${DEFAULT_EXPORT_SINCE_DAYS} days`}
+                  hint={`${copy.scopeRecords} in this window`}
+                />
+                <LockedField
+                  icon={History}
+                  label="History source"
+                  value={copy.historySource}
+                  hint="Status transitions only"
+                />
               </div>
 
               <div className="space-y-5 border-t pt-5">
                 {organizations.length === 0 ? (
                   <Alert variant="warning">
                     <AlertCircle />
-                    <AlertDescription>You don&apos;t have access to any organization, so there is nothing to export.</AlertDescription>
+                    <AlertDescription>
+                      You don&apos;t have access to any organization, so there
+                      is nothing to export.
+                    </AlertDescription>
                   </Alert>
                 ) : (
                   <SelectionField
@@ -169,7 +208,10 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
                     label="Organization"
                     placeholder="Select organization"
                     value={selection.organizationId}
-                    options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
+                    options={organizations.map((organization) => ({
+                      value: organization.id,
+                      label: organization.name,
+                    }))}
                     disabled={exporting}
                     onChange={handleOrganizationChange}
                   />
@@ -180,7 +222,11 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
                     label={copy.label}
                     selection={selection}
                     exporting={exporting}
-                    unavailableReason={unavailable?.unavailableReason ?? selectedIntegration?.unavailableReason ?? null}
+                    unavailableReason={
+                      unavailable?.unavailableReason ??
+                      selectedIntegration?.unavailableReason ??
+                      null
+                    }
                     onChange={handleIntegrationChange}
                   />
                 )}
@@ -194,11 +240,21 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
               </div>
 
               <div className="flex flex-wrap items-center gap-3 border-t pt-5">
-                <Button type="button" onClick={handleExport} disabled={!request || exporting}>
-                  {exporting ? <Loader2 className="animate-spin" /> : <Archive />}
+                <Button
+                  type="button"
+                  onClick={handleExport}
+                  disabled={!request || exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Archive />
+                  )}
                   {exporting ? "Exporting…" : copy.exportButton}
                 </Button>
-                <span className="text-xs text-muted-foreground">Generates a ZIP bundle of CSV files and export metadata.</span>
+                <span className="text-xs text-muted-foreground">
+                  Generates a ZIP bundle of CSV files and export metadata.
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -214,24 +270,37 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
                     </span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold">Export complete</h3>
+                        <h3 className="text-sm font-semibold">
+                          Export complete
+                        </h3>
                         <span className="rounded bg-success/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-success">
                           Ready
                         </span>
                       </div>
-                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">{completed.summary.fileName}</p>
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        {completed.summary.fileName}
+                      </p>
                     </div>
                   </div>
                   <Button asChild size="sm">
-                    <a href={completed.url} download={completed.summary.fileName}>
+                    <a
+                      href={completed.url}
+                      download={completed.summary.fileName}
+                    >
                       <Download />
                       Download ZIP
                     </a>
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Stat value={completed.summary.recordCount} label={copy.recordNoun} />
-                  <Stat value={completed.summary.historyCount} label={copy.historyNoun} />
+                  <Stat
+                    value={completed.summary.recordCount}
+                    label={copy.recordNoun}
+                  />
+                  <Stat
+                    value={completed.summary.historyCount}
+                    label={copy.historyNoun}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -242,14 +311,21 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
           <Card>
             <CardHeader className="flex-row items-center gap-2 border-b px-6 py-4">
               <FileText className="size-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-semibold">Archive contents</CardTitle>
+              <CardTitle className="text-sm font-semibold">
+                Archive contents
+              </CardTitle>
             </CardHeader>
             <CardContent className="px-6 py-5">
               <ul className="space-y-1 rounded-lg bg-muted/30 p-4 font-mono text-xs">
                 {copy.archiveFiles.map((file) => (
-                  <li key={file.name} className="flex items-baseline justify-between gap-3">
+                  <li
+                    key={file.name}
+                    className="flex items-baseline justify-between gap-3"
+                  >
                     <span className="text-foreground">{file.name}</span>
-                    <span className="text-end text-[11px] text-muted-foreground">{file.description}</span>
+                    <span className="text-end text-xxs text-muted-foreground">
+                      {file.description}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -262,9 +338,12 @@ export function ConciergeExportView({ data }: ConciergeExportViewProps) {
                 <Shield className="size-4" />
               </span>
               <div>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Read-only</p>
+                <p className="font-mono text-xxs font-bold uppercase tracking-wider text-primary">
+                  Read-only
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  The export only reads from {copy.label}. Nothing in your workspace is created, updated or deleted.
+                  The export only reads from {copy.label}. Nothing in your
+                  workspace is created, updated or deleted.
                 </p>
               </div>
             </CardContent>
@@ -288,7 +367,7 @@ function LockedField({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center justify-between font-mono text-xxs uppercase tracking-wider text-muted-foreground">
         <span>{label}</span>
         <span className="flex items-center gap-0.5">
           <Lock className="size-3" />
@@ -299,7 +378,7 @@ function LockedField({
         <Icon className="size-4 text-muted-foreground" />
         <span className="font-mono text-xs font-medium">{value}</span>
       </div>
-      <span className="text-[11px] text-muted-foreground">{hint}</span>
+      <span className="text-xxs text-muted-foreground">{hint}</span>
     </div>
   );
 }
@@ -321,7 +400,13 @@ interface IntegrationSectionProps {
   onChange: (integrationId: string) => void;
 }
 
-function IntegrationSection({ label, selection, exporting, unavailableReason, onChange }: IntegrationSectionProps) {
+function IntegrationSection({
+  label,
+  selection,
+  exporting,
+  unavailableReason,
+  onChange,
+}: IntegrationSectionProps) {
   if (selection.loadingIntegrations) {
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -343,7 +428,9 @@ function IntegrationSection({ label, selection, exporting, unavailableReason, on
     return (
       <Alert>
         <AlertCircle />
-        <AlertDescription>No {label} integration is configured for this organization.</AlertDescription>
+        <AlertDescription>
+          No {label} integration is configured for this organization.
+        </AlertDescription>
       </Alert>
     );
   }
@@ -354,10 +441,17 @@ function IntegrationSection({ label, selection, exporting, unavailableReason, on
         id="concierge-integration"
         label={`${label} Integration`}
         placeholder={`Select ${label} integration`}
-        value={selection.integrationId ?? (selection.integrations.length === 1 ? selection.integrations[0]!.id : null)}
+        value={
+          selection.integrationId ??
+          (selection.integrations.length === 1
+            ? selection.integrations[0]!.id
+            : null)
+        }
         options={selection.integrations.map((integration) => ({
           value: integration.id,
-          label: integration.exportable ? integration.name : `${integration.name} — ${integration.unavailableReason}`,
+          label: integration.exportable
+            ? integration.name
+            : `${integration.name} — ${integration.unavailableReason}`,
           disabled: !integration.exportable,
         }))}
         disabled={exporting}
@@ -367,7 +461,8 @@ function IntegrationSection({ label, selection, exporting, unavailableReason, on
         <Alert variant="warning">
           <AlertCircle />
           <AlertDescription>
-            This {label} integration can&apos;t be exported ({unavailableReason}). Reconnect it from Integrations settings.
+            This {label} integration can&apos;t be exported ({unavailableReason}
+            ). Reconnect it from Integrations settings.
           </AlertDescription>
         </Alert>
       )}
