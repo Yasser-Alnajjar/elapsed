@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-surface":"#dee3e9","on-primary-fixed-variant":"#004c6e","surface-bright":"#353a3e","outline-variant":"#3e4850","on-secondary":"#00354a","border-strong":"#2d3c59","on-tertiary-fixed-variant":"#693c00","primary-fixed":"#c9e6ff","surface-variant":"#30353a","surface-container":"#1b2024","tertiary-container":"#de8712","on-background":"#dee3e9","on-secondary-fixed-variant":"#004c69","secondary-fixed":"#c4e7ff","on-primary-container":"#003751","tertiary-fixed":"#ffdcbd","surface-container-high":"#252b2f","tertiary-fixed-dim":"#ffb86e","secondary-container":"#00a6e0","inverse-surface":"#dee3e9","on-secondary-container":"#00374d","canvas":"#060a12","on-primary-fixed":"#001e2f","border":"#1c273c","error":"#ffb4ab","on-tertiary-container":"#4d2b00","surface-raised":"#111c34","on-error":"#690005","error-container":"#93000a","secondary-fixed-dim":"#7bd0ff","primary-container":"#0ea5e9","on-primary":"#00344d","surface":"#0b1324","status-warning":"#f59e0b","surface-overlay":"#1a2745","tertiary":"#ffb86e","surface-container-lowest":"#0a0f13","text-subtle":"#64748b","text-primary":"#f8fafc","primary-fixed-dim":"#89ceff","on-surface-variant":"#bec8d2","inverse-primary":"#006591","status-danger":"#f43f5e","background":"#0f1418","on-tertiary":"#492900","surface-container-low":"#171c20","secondary":"#7bd0ff","on-error-container":"#ffdad6","inverse-on-surface":"#2c3135","text-muted":"#94a3b8","status-success":"#10b981","surface-tint":"#89ceff","outline":"#88929b","on-tertiary-fixed":"#2c1600","on-secondary-fixed":"#001e2c","surface-container-highest":"#30353a","surface-dim":"#0f1418","primary":"#89ceff","surface-hover":"#233356"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-md":"1rem","space-lg":"1.5rem","margin-mobile":"1rem","gutter-lg":"1.5rem","margin":"1.5rem","space-xl":"2rem","space-xs":"0.25rem","gutter":"1rem","space-sm":"0.5rem"},"fontFamily":{"body-sm":["Inter"],"body-lg":["Inter"],"label-mono-sm":["JetBrains Mono"],"headline-lg":["Inter"],"code-sm":["JetBrains Mono"],"headline-xl":["Inter"],"body-md":["Inter"],"label-mono-xs":["JetBrains Mono"],"code-md":["JetBrains Mono"],"title-mono":["JetBrains Mono"],"headline-md":["Inter"]},"fontSize":{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"label-mono-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.015em","fontWeight":"600"}],"code-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"headline-xl":["36px",{"lineHeight":"44px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-mono-xs":["10px",{"lineHeight":"12px","letterSpacing":"0.06em","fontWeight":"600"}],"code-md":["14px",{"lineHeight":"20px","fontWeight":"500"}],"title-mono":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}};</script></head><body class="bg-canvas text-on-surface font-body-md text-body-md antialiased selection:bg-tertiary-container selection:text-on-tertiary-container"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex flex-col justify-between py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.5)]"><div class="flex flex-col"><div class="px-space-md pb-space-md flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded bg-surface-raised flex items-center justify-center text-tertiary"><span class="material-symbols-outlined text-[18px]">terminal</span></div><div class="flex flex-col"><span class="font-title-mono text-title-mono tracking-tight text-text-primary uppercase leading-none">Platform Admin</span><span class="font-label-mono-xs text-label-mono-xs text-status-warning uppercase mt-0.5">Control Plane</span></div></div><span class="px-1.5 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-surface-raised text-tertiary">v2.4-OPS</span></div><div class="px-space-md py-space-xs"><div class="bg-surface-raised rounded p-space-sm flex items-center justify-between"><div class="flex items-center gap-space-sm overflow-hidden"><span class="material-symbols-outlined text-tertiary text-[16px]">dns</span><div class="flex flex-col truncate"><span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase leading-none">Global Switcher</span><span class="font-code-sm text-code-sm text-text-primary truncate font-medium">Cluster us-east-01</span></div></div><span class="material-symbols-outlined text-text-subtle text-[16px]">sync_alt</span></div></div><nav class="flex flex-col px-space-sm mt-space-md gap-0.5" data-active-classes="bg-surface-hover text-tertiary font-code-sm rounded"><div class="px-space-sm py-space-xs font-label-mono-xs text-label-mono-xs uppercase text-text-subtle tracking-wider">Platform Workstation</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-hover hover:text-on-surface transition-colors" data-path="platform-overview" href="#"><span class="material-symbols-outlined text-[16px]">analytics</span><span class="font-code-sm text-code-sm">Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-hover hover:text-on-surface transition-colors" data-path="platform-tenants" href="#"><span class="material-symbols-outlined text-[16px]">corporate_fare</span><span class="font-code-sm text-code-sm">Tenants</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-hover hover:text-on-surface transition-colors" data-path="platform-monitoring" href="#"><span class="material-symbols-outlined text-[16px]">vital_signs</span><span class="font-code-sm text-code-sm">Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-hover hover:text-on-surface transition-colors" data-path="platform-audit-log" href="#"><span class="material-symbols-outlined text-[16px]">receipt_long</span><span class="font-code-sm text-code-sm">Audit Log</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-1.5 transition-colors bg-surface-hover text-tertiary font-code-sm rounded" data-path="platform-billing" href="#"><span class="material-symbols-outlined text-[16px]">price_check</span><span class="font-code-sm text-code-sm">Billing Operations</span></a></nav></div><div class="px-space-md pt-space-sm"><div class="bg-surface-raised rounded p-space-sm flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-status-warning"></span><span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Control Loop</span></div><span class="font-label-mono-xs text-label-mono-xs text-text-muted">4.1k req/s</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface/90 backdrop-blur-xl z-40 px-space-lg flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-raised px-2.5 py-1 rounded"><span class="font-label-mono-sm text-label-mono-sm text-tertiary uppercase font-bold tracking-wide">INTERNAL PLATFORM ADMIN · v2.4-OPS</span></div><div class="hidden lg:flex items-center gap-space-xs bg-surface-raised px-2.5 py-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-status-success"></span><span class="font-label-mono-xs text-label-mono-xs text-text-muted uppercase">DAEMON HEALTH: 99.992%</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-2.5 py-1 rounded bg-surface-raised font-label-mono-sm text-label-mono-sm text-status-warning"><span class="material-symbols-outlined text-[14px]">engineering</span><span>OPERATOR ELEVATED</span></div><a class="px-2 py-1 rounded font-label-mono-xs text-label-mono-xs text-primary bg-surface-raised hover:bg-surface-hover hover:text-on-surface transition-colors flex items-center gap-1" data-path="customer-billing" href="#"><span class="material-symbols-outlined text-[14px]">storefront</span>Tenant View</a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 w-full px-space-lg py-space-lg bg-canvas min-h-screen"><div class="flex flex-col w-full">
+<!-- Operator Command Bar / Breadcrumb Telemetry -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pb-space-md">
+<div class="flex items-center gap-space-xs text-text-subtle font-code-sm text-code-sm">
+<a class="hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">domain</span>
+<span>Tenants</span>
+</a>
+<span class="text-border-strong">/</span>
+<span class="text-text-muted font-label-mono-xs text-label-mono-xs uppercase px-1.5 py-0.5 rounded bg-surface-raised">ten_glx_99</span>
+<span class="text-border-strong">/</span>
+<span class="text-primary font-medium">Billing &amp; Subscription Lifecycle</span>
+</div>
+<!-- Daemon & Notary Telemetry Pill -->
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-space-xs bg-surface-raised px-2.5 py-1 rounded">
+<span class="material-symbols-outlined text-secondary text-[14px]">verified_user</span>
+<span class="font-label-mono-xs text-label-mono-xs text-text-muted uppercase">STRIPE_LEDGER: SYNC_VERIFIED</span>
+<span class="text-border-strong">·</span>
+<span class="font-label-mono-xs text-label-mono-xs text-status-success">38ms</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-raised px-2.5 py-1 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-status-danger animate-pulse"></span>
+<span class="font-label-mono-xs text-label-mono-xs text-status-danger uppercase font-bold">STATE: DELINQUENT</span>
+</div>
+</div>
+</div>
+<!-- Critical Warning Banner -->
+<div class="relative bg-surface rounded-xl p-space-md shadow-xl mb-space-lg overflow-hidden">
+<div class="absolute inset-y-0 left-0 w-1.5 bg-status-danger"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-10 h-10 rounded bg-status-danger/10 flex items-center justify-center text-status-danger flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[24px]">error</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex flex-wrap items-center gap-space-sm mb-1">
+<span class="font-label-mono-sm text-label-mono-sm text-status-danger font-bold uppercase tracking-wider flex items-center gap-1">
+              ✕ PAYMENT DELINQUENCY
+            </span>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-warning/10 text-status-warning">
+              DUNNING: GRACE_PERIOD_ACTIVE
+            </span>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle">
+              ID: evt_fail_9981a3
+            </span>
+</div>
+<p class="font-body-md text-body-md text-text-primary leading-snug">
+            Charge of <span class="font-code-md text-code-md text-status-danger font-bold">$149.00 USD</span> failed on <span class="text-on-surface font-code-sm text-code-sm">Oct 02, 2026</span> (<span class="font-code-sm text-code-sm text-status-danger">insufficient_funds</span>). Retry 2 of 4 scheduled for <span class="text-text-primary font-semibold">Oct 05, 2026, 04:00 UTC</span>.
+          </p>
+<div class="flex items-center gap-space-md mt-2 text-text-subtle font-label-mono-xs text-label-mono-xs">
+<span class="flex items-center gap-1 text-status-warning">
+<span class="material-symbols-outlined text-[14px]">hourglass_top</span>
+<span>Grace Window Closes: 68h 12m</span>
+</span>
+<span class="text-border-strong">·</span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">outgoing_mail</span>
+<span>Dunning Escalation #1 Delivered</span>
+</span>
+<span class="text-border-strong">·</span>
+<span class="flex items-center gap-1 text-status-danger">
+<span class="material-symbols-outlined text-[14px]">link_off</span>
+<span>Jira Sync Failing (HTTP 503)</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Quick Action Group -->
+<div class="flex flex-wrap items-center gap-space-xs flex-shrink-0">
+<button class="px-3 py-2 rounded bg-primary-container text-canvas hover:bg-primary transition-all font-code-sm text-code-sm font-semibold flex items-center gap-1.5 shadow-md active:scale-95" id="btn-retry-charge">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>Retry Charge Now</span>
+</button>
+<button class="px-3 py-2 rounded bg-surface-raised hover:bg-surface-hover text-on-surface transition-colors font-code-sm text-code-sm flex items-center gap-1.5" id="btn-grant-grace">
+<span class="material-symbols-outlined text-status-warning text-[16px]">update</span>
+<span>Grant 7-Day Grace</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Tenant Identity & Core Workstation Header -->
+<div class="bg-surface rounded-xl p-space-lg mb-space-lg shadow-xl">
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-lg text-headline-lg text-text-primary tracking-tight font-bold">Globex Corporation</span>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-surface-raised text-primary uppercase font-bold tracking-wide">
+            Team Tier
+          </span>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-danger/10 text-status-danger uppercase font-bold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-status-danger"></span>
+            Past Due
+          </span>
+</div>
+<p class="font-body-md text-body-md text-text-subtle">
+          Billing Inspection &amp; Subscription Lifecycle Metrology · Autonomous Clock &amp; Stage Ledger
+        </p>
+<!-- Key Metrology Readout -->
+<div class="flex flex-wrap items-center gap-space-md pt-space-xs font-code-sm text-code-sm">
+<div class="flex items-center gap-1.5 bg-surface-container px-2 py-1 rounded">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">TENANT KEY:</span>
+<span class="text-tertiary select-all font-mono">ten_glx_99</span>
+<button class="text-text-subtle hover:text-text-primary ml-1" title="Copy tenant key">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-container px-2 py-1 rounded">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">STRIPE CUST:</span>
+<span class="text-secondary select-all font-mono">cus_Qx91kLm4928</span>
+<a class="text-text-subtle hover:text-primary ml-1" href="#" title="Inspect in Stripe Operator Console">
+<span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</a>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-container px-2 py-1 rounded">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">OPERATOR NOTARY:</span>
+<span class="text-status-warning font-label-mono-xs text-label-mono-xs uppercase">ELEVATED_AUDIT_LOG_ON</span>
+</div>
+</div>
+</div>
+<!-- Header Administrative Actions -->
+<div class="flex flex-wrap items-center gap-space-xs">
+<button class="px-3 py-1.5 rounded bg-surface-raised hover:bg-surface-hover text-on-surface transition-colors font-code-sm text-code-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary">swap_horiz</span>
+<span>Change Plan Tier</span>
+</button>
+<button class="px-3 py-1.5 rounded bg-surface-raised hover:bg-surface-hover text-on-surface transition-colors font-code-sm text-code-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">file_download</span>
+<span>Export Full Ledger</span>
+</button>
+<button class="px-2 py-1.5 rounded bg-surface-raised hover:bg-surface-hover text-text-subtle hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Strictly Notarized Protocol Banner -->
+<div class="mt-space-md pt-space-sm bg-surface-container-lowest/60 rounded p-space-sm flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs text-text-subtle font-label-mono-xs text-label-mono-xs">
+<span class="material-symbols-outlined text-tertiary text-[16px]">gavel</span>
+<span class="uppercase tracking-wider font-semibold text-text-muted">Strict Operator Protocol:</span>
+<span>Changes to subscription state, grace terms, or manual overrides require operator rationale and are permanently notarized in cluster ledger `ops-us-east-01.notary`.</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono hidden xl:inline">HASH: e04c...9d12</span>
+</div>
+</div>
+<!-- 3-Column Profile & Entitlements Specification Matrix -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md mb-space-lg">
+<!-- Column 1: Current Plan & Cycle -->
+<div class="bg-surface rounded-xl p-space-md flex flex-col justify-between shadow-md">
+<div class="flex flex-col">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">credit_card</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-text-muted font-bold">Subscription Plan</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-success/10 text-status-success uppercase font-semibold">
+            Auto-Renew: ON
+          </span>
+</div>
+<div class="flex items-baseline gap-space-xs mb-space-xs">
+<span class="font-headline-xl text-headline-xl text-text-primary font-bold tracking-tight">$149.00</span>
+<span class="font-label-mono-sm text-label-mono-sm text-text-subtle uppercase">USD / Month</span>
+</div>
+<div class="font-code-md text-code-md text-secondary font-semibold mb-space-md">
+          Team Plan (Base Tier)
+        </div>
+<div class="space-y-space-xs font-body-sm text-body-sm text-text-subtle">
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Subscribed On:</span>
+<span class="font-code-sm text-code-sm text-text-primary">Sep 14, 2026</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Cycle Period:</span>
+<span class="font-code-sm text-code-sm text-text-primary">Monthly (14th to 14th)</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Next Anchor Billing:</span>
+<span class="font-code-sm text-code-sm text-status-warning font-semibold">Oct 14, 2026</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Overdue Balance:</span>
+<span class="font-code-sm text-code-sm text-status-danger font-bold">$149.00 USD</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Stripe Sub: sub_1Pwq98...</span>
+<button class="font-label-mono-xs text-label-mono-xs text-primary hover:underline flex items-center gap-0.5">
+<span>Edit Terms</span>
+<span class="material-symbols-outlined text-[14px]">navigate_next</span>
+</button>
+</div>
+</div>
+<!-- Column 2: Seats, Usage & Connectors -->
+<div class="bg-surface rounded-xl p-space-md flex flex-col justify-between shadow-md">
+<div class="flex flex-col">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[18px]">group</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-text-muted font-bold">Seats &amp; Connectors</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">4 / 10 SEATS</span>
+</div>
+<!-- Seat Bar -->
+<div class="mb-space-md">
+<div class="flex justify-between items-center text-label-mono-xs font-label-mono-xs mb-1">
+<span class="text-text-subtle uppercase">Allocation Utilization</span>
+<span class="text-primary font-bold">40% Capacity</span>
+</div>
+<div class="w-full h-2 rounded bg-surface-raised overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 40%;"></div>
+<div class="h-full bg-surface-raised" style="width: 60%;"></div>
+</div>
+</div>
+<div class="space-y-space-xs font-body-sm text-body-sm">
+<div class="flex items-center justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="font-code-sm text-code-sm text-text-primary truncate">Hank Scorpio</span>
+<span class="font-label-mono-xs text-label-mono-xs text-tertiary uppercase">[Owner]</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">Full Admin</span>
+</div>
+<div class="flex items-center justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="font-code-sm text-code-sm text-text-primary truncate">3 Staff Engineers</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">d.brown +2</span>
+</div>
+</div>
+<!-- Connected Workflows / Telemetry status -->
+<div class="mt-space-md pt-space-xs">
+<div class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle mb-1.5 font-bold">External Integrations</div>
+<div class="grid grid-cols-2 gap-space-xs">
+<div class="bg-surface-raised p-2 rounded flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-status-danger">sync_problem</span>
+<span class="font-code-sm text-code-sm text-text-primary font-medium">Jira Cloud</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-status-danger">HTTP 503</span>
+</div>
+<div class="bg-surface-raised p-2 rounded flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-status-success">check_circle</span>
+<span class="font-code-sm text-code-sm text-text-primary font-medium">Zendesk</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-status-success">ACTIVE</span>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle">6 Unallocated Seats Remaining</span>
+<button class="font-label-mono-xs text-label-mono-xs text-primary hover:underline">Manage Seats</button>
+</div>
+</div>
+<!-- Column 3: Payment Method & Stripe Card Health -->
+<div class="bg-surface rounded-xl p-space-md flex flex-col justify-between shadow-md">
+<div class="flex flex-col">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-status-danger text-[18px]">account_balance_wallet</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-text-muted font-bold">Payment Instrument</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-danger/10 text-status-danger uppercase font-bold">
+            card_declined
+          </span>
+</div>
+<!-- Card Mockup Visual -->
+<div class="bg-surface-raised rounded-xl p-space-md mb-space-md relative overflow-hidden">
+<div class="flex justify-between items-start mb-space-md">
+<div class="flex items-center gap-2">
+<span class="font-label-mono-sm text-label-mono-sm text-text-primary font-bold tracking-widest uppercase">Mastercard</span>
+<span class="px-1.5 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-warning/10 text-status-warning uppercase font-bold">
+                Expiring
+              </span>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[22px]">contactless</span>
+</div>
+<div class="font-code-md text-code-md text-text-primary tracking-widest font-mono mb-2">
+            •••• •••• •••• 8819
+          </div>
+<div class="flex justify-between items-end text-label-mono-xs font-label-mono-xs">
+<div>
+<span class="text-text-subtle block uppercase">CARDHOLDER</span>
+<span class="text-text-primary font-semibold">HANK SCORPIO</span>
+</div>
+<div class="text-right">
+<span class="text-text-subtle block uppercase">EXPIRES</span>
+<span class="text-status-warning font-bold">10 / 2026 (THIS MONTH)</span>
+</div>
+</div>
+</div>
+<div class="space-y-space-xs font-body-sm text-body-sm text-text-subtle">
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Stripe PM Token:</span>
+<span class="font-mono font-code-sm text-code-sm text-text-primary">pm_1Pwq8B2eZ...</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Funding &amp; Origin:</span>
+<span class="font-code-sm text-code-sm text-text-primary">Credit / US Issued</span>
+</div>
+<div class="flex justify-between py-1 bg-surface-raised/40 px-2 rounded">
+<span>Failure Diagnosis:</span>
+<span class="font-code-sm text-code-sm text-status-danger font-medium">Insufficient funds in account</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md mt-space-sm flex items-center justify-between">
+<span class="font-label-mono-xs text-label-mono-xs text-status-warning flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>Card Expiration Window Alert</span>
+</span>
+<button class="font-label-mono-xs text-label-mono-xs text-primary hover:underline">Request Card Update</button>
+</div>
+</div>
+</div>
+<!-- Operational Handoff Metrology & Runway Horizon -->
+<div class="bg-surface rounded-xl p-space-md mb-space-lg shadow-xl">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-sm mb-space-md">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">timelapse</span>
+<span class="font-headline-md text-headline-md text-text-primary font-bold">Stage Handoff &amp; Dunning Runway</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-subtle">
+          Deterministic SLA timeline. Horizontal segments represent duration legs elapsed since delinquency trigger.
+        </p>
+</div>
+<div class="flex items-center gap-space-md font-code-sm text-code-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-status-danger"></span>
+<span class="text-text-subtle">Overdue Stage (2d 18h)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-status-warning"></span>
+<span class="text-text-subtle">Active Grace Window (4d 6h)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-surface-raised"></span>
+<span class="text-text-subtle">Lockout Horizon</span>
+</div>
+</div>
+</div>
+<!-- Runway Metrology Bar -->
+<div class="w-full bg-surface-container rounded-lg p-space-sm mb-space-sm">
+<div class="flex justify-between items-center text-label-mono-xs font-label-mono-xs mb-2">
+<span class="text-status-danger font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span>ORIGIN FAILURE: 2026-10-02 14:32:01 UTC</span>
+</span>
+<span class="text-status-warning font-bold font-mono">
+          RUNWAY REMAINING: 68h 12m (RETRIES 2, 3, 4 PENDING)
+        </span>
+<span class="text-text-subtle flex items-center gap-1">
+<span>HARD LOCKOUT: 2026-10-09 14:32:00 UTC</span>
+<span class="material-symbols-outlined text-[14px]">lock_clock</span>
+</span>
+</div>
+<!-- Segmented Bar -->
+<div class="w-full h-3 rounded bg-surface-raised overflow-hidden flex relative">
+<div class="h-full bg-status-danger relative group cursor-pointer" style="width: 38%;" title="Overdue Leg: 2.8 Days elapsed">
+<span class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</div>
+<div class="h-full bg-status-warning relative group cursor-pointer" style="width: 42%;" title="Grace Period Leg: Remaining until lockout">
+<span class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</div>
+<div class="h-full bg-surface-container-highest relative" style="width: 20%;" title="Lockout stage"></div>
+</div>
+</div>
+<div class="flex flex-wrap items-center justify-between text-label-mono-xs font-label-mono-xs text-text-subtle pt-1">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">link</span>
+<span>Confidence: Observed Deterministic Stripe Webhook Ledger (100%)</span>
+</span>
+<span class="font-mono">Policy Spec: DEFAULT_DUNNING_7_DAY_V2</span>
+</div>
+</div>
+<!-- 2-Column Split: Detailed Event Audit Timeline + Invoices Table -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg mb-space-lg">
+<!-- Column: Structured Lifecycle & Billing Event Timeline (7 Cols) -->
+<div class="xl:col-span-7 bg-surface rounded-xl p-space-md shadow-xl flex flex-col">
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">history</span>
+<span class="font-headline-md text-headline-md text-text-primary font-bold">Chronological Lifecycle Stream</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Notarized Cluster Telemetry &amp; Dunning Events</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-surface-raised text-text-muted">
+            FILTER: ALL EVENTS
+          </span>
+<button class="p-1 rounded bg-surface-raised hover:bg-surface-hover text-text-subtle hover:text-text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Chronological Stream -->
+<div class="relative pl-6 space-y-space-md before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-raised">
+<!-- Step 1: Recent Payment Failure -->
+<div class="relative group">
+<div class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full bg-status-danger ring-4 ring-surface flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-canvas"></span>
+</div>
+<div class="bg-surface-raised/70 group-hover:bg-surface-raised rounded-lg p-space-sm transition-colors">
+<div class="flex flex-wrap items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-mono-xs text-label-mono-xs px-1.5 py-0.5 rounded bg-status-danger/20 text-status-danger font-bold">
+                  INVOICE_PAYMENT_FAILED
+                </span>
+<span class="font-code-sm text-code-sm text-text-primary font-semibold">Invoice #INV-GLX-09</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">
+                2026-10-02 14:32:01 UTC
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2">
+              Automated recurring billing charge of <span class="font-code-sm text-code-sm text-status-danger font-bold">$149.00 USD</span> failed against Mastercard <span class="font-mono">•••• 8819</span>.
+              Decline code: <code class="text-tertiary bg-surface-container px-1 py-0.5 rounded text-code-sm font-mono">insufficient_funds</code>.
+            </p>
+<div class="flex flex-wrap items-center gap-space-md text-label-mono-xs font-label-mono-xs text-text-subtle pt-1 bg-surface-container/40 p-2 rounded">
+<span class="flex items-center gap-1 text-text-muted">
+<span class="material-symbols-outlined text-[14px] text-status-warning">mail</span>
+<span>Dunning Email #1 Sent to hank.scorpio@globex.com</span>
+</span>
+<span class="text-border-strong">·</span>
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span>Webhook: stripe.charge.failed (ack: 200)</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Step 2: Plan Upgraded From Trial -->
+<div class="relative group">
+<div class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full bg-primary ring-4 ring-surface flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-canvas"></span>
+</div>
+<div class="bg-surface-raised/70 group-hover:bg-surface-raised rounded-lg p-space-sm transition-colors">
+<div class="flex flex-wrap items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-mono-xs text-label-mono-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
+                  PLAN_UPGRADED_FROM_TRIAL
+                </span>
+<span class="font-code-sm text-code-sm text-text-primary font-semibold">Tier Upgrade: Pro Trial → Team</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">
+                2026-09-28 09:15:00 UTC
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-1">
+              Converted from 14-day Pro Trial to recurring Team Plan ($149.00/mo). Authorized by user <code class="text-primary font-mono">hank.scorpio@globex.com</code> via tenant dashboard.
+            </p>
+<div class="flex items-center gap-space-sm text-label-mono-xs font-label-mono-xs text-text-subtle">
+<span>SLA Target Activated: Standard 99.9%</span>
+<span class="text-border-strong">·</span>
+<span>10 User Seats Allocated</span>
+</div>
+</div>
+</div>
+<!-- Step 3: Seat Added -->
+<div class="relative group">
+<div class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full bg-secondary ring-4 ring-surface flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-canvas"></span>
+</div>
+<div class="bg-surface-raised/70 group-hover:bg-surface-raised rounded-lg p-space-sm transition-colors">
+<div class="flex flex-wrap items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-mono-xs text-label-mono-xs px-1.5 py-0.5 rounded bg-secondary/20 text-secondary font-bold">
+                  SEAT_ADDED
+                </span>
+<span class="font-code-sm text-code-sm text-text-primary font-semibold">Engineer Seat Provisioned</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">
+                2026-09-20 11:00:24 UTC
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+              Invited staff engineer <span class="text-text-primary font-mono font-medium">d.brown@globex.com</span>. Allocated seat position 4 of 10. Provisioned SSO role `Platform Contributor`.
+            </p>
+</div>
+</div>
+<!-- Step 4: Tenant Initialized Trial -->
+<div class="relative group">
+<div class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full bg-status-success ring-4 ring-surface flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-canvas"></span>
+</div>
+<div class="bg-surface-raised/70 group-hover:bg-surface-raised rounded-lg p-space-sm transition-colors">
+<div class="flex flex-wrap items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-mono-xs text-label-mono-xs px-1.5 py-0.5 rounded bg-status-success/20 text-status-success font-bold">
+                  TENANT_INITIALIZED_TRIAL
+                </span>
+<span class="font-code-sm text-code-sm text-text-primary font-semibold">Pro Trial Bootstrapped</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">
+                2026-09-14 11:20:00 UTC
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+              Started 14-day evaluation environment. Attached external Stripe customer object <code class="text-secondary font-mono">cus_Qx91kLm4928</code> with initial payment method verification ($1 auth voided).
+            </p>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm flex items-center justify-between text-label-mono-xs font-label-mono-xs text-text-subtle">
+<span>Showing 4 of 4 ledger events</span>
+<button class="text-primary hover:underline flex items-center gap-0.5">
+<span>Inspect Raw Event Log Payload</span>
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+</button>
+</div>
+</div>
+<!-- Column: Invoices & Ledger Reconciliation Table (5 Cols) -->
+<div class="xl:col-span-5 bg-surface rounded-xl p-space-md shadow-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">receipt_long</span>
+<span class="font-headline-md text-headline-md text-text-primary font-bold">Ledger &amp; Invoices</span>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Stripe Synchronization Record</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-surface-raised text-secondary font-mono">
+            2 INVOICES
+          </span>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="text-label-mono-xs font-label-mono-xs text-text-subtle uppercase bg-surface-container/60">
+<th class="py-2 px-2.5 rounded-l">Invoice</th>
+<th class="py-2 px-2.5">Date</th>
+<th class="py-2 px-2.5">Amount</th>
+<th class="py-2 px-2.5">Status</th>
+<th class="py-2 px-2.5 text-right rounded-r">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-transparent space-y-1">
+<!-- Row 1: Delinquent -->
+<tr class="bg-surface-raised/40 hover:bg-surface-hover transition-colors">
+<td class="py-3 px-2.5 font-code-sm text-code-sm font-bold text-text-primary">
+<div class="flex flex-col">
+<span>INV-GLX-09</span>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">Mastercard · 8819</span>
+</div>
+</td>
+<td class="py-3 px-2.5 text-text-muted font-label-mono-xs text-label-mono-xs font-mono">
+                  Oct 02, 2026
+                </td>
+<td class="py-3 px-2.5 font-code-sm text-code-sm font-bold text-status-danger">
+                  $149.00
+                </td>
+<td class="py-3 px-2.5">
+<span class="px-1.5 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-danger/10 text-status-danger font-bold uppercase whitespace-nowrap">
+                    ✕ FAILED
+                  </span>
+</td>
+<td class="py-3 px-2.5 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2 py-1 rounded bg-status-danger/20 hover:bg-status-danger text-status-danger hover:text-canvas font-label-mono-xs text-label-mono-xs uppercase font-semibold transition-colors">
+                      Retry
+                    </button>
+<button class="p-1 rounded bg-surface-container hover:bg-surface-hover text-text-subtle hover:text-text-primary" title="View Payload">
+<span class="material-symbols-outlined text-[14px]">data_object</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Trial Verification -->
+<tr class="bg-surface-raised/40 hover:bg-surface-hover transition-colors">
+<td class="py-3 px-2.5 font-code-sm text-code-sm font-bold text-text-primary">
+<div class="flex flex-col">
+<span>INV-GLX-08</span>
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle font-mono">Card Auth Void</span>
+</div>
+</td>
+<td class="py-3 px-2.5 text-text-muted font-label-mono-xs text-label-mono-xs font-mono">
+                  Sep 14, 2026
+                </td>
+<td class="py-3 px-2.5 font-code-sm text-code-sm font-medium text-text-muted">
+                  $0.00
+                </td>
+<td class="py-3 px-2.5">
+<span class="px-1.5 py-0.5 rounded font-label-mono-xs text-label-mono-xs bg-status-success/10 text-status-success font-semibold uppercase whitespace-nowrap">
+                    ✓ MET
+                  </span>
+</td>
+<td class="py-3 px-2.5 text-right">
+<button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-hover text-text-subtle hover:text-text-primary font-label-mono-xs text-label-mono-xs uppercase transition-colors">
+                    Receipt
+                  </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Stripe Balance Breakdown Summary Box -->
+<div class="mt-space-md bg-surface-container p-space-sm rounded-lg">
+<div class="flex justify-between items-center text-label-mono-xs font-label-mono-xs mb-1">
+<span class="text-text-subtle uppercase">Settlement Account</span>
+<span class="text-text-muted font-mono">acct_1H09x8K1</span>
+</div>
+<div class="flex justify-between items-center text-body-sm font-body-sm">
+<span class="text-text-muted">Total Delinquent Ledger:</span>
+<span class="font-code-md text-code-md text-status-danger font-bold">$149.00 USD</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Informational Plan Record & Admin Override Safeguard Section -->
+<div class="bg-surface rounded-xl p-space-lg shadow-xl mb-space-lg">
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-lg">
+<div class="max-w-2xl">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="material-symbols-outlined text-tertiary text-[20px]">admin_panel_settings</span>
+<h3 class="font-headline-md text-headline-md text-text-primary font-bold">Admin Billing Override &amp; Operational Safeguards</h3>
+</div>
+<p class="font-body-md text-body-md text-text-subtle mb-space-sm">
+          Informational only. Updating platform billing overrides does not circumvent cryptographic SLA verification. Changes are appended to the immutable cluster audit log and trigger an automated platform supervisor event.
+        </p>
+<div class="flex items-center gap-space-xs text-label-mono-xs font-label-mono-xs text-status-warning bg-status-warning/10 p-2 rounded">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span>Operator must supply mandatory justification for grace extensions exceeding 7 days or manual tier comp allocations.</span>
+</div>
+</div>
+<!-- Action Panel & Override Trigger Buttons -->
+<div class="flex flex-col sm:flex-row items-stretch lg:items-center gap-space-sm flex-shrink-0">
+<button class="px-4 py-2.5 rounded bg-surface-raised hover:bg-surface-hover text-text-primary transition-all font-code-sm text-code-sm font-semibold flex items-center justify-center gap-2 shadow-sm" id="btn-billing-notes">
+<span class="material-symbols-outlined text-primary text-[18px]">edit_note</span>
+<span>Update Billing Notes</span>
+</button>
+<button class="px-4 py-2.5 rounded bg-surface-raised hover:bg-surface-hover text-tertiary transition-all font-code-sm text-code-sm font-semibold flex items-center justify-center gap-2 shadow-sm" id="btn-comp-plan">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span>
+<span>Mark as Comped / Direct Invoice</span>
+</button>
+</div>
+</div>
+<!-- Active Operator Note Display -->
+<div class="mt-space-md pt-space-md bg-surface-raised/40 p-space-sm rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-text-subtle text-[18px]">sticky_note_2</span>
+<div class="flex flex-col">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">LATEST OPERATOR NOTE (Oct 02, 2026 15:02 UTC by op_jdoe):</span>
+<span class="font-body-sm text-body-sm text-text-primary">"Reachable via Hank Scorpio Slack connect. Customer stated corporate expense card was reissued; new credentials pending finance signoff."</span>
+</div>
+</div>
+<span class="font-label-mono-xs text-label-mono-xs text-secondary hover:underline cursor-pointer flex-shrink-0">View History (3)</span>
+</div>
+</div>
+<!-- Interactive Modal / Override Drawer (Hidden by default, triggered via JS) -->
+<div class="fixed inset-0 z-50 bg-canvas/80 backdrop-blur-sm hidden items-center justify-center p-space-md" id="operator-modal">
+<div class="bg-surface rounded-xl max-w-lg w-full p-space-lg shadow-2xl relative">
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-status-warning text-[20px]">security</span>
+<span class="font-title-mono text-title-mono text-text-primary font-bold">Operator Override Notarization</span>
+</div>
+<button class="text-text-subtle hover:text-text-primary" id="modal-close">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="space-y-space-md font-body-sm text-body-sm">
+<div class="bg-surface-raised p-space-sm rounded">
+<div class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase mb-1">Target Tenant:</div>
+<div class="font-code-md text-code-md text-text-primary font-mono">ten_glx_99 (Globex Corporation)</div>
+</div>
+<div>
+<label class="block font-label-mono-xs text-label-mono-xs uppercase text-text-subtle mb-1">Action Type</label>
+<div class="bg-surface-container p-2 rounded text-text-primary font-code-sm text-code-sm">
+            GRANT_GRACE_EXTENSION_7_DAYS
+          </div>
+</div>
+<div>
+<label class="block font-label-mono-xs text-label-mono-xs uppercase text-text-subtle mb-1">Mandatory Operator Rationale</label>
+<textarea class="w-full bg-surface-container rounded p-2 text-text-primary font-body-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder-text-subtle" id="operator-reason" placeholder="Detail reason for manual grace extension or billing comp (required for notary log)..." rows="3"></textarea>
+</div>
+<div class="flex items-center gap-2 pt-2">
+<input class="rounded bg-surface-container text-primary focus:ring-0" id="confirm-notary" type="checkbox"/>
+<label class="font-label-mono-xs text-label-mono-xs text-text-subtle" for="confirm-notary">
+            I confirm this override is compliant with the v2.4 Platform SLA Governance Standard.
+          </label>
+</div>
+</div>
+<div class="mt-space-lg pt-space-sm flex justify-end gap-space-sm">
+<button class="px-3 py-1.5 rounded bg-surface-raised hover:bg-surface-hover text-on-surface font-code-sm text-code-sm" id="modal-cancel">
+          Cancel
+        </button>
+<button class="px-4 py-1.5 rounded bg-primary text-canvas font-code-sm text-code-sm font-bold shadow-md hover:bg-primary-fixed transition-all" id="modal-confirm">
+          Sign &amp; Append to Ledger
+        </button>
+</div>
+</div>
+</div>
+<!-- Notification Toast Container -->
+<div class="fixed bottom-6 right-6 z-50 hidden bg-surface-raised text-text-primary px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3" id="toast">
+<span class="material-symbols-outlined text-status-success text-[20px]" id="toast-icon">check_circle</span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm font-bold" id="toast-title">Action Notarized</span>
+<span class="font-body-sm text-body-sm text-text-subtle" id="toast-desc">Transaction recorded to immutable stream.</span>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const modal = document.getElementById('operator-modal');
+    const btnRetry = document.getElementById('btn-retry-charge');
+    const btnGrace = document.getElementById('btn-grant-grace');
+    const btnNotes = document.getElementById('btn-billing-notes');
+    const btnComp = document.getElementById('btn-comp-plan');
+    const modalClose = document.getElementById('modal-close');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const toast = document.getElementById('toast');
+    const toastTitle = document.getElementById('toast-title');
+    const toastDesc = document.getElementById('toast-desc');
+
+    function showToast(title, desc, isSuccess = true) {
+      toastTitle.textContent = title;
+      toastDesc.textContent = desc;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 4000);
+    }
+
+    function openModal() {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    if (btnGrace) btnGrace.addEventListener('click', openModal);
+    if (btnComp) btnComp.addEventListener('click', openModal);
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modalCancel) modalCancel.addEventListener('click', closeModal);
+
+    if (modalConfirm) {
+      modalConfirm.addEventListener('click', () => {
+        closeModal();
+        showToast('Grace Window Extended', 'Grace extended by 7 days. Log appended to cluster notary.');
+      });
+    }
+
+    if (btnRetry) {
+      btnRetry.addEventListener('click', function() {
+        this.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Dispatched...</span>';
+        setTimeout(() => {
+          this.innerHTML = '<span class="material-symbols-outlined text-[16px]">sync</span><span>Retry Charge Now</span>';
+          showToast('Payment Gateway Triggered', 'Stripe charge intent #pi_9981 triggered. Response: DECLINED (402).');
+        }, 1200);
+      });
+    }
+
+    if (btnNotes) {
+      btnNotes.addEventListener('click', () => {
+        const note = prompt('Append new operator internal note for ten_glx_99:');
+        if (note) {
+          showToast('Note Appended', 'Operator note notarized successfully.');
+        }
+      });
+    }
+  })();
+</script></main></div></body></html>
