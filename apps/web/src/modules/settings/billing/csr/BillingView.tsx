@@ -1,11 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { PlanId } from "@sla/db/plans";
-import { Actions } from "@/actions/client";
 import { BillingToast, useBillingToast } from "@/components/billing/billing-toast";
-import type { SubscriptionActionInput } from "@/lib/billing-validation";
 import type { BillingOverviewData, BillingTab } from "@/lib/types/billing";
 import { BillingActionsProvider, type BillingActionsValue } from "./billing-actions-context";
 import { BillingProfileDialog } from "./BillingProfileDialog";
@@ -15,6 +12,7 @@ import { InvoicesTab } from "./invoices/InvoicesTab";
 import { OverviewTab } from "./overview/OverviewTab";
 import { PaymentTab } from "./payment/PaymentTab";
 import { SeatsDialog } from "./SeatsDialog";
+import { useSubscriptionRunner } from "./useSubscriptionRunner";
 
 interface BillingViewProps {
   data: BillingOverviewData;
@@ -28,52 +26,25 @@ interface BillingViewProps {
  * state; on success the page re-reads its server data.
  */
 export function BillingView({ data, tab }: BillingViewProps) {
-  const router = useRouter();
   const toast = useBillingToast();
-  const [sending, setSending] = useState(false);
-  const [refreshing, startRefresh] = useTransition();
   const [planDialog, setPlanDialog] = useState<{ open: boolean; initial: PlanId | null; session: number }>({ open: false, initial: null, session: 0 });
   const [seatsOpen, setSeatsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const { show } = toast;
   const notify = useCallback<BillingActionsValue["notify"]>((title, description, tone = "preview") => show({ title, description, tone }), [show]);
-
-  const run = useCallback<BillingActionsValue["run"]>(
-    async (input: SubscriptionActionInput, success: string) => {
-      setSending(true);
-      try {
-        const result = await Actions.Billing.subscription(input);
-        if (!result.ok) {
-          const error = result.body.error ?? "The billing change could not be made.";
-          show({ title: result.body.code === "conflict" ? "Billing changed" : "Not changed", description: error, tone: "error" });
-          if (result.body.code === "conflict") startRefresh(() => router.refresh());
-          return { ok: false, error };
-        }
-        show({ title: success, description: "Saved and recorded in billing history.", tone: "success" });
-        startRefresh(() => router.refresh());
-        return { ok: true };
-      } catch {
-        const error = "Could not reach the server. Check your connection and try again.";
-        show({ title: "Not changed", description: error, tone: "error" });
-        return { ok: false, error };
-      } finally {
-        setSending(false);
-      }
-    },
-    [router, show],
-  );
+  const { run, busy, refreshing } = useSubscriptionRunner(show);
 
   const actions = useMemo<BillingActionsValue>(
     () => ({
       canManage: data.canManage,
       providerAvailable: data.providerAvailable,
       version: data.subscription?.version ?? null,
-      busy: sending || refreshing,
+      busy,
       run,
       notify,
     }),
-    [data.canManage, data.providerAvailable, data.subscription?.version, sending, refreshing, run, notify],
+    [data.canManage, data.providerAvailable, data.subscription?.version, busy, run, notify],
   );
 
   const openPlanDialog = (initial: PlanId | null = null) => setPlanDialog((current) => ({ open: true, initial, session: current.session + 1 }));

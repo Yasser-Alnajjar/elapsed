@@ -1,156 +1,80 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
-
-import { formatPlanPrice, PLAN_LIST, planFeatureLines, TRIAL_LENGTH_DAYS } from "@sla/db/plans";
-
+import { ShieldCheck } from "lucide-react";
+import { TRIAL_LENGTH_DAYS } from "@sla/db/plans";
 import { Reveal } from "@/components/shared/reveal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { PricingFaq, PricingPlan } from "@/lib/types/marketing";
+import type { PricingViewer } from "@/lib/types/pricing";
+import { FAQS, PLANS } from "./pricing-content";
+import { PricingContextStrip } from "./PricingContextStrip";
+import { PricingPlanCard } from "./PricingPlanCard";
 
-// Rendered from the one plan constant that entitlement checks also read (N6.1),
-// so the public page and what is enforced cannot drift apart.
-const PLANS: PricingPlan[] = PLAN_LIST.map((plan) => ({
-  name: plan.name,
-  ...formatPlanPrice(plan),
-  description: plan.description,
-  cta: plan.cta,
-  href: "/sign-up",
-  highlighted: plan.highlighted,
-  features: planFeatureLines(plan),
-}));
-
-const FAQS: PricingFaq[] = [
-  {
-    question: "Is there a free trial?",
-    answer:
-      `Yes — every new organization starts with a ${TRIAL_LENGTH_DAYS}-day trial with full access, no credit card required. When it ends, your cases, monitoring and alerts keep running; adding new members, integrations or SLA policies needs a plan.`,
-  },
-  {
-    question: "What counts as a seat?",
-    answer:
-      "Any teammate who signs in to view the dashboard, configure SLA policies, or manage integrations. Read-only Slack alerts don't use a seat.",
-  },
-  {
-    question: "Can I change plans later?",
-    answer:
-      "Yes. Talk to us and we will change your plan or cancel it; there is no long-term commitment.",
-  },
-  {
-    question: "Do you write back to our connected tools?",
-    answer:
-      "No. Every integration is read-only — we never create, edit, or comment on tickets, issues, or pull requests on your behalf.",
-  },
-];
-
-export const PricingView = () => {
+export const PricingView = ({ viewer }: { viewer: PricingViewer }) => {
   return (
     <main className="flex-1">
       <section className="relative overflow-hidden border-b border-border/60">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-grain"
-        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain" />
 
-        <div className="relative mx-auto w-full max-w-2xl px-6 py-20 text-center sm:py-24">
+        <div className="relative mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-6 py-16 text-center sm:py-20">
           <Reveal>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">
-              Simple pricing, per organization
-            </h1>
+            <span className="border-primary/30 bg-primary/10 text-primary inline-flex flex-wrap items-center justify-center gap-x-1.5 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold tracking-wide uppercase">
+              {TRIAL_LENGTH_DAYS}-day trial
+              <span aria-hidden className="text-foreground-subtle">
+                ·
+              </span>
+              <span className="text-muted-foreground normal-case">Full access · No credit card required</span>
+            </span>
           </Reveal>
           <Reveal delay={0.05}>
-            <p className="mt-5 text-lg leading-8 text-muted-foreground text-balance">
-              Every plan includes read-only integrations and automatic case
-              correlation.
+            <h1 className="font-display text-4xl font-medium tracking-tight text-balance sm:text-5xl">Simple pricing, per organization</h1>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="text-lg leading-8 text-muted-foreground text-balance">
+              Flat monthly rates with no per-seat penalties or usage spikes. Every plan includes read-only integrations and automatic case correlation.
             </p>
           </Reveal>
+          {viewer.strip && (
+            <Reveal delay={0.15} className="w-full">
+              <PricingContextStrip strip={viewer.strip} />
+            </Reveal>
+          )}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-16 sm:py-20">
         <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 md:grid-cols-3">
           {PLANS.map((plan, i) => (
-            <Reveal key={plan.name} delay={i * 0.05}>
-              <Card
-                className={cn(
-                  "flex h-full flex-col",
-                  plan.highlighted && "border-foreground/20 shadow-elevated",
-                )}
-              >
-                <CardHeader className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-display text-lg font-medium tracking-tight">
-                      {plan.name}
-                    </h2>
-                    {plan.highlighted && (
-                      <Badge variant="primary">Most popular</Badge>
-                    )}
-                  </div>
-
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-display text-4xl font-medium tracking-tight">
-                      {plan.price}
-                    </span>
-                    {plan.cadence && (
-                      <span className="text-sm text-muted-foreground">
-                        {plan.cadence}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {plan.description}
-                  </p>
-                </CardHeader>
-
-                <CardContent className="flex flex-1 flex-col gap-6">
-                  <ul className="flex-1 space-y-3">
-                    {plan.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2.5 text-sm"
-                      >
-                        <Check className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    asChild
-                    variant={plan.highlighted ? "default" : "outline"}
-                    className="w-full"
-                  >
-                    <Link href={plan.href}>
-                      {plan.cta}
-                      <ArrowRight />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+            <Reveal key={plan.id} delay={i * 0.05}>
+              <PricingPlanCard plan={plan} state={viewer.cards[plan.id]} />
             </Reveal>
           ))}
+        </div>
+
+        <div className="mx-auto mt-10 w-full max-w-7xl px-6">
+          <div className="border-border bg-card flex items-start gap-4 rounded-lg border p-5">
+            <span aria-hidden className="border-primary/30 bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-md border">
+              <ShieldCheck className="size-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold">Operational continuity guarantee</h3>
+              <p className="text-muted-foreground mt-1 text-sm leading-6">
+                If your organization temporarily exceeds integration or policy limits, <strong className="text-foreground font-semibold">monitoring, alerts, cases and historical data never pause</strong>.
+                You will see an informational warning, but protection is never interrupted.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="border-t border-border/60 py-20">
         <div className="mx-auto w-full max-w-2xl px-6">
-          <h2 className="text-center font-display text-2xl font-medium tracking-tight">
-            Frequently asked questions
-          </h2>
+          <h2 className="text-center font-display text-2xl font-medium tracking-tight">Frequently asked questions</h2>
 
           <div className="mt-10 divide-y divide-border">
             {FAQS.map((faq, i) => (
               <Reveal key={faq.question} delay={i * 0.05}>
                 <div className="py-5">
                   <h3 className="text-sm font-medium">{faq.question}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {faq.answer}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{faq.answer}</p>
                 </div>
               </Reveal>
             ))}

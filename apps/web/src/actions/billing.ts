@@ -1,6 +1,8 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { getPrismaClient } from "@sla/db";
+import { authOptions } from "@/lib/auth";
 import { getBillingOverview } from "@/lib/billing-data";
 import { getBillingProvider } from "@/lib/billing-provider";
 import { getRequestContext } from "@/lib/request-context";
@@ -19,5 +21,14 @@ export const BillingActions = {
     if (!data) redirect("/sign-in");
 
     return data;
+  },
+
+  /**
+   * The same read model for a public page that is also shown to visitors:
+   * `null` without a session instead of a redirect to sign-in.
+   */
+  async getDataIfSignedIn(): Promise<BillingOverviewData | null> {
+    const session = await getServerSession(authOptions);
+    return session ? BillingActions.getData() : null;
   },
 };

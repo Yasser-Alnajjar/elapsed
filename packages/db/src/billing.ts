@@ -161,6 +161,17 @@ export function defaultSeatQuantity(plan: PlanId, seatsInUse: number): number {
   return PLANS[plan].limits.seats ?? Math.max(1, seatsInUse);
 }
 
+/**
+ * What an upgrade at `now` charges for the rest of the current period: the
+ * price difference, pro rata. Shared by the change itself and the review
+ * screen's preview, so the two cannot disagree.
+ */
+export function prorateUpgradeCents(oldPriceCents: number, newPriceCents: number, periodStart: Date, periodEnd: Date, now: Date): number {
+  const periodMs = periodEnd.getTime() - periodStart.getTime();
+  const remainingMs = Math.max(0, periodEnd.getTime() - now.getTime());
+  return Math.round(((newPriceCents - oldPriceCents) * remainingMs) / periodMs);
+}
+
 /** Same day of month, `months` later (clamped to the month's last day), same UTC time. */
 export function addMonthsUtc(date: Date, months: number): Date {
   const year = date.getUTCFullYear();
@@ -567,9 +578,7 @@ export async function changeSubscriptionPlan(
     const oldPrice = before.unitPriceCents;
     const newPrice = subscription.unitPriceCents;
     if (subscription.status !== "trial" && oldPrice !== null && newPrice !== null && newPrice > oldPrice) {
-      const periodMs = subscription.currentPeriodEnd.getTime() - subscription.currentPeriodStart.getTime();
-      const remainingMs = Math.max(0, subscription.currentPeriodEnd.getTime() - now.getTime());
-      const amountCents = Math.round(((newPrice - oldPrice) * remainingMs) / periodMs);
+      const amountCents = prorateUpgradeCents(oldPrice, newPrice, subscription.currentPeriodStart, subscription.currentPeriodEnd, now);
       if (amountCents > 0) {
         await issueInvoice(tx, subscription, {
           reason: "subscription_update",
