@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Elapsed — Deterministic SLA Monitoring</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "canvas": "#060a12", "text-primary": "#f8fafc", "surface-overlay": "#1a2745", "inverse-primary": "#006591", "surface-dim": "#0f1418", "on-primary-container": "#003751", "on-background": "#dee3e9", "surface": "#0b1324", "primary-container": "#0ea5e9", "on-primary-fixed-variant": "#004c6e", "on-primary": "#00344d", "surface-raised": "#111c34", "status-warning": "#f59e0b", "outline-variant": "#3e4850", "on-surface-variant": "#bec8d2", "text-subtle": "#64748b", "status-success": "#10b981", "inverse-surface": "#dee3e9", "surface-container": "#1b2024", "tertiary-fixed": "#ffdcbd", "background": "#0f1418", "on-error": "#690005", "on-secondary": "#00354a", "on-tertiary-fixed": "#2c1600", "on-tertiary": "#492900", "secondary-container": "#00a6e0", "on-secondary-container": "#00374d", "inverse-on-surface": "#2c3135", "outline": "#88929b", "surface-bright": "#353a3e", "error": "#ffb4ab", "on-secondary-fixed": "#001e2c", "secondary-fixed": "#c4e7ff", "surface-container-high": "#252b2f", "surface-variant": "#30353a", "surface-hover": "#233356", "secondary-fixed-dim": "#7bd0ff", "border": "#1c273c", "on-primary-fixed": "#001e2f", "surface-container-highest": "#30353a", "surface-container-low": "#171c20", "primary": "#89ceff", "border-strong": "#2d3c59", "surface-tint": "#89ceff", "primary-fixed-dim": "#89ceff", "on-error-container": "#ffdad6", "on-secondary-fixed-variant": "#004c69", "error-container": "#93000a", "secondary": "#7bd0ff", "text-muted": "#94a3b8", "tertiary": "#ffb86e", "surface-container-lowest": "#0a0f13", "on-surface": "#dee3e9", "tertiary-fixed-dim": "#ffb86e", "on-tertiary-fixed-variant": "#693c00", "status-danger": "#f43f5e", "on-tertiary-container": "#4d2b00", "primary-fixed": "#c9e6ff", "tertiary-container": "#de8712" }, borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, spacing: { "space-xl": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "gutter": "1rem", "margin-mobile": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "gutter-lg": "1.5rem" }, fontFamily: { "code-md": ["JetBrains Mono"], "code-sm": ["JetBrains Mono"], "title-mono": ["JetBrains Mono"], "body-lg": ["Inter"], "body-sm": ["Inter"], "label-mono-sm": ["JetBrains Mono"], "headline-lg": ["Inter"], "label-mono-xs": ["JetBrains Mono"], "headline-xl": ["Inter"], "headline-md": ["Inter"], "body-md": ["Inter"] }, fontSize: { "code-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "code-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "title-mono": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-mono-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "label-mono-xs": ["10px", { "lineHeight": "12px", "letterSpacing": "0.06em", "fontWeight": "600" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } };</script></head><body class="bg-canvas text-on-surface font-body-md text-body-md antialiased selection:bg-primary-container selection:text-canvas"><header class="fixed top-0 left-0 right-0 z-50 h-16 bg-canvas/90 backdrop-blur-md border-b border-border"><div class="max-w-7xl mx-auto h-full px-margin-mobile lg:px-margin flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><img alt="Elapsed Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U9fDBe0_PpUGcJCIM3DKUrPZSGovYQzRFKw8uBURsuqXDxSLo2lJfpt_wo1vMjH-zXfwpouadcxE6xF1sXI-U2cLVYJ2JIodx25Pwtxvab6kEu0BJhhQXAs5sp__Ikmpz5Zurx8rzSwa1Xh_E5oFaTcwZbgglUEmp4bCuvphAMeqDGoISFOQ2UequOl8dPbJ16b3E24wbr1R7UU3-DYWVAZ8kqmUN0q2Jf8sA6O_CIfTzt225cTFpY25c"/><a class="font-['Hanken_Grotesk'] font-semibold text-headline-md tracking-tight text-text-primary hover:text-primary transition-colors" data-path="product" href="#">Elapsed</a><span class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded border border-border bg-surface-raised font-label-mono-xs text-label-mono-xs text-text-subtle tracking-wider uppercase ml-1">Metrology Engine</span></div><nav class="hidden md:flex items-center gap-space-lg h-full" data-active-classes="text-text-primary border-b-2 border-primary-container pb-[21px]"><a class="h-full inline-flex items-center font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Product</a><a class="h-full inline-flex items-center font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="pricing" href="#">Pricing</a><a class="h-full inline-flex items-center font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">Security</a><a aria-current="page" class="h-full inline-flex items-center font-body-md transition-colors text-text-primary border-b-2 border-primary-container pb-[21px]" data-path="about" href="#">About</a><a class="h-full inline-flex items-center font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="docs" href="#">Docs</a></nav><div class="flex items-center gap-space-sm"><a class="hidden sm:inline-flex items-center justify-center h-9 px-space-md rounded font-body-md text-body-md font-medium text-text-primary bg-transparent border border-border hover:bg-surface-hover hover:border-border-strong transition-all" data-path="sign-in" href="#">Sign in</a><a class="inline-flex items-center justify-center h-9 px-space-md rounded font-body-md text-body-md font-semibold text-canvas bg-primary-container hover:bg-secondary hover:shadow-[0_0_16px_rgba(14,165,233,0.35)] transition-all" data-path="trial" href="#">Start 14-day trial</a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 border border-border-strong"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-canvas"><div class="flex flex-col w-full">
+<div class="max-w-[1200px] mx-auto w-full px-margin-mobile lg:px-margin">
+<!-- 7.1 HERO -->
+<section class="pt-space-xl pb-16">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<div class="lg:col-span-8 flex flex-col items-start">
+<div class="inline-flex items-center gap-2 px-2 py-1 rounded bg-surface shadow-sm mb-6">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider">ABOUT ELAPSED</span>
+</div>
+<h1 class="font-['Hanken_Grotesk'] text-headline-xl font-bold tracking-tight text-text-primary mb-6">
+            Support and engineering, working off the same clock.
+          </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed">
+            A customer request rarely stays in one system. It starts as a support ticket, gets escalated to engineering, waits on a release, and comes back to the customer. The SLA clock keeps running the whole time. We built Elapsed to make that whole path visible in one place, before anything breaches.
+          </p>
+<!-- System Metrology Diagram (Rich Visual Element) -->
+<div class="w-full mt-10 p-6 rounded bg-surface shadow-md">
+<div class="flex flex-wrap items-center justify-between gap-4 pb-4">
+<div class="flex items-center gap-2">
+<span class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle tracking-wider">Metrology Bus</span>
+<span class="font-code-sm text-code-sm text-primary">SYNC: CONTINUOUS (14MS)</span>
+</div>
+<div class="flex items-center gap-4 font-label-mono-xs text-label-mono-xs text-text-subtle">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span> 1 Commit Clock</span>
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-status-success"></span> Invariant SLA Bounds</span>
+</div>
+</div>
+<!-- Stage Leg Progression SVG -->
+<div class="w-full overflow-x-auto py-2">
+<svg class="w-full min-w-[620px] h-20 text-on-surface" fill="none" viewbox="0 0 760 80">
+<!-- Track Line -->
+<line class="text-surface-raised" stroke="currentColor" stroke-width="2" x1="30" x2="730" y1="40" y2="40"></line>
+<line class="text-primary-container" stroke="currentColor" stroke-width="2" x1="30" x2="520" y1="40" y2="40"></line>
+<!-- Support Leg Segment -->
+<rect class="text-surface-raised" fill="currentColor" height="16" rx="2" width="170" x="30" y="32"></rect>
+<rect class="text-primary-container" fill="currentColor" fill-opacity="0.2" height="16" rx="2" width="170" x="30" y="32"></rect>
+<circle class="text-primary-container" cx="30" cy="40" fill="currentColor" r="5"></circle>
+<text class="text-primary font-code-sm text-[11px]" fill="currentColor" x="30" y="24">01 Support Intake</text>
+<text class="text-text-subtle font-code-sm text-[10px]" fill="currentColor" x="30" y="64">+00:14:02</text>
+<!-- Engineering Triage Leg -->
+<rect class="text-surface-raised" fill="currentColor" height="16" rx="2" width="180" x="208" y="32"></rect>
+<rect class="text-primary-container" fill="currentColor" fill-opacity="0.35" height="16" rx="2" width="180" x="208" y="32"></rect>
+<circle class="text-primary" cx="208" cy="40" fill="currentColor" r="4"></circle>
+<text class="text-primary font-code-sm text-[11px]" fill="currentColor" x="208" y="24">02 Engineering Triage</text>
+<text class="text-text-subtle font-code-sm text-[10px]" fill="currentColor" x="208" y="64">+02:41:19</text>
+<!-- Release Queue Leg -->
+<rect class="text-surface-raised" fill="currentColor" height="16" rx="2" width="140" x="396" y="32"></rect>
+<rect class="text-primary-container" fill="currentColor" fill-opacity="0.5" height="16" rx="2" width="140" x="396" y="32"></rect>
+<circle class="text-primary" cx="396" cy="40" fill="currentColor" r="4"></circle>
+<text class="text-primary font-code-sm text-[11px]" fill="currentColor" x="396" y="24">03 PR &amp; Build Stage</text>
+<text class="text-text-subtle font-code-sm text-[10px]" fill="currentColor" x="396" y="64">+04:12:00</text>
+<!-- Customer Verification Return -->
+<rect class="text-surface-raised" fill="currentColor" height="16" rx="2" width="186" x="544" y="32"></rect>
+<circle class="text-on-surface-variant" cx="544" cy="40" fill="currentColor" r="4"></circle>
+<circle class="text-status-success" cx="730" cy="40" fill="currentColor" r="5"></circle>
+<text class="text-on-surface-variant font-code-sm text-[11px]" fill="currentColor" x="544" y="24">04 Close Verification</text>
+<text class="text-text-subtle font-code-sm text-[10px]" fill="currentColor" x="544" y="64">Estimated Horizon 18:00:00</text>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 7.2 THE PROBLEM WE KEPT RUNNING INTO -->
+<section class="py-16 bg-surface-dim/40 -mx-margin-mobile px-margin-mobile lg:-mx-margin lg:px-margin rounded-xl">
+<div class="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<div class="lg:col-span-4">
+<div class="sticky top-24">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider block mb-2">01 / DIAGNOSIS</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-lg font-semibold text-text-primary tracking-tight">
+              The problem we kept running into
+            </h2>
+</div>
+</div>
+<div class="lg:col-span-7 lg:col-start-6 flex flex-col gap-6">
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+            Helpdesk tools know about the support side of a case. Engineering trackers know about the engineering side. Neither knows about the other, so the moment a ticket is handed to engineering its SLA effectively goes dark: tracked in a spreadsheet, a Slack thread, or nowhere at all.
+          </p>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+            By the time someone notices a commitment is close to breaching, it's often because the customer mentioned it first. We think that's backwards.
+          </p>
+<div class="my-4 p-6 bg-surface rounded-lg shadow-sm">
+<div class="flex items-start gap-4">
+<div class="w-1 self-stretch bg-primary-container rounded-full shrink-0"></div>
+<blockquote class="font-['Hanken_Grotesk'] text-[32px] leading-[40px] font-semibold text-text-primary tracking-tight">
+                “One honest elapsed-time number per commitment, across every system the work touched.”
+              </blockquote>
+</div>
+</div>
+<!-- Chronology Comparison Widget -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+<div class="p-4 bg-surface rounded shadow-sm">
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle">Disconnected Silos</span>
+<span class="material-symbols-outlined text-[18px] text-text-subtle">visibility_off</span>
+</div>
+<div class="flex flex-col gap-2 font-code-sm text-code-sm">
+<div class="flex justify-between items-center bg-surface-raised p-2 rounded">
+<span class="text-on-surface">Zendesk #8841</span>
+<span class="text-status-warning">Pending 3d</span>
+</div>
+<div class="flex justify-between items-center bg-surface-raised p-2 rounded">
+<span class="text-on-surface">Jira ENG-409</span>
+<span class="text-text-subtle">In Sprint 24</span>
+</div>
+<div class="text-[11px] text-text-subtle font-code-sm mt-1">SLA Clock: Stopped / Unaccounted</div>
+</div>
+</div>
+<div class="p-4 bg-surface rounded shadow-sm">
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-mono-xs text-label-mono-xs uppercase text-primary">Elapsed Metrology</span>
+<span class="material-symbols-outlined text-[18px] text-primary">timer</span>
+</div>
+<div class="flex flex-col gap-2 font-code-sm text-code-sm">
+<div class="flex justify-between items-center bg-surface-raised p-2 rounded">
+<span class="text-text-primary">Combined Path</span>
+<span class="text-primary font-bold">14h 22m total</span>
+</div>
+<div class="flex justify-between items-center bg-surface-raised p-2 rounded">
+<span class="text-text-primary">Runway Left</span>
+<span class="text-status-warning font-bold">03h 38m</span>
+</div>
+<div class="text-[11px] text-primary font-code-sm mt-1">Single continuous immutable state</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 7.3 WHAT GUIDES HOW WE BUILD IT -->
+<section class="py-20">
+<div class="mb-10">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider block mb-2">02 / CORE PRINCIPLES</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-lg font-semibold text-text-primary tracking-tight">
+          What guides how we build it
+        </h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Principle 1 -->
+<div class="p-8 bg-surface rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-raised transition-colors">
+<div>
+<div class="w-9 h-9 rounded flex items-center justify-center bg-surface-raised shadow-inner mb-6">
+<span class="material-symbols-outlined text-[20px] text-primary">hub</span>
+</div>
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary mb-3">
+              Derived, not entered
+            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              Customers, cases, and timelines are computed from the events your systems already emit. Nothing is typed in by hand, so nothing drifts out of sync.
+            </p>
+</div>
+<div class="pt-6 mt-6 flex items-center gap-2">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Source Event Verification</span>
+<span class="inline-block w-1 h-1 rounded-full bg-text-subtle"></span>
+<span class="font-label-mono-xs text-label-mono-xs text-primary">Webhook &amp; Polling Log</span>
+</div>
+</div>
+<!-- Principle 2 -->
+<div class="p-8 bg-surface rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-raised transition-colors">
+<div>
+<div class="w-9 h-9 rounded flex items-center justify-center bg-surface-raised shadow-inner mb-6">
+<span class="material-symbols-outlined text-[20px] text-primary">linear_scale</span>
+</div>
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary mb-3">
+              One case, every system
+            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              A customer request doesn't stop at the helpdesk. We follow it into Jira, Linear, or a GitHub pull request and treat it as one continuous story.
+            </p>
+</div>
+<div class="pt-6 mt-6 flex items-center gap-2">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Span Identity</span>
+<span class="inline-block w-1 h-1 rounded-full bg-text-subtle"></span>
+<span class="font-label-mono-xs text-label-mono-xs text-primary">Cross-Origin Graph Mapping</span>
+</div>
+</div>
+<!-- Principle 3 -->
+<div class="p-8 bg-surface rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-raised transition-colors">
+<div>
+<div class="w-9 h-9 rounded flex items-center justify-center bg-surface-raised shadow-inner mb-6">
+<span class="material-symbols-outlined text-[20px] text-primary">lock_clock</span>
+</div>
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary mb-3">
+              Read-only by design
+            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              We only ever read from your tools. We never write back, reassign, or comment on your behalf.
+            </p>
+</div>
+<div class="pt-6 mt-6 flex items-center gap-2">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Security Invariant</span>
+<span class="inline-block w-1 h-1 rounded-full bg-text-subtle"></span>
+<span class="font-label-mono-xs text-label-mono-xs text-primary">Zero Mutation Scopes</span>
+</div>
+</div>
+<!-- Principle 4 -->
+<div class="p-8 bg-surface rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-raised transition-colors">
+<div>
+<div class="w-9 h-9 rounded flex items-center justify-center bg-surface-raised shadow-inner mb-6">
+<span class="material-symbols-outlined text-[20px] text-primary">sync_alt</span>
+</div>
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary mb-3">
+              Built for both sides of the handoff
+            </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              Support and engineering see the same case, the same clock, and the same definition of at risk, so a breach is never a surprise to either side.
+            </p>
+</div>
+<div class="pt-6 mt-6 flex items-center gap-2">
+<span class="font-label-mono-xs text-label-mono-xs text-text-subtle uppercase">Handoff Parity</span>
+<span class="inline-block w-1 h-1 rounded-full bg-text-subtle"></span>
+<span class="font-label-mono-xs text-label-mono-xs text-primary">Unified Threshold Engine</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 7.4 WHAT ELAPSED IS — AND ISN'T -->
+<section class="py-16">
+<div class="mb-10">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider block mb-2">03 / DEFINITION</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-lg font-semibold text-text-primary tracking-tight">
+          What Elapsed is — and isn't
+        </h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Elapsed is -->
+<div class="p-8 bg-surface rounded-lg shadow-sm">
+<div class="flex items-center justify-between pb-6 mb-6">
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary">
+              Elapsed is
+            </h3>
+<span class="font-label-mono-xs text-label-mono-xs uppercase text-primary bg-surface-raised px-2 py-1 rounded">Capabilities</span>
+</div>
+<ul class="flex flex-col gap-5">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">check</span>
+<span class="font-body-md text-body-md text-on-surface">One clock per commitment that survives the handoff</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">check</span>
+<span class="font-body-md text-body-md text-on-surface">A timeline of where the time went, by stage</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">check</span>
+<span class="font-body-md text-body-md text-on-surface">A warning while there's still time to act</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">check</span>
+<span class="font-body-md text-body-md text-on-surface">A record you can open in a QBR to explain a number</span>
+</li>
+</ul>
+</div>
+<!-- Elapsed is not -->
+<div class="p-8 bg-surface rounded-lg shadow-sm">
+<div class="flex items-center justify-between pb-6 mb-6">
+<h3 class="font-['Hanken_Grotesk'] text-headline-md font-semibold text-text-primary">
+              Elapsed is not
+            </h3>
+<span class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle bg-surface-raised px-2 py-1 rounded">Non-Goals</span>
+</div>
+<ul class="flex flex-col gap-5">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-subtle text-[20px] shrink-0 mt-0.5">remove</span>
+<span class="font-body-md text-body-md text-on-surface-variant">A workflow or ticketing tool</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-subtle text-[20px] shrink-0 mt-0.5">remove</span>
+<span class="font-body-md text-body-md text-on-surface-variant">A verdict on which team is at fault</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-subtle text-[20px] shrink-0 mt-0.5">remove</span>
+<span class="font-body-md text-body-md text-on-surface-variant">An AI that guesses links or predicts outcomes</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-subtle text-[20px] shrink-0 mt-0.5">remove</span>
+<span class="font-body-md text-body-md text-on-surface-variant">A service-credit or financial calculator</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- 7.5 TRANSPARENCY -->
+<section class="py-16">
+<div class="p-8 sm:p-12 bg-surface rounded-xl shadow-md">
+<div class="max-w-3xl flex flex-col items-start">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider block mb-3">04 / TRANSPARENCY</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-lg font-semibold text-text-primary tracking-tight mb-4">
+            We publish what Elapsed doesn't do yet.
+          </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed mb-6">
+            Our documentation lists current limitations alongside every feature, from fixed warning thresholds to which integrations are still in beta, so you can evaluate the product as it actually is.
+          </p>
+<a class="inline-flex items-center gap-2 font-code-md text-code-md font-semibold text-primary hover:text-text-primary transition-colors group" data-path="docs" href="#">
+<span>Read the product documentation</span>
+<span class="transition-transform group-hover:translate-x-1">→</span>
+</a>
+</div>
+</div>
+</section>
+<!-- 7.6 COMPANY [CONTENT GAP] -->
+<section class="py-12">
+<div class="mb-6">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider block mb-2">05 / COMPANY</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-lg font-semibold text-text-primary tracking-tight">
+          The team
+        </h2>
+</div>
+<div class="w-full p-12 bg-surface/50 rounded-lg flex flex-col items-center justify-center text-center">
+<div class="w-10 h-10 rounded bg-surface flex items-center justify-center text-text-subtle mb-3">
+<span class="material-symbols-outlined text-[20px]">badge</span>
+</div>
+<div class="font-code-sm text-code-sm text-text-subtle uppercase tracking-widest">
+          PLACEHOLDER — founding story, team, location, and contact details (not yet provided)
+        </div>
+</div>
+</section>
+<!-- 7.7 CTA BAND (centred) -->
+<section class="py-20 mb-8">
+<div class="p-10 sm:p-16 bg-surface rounded-2xl shadow-xl flex flex-col items-center text-center max-w-4xl mx-auto">
+<span class="font-code-sm text-code-sm text-primary uppercase tracking-wider mb-3">OPERATIONAL READY</span>
+<h2 class="font-['Hanken_Grotesk'] text-headline-xl font-bold text-text-primary tracking-tight mb-4">
+          See your last 90 days in Elapsed.
+        </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mb-8 leading-relaxed">
+          Connect your helpdesk and engineering tracker and see every at-risk case on one dashboard.
+        </p>
+<div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
+<a class="h-11 px-6 rounded font-body-md text-body-md font-semibold text-canvas bg-primary-container hover:bg-secondary hover:shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all flex items-center justify-center" data-path="trial" href="#">
+            Start 14-day trial →
+          </a>
+<a class="h-11 px-6 rounded font-body-md text-body-md font-medium text-text-primary bg-surface-raised hover:bg-surface-hover transition-all flex items-center justify-center shadow-sm" data-path="pricing" href="#">
+            View pricing
+          </a>
+</div>
+<div class="font-code-sm text-code-sm text-text-subtle tracking-tight">
+          14-day trial · Full access · No credit card
+        </div>
+</div>
+</section>
+</div>
+</div></main><footer class="w-full bg-surface-container-lowest border-t border-border mt-space-xl"><div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin pt-space-xl pb-space-lg"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-gutter-lg pb-space-xl border-b border-border"><div class="lg:col-span-1 flex flex-col gap-space-sm"><div class="flex items-center gap-space-xs"><img alt="Elapsed Logo" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U9fDBe0_PpUGcJCIM3DKUrPZSGovYQzRFKw8uBURsuqXDxSLo2lJfpt_wo1vMjH-zXfwpouadcxE6xF1sXI-U2cLVYJ2JIodx25Pwtxvab6kEu0BJhhQXAs5sp__Ikmpz5Zurx8rzSwa1Xh_E5oFaTcwZbgglUEmp4bCuvphAMeqDGoISFOQ2UequOl8dPbJ16b3E24wbr1R7UU3-DYWVAZ8kqmUN0q2Jf8sA6O_CIfTzt225cTFpY25c"/><span class="font-['Hanken_Grotesk'] font-semibold text-title-mono text-text-primary tracking-tight">Elapsed</span></div><p class="font-body-sm text-body-sm text-text-subtle leading-relaxed">The operational metrology engine for cross-functional SLAs. One immutable clock across support, triage, and engineering handoffs.</p><div class="flex items-center gap-space-xs mt-space-xs"><span class="inline-block w-2 h-2 rounded-full bg-status-success"></span><span class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle tracking-wider">System Status · 99.99%</span></div></div><div class="flex flex-col gap-space-sm"><span class="font-label-mono-xs text-label-mono-xs uppercase tracking-widest text-text-subtle font-semibold">Product</span><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm"><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Stage Timeline Engine</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Runway Forecasting</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Linear &amp; Jira Ingest</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Zendesk Synchronizer</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="product" href="#">Metrology API</a></li></ul></div><div class="flex flex-col gap-space-sm"><span class="font-label-mono-xs text-label-mono-xs uppercase tracking-widest text-text-subtle font-semibold">Trust</span><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm"><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">Security Architecture</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">SOC 2 Type II Report</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">Subprocessors &amp; DPA</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">Immutable Audit Logs</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="security" href="#">Status Telemetry</a></li></ul></div><div class="flex flex-col gap-space-sm"><span class="font-label-mono-xs text-label-mono-xs uppercase tracking-widest text-text-subtle font-semibold">Company</span><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm"><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="about" href="#">About Us</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="about" href="#">Engineering Manifesto</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="pricing" href="#">Pricing Models</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="about" href="#">Careers &amp; Metrology Labs</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="about" href="#">Contact Operational Desk</a></li></ul></div><div class="flex flex-col gap-space-sm"><span class="font-label-mono-xs text-label-mono-xs uppercase tracking-widest text-text-subtle font-semibold">Account</span><ul class="flex flex-col gap-space-xs font-body-sm text-body-sm"><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="sign-in" href="#">Sign In</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="trial" href="#">Request Dedicated Proof</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="docs" href="#">Quickstart Documentation</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="docs" href="#">Developer Webhooks</a></li><li class="flex"><a class="text-on-surface-variant hover:text-on-surface transition-colors" data-path="docs" href="#">Release Changelog</a></li></ul></div></div><div class="pt-space-md flex flex-col sm:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-md text-text-subtle font-code-sm text-code-sm"><span>© 2025 Elapsed Technologies Inc. All rights reserved.</span><span class="hidden md:inline">·</span><span class="hidden md:inline">Zero-latency cross-team clock synchronization.</span></div><div class="flex items-center gap-space-sm"><span class="font-label-mono-xs text-label-mono-xs uppercase text-text-subtle">Mode</span><button aria-label="Theme toggle" class="h-8 px-space-sm rounded border border-border bg-surface flex items-center gap-1.5 text-text-muted hover:text-text-primary hover:border-border-strong transition-all" type="button"><span class="material-symbols-outlined text-[16px] text-primary">dark_mode</span><span class="font-label-mono-xs text-label-mono-xs uppercase">Dark First</span></button></div></div></div></footer></body></html>

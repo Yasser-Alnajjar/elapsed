@@ -15,7 +15,6 @@ import {
   SUBSCRIPTION_STATUS_TONES,
   type BillingTone,
   type InvoiceStatus,
-  type PaymentMethod,
   type SubscriptionStatus,
 } from "@/lib/types/billing";
 import { cn } from "@/lib/utils";
@@ -186,33 +185,6 @@ export function InvoiceStatusPill({ status }: { status: InvoiceStatus }) {
     >
       {INVOICE_STATUS_LABELS[status]}
     </BillingPill>
-  );
-}
-
-/** The brand chip that stands in for a card logo: `VISA`, `MC`, `ACH`. */
-export function PaymentBrandMark({
-  method,
-  className,
-}: {
-  method: Pick<PaymentMethod, "brand" | "kind">;
-  className?: string;
-}) {
-  const label =
-    method.kind === "bank_account"
-      ? "ACH"
-      : method.brand.toLowerCase() === "mastercard"
-        ? "MC"
-        : method.brand.toUpperCase();
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "bg-surface-raised border-border text-foreground flex h-7 w-11 shrink-0 items-center justify-center rounded border font-mono text-[11px] font-bold tracking-widest",
-        className,
-      )}
-    >
-      {label}
-    </span>
   );
 }
 

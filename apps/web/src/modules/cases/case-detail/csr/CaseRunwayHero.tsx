@@ -47,7 +47,6 @@ export function CaseRunwayHero({
 
   return (
     <div className="flex min-w-70 flex-col items-start rounded-lg bg-surface-container p-4 lg:items-end">
-      {/* "Clock Active in Engineering" label with pulsing dot */}
       <div className="flex items-center gap-2">
         <span className="relative flex size-3">
           <span
@@ -65,7 +64,6 @@ export function CaseRunwayHero({
         </span>
       </div>
 
-      {/* Big mono countdown */}
       <div className="mt-2 flex items-baseline gap-1.5">
         <span
           className={cn("font-mono text-3xl font-medium tabular-nums", counter)}
@@ -77,12 +75,10 @@ export function CaseRunwayHero({
         </span>
       </div>
 
-      {/* Kind caption */}
       <span className="mt-1 font-mono text-xxs text-muted-foreground">
         {formatCommitmentKind(commitment.kind)}
       </span>
 
-      {/* Active leg + linked issue */}
       {linkedIssueLabel && (
         <span className="font-mono text-xs leading-4 text-muted-foreground">
           Active leg: {formatLeg(currentLeg)} ({linkedIssueLabel})

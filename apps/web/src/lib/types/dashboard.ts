@@ -28,23 +28,18 @@ export interface AtRiskRow {
   status: CommitmentStatus;
   currentLeg: Leg;
   minutesInCurrentLeg: number;
-  // The dashboard reconstruction's own fields below are optional: only
-  // `dashboard-data.ts`'s `getDashboardData` populates them today.
-  // `at-risk-data.ts`'s `getAtRiskData` (the separate /at-risk route) is out
-  // of scope for that reconstruction and doesn't set them — `undefined`
-  // there is accurate, not a stand-in for a real value.
   /** The source ticket's priority (Zendesk/Intercom), or null when unset. */
-  priority?: string | null;
+  priority: string | null;
   /** `Customer.tier`, falling back to `Case.tier` for a ticket with no linked customer. */
-  tier?: string | null;
+  tier: string | null;
   /** This commitment's target minutes, from the matched `SLAPolicyVersion` — the "Resolution (4h Max)"-style ceiling. */
-  targetMinutes?: number;
+  targetMinutes: number;
   /** Cumulative minutes this case has spent in the support leg, via `sumLegMinutes` — same primitive the worker uses. */
-  supportLegMinutes?: number;
+  supportLegMinutes: number;
   /** Cumulative minutes this case has spent in the engineering leg, via `sumLegMinutes`. */
-  engineeringLegMinutes?: number;
+  engineeringLegMinutes: number;
   /** This case's active Jira/Linear correlation, or null when none exists yet. */
-  linkedIssue?: LinkedIssueRef | null;
+  linkedIssue: LinkedIssueRef | null;
 }
 
 /** The dashboard's "Total Escalated" KPI: cases whose leg history touches engineering at all within the reporting period, cross-referenced against link confidence. */

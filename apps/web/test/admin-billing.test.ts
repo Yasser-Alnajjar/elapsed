@@ -7,8 +7,6 @@ import {
   countByTier,
   DEFAULT_BILLING_CONTROLS,
   dunningQueue,
-  pageCountOf,
-  pageWindow,
   selectBillingTenants,
 } from "../src/lib/admin-billing-list";
 
@@ -73,14 +71,6 @@ describe("admin billing directory controls", () => {
     expect(select({ status: "past_due", sort: "delinquency" })).toEqual(["late", "later"]);
     expect(select({ health: "overdue" }).sort()).toEqual(["late", "later"]);
     expect(select({ sort: "seats_desc" })[0]).toBe("big");
-  });
-
-  it("pages with a compact window", () => {
-    expect(pageCountOf(21)).toBe(3);
-    expect(pageCountOf(0)).toBe(1);
-    expect(pageWindow(0, 12)).toEqual([0, 1, 2, null, 11]);
-    expect(pageWindow(6, 12)).toEqual([0, null, 5, 6, 7, null, 11]);
-    expect(pageWindow(1, 3)).toEqual([0, 1, 2]);
   });
 
   it("counts for the filter pills and headline figures", () => {

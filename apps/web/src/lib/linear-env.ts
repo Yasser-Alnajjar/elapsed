@@ -4,9 +4,8 @@ import { getIntegrationConfig, getPrismaClient } from "@sla/db";
 export const LINEAR_STATE_COOKIE = "linear_oauth_state";
 
 /**
- * Resolves this organization's Linear OAuth app config: its own
- * client id/secret (saved from the Integrations settings UI) if configured,
- * otherwise the legacy LINEAR_CLIENT_ID/LINEAR_CLIENT_SECRET env vars.
+ * Resolves this organization's Linear OAuth app config: its own client
+ * id/secret, saved from the Integrations settings UI.
  */
 export async function getLinearOAuthConfig(
   organizationId: string,

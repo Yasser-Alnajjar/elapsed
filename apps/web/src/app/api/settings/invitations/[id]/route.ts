@@ -4,7 +4,7 @@ import { getPrismaClient, revokeInvitation } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const denied = requireOwner(session);

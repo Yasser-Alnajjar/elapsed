@@ -1,14 +1,15 @@
 "use client";
 
 import { ListChecks, Search } from "lucide-react";
-import { DataTable } from "@/components/shared/data-table";
+import { DataTable, DataTableEmpty } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Reveal } from "@/components/shared/reveal";
+import { Button } from "@/components/ui/button";
 
 import type { CaseListData } from "@/lib/types/cases";
 
-import { useCaseListColumns } from "./columns";
-import { CaseListFilters } from "./filters";
+import { CASE_LIST_COLUMNS } from "./columns";
+import { CaseListToolbar } from "./filters";
 import { CaseListMetrics } from "./metrics";
 import { CaseListHeader } from "./CaseListHeader";
 import { useCaseListQuery } from "./useCaseListQuery";
@@ -27,12 +28,14 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
     setLinkState,
     setSeverity,
     hasActiveFilters,
+    resetFilters,
     sorting,
     handleSortingChange,
     handleExport,
+    setPage,
+    setPageSize,
+    pending,
   } = useCaseListQuery();
-  const columns = useCaseListColumns();
-
   const counts = data.counts;
 
   if (data.rowCount === 0 && !hasActiveFilters) {
@@ -61,55 +64,70 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
           total={counts.status.all}
           open={counts.open.open}
           runningClock={counts.runningClock}
-          linkedCertain={counts.linkedCertain}
           linked={counts.link.linked}
+          linkedCertain={counts.linkedCertain}
         />
       </Reveal>
 
       <Reveal delay={0.1}>
-        <CaseListFilters
-          globalFilter={searchDraft}
-          setGlobalFilter={setGlobalFilter}
-          status={status}
-          setStatus={setStatus}
-          openState={openState}
-          setOpenState={setOpenState}
-          linkState={linkState}
-          setLinkState={setLinkState}
-          severity={severity}
-          setSeverity={setSeverity}
-          statusCounts={counts.status}
-          openCounts={counts.open}
-          linkCounts={counts.link}
-          severityCounts={counts.severity}
+        <DataTable
+          rowClassName="[&>td]:align-top"
+          columns={CASE_LIST_COLUMNS}
+          data={data.cases}
+          reorderable
+          resizable
+          loading={pending}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+          toolbar={({ table }) => (
+            <CaseListToolbar
+              table={table}
+              search={searchDraft}
+              onSearchChange={setGlobalFilter}
+              status={status}
+              setStatus={setStatus}
+              openState={openState}
+              setOpenState={setOpenState}
+              linkState={linkState}
+              setLinkState={setLinkState}
+              severity={severity}
+              setSeverity={setSeverity}
+              statusCounts={counts.status}
+              openCounts={counts.open}
+              linkCounts={counts.link}
+              severityCounts={counts.severity}
+              onReset={hasActiveFilters ? resetFilters : undefined}
+            />
+          )}
+          pagination={{
+            page: data.page,
+            pageSize: data.pageSize,
+            pageCount: data.pageCount,
+            rowCount: data.rowCount,
+            itemLabel: "cases",
+            onPageChange: setPage,
+            onPageSizeChange: setPageSize,
+          }}
+          empty={
+            <DataTableEmpty
+              icon={Search}
+              title="No cases match these filters"
+              description="Try clearing the SLA status, case status, or search filters."
+              action={
+                hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={resetFilters}
+                  >
+                    Reset filters
+                  </Button>
+                )
+              }
+            />
+          }
         />
-      </Reveal>
-
-      <Reveal delay={0.15}>
-        <div className="overflow-hidden rounded bg-surface-container-low shadow-md">
-          <DataTable
-            title="Cases"
-            className="p-0 lg:p-0"
-            headerClassName="border-0 bg-surface-container-lowest font-mono text-xxs font-semibold tracking-wider text-outline hover:bg-surface-container-lowest"
-            headCellClassName="h-auto whitespace-normal align-middle px-2.5 py-3 text-inherit font-[inherit] tracking-[inherit] first:ps-4 last:pe-4"
-            cellClassName="px-2.5 py-3 align-top first:ps-4 last:pe-4"
-            rowClassName="border-0 hover:bg-surface-container-high odd:bg-surface-container-low even:bg-surface-container"
-            columns={columns}
-            data={data.cases}
-            manual
-            pageCount={data.pageCount}
-            rowCount={data.rowCount}
-            sorting={sorting}
-            onSortingChange={handleSortingChange}
-            empty={
-              <EmptyState
-                icon={Search}
-                title="No cases match these filters"
-                description="Try clearing the SLA status, case status, or search filters."
-              />
-            }
-          />
-        </div>
       </Reveal>
     </div>
   );

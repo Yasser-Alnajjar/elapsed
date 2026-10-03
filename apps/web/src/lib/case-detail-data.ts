@@ -145,9 +145,6 @@ async function getCaseDetailDataInner(
     ...new Set(caseRow.commitments.map((c) => c.calendarVersionId)),
   ];
   const commitmentIds = caseRow.commitments.map((c) => c.id);
-  const commitmentKindById = new Map(
-    caseRow.commitments.map((c) => [c.id, c.kind]),
-  );
 
   // The engine's own total order, so the timeline lists same-instant events
   // exactly as the evaluations below consumed them. Computed here (ahead of

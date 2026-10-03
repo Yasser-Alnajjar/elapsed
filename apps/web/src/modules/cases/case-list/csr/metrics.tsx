@@ -1,16 +1,22 @@
-import type { LucideIcon } from "lucide-react";
+import { Gauge, Inbox, Link2, Unlink, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const TONE_TEXT = {
+  error: "text-error",
+  tertiary: "text-tertiary",
+  muted: "text-on-surface-variant",
+} as const;
 
 interface MetricTileProps {
   icon: LucideIcon;
   label: string;
   value: number;
   caption: string;
-  tone?: "error" | "tertiary" | "muted";
+  tone?: keyof typeof TONE_TEXT;
   spin?: boolean;
 }
 
-export function MetricTile({
+function MetricTile({
   icon: Icon,
   label,
   value,
@@ -18,19 +24,7 @@ export function MetricTile({
   tone,
   spin,
 }: MetricTileProps) {
-  const text =
-    tone === "error"
-      ? "text-error"
-      : tone === "tertiary"
-        ? "text-tertiary"
-        : "text-on-surface-variant";
-
-  const iconColor =
-    tone === "error"
-      ? "text-error"
-      : tone === "tertiary"
-        ? "text-tertiary"
-        : "text-primary";
+  const toneText = tone && TONE_TEXT[tone];
 
   return (
     <div className="flex min-w-0 flex-col justify-between rounded bg-surface-container-low p-4 shadow-sm">
@@ -38,7 +32,7 @@ export function MetricTile({
         <span
           className={cn(
             "font-mono text-xxs font-semibold tracking-wider",
-            text,
+            toneText ?? "text-on-surface-variant",
           )}
         >
           {label}
@@ -47,7 +41,7 @@ export function MetricTile({
         <Icon
           className={cn(
             "size-4.5",
-            iconColor,
+            tone === "error" || tone === "tertiary" ? toneText : "text-primary",
             spin && "animate-spin animation-duration-[9s]",
           )}
         />
@@ -57,7 +51,7 @@ export function MetricTile({
         <span
           className={cn(
             "font-mono text-2xl font-medium tracking-tight",
-            tone ? text : "text-on-surface",
+            toneText ?? "text-on-surface",
           )}
         >
           {value}
@@ -86,17 +80,19 @@ export function CaseListMetrics({
   linkedCertain,
   linked,
 }: CaseListMetricsProps) {
+  const certainPercent = total > 0 ? (linkedCertain / total) * 100 : 0;
+
   return (
     <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
       <MetricTile
-        icon={require("lucide-react").Inbox}
+        icon={Inbox}
         label="TOTAL TRACKED CASES"
         value={total}
         caption={`${open} open`}
       />
 
       <MetricTile
-        icon={require("lucide-react").Gauge}
+        icon={Gauge}
         label="ACTIVE RUNNING SLA CLOCK"
         value={runningClock}
         caption="burning now"
@@ -105,15 +101,15 @@ export function CaseListMetrics({
       />
 
       <MetricTile
-        icon={require("lucide-react").Link2}
+        icon={Link2}
         label="LINKED — CERTAIN"
         value={linkedCertain}
-        caption={`${((linkedCertain / total) * 100).toFixed(1)}% deterministic`}
+        caption={`${certainPercent.toFixed(1)}% deterministic`}
         tone="tertiary"
       />
 
       <MetricTile
-        icon={require("lucide-react").Unlink}
+        icon={Unlink}
         label="STANDALONE / UNLINKED"
         value={total - linked}
         caption="support-only"

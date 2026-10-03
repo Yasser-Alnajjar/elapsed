@@ -1,6 +1,6 @@
 import { ArrowRight, Mail } from "lucide-react";
 import Link from "next/link";
-import { MonoLabel, Tag } from "@/components/admin/admin-ui";
+import { Tag } from "@/components/admin/admin-ui";
 import {
   HealthBadge,
   IntegrationChip,
@@ -15,6 +15,14 @@ import {
   shortId,
 } from "@/lib/admin-format";
 import type { AdminTenantRow, TenantHealth } from "@/lib/types/admin";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { LinkCoverageMeter } from "./LinkCoverageMeter";
 
@@ -25,17 +33,6 @@ const HEALTH_EDGE: Record<TenantHealth, string> = {
   none: "border-s-transparent",
 };
 
-const COLUMNS = [
-  "Tenant & owner",
-  "Plan & status",
-  "Health",
-  "Integrations",
-  "Cases",
-  "Link coverage (30 d)",
-  "Last 24 h",
-  "",
-];
-
 /**
  * The dense list. It never scrolls sideways: `TenantsView` only renders it when
  * its container is wide enough (see `TABLE_MIN_WIDTH`), and shows cards
@@ -43,34 +40,31 @@ const COLUMNS = [
  * the header sticks under the top bar.
  */
 export function TenantsTable({ tenants }: { tenants: AdminTenantRow[] }) {
+  const stickyHead = "sticky top-14 z-10 border-b border-border bg-surface-raised";
   return (
-    <table className="w-full border-collapse text-left">
-      <thead>
-        <tr>
-          {COLUMNS.map((column) => (
-            <th
-              key={column || "open"}
-              scope="col"
-              className={cn(
-                "bg-surface-raised border-border sticky top-14 z-10 border-b px-3 py-2.5 whitespace-nowrap first:pl-4 last:pr-4",
-                column === "Cases" && "text-center",
-              )}
-            >
-              {column ? (
-                <MonoLabel>{column}</MonoLabel>
-              ) : (
-                <span className="sr-only">Actions</span>
-              )}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-border divide-y">
+    <Table scroll={false}>
+      <TableHeader>
+        <TableRow>
+          <TableHead className={stickyHead}>Tenant &amp; owner</TableHead>
+          <TableHead className={stickyHead}>Plan &amp; status</TableHead>
+          <TableHead className={stickyHead}>Health</TableHead>
+          <TableHead className={stickyHead}>Integrations</TableHead>
+          <TableHead className={stickyHead} align="center">
+            Cases
+          </TableHead>
+          <TableHead className={stickyHead}>Link coverage (30 d)</TableHead>
+          <TableHead className={stickyHead}>Last 24 h</TableHead>
+          <TableHead className={stickyHead} align="end">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {tenants.map((tenant) => (
           <TenantRow key={tenant.organizationId} tenant={tenant} />
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 
@@ -80,13 +74,8 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
   const bad = tenant.health === "unhealthy" || tenant.health === "attention";
 
   return (
-    <tr className="group hover:bg-surface-raised/60 transition-colors">
-      <td
-        className={cn(
-          "border-l-2 py-3 pr-3 pl-4 align-top",
-          HEALTH_EDGE[tenant.health],
-        )}
-      >
+    <TableRow className="group [&>td]:align-top">
+      <TableCell className={cn("border-s-2", HEALTH_EDGE[tenant.health])}>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -118,9 +107,9 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
               ` (+${tenant.pendingInvitations} invited)`}
           </span>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 align-top">
+      <TableCell>
         <div className="flex flex-col items-start gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <PlanChip plan={tenant.plan} />
@@ -135,9 +124,9 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
             <span className="italic"> · informational</span>
           </span>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 align-top">
+      <TableCell>
         <div className="flex flex-col items-start gap-1.5">
           <HealthBadge health={tenant.health} />
           <ul
@@ -155,9 +144,9 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
             ))}
           </ul>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 align-top">
+      <TableCell>
         {tenant.integrations.length === 0 ? (
           <span className="text-foreground-subtle font-mono text-xs">
             None connected
@@ -178,22 +167,22 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
             ))}
           </ul>
         )}
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 text-center align-top">
+      <TableCell align="center">
         <span className="text-foreground font-mono text-base font-bold tabular-nums">
           {tenant.openCases}
         </span>
         <span className="text-foreground-subtle block font-mono text-[10px]">
           open
         </span>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 align-top">
+      <TableCell>
         <LinkCoverageMeter coverage={tenant.linkCoverage} />
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-3 align-top">
+      <TableCell>
         <ul className="flex flex-col font-mono text-xxs leading-4 tabular-nums">
           <li className="text-muted-foreground">
             {tenant.evaluations24h} evaluations
@@ -211,9 +200,9 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
             {tenant.notificationsFailed24h} alerts failing
           </li>
         </ul>
-      </td>
+      </TableCell>
 
-      <td className="py-3 pr-4 pl-3 text-right align-top">
+      <TableCell align="end">
         <Link
           href={href}
           aria-label={`Open ${tenant.name}`}
@@ -222,7 +211,7 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
         >
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

@@ -8,7 +8,6 @@ export function IntegrationsHeader({
 }) {
   return (
     <>
-      {/* Breadcrumb / guardrail meta bar */}
       <div className="bg-surface-container-low flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-1.5 shadow-sm">
         <div className="flex min-w-0 items-center gap-2">
           <Network className="text-primary size-4" />
@@ -33,7 +32,6 @@ export function IntegrationsHeader({
         </div>
       </div>
 
-      {/* Header panel */}
       <section className="bg-surface-container-low border-outline-variant/20 flex flex-col gap-4 rounded-xl border p-6 shadow-md">
         <div className="border-outline-variant/20 flex flex-wrap items-center justify-between gap-2 border-b pb-2">
           <div className="flex flex-wrap items-center gap-2">

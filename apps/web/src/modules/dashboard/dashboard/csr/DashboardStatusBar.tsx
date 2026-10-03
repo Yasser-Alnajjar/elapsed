@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useTransition } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import type { DashboardSourceStatus } from "@/lib/types/dashboard";
 
@@ -40,13 +40,7 @@ export function DashboardStatusBar({
   sourceStatus: DashboardSourceStatus;
 }) {
   const router = useRouter();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    router.refresh();
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const [refreshing, startRefresh] = useTransition();
 
   return (
     <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
@@ -96,7 +90,7 @@ export function DashboardStatusBar({
         </a>
         <button
           type="button"
-          onClick={handleRefresh}
+          onClick={() => startRefresh(() => router.refresh())}
           className="cursor-pointer bg-surface-container-high hover:bg-surface-active text-on-surface shadow-soft flex items-center gap-2 rounded px-3.5 py-2 text-xs md:text-sm transition-colors"
         >
           <RefreshCw

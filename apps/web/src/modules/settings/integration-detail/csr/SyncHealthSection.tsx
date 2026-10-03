@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { PermissionDeniedBanner } from "@/components/shared/permission-denied-banner";
 import { PollingPausedBanner } from "@/components/shared/polling-paused-banner";
-import { cn, Utils } from "@/lib/utils";
+import { formatLongDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { IntegrationDetailData } from "@/lib/types/integrations";
 import {
   BadgeDot,
@@ -60,12 +61,12 @@ export function SyncHealthSection({
           <span className={labelClass}>Last ingress cycle</span>
           <span className="text-primary font-mono text-sm font-semibold">
             {lastSyncAt
-              ? Utils.formatDateTimeV2(lastSyncAt)
+              ? formatLongDateTime(lastSyncAt)
               : "No sync attempt yet"}
           </span>
           <p className={descriptionClass}>
             {backfillCompletedAt
-              ? `90-day backfill complete as of ${Utils.formatDateTimeV2(
+              ? `90-day backfill complete as of ${formatLongDateTime(
                   backfillCompletedAt,
                 )}.`
               : "No backfill run yet."}

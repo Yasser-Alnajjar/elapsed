@@ -49,6 +49,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { BrandMark } from "../shared/brand-mark";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { initialsOf } from "@/lib/format";
 
 type DocsItem = {
   title: string;
@@ -164,17 +165,6 @@ const sections: DocsSection[] = [
   },
 ];
 
-function initialsOf(name: string, email: string) {
-  const value = name !== "Guest" ? name : email;
-
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 export function DocsSidebar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
@@ -187,7 +177,7 @@ export function DocsSidebar() {
 
   const email = user?.email || "";
 
-  const initials = initialsOf(user?.name || "Guest", user?.email || "Guest");
+  const initials = initialsOf(user?.name ?? null, email);
   const router = useRouter();
   return (
     <Sidebar collapsible="icon">

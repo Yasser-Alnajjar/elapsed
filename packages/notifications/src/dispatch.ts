@@ -1,4 +1,10 @@
-import { decryptToken, getEmailSettings, EmailSettingsUnreadableError, type PrismaClient } from "@sla/db";
+import {
+  decryptToken,
+  getEmailSettings,
+  EmailSettingsUnreadableError,
+  isUniqueConstraintError,
+  type PrismaClient,
+} from "@sla/db";
 import { postMessage } from "@sla/slack";
 import { sendEmail, type EmailConfig } from "@sla/email";
 import type { NotificationCandidate } from "@sla/commitments";
@@ -27,10 +33,6 @@ export interface NotificationPipelineResult {
 
 /** `Notification.channel` while a claim is held and sends are in flight — replaced by the delivered channel list once they finish. */
 const CLAIMED_CHANNEL = "pending";
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
-}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

@@ -2,11 +2,11 @@
 
 import { ArrowLeftRight, Check, Copy, FileDown, Gavel, MoreVertical } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { AdminPanel, Tag } from "@/components/admin/admin-ui";
 import { SubscriptionStatusPill } from "@/components/billing/billing-ui";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import type { AdminTenantBillingDetail } from "@/lib/types/admin-billing";
 
 interface TenantBillingHeaderProps {
@@ -29,17 +29,7 @@ function Readout({ label, children }: { label: string; children: React.ReactNode
 /** Who the tenant is (name, tier, state, keys), the header actions, and the operator protocol notice. */
 export function TenantBillingHeader({ data, busy, onChangePlan, onExportLedger, onReconcile }: TenantBillingHeaderProps) {
   const { tenant } = data;
-  const [copied, setCopied] = useState(false);
-
-  const copyKey = async () => {
-    try {
-      await navigator.clipboard.writeText(tenant.id);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard can be blocked; the key stays selectable.
-    }
-  };
+  const { copied, copy } = useCopyToClipboard();
 
   return (
     <AdminPanel className="flex flex-col gap-4 p-5 sm:p-6">
@@ -56,7 +46,7 @@ export function TenantBillingHeader({ data, busy, onChangePlan, onExportLedger, 
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Readout label="Tenant key">
               <span className="text-tertiary select-all">{tenant.id}</span>
-              <button type="button" onClick={copyKey} title="Copy tenant key" aria-label="Copy tenant key" className="text-foreground-subtle hover:text-foreground ml-1">
+              <button type="button" onClick={() => copy(tenant.id)} title="Copy tenant key" aria-label="Copy tenant key" className="text-foreground-subtle hover:text-foreground ml-1">
                 {copied ? <Check className="text-success size-3.5" /> : <Copy className="size-3.5" />}
               </button>
             </Readout>

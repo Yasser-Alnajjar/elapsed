@@ -5,11 +5,7 @@ import {
   matchPolicyVersion,
   resolveCommitmentPolicyChange,
   type BusinessCalendarVersion,
-  type CommitmentKind,
-  type NormalizedState,
-  type SLAPolicyMatch,
   type SLAPolicyVersion,
-  type WeeklyWindow,
 } from "@sla/core";
 import { RE_RESOLUTION_ELIGIBLE_WHERE } from "./active-commitment";
 import { latestVersionPerPolicy, resolveCommitmentCalendarVersion, toCaseAttributes } from "./pipeline";

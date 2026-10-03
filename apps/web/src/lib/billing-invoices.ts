@@ -1,4 +1,4 @@
-import { buildCsv } from "@/lib/csv";
+import { buildCsv } from "@sla/core";
 import { formatBillingDate, formatBillingDateTime } from "@/lib/billing-format";
 import { INVOICE_STATUS_LABELS, type BillingInvoice, type InvoiceStatus } from "@/lib/types/billing";
 
@@ -70,14 +70,4 @@ export function invoicesToCsv(invoices: BillingInvoice[]): string {
       invoice.paidAt ? formatBillingDateTime(invoice.paidAt) : "",
     ]),
   );
-}
-
-/** Saves text as a file from the browser. */
-export function downloadText(filename: string, text: string, type = "text/csv;charset=utf-8"): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }

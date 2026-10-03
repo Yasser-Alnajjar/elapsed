@@ -25,17 +25,22 @@ export function CalculationLedger({
     data.commitments[0] ??
     null;
 
-  const remainingSeconds = useLiveRemaining(
-    commitment ?? ({} as CommitmentDetail),
-  );
-
   if (!commitment) return null;
+  return <LedgerCard commitment={commitment} asOf={data.asOf} />;
+}
 
-  const figures = computeLedger(commitment, data.asOf, remainingSeconds);
+function LedgerCard({
+  commitment,
+  asOf,
+}: {
+  commitment: CommitmentDetail;
+  asOf: string;
+}) {
+  const remainingSeconds = useLiveRemaining(commitment);
+  const figures = computeLedger(commitment, asOf, remainingSeconds);
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low shadow-sm p-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calculator className="hidden md:inline text-primary text-lg leading-none" />
@@ -50,10 +55,8 @@ export function CalculationLedger({
 
       <PolicyCalendarCards commitment={commitment} />
 
-      {/* Applied Contract Clauses */}
       <AppliedClauses commitment={commitment} />
 
-      {/* Match rule */}
       <p className="font-mono text-xxs text-outline">
         Match rule:{" "}
         <span className="text-on-surface">
@@ -69,7 +72,6 @@ export function CalculationLedger({
 
       <LedgerTable commitment={commitment} figures={figures} />
 
-      {/* Footer audit note */}
       <div className="flex items-center justify-between font-mono text-xxs text-outline">
         <span>
           Target: fixed at {formatMinutes(commitment.targetMinutes)} since

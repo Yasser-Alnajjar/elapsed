@@ -36,15 +36,6 @@ function zonedToUtc(
   return guess;
 }
 
-export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Lenient timestamp parsing for the formats exports actually use. Returns an
  * ISO string, or null when the value matches none of them (the caller counts

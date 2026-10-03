@@ -1,12 +1,15 @@
 "use client";
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+
+import type { Table } from "@tanstack/react-table";
+
 import {
-  FilterGroup,
+  DataTableFilterChips,
+  DataTableSearch,
+  DataTableToolbar,
+  DataTableViewOptions,
   PRIORITY_TIER_FILTER_OPTIONS,
-} from "@/components/shared/filter-group";
-import { Input } from "@/components/ui/input";
-import { Utils } from "@/lib/utils";
+} from "@/components/shared/data-table";
+import type { CaseListRow } from "@/lib/types/cases";
 
 import {
   LINK_FILTERS,
@@ -17,9 +20,11 @@ import {
   type SeverityFilter,
   type StatusFilter,
 } from "./constants";
-interface CaseListFiltersProps {
-  globalFilter: string;
-  setGlobalFilter: (value: string) => void;
+
+interface CaseListToolbarProps {
+  table: Table<CaseListRow>;
+  search: string;
+  onSearchChange: (value: string) => void;
   status: StatusFilter;
   setStatus: (value: StatusFilter) => void;
   openState: OpenFilter;
@@ -32,10 +37,14 @@ interface CaseListFiltersProps {
   openCounts: Record<OpenFilter, number>;
   linkCounts: Record<LinkFilter, number>;
   severityCounts: Record<SeverityFilter, number>;
+  /** Present only while a filter is active. */
+  onReset?: () => void;
 }
-export function CaseListFilters({
-  globalFilter,
-  setGlobalFilter,
+
+export function CaseListToolbar({
+  table,
+  search,
+  onSearchChange,
   status,
   setStatus,
   openState,
@@ -48,72 +57,52 @@ export function CaseListFilters({
   openCounts,
   linkCounts,
   severityCounts,
-}: CaseListFiltersProps) {
-  const [search, setSearch] = useState(globalFilter);
-  const debouncedSetGlobalFilter = useMemo(
-    () => Utils.debounce(setGlobalFilter, 300),
-    [setGlobalFilter],
-  );
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    debouncedSetGlobalFilter(value);
-  };
+  onReset,
+}: CaseListToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 rounded bg-surface-container-low p-4 shadow-sm">
-      {" "}
-      <div className="flex flex-wrap flex-col items-stretch gap-2 lg:flex-row lg:items-center">
-        {" "}
-        <div className="relative min-w-60 flex-1">
-          {" "}
-          <Search className="absolute inset-s-3 top-2.5 size-4.5 text-outline" />{" "}
-          <Input
-            value={search}
-            onChange={(event) => handleSearchChange(event.target.value)}
-            placeholder="Search customer, ticket ID, or subject…"
-            aria-label="Search cases"
-            className="h-auto bg-surface-container-lowest py-2 ps-10 pe-24 text-sm text-on-surface shadow-inner md:text-sm"
-          />{" "}
-          <div className="pointer-events-none absolute inset-e-2.5 top-2 flex items-center gap-1">
-            {" "}
-            <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-xxs text-on-surface-variant">
-              {" "}
-              ZD{" "}
-            </span>{" "}
-            <span className="rounded bg-surface-container px-1.5 py-0.5 font-mono text-xxs text-on-surface-variant">
-              {" "}
-              ENG{" "}
-            </span>{" "}
-          </div>{" "}
-        </div>{" "}
-        <FilterGroup
-          label="SEVERITY:"
-          options={PRIORITY_TIER_FILTER_OPTIONS}
-          value={severity}
-          counts={severityCounts}
-          onChange={setSeverity}
-        />{" "}
-        <FilterGroup
-          label="LINK:"
-          options={LINK_FILTERS}
-          value={linkState}
-          counts={linkCounts}
-          onChange={setLinkState}
-        />{" "}
-        <FilterGroup
-          label="SLA STATUS:"
-          options={STATUS_FILTERS}
-          value={status}
-          counts={statusCounts}
-          onChange={setStatus}
-        />{" "}
-        <FilterGroup
-          label="OPEN:"
-          options={OPEN_FILTERS}
-          value={openState}
-          counts={openCounts}
-          onChange={setOpenState}
-        />{" "}
-      </div>{" "}
-    </div>
+    <DataTableToolbar
+      search={
+        <DataTableSearch
+          value={search}
+          onChange={onSearchChange}
+          placeholder="Search customer, ticket ID, or subject…"
+          ariaLabel="Search cases"
+        />
+      }
+      onReset={onReset}
+      actions={<DataTableViewOptions table={table} />}
+      chips={
+        <>
+          <DataTableFilterChips
+            label="Severity"
+            options={PRIORITY_TIER_FILTER_OPTIONS}
+            value={severity}
+            counts={severityCounts}
+            onChange={setSeverity}
+          />
+          <DataTableFilterChips
+            label="Link"
+            options={LINK_FILTERS}
+            value={linkState}
+            counts={linkCounts}
+            onChange={setLinkState}
+          />
+          <DataTableFilterChips
+            label="SLA status"
+            options={STATUS_FILTERS}
+            value={status}
+            counts={statusCounts}
+            onChange={setStatus}
+          />
+          <DataTableFilterChips
+            label="Open"
+            options={OPEN_FILTERS}
+            value={openState}
+            counts={openCounts}
+            onChange={setOpenState}
+          />
+        </>
+      }
+    />
   );
 }

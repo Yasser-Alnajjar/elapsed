@@ -1,5 +1,12 @@
 import { previousMonth } from "@sla/core";
-import { decryptToken, EmailSettingsUnreadableError, getEmailSettings, type IntegrationProvider, type PrismaClient } from "@sla/db";
+import {
+  decryptToken,
+  EmailSettingsUnreadableError,
+  getEmailSettings,
+  isUniqueConstraintError,
+  type IntegrationProvider,
+  type PrismaClient,
+} from "@sla/db";
 import { sendEmail } from "@sla/email";
 import { postMessage } from "@sla/slack";
 import { toEmailConfig } from "./dispatch";
@@ -79,9 +86,6 @@ interface DeliveryRow {
   attempts: number;
   updatedAt: Date;
 }
-
-const isUniqueConstraintError = (error: unknown) =>
-  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 
 /** Failure text kept for the operator: bounded, and with email addresses removed (an SMTP error often quotes the recipient). */
 export function scrubDeliveryError(error: unknown): string {

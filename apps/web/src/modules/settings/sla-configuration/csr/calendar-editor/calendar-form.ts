@@ -61,8 +61,6 @@ export function initialCalendarFormState(
   };
 }
 
-export type CalendarFormState = ReturnType<typeof initialCalendarFormState>;
-
 export function newWindow(): DayWindowState {
   return { openTime: "09:00", closeTime: "17:00", fullDay: false };
 }

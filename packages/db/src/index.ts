@@ -5,6 +5,7 @@ export * from "../generated/prisma/client";
 export { findCustomerByIdentity, upsertCustomerByIdentity } from "./customer-identity";
 export type { CustomerIdentityRef } from "./customer-identity";
 export { deriveEncryptionKey, aesGcmEncrypt, aesGcmDecrypt } from "./crypto";
+export { isUniqueConstraintError } from "./prisma-errors";
 export {
   isConfigurableIntegrationProvider,
   getIntegrationConfig,

@@ -13,5 +13,3 @@ export const organizationSettingsInputSchema = z.object({
     .string()
     .refine(isValidTimeZone, { message: "timezone must be a valid IANA time zone name" }),
 });
-
-export type OrganizationSettingsInput = z.infer<typeof organizationSettingsInputSchema>;

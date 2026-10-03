@@ -15,18 +15,14 @@ export function AtRiskCard({ row }: { row: AtRiskRowData }) {
   const href = caseCommitmentHref(row.caseId, row.commitmentId);
   const statusStyle = COMMITMENT_STATUS_STYLES[row.status];
 
-  const currentLegTone = legStyle(row.currentLeg).text;
-  const currentLegDot = legStyle(row.currentLeg).fill;
+  const currentLeg = legStyle(row.currentLeg);
 
   const isCritical = row.status === "breached" || row.status === "at_risk";
 
   return (
     <article className="flex flex-col gap-4 rounded bg-surface-container-low p-4 font-mono transition-colors hover:bg-surface-container sm:p-5">
-      {/* Identification + Countdown */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <CardIdentity row={row} href={href} statusStyle={statusStyle} />
-
-        {/* Countdown Locus Panel */}
         <RunwayCountdown
           row={row}
           statusStyle={statusStyle}
@@ -34,20 +30,18 @@ export function AtRiskCard({ row }: { row: AtRiskRowData }) {
         />
       </div>
 
-      {/* Time Allocation */}
       <TimeAllocationPanel
         row={row}
         statusStyle={statusStyle}
         isCritical={isCritical}
-        currentLegTone={currentLegTone}
+        currentLegTone={currentLeg.text}
       />
 
-      {/* Remediation / Actions */}
       <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span
             aria-hidden
-            className={cn("size-1.5 rounded-full", currentLegDot)}
+            className={cn("size-1.5 rounded-full", currentLeg.fill)}
           />
 
           <span>

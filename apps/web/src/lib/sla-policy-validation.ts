@@ -1,11 +1,9 @@
-import type { CommitmentKind } from "@sla/core";
+import { COMMITMENT_KINDS, type CommitmentKind } from "@sla/core";
 import type { NativePolicyMatchInput } from "@sla/commitments";
-
-export const VALID_COMMITMENT_KINDS: CommitmentKind[] = ["first_response", "resolution", "next_reply"];
 
 export class ValidationError extends Error {}
 
-/** Shared by the create/update SLA policy routes — same shape override/route.ts validates inline. */
+/** Shared by the create, update and override SLA policy routes. */
 export function parseTargets(raw: unknown): { kind: CommitmentKind; minutes: number }[] {
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new ValidationError("targets must be a non-empty array");
@@ -17,7 +15,7 @@ export function parseTargets(raw: unknown): { kind: CommitmentKind; minutes: num
     const minutes = target?.minutes;
     if (
       typeof kind !== "string" ||
-      !VALID_COMMITMENT_KINDS.includes(kind as CommitmentKind) ||
+      !COMMITMENT_KINDS.includes(kind as CommitmentKind) ||
       seenKinds.has(kind)
     ) {
       throw new ValidationError("each target must have a unique, valid kind");

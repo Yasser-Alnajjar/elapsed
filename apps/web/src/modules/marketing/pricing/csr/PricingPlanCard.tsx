@@ -1,20 +1,34 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { BillingPill } from "@/components/billing/billing-ui";
-import { Badge } from "@/components/ui/badge";
+import { MONO_LABEL } from "@/components/marketing/marketing-ui";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TONE_TEXT } from "@/lib/status-styles";
 import { getUpgradeCta } from "@/lib/upgrade-cta";
 import type { PricingPlan } from "@/lib/types/marketing";
 import type { PricingCardState, PricingCta } from "@/lib/types/pricing";
 import { cn } from "@/lib/utils";
 
+const OUTLINE_CTA =
+  "h-9 w-full rounded border-border bg-transparent hover:border-border-strong hover:bg-surface-hover";
+
 /** The plan's one call to action, as the viewer's state allows. */
-function PlanCta({ cta, highlighted }: { cta: PricingCta; highlighted: boolean }) {
+function PlanCta({
+  cta,
+  highlighted,
+}: {
+  cta: PricingCta;
+  highlighted: boolean;
+}) {
   if (cta.kind === "link") {
     return (
-      <Button asChild variant={highlighted ? "default" : "outline"} className="w-full">
+      <Button
+        asChild
+        variant={highlighted ? "default" : "outline"}
+        className={cn(
+          highlighted ? "h-9 w-full rounded font-semibold" : OUTLINE_CTA,
+        )}
+      >
         <Link href={cta.href}>{cta.label}</Link>
       </Button>
     );
@@ -25,7 +39,10 @@ function PlanCta({ cta, highlighted }: { cta: PricingCta; highlighted: boolean }
         type="button"
         variant="outline"
         disabled
-        className={cn("h-auto min-h-9 w-full py-2 whitespace-normal", cta.tone && TONE_TEXT[cta.tone])}
+        className={cn(
+          "h-auto min-h-9 w-full rounded py-2 whitespace-normal",
+          cta.tone && TONE_TEXT[cta.tone],
+        )}
       >
         {cta.label}
       </Button>
@@ -33,11 +50,16 @@ function PlanCta({ cta, highlighted }: { cta: PricingCta; highlighted: boolean }
   }
   const contact = getUpgradeCta();
   return contact.href ? (
-    <Button asChild variant="outline" className="w-full">
+    <Button asChild variant="outline" className={OUTLINE_CTA}>
       <a href={contact.href}>Talk to us</a>
     </Button>
   ) : (
-    <Button type="button" variant="outline" disabled className="h-auto min-h-9 w-full py-2 whitespace-normal">
+    <Button
+      type="button"
+      variant="outline"
+      disabled
+      className="h-auto min-h-9 w-full rounded py-2 whitespace-normal"
+    >
       Talk to us
     </Button>
   );
@@ -46,25 +68,53 @@ function PlanCta({ cta, highlighted }: { cta: PricingCta; highlighted: boolean }
 /** Contact copy for Enterprise when no support address is configured: say so, never invent one. */
 function ContactHelper() {
   const contact = getUpgradeCta();
-  return <>{contact.href ? "Custom terms and procurement support" : contact.label}</>;
+  return (
+    <span className={contact.href ? undefined : "text-warning"}>
+      {contact.href ? "Custom terms and procurement support" : contact.label}
+    </span>
+  );
 }
 
-export function PricingPlanCard({ plan, state }: { plan: PricingPlan; state: PricingCardState }) {
+export function PricingPlanCard({
+  plan,
+  state,
+}: {
+  plan: PricingPlan;
+  state: PricingCardState;
+}) {
   const isContract = state.cta.kind === "contact";
   const helper = state.helper;
 
   return (
-    <Card className={cn("relative flex h-full flex-col", plan.highlighted && "border-primary/50 shadow-elevated")}>
-      {plan.highlighted && (
-        <Badge variant="primary" className="absolute -top-3 left-1/2 -translate-x-1/2 border-primary/40 bg-card font-mono text-[10px] tracking-wider uppercase">
-          Most popular
-        </Badge>
+    <div
+      className={cn(
+        "bg-card relative flex h-full flex-col justify-between rounded p-6 transition-all",
+        plan.highlighted
+          ? "border-primary border-2 shadow-[0_0_24px_rgb(14_165_233/0.12)]"
+          : "hover:bg-surface-raised border border-border",
       )}
-      <CardHeader className="space-y-4">
+    >
+      {plan.highlighted && (
+        <span
+          className={cn(
+            MONO_LABEL,
+            "bg-primary text-primary-foreground absolute -top-3 left-1/2 -translate-x-1/2 rounded px-2.5 py-0.5 font-bold tracking-widest shadow-soft",
+          )}
+        >
+          Recommended
+        </span>
+      )}
+
+      <div className="flex flex-col">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-lg font-medium tracking-tight">{plan.name}</h2>
+          <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
           {state.pill ? (
-            <BillingPill tone={state.pill.tone} dot={state.pill.tone === "success" || state.pill.tone === "danger"}>
+            <BillingPill
+              tone={state.pill.tone}
+              dot={
+                state.pill.tone === "success" || state.pill.tone === "danger"
+              }
+            >
               {state.pill.label}
             </BillingPill>
           ) : isContract ? (
@@ -72,44 +122,71 @@ export function PricingPlanCard({ plan, state }: { plan: PricingPlan; state: Pri
           ) : null}
         </div>
 
-        <p className="text-sm leading-6 text-muted-foreground">{plan.description}</p>
+        <p className="text-muted-foreground mt-1 min-h-10 text-xs leading-5">
+          {plan.description}
+        </p>
 
-        <div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-display text-4xl font-medium tracking-tight">{plan.price === "Custom" ? "Contract" : plan.price}</span>
-            {plan.cadence ? <span className="text-sm text-muted-foreground">/ month</span> : <span className="text-sm text-muted-foreground">/ custom</span>}
-          </div>
-          <p className="text-foreground-subtle mt-1 font-mono text-[11px]">
-            {plan.cadence ? "Flat rate · USD · No per-seat billing" : "Priced by contract"}
-          </p>
+        <div className="mt-4 flex items-baseline gap-1">
+          <span
+            className={cn(
+              "font-mono text-[36px] leading-11 font-bold tabular-nums",
+              plan.highlighted ? "text-primary" : "text-foreground",
+            )}
+          >
+            {plan.price === "Custom" ? "Contract" : plan.price}
+          </span>
+          <span className="text-foreground-subtle font-mono text-sm">
+            {plan.cadence ? "/ month" : "/ custom"}
+          </span>
         </div>
-      </CardHeader>
+        <span className={cn(MONO_LABEL, "text-muted-foreground mt-0.5")}>
+          {plan.cadence
+            ? "Flat rate · USD · No per-seat billing"
+            : "Priced by contract"}
+        </span>
 
-      <CardContent className="flex flex-1 flex-col gap-6">
-        <ul className="flex-1 space-y-3 border-t border-border pt-5">
+        <div className="my-4 h-px w-full bg-border" />
+
+        <ul className="flex flex-col gap-2 text-xs text-foreground">
           {plan.features.map((feature) => (
-            <li key={feature} className="flex items-start gap-2.5 text-sm">
-              <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>{feature}</span>
+            <li key={feature} className="flex items-start gap-1.5">
+              <Check
+                aria-hidden
+                className="text-primary mt-px size-4 shrink-0"
+              />
+              <span className="leading-5">{feature}</span>
             </li>
           ))}
         </ul>
+      </div>
 
-        <div className="flex flex-col gap-2 border-t border-border pt-5">
-          <PlanCta cta={state.cta} highlighted={plan.highlighted} />
-          {(helper || isContract) && (
-            <p className="text-foreground-subtle text-center font-mono text-[11px] leading-4">{helper ?? <ContactHelper />}</p>
-          )}
-          {state.footerLink && (
-            <Link
-              href={state.footerLink.href}
-              className={cn("text-center font-mono text-xs hover:underline", state.footerLink.tone ? TONE_TEXT[state.footerLink.tone] : "text-primary")}
-            >
-              {state.footerLink.label}
-            </Link>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="mt-6 flex flex-col gap-1.5">
+        <div className="mb-1 h-px w-full bg-border" />
+        <PlanCta cta={state.cta} highlighted={plan.highlighted} />
+        {(helper || isContract) && (
+          <p
+            className={cn(
+              MONO_LABEL,
+              "text-foreground-subtle text-center leading-4 tracking-wider",
+            )}
+          >
+            {helper ?? <ContactHelper />}
+          </p>
+        )}
+        {state.footerLink && (
+          <Link
+            href={state.footerLink.href}
+            className={cn(
+              "text-center font-mono text-xs hover:underline",
+              state.footerLink.tone
+                ? TONE_TEXT[state.footerLink.tone]
+                : "text-primary",
+            )}
+          >
+            {state.footerLink.label}
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

@@ -62,7 +62,6 @@ export function SlaPoliciesCard({
         </p>
       ) : (
         <div className="space-y-4">
-          {/* Active policies */}
           {activePolicies.length > 0 && (
             <div className="space-y-3">
               {activePolicies.map((policy) => (
@@ -78,7 +77,6 @@ export function SlaPoliciesCard({
             </div>
           )}
 
-          {/* Archived policies */}
           {archivedPolicies.length > 0 && (
             <ArchivedPolicies
               policies={archivedPolicies}

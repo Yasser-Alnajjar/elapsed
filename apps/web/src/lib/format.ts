@@ -146,23 +146,6 @@ export function nextReplyCycleNumbers(
   );
 }
 
-/**
- * The most recently started commitment of `kind` — e.g. the Next Reply cycle
- * currently in flight once an earlier cycle has been superseded. Generic
- * over every `CommitmentKind`; first_response/resolution only ever have one
- * commitment each, so this is simply that one for them.
- */
-export function latestCommitmentOfKind<
-  T extends { id: string; kind: CommitmentKind; startedAt: string },
->(commitments: T[], kind: CommitmentKind): T | undefined {
-  return commitments
-    .filter((c) => c.kind === kind)
-    .reduce<
-      T | undefined
-    >((latest, c) => (!latest || c.startedAt > latest.startedAt ? c : latest), undefined);
-}
-
-/** Human-readable summary of an SLAPolicyVersion's match conditions, e.g. "priority in [urgent] · customer-specific". */
 const CONDITION_FIELD_LABELS: Record<string, string> = {
   priority: "Priority",
   status: "Zendesk status",
@@ -344,6 +327,23 @@ export function formatDateTime(iso: string): string {
     timeStyle: "short",
     hour12: true,
   });
+}
+
+/**
+ * e.g. "September 14, 2026 at 7:05 AM". The zone is pinned so the server and
+ * the browser render the same text; a runtime-local zone would differ between
+ * them and cause a hydration mismatch.
+ */
+export function formatLongDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    timeZone: "Asia/Riyadh",
+    numberingSystem: "latn",
+  }).format(date);
 }
 
 /** The runtime's current UTC offset in `UTC±HH:MM` form, e.g. `UTC+03:00`. */

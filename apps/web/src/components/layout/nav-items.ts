@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   ListChecks,
   Radar,
-  Settings,
   Settings2,
   Timer,
   TriangleAlert,
@@ -16,17 +15,25 @@ import {
   Users,
 } from "lucide-react";
 
-export interface NavItem {
+export interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
   description?: string;
-  items?: NavItem[];
   /** Active only on this exact path — for a child whose href is also the prefix of a sibling (e.g. `/admin` vs `/admin/tenants`). */
   exact?: boolean;
 }
 
-export const SETTINGS_NAV_ITEMS: NavItem[] = [
+export interface NavGroup {
+  label: string;
+  items: NavLink[];
+}
+
+/** The mono, left-barred active state shared by the app and admin sidebars, on top of the shadcn menu button's own. */
+export const NAV_MENU_BUTTON_CLASS =
+  "h-9 rounded text-sm data-[active=true]:shadow-[inset_2px_0_0_var(--primary)] data-[active=true]:font-semibold";
+
+export const SETTINGS_NAV_ITEMS: NavLink[] = [
   {
     href: "/billing",
     label: "Billing & usage",
@@ -70,16 +77,8 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
     description: "Manage your personal profile and appearance preferences.",
   },
 ];
-export type NavLink = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  exact?: boolean;
-  description?: string;
-};
-export type NavGroup = { label: string; items: NavLink[] };
-export type NavSection = NavLink | NavGroup;
-export const NAV_ITEMS: NavSection[] = [
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "Main",
     items: [
@@ -96,14 +95,20 @@ export const NAV_ITEMS: NavSection[] = [
   },
   { label: "Configuration", items: SETTINGS_NAV_ITEMS },
 ];
-/** * The platform admin area (`/admin`, N4.1) has its own shell and navigation * (`components/admin/admin-nav-items.ts`); nothing of it lives in the tenant * sidebar except this single way in, shown only to a platform operator * (see `isPlatformOperator` in `@/lib/authz`). * * Hiding the link is not the authorization boundary: * every `/admin` route enforces it server-side. */ export function buildNavItems(
-  isPlatformOperator: boolean,
-): NavSection[] {
+
+/**
+ * The platform admin area (`/admin`) has its own shell and navigation
+ * (`components/admin/admin-nav-items.ts`); nothing of it lives in the tenant
+ * sidebar except this single way in, shown only to a platform operator.
+ * Hiding the link is not the authorization boundary: every `/admin` route
+ * enforces it server-side.
+ */
+export function buildNavGroups(isPlatformOperator: boolean): NavGroup[] {
   if (!isPlatformOperator) {
-    return NAV_ITEMS;
+    return NAV_GROUPS;
   }
   return [
-    ...NAV_ITEMS,
+    ...NAV_GROUPS,
     {
       label: "Administration",
       items: [
@@ -118,6 +123,7 @@ export const NAV_ITEMS: NavSection[] = [
     },
   ];
 }
+
 export function isNavItemActive(
   pathname: string,
   href: string,

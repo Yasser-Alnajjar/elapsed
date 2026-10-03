@@ -31,8 +31,12 @@ const row: AtRiskRow = {
   status: "at_risk",
   currentLeg: "support",
   minutesInCurrentLeg: 10,
+  priority: null,
+  tier: null,
+  targetMinutes: 240,
   supportLegMinutes: 90,
   engineeringLegMinutes: 0,
+  linkedIssue: null,
 };
 
 describe("engineering time without a tracker", () => {

@@ -23,8 +23,6 @@ import { formatCommitmentKind } from "../src/lib/format";
 
 const ORG = "org-1";
 const asOf = new Date("2026-09-17T12:00:00.000Z");
-// Trailing 30 days, as dashboard-data.ts computes it.
-const periodStart = new Date("2026-08-18T12:00:00.000Z");
 // The run that first evaluated every imported commitment, inside the period.
 const reconciledAt = new Date("2026-09-16T23:14:25.556Z");
 

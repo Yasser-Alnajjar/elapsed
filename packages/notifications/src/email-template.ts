@@ -40,7 +40,7 @@ const SEVERITY_STYLE: Record<
 };
 
 /** Minimal, dependency-free escaping — every dynamic value here is plain text dropped into an HTML body, never markup. */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

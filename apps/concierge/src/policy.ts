@@ -1,7 +1,7 @@
-import type { BusinessCalendarVersion, NormalizedState, SLAPolicyVersion } from "@sla/core";
+import { isValidTimeZone, type BusinessCalendarVersion, type NormalizedState, type SLAPolicyVersion } from "@sla/core";
 // The product's own defaults for Zendesk-imported policies.
 import { WARN_AT_PERCENT } from "@sla/zendesk/src/policies";
-import { isValidTimeZone, parseBusinessHours, parseDuration } from "./time";
+import { parseBusinessHours, parseDuration } from "./time";
 
 export const CALENDAR_ID = "concierge-calendar";
 

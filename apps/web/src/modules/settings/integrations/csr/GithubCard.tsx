@@ -1,15 +1,11 @@
 "use client";
 
-import { AlertCircle, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { ReauthBanner } from "@/components/shared/reauth-banner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { GithubBackfillResult } from "@/lib/types/integrations";
+import { BackfillButton } from "./BackfillButton";
 
 /**
  * A GitHub App can be installed on many repositories and has no single
@@ -49,64 +45,21 @@ export function GithubConnectForm() {
 interface GithubBackfillButtonProps {
   /** Needed to send the user back through /connect without retyping it. */
   repo: string;
-  /** True when the stored credentials already carry `reauthRequired` (checked on the server before this renders). */
   initialReauthRequired?: boolean;
 }
 
 export function GithubBackfillButton({ repo, initialReauthRequired = false }: GithubBackfillButtonProps) {
-  const router = useRouter();
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<GithubBackfillResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [reauthRequired, setReauthRequired] = useState(initialReauthRequired);
-
-  async function handleClick() {
-    setRunning(true);
-    setError(null);
-    setResult(null);
-
-    const { ok, body } = await Actions.Integrations.runGithubBackfill();
-    setRunning(false);
-
-    if (!ok) {
-      if (body.reauthRequired) {
-        setReauthRequired(true);
-      } else {
-        setError(body.error ?? "Backfill failed");
-      }
-      return;
-    }
-
-    setResult(body.backfill);
-    router.refresh();
-  }
-
-  if (reauthRequired) {
-    return (
-      <ReauthBanner
-        provider="GitHub"
-        reconnectHref={`/api/integrations/github/connect?repo=${encodeURIComponent(repo)}`}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-3">
-      <Button type="button" size="sm" variant="surface" onClick={handleClick} disabled={running}>
-        {running && <Loader2 className="animate-spin" />}
-        {running ? "Running backfill…" : "Run backfill"}
-      </Button>
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {result && (
-        <p className="text-sm text-on-surface-variant">
-          {result.pullRequestsFetched} pull requests · {result.timelineItemsFetched} timeline events.
+    <BackfillButton
+      provider="GitHub"
+      reconnectHref={`/api/integrations/github/connect?repo=${encodeURIComponent(repo)}`}
+      initialReauthRequired={initialReauthRequired}
+      run={Actions.Integrations.runGithubBackfill}
+      renderResult={({ backfill }) => (
+        <p className="wrap-break-word">
+          {backfill.pullRequestsFetched} pull requests · {backfill.timelineItemsFetched} timeline events.
         </p>
       )}
-    </div>
+    />
   );
 }

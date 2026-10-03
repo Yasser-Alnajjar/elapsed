@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
 import type { SortingState } from "@tanstack/react-table";
 
-import { useQueryParams } from "@hooks";
+import { useUrlTableState } from "@/components/shared/data-table";
 import type { CaseListSortId } from "@/lib/types/cases";
 
 import type {
@@ -13,19 +12,17 @@ import type {
   StatusFilter,
 } from "./constants";
 
-/** Every case-list filter/sort/search resets pagination to page 1. */
-function withPageReset(patch: Record<string, string | number | undefined>) {
-  return { ...patch, page: 1 };
-}
+const FILTER_KEYS = ["status", "openState", "linkState", "severity"] as const;
 
 /**
- * The case list's filters, search, and sort, all held in the URL query.
- * Search is debounced (300ms) behind a local draft so typing stays
- * responsive; `exportCsv` opens the CSV export for the same filters.
+ * The case list's filters, search, sort and paging, all held in the URL
+ * query (`useUrlTableState`): any filter change returns to page 1, search is
+ * debounced behind a local draft, and `exportCsv` opens the CSV export for
+ * the same filters.
  */
 export function useCaseListQuery() {
-  const { getQueryObject, createQueryFromObject } = useQueryParams();
-  const query = getQueryObject();
+  const url = useUrlTableState();
+  const { query } = url;
 
   const globalFilter = String(query.q ?? "");
   const status = (query.status as StatusFilter) ?? "all";
@@ -37,40 +34,9 @@ export function useCaseListQuery() {
     ? [{ id: String(query.sort), desc: query.dir !== "asc" }]
     : [];
 
-  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const [searchDraft, setSearchDraft] = React.useState(globalFilter);
-  React.useEffect(() => setSearchDraft(globalFilter), [globalFilter]);
-
-  const setGlobalFilter = (value: string) => {
-    setSearchDraft(value);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      createQueryFromObject(withPageReset({ q: value || undefined }));
-    }, 300);
-  };
-
-  const setStatus = (value: StatusFilter) =>
-    createQueryFromObject(
-      withPageReset({ status: value === "all" ? undefined : value }),
-    );
-  const setOpenState = (value: OpenFilter) =>
-    createQueryFromObject(
-      withPageReset({ openState: value === "all" ? undefined : value }),
-    );
-  const setLinkState = (value: LinkFilter) =>
-    createQueryFromObject(
-      withPageReset({ linkState: value === "all" ? undefined : value }),
-    );
-  const setSeverity = (value: SeverityFilter) =>
-    createQueryFromObject(
-      withPageReset({ severity: value === "all" ? undefined : value }),
-    );
-
   const handleSortingChange = (next: SortingState) => {
     const first = next[0];
-    createQueryFromObject({
+    url.setParams({
       sort: first ? (first.id as CaseListSortId) : undefined,
       dir: first ? (first.desc ? "desc" : "asc") : undefined,
     });
@@ -95,15 +61,19 @@ export function useCaseListQuery() {
 
   return {
     filters: { globalFilter, status, openState, linkState, severity },
-    searchDraft,
-    setGlobalFilter,
-    setStatus,
-    setOpenState,
-    setLinkState,
-    setSeverity,
+    searchDraft: url.search,
+    setGlobalFilter: url.setSearch,
+    setStatus: (value: StatusFilter) => url.setFilter("status", value),
+    setOpenState: (value: OpenFilter) => url.setFilter("openState", value),
+    setLinkState: (value: LinkFilter) => url.setFilter("linkState", value),
+    setSeverity: (value: SeverityFilter) => url.setFilter("severity", value),
     hasActiveFilters,
+    resetFilters: () => url.reset(FILTER_KEYS),
     sorting,
     handleSortingChange,
     handleExport,
+    setPage: url.setPage,
+    setPageSize: url.setPageSize,
+    pending: url.pending,
   };
 }

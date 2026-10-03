@@ -167,7 +167,7 @@ export const SOURCE_INTEGRATION_SPECS: SourceIntegrationSpec[] = [
     icon: <LifeBuoy className="size-4" />,
     badge: <Badge variant="beta">Beta</Badge>,
     help: {
-      url: "https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth?utm_source=chatgpt.com",
+      url: "https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth",
       label: "Get your Intercom OAuth app credentials",
     },
     connectDescription:

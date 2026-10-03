@@ -5,7 +5,7 @@ import {
   type ZendeskClient,
   type ZendeskTicket,
 } from "@sla/zendesk";
-import { buildCsv } from "./csv";
+import { buildCsv } from "@sla/core";
 import type { ZendeskConciergeExportMetadata } from "./types/concierge-export";
 import { createZip } from "./zip";
 

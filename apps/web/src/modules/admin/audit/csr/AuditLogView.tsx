@@ -1,14 +1,17 @@
 "use client";
 
 import { ScrollText } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  AdminPanel,
   MonoLabel,
   PageHeader,
   StatTile,
 } from "@/components/admin/admin-ui";
+import {
+  DataTableCard,
+  DataTableCursorPagination,
+  DataTableEmpty,
+} from "@/components/shared/data-table";
 import { auditQuery, hasAuditFilters } from "@/lib/admin-audit-filters";
 import type {
   AdminAuditData,
@@ -108,57 +111,45 @@ export function AuditLogView({
         />
       </section>
 
-      <AuditFilterBar filters={filters} organizationName={organizationName} />
+      <DataTableCard>
+        <AuditFilterBar filters={filters} organizationName={organizationName} />
 
-      <AdminPanel className="overflow-hidden">
         {data.rows.length === 0 ? (
-          <div className="px-4 py-14 text-center">
-            <p className="text-foreground text-sm font-semibold">
-              {hasAuditFilters(filters)
+          <DataTableEmpty
+            icon={ScrollText}
+            title={
+              hasAuditFilters(filters)
                 ? "Nothing matches these filters"
-                : "Nothing recorded yet"}
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {hasAuditFilters(filters)
+                : "Nothing recorded yet"
+            }
+            description={
+              hasAuditFilters(filters)
                 ? "Try removing a filter."
-                : "Entries appear here as operators open tenants and make changes."}
-            </p>
-          </div>
+                : "Entries appear here as operators open tenants and make changes."
+            }
+          />
         ) : (
           <AuditTable rows={data.rows} onInspect={setInspected} />
         )}
 
-        <nav
-          aria-label="Audit log pages"
-          className="bg-surface-raised border-border flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5 font-mono text-xxs"
-        >
-          <span className="text-foreground-subtle">
-            Showing{" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {data.rows.length}
-            </span>{" "}
-            record{data.rows.length === 1 ? "" : "s"}
-          </span>
-          <span className="flex items-center gap-4">
-            {!isFirstPage && (
-              <Link
-                href={`/admin/audit${auditQuery(filters)}`}
-                className="text-primary font-semibold hover:underline"
-              >
-                Newest
-              </Link>
-            )}
-            {data.nextCursor && (
-              <Link
-                href={`/admin/audit${auditQuery(filters, data.nextCursor)}`}
-                className="text-primary font-semibold hover:underline"
-              >
-                Older
-              </Link>
-            )}
-          </span>
-        </nav>
-      </AdminPanel>
+        <DataTableCursorPagination
+          count={data.rows.length}
+          itemLabel={data.rows.length === 1 ? "record" : "records"}
+          prev={
+            isFirstPage
+              ? null
+              : { href: `/admin/audit${auditQuery(filters)}`, label: "Newest" }
+          }
+          next={
+            data.nextCursor
+              ? {
+                  href: `/admin/audit${auditQuery(filters, data.nextCursor)}`,
+                  label: "Older",
+                }
+              : null
+          }
+        />
+      </DataTableCard>
 
       <AuditPayloadDrawer row={inspected} onClose={() => setInspected(null)} />
     </div>

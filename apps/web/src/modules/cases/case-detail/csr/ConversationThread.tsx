@@ -84,7 +84,7 @@ export function ConversationThread({ data }: { data: CaseDetailData }) {
   );
   return (
     <Reveal delay={0.1}>
-      <section className="flex min-w-0 flex-col gap-4 rounded-xl bg-surface-container-low  shadow-sm">
+      <section className="flex min-w-0 flex-col gap-4 rounded-xl bg-surface-container-low shadow-sm">
         <header className="px-6 pt-6 flex flex-col justify-between gap-3 border-b border-surface-variant/50 pb-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-2">
             <MessageSquare className="size-5.5 text-primary" />
@@ -104,7 +104,7 @@ export function ConversationThread({ data }: { data: CaseDetailData }) {
         </header>
         <div
           ref={containerRef}
-          className="px-6 pb-6 max-h-168 space-y-4 overflow-y-auto "
+          className="px-6 pb-6 max-h-168 space-y-4 overflow-y-auto"
           onScroll={onScroll}
         >
           {data.conversation.length === 0 ? (

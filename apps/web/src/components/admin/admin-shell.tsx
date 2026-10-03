@@ -4,7 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AdminOperatorProvider } from "./admin-operator-context";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
-import { IUser } from "@/lib/types/user";
+import type { IUser } from "@/lib/types/user";
 
 /**
  * Frame for every `/admin` page, built on the app's shadcn `Sidebar`: the

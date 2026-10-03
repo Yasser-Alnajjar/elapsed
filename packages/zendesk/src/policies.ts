@@ -113,15 +113,6 @@ export interface ExtractedMatch {
   unsupportedConditions: number;
 }
 
-function conditionValues(
-  conditions: ZendeskSlaPolicyCondition[],
-  field: string,
-): string[] {
-  return conditions
-    .filter((c) => c.field === field && c.value != null)
-    .map((c) => String(c.value).toLowerCase());
-}
-
 /**
  * Flattens a Zendesk SLA policy's `filter` into packages/core's
  * `SLAPolicyMatch`. `all` and `any` conditions on the same field are folded

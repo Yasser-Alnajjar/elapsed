@@ -1,21 +1,22 @@
 "use client";
 
+import { Search, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DataTableCard,
+  DataTableEmptyRow,
+  DataTableEmpty,
+  DataTableFooter,
+  DataTableRangeSummary,
+  DataTableSearch,
+  DataTableSelect,
+  DataTableToolbar,
+} from "@/components/shared/data-table";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
   TableHead,
-  TableCell,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -29,14 +30,29 @@ interface MembersListProps {
   onSaved: () => void;
 }
 
+type RoleFilter = "all" | "owner" | "member";
+type JoinedFilter = "any" | "7" | "30";
+
+const ROLE_OPTIONS: { value: RoleFilter; label: string }[] = [
+  { value: "all", label: "All roles" },
+  { value: "owner", label: "Owners" },
+  { value: "member", label: "Members" },
+];
+
+const JOINED_OPTIONS: { value: JoinedFilter; label: string }[] = [
+  { value: "any", label: "Joined any time" },
+  { value: "7", label: "Last 7 days" },
+  { value: "30", label: "Last 30 days" },
+];
+
 export function MembersList({
   members,
   currentUserId,
   onSaved,
 }: MembersListProps) {
   const [query, setQuery] = useState("");
-  const [role, setRole] = useState<"all" | "owner" | "member">("all");
-  const [joined, setJoined] = useState<"any" | "7" | "30">("any");
+  const [role, setRole] = useState<RoleFilter>("all");
+  const [joined, setJoined] = useState<JoinedFilter>("any");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,84 +70,74 @@ export function MembersList({
     );
   }, [members, query, role, joined]);
 
+  const hasActiveFilters = query !== "" || role !== "all" || joined !== "any";
+  const resetFilters = () => {
+    setQuery("");
+    setRole("all");
+    setJoined("any");
+  };
+
   return (
-    <Card className="bg-surface-container-low overflow-hidden rounded-xl border-0 shadow-sm">
-      <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="text-outline pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2" />
-          <Input
+    <DataTableCard>
+      <DataTableToolbar
+        search={
+          <DataTableSearch
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={setQuery}
             placeholder="Search by name or email…"
-            aria-label="Search members"
-            className="ps-9"
+            ariaLabel="Search members"
           />
-        </div>
-
-        <Select
-          value={role}
-          onValueChange={(value) => setRole(value as typeof role)}
-        >
-          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by role">
-            <SelectValue />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            <SelectItem value="owner">Owners</SelectItem>
-            <SelectItem value="member">Members</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={joined}
-          onValueChange={(value) => setJoined(value as typeof joined)}
-        >
-          <SelectTrigger
-            className="w-full sm:w-40"
-            aria-label="Filter by join date"
-          >
-            <SelectValue />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="any">Joined any time</SelectItem>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <span className="text-on-surface-variant font-mono text-xxs uppercase sm:ms-2">
-          {filtered.length} of {members.length}
-        </span>
-      </div>
+        }
+        filters={
+          <>
+            <DataTableSelect
+              ariaLabel="Filter by role"
+              value={role}
+              options={ROLE_OPTIONS}
+              onValueChange={setRole}
+            />
+            <DataTableSelect
+              ariaLabel="Filter by join date"
+              value={joined}
+              options={JOINED_OPTIONS}
+              onValueChange={setJoined}
+            />
+          </>
+        }
+        onReset={hasActiveFilters ? resetFilters : undefined}
+      />
 
       <Table>
-        <TableHeader className="[&_tr]:border-0">
-          <TableRow className="bg-surface-container-lowest hover:bg-surface-container-lowest border-0">
-            {["User", "Email Address", "Role", "Joined", "Actions"].map(
-              (label, i) => (
-                <TableHead
-                  key={label}
-                  className={`text-outline p-4 font-mono text-xxs font-semibold ${i === 4 ? "text-end" : ""}`}
-                >
-                  <div className="px-4">{label}</div>
-                </TableHead>
-              ),
-            )}
+        <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead>Email address</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Joined</TableHead>
+            <TableHead align="end">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {filtered.length === 0 && (
-            <TableRow className="hover:bg-transparent">
-              <TableCell
-                colSpan={5}
-                className="text-on-surface-variant p-6 text-center text-sm"
-              >
-                No members match these filters.
-              </TableCell>
-            </TableRow>
+            <DataTableEmptyRow colSpan={5}>
+              <DataTableEmpty
+                icon={hasActiveFilters ? Search : UserX}
+                title="No members match these filters"
+                action={
+                  hasActiveFilters && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={resetFilters}
+                    >
+                      Reset filters
+                    </Button>
+                  )
+                }
+              />
+            </DataTableEmptyRow>
           )}
 
           {filtered.map((member) => (
@@ -144,6 +150,14 @@ export function MembersList({
           ))}
         </TableBody>
       </Table>
-    </Card>
+
+      <DataTableFooter>
+        <DataTableRangeSummary
+          shown={filtered.length}
+          total={members.length}
+          label="members"
+        />
+      </DataTableFooter>
+    </DataTableCard>
   );
 }

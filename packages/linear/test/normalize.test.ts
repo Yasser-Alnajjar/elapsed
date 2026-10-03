@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@sla/db";
+import { diffNormalizedEvents } from "@sla/ingestion";
 import {
   deriveNormalizedEventsForIssue,
   historyEntryOccurredAt,
@@ -245,7 +246,7 @@ describe("buildLinearBatch — history entries rewritten in place", () => {
     return batch.eventGroups[0]!.events;
   }
 
-  it("projects the latest version of a rewritten entry, not the stale first fetch", async () => {
+  it("keeps the first fetch of a rewritten entry and appends the rewrite as its own transition", async () => {
     const entry = (toState: LinearWorkflowState): LinearHistoryEntry => ({
       id: "h1",
       createdAt: "2026-01-01T10:00:00.000Z",
@@ -273,14 +274,14 @@ describe("buildLinearBatch — history entries rewritten in place", () => {
 
     const created = await derivedEvents(prisma);
 
-    expect(created.map((e) => [e.fromState, e.toState, e.sourceSequence])).toEqual([
-      [null, "open", 0],
-      ["open", "resolved", 1],
+    expect(created.map((e) => [e.fromState, e.toState, e.sourceRawEventId, e.sourceSequence])).toEqual([
+      [null, "open", "raw_h1_old", 0],
+      ["open", "in_progress", "raw_h1_old", 1],
+      ["in_progress", "resolved", "raw_h1_new", 2],
     ]);
-    expect(created[1]!.sourceRawEventId).toBe("raw_h1_new");
   });
 
-  it("returns to the earlier state when an entry flips A → B → A (the third version must win)", async () => {
+  it("keeps every step when an entry flips A → B → A", async () => {
     const entry = (toState: LinearWorkflowState, updatedAt: string): LinearHistoryEntry => ({
       id: "h1",
       createdAt: "2026-01-01T10:00:00.000Z",
@@ -298,14 +299,15 @@ describe("buildLinearBatch — history entries rewritten in place", () => {
 
     const created = await derivedEvents(prisma);
 
-    expect(created.map((e) => [e.fromState, e.toState])).toEqual([
-      [null, "open"],
-      ["open", "in_progress"],
+    expect(created.map((e) => [e.fromState, e.toState, e.sourceRawEventId])).toEqual([
+      [null, "open", "raw_a1"],
+      ["open", "in_progress", "raw_a1"],
+      ["in_progress", "resolved", "raw_b"],
+      ["resolved", "in_progress", "raw_a2"],
     ]);
-    expect(created[1]!.sourceRawEventId).toBe("raw_a2");
   });
 
-  it("ranks versions by the entry's updatedAt even when an older version was stored later", async () => {
+  it("orders versions by the entry's updatedAt even when an older version was stored later", async () => {
     const entry = (toState: LinearWorkflowState, updatedAt: string): LinearHistoryEntry => ({
       id: "h1",
       createdAt: "2026-01-01T10:00:00.000Z",
@@ -324,10 +326,14 @@ describe("buildLinearBatch — history entries rewritten in place", () => {
 
     const created = await derivedEvents(prisma);
 
-    expect(created[1]).toMatchObject({ toState: "resolved", sourceRawEventId: "raw_new" });
+    expect(created.map((e) => [e.fromState, e.toState, e.sourceRawEventId])).toEqual([
+      [null, "open", "raw_old"],
+      ["open", "in_progress", "raw_old"],
+      ["in_progress", "resolved", "raw_new"],
+    ]);
   });
 
-  it("prefers a row carrying updatedAt over a legacy row without one, whatever their fetch order", async () => {
+  it("ranks a legacy row without updatedAt before a row carrying one, whatever their fetch order", async () => {
     const { prisma } = fakePrisma([
       { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
       {
@@ -346,6 +352,124 @@ describe("buildLinearBatch — history entries rewritten in place", () => {
 
     const created = await derivedEvents(prisma);
 
-    expect(created[1]).toMatchObject({ toState: "in_progress", sourceRawEventId: "raw_current" });
+    expect(created.at(-1)).toMatchObject({ fromState: "resolved", toState: "in_progress", sourceRawEventId: "raw_current" });
+  });
+
+  it("does not add a transition for a re-fetched version whose state did not change", async () => {
+    const { prisma } = fakePrisma([
+      { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T10:01:00Z") },
+      {
+        id: "raw_legacy",
+        providerEventId: `issue_history:${issue.id}:h1`,
+        payload: { id: "h1", createdAt: "2026-01-01T10:00:00.000Z", actor: null, fromState: backlogState, toState: startedState },
+        fetchedAt: new Date("2026-01-01T10:01:00Z"),
+      },
+      // The same transition re-fetched once `updatedAt` was queried: a new hash, but no new state.
+      {
+        id: "raw_refetch",
+        providerEventId: `issue_history:${issue.id}:h1:refetch`,
+        payload: { id: "h1", createdAt: "2026-01-01T10:00:00.000Z", updatedAt: "2026-01-01T10:00:00.000Z", actor: null, fromState: backlogState, toState: startedState },
+        fetchedAt: new Date("2026-01-01T11:00:00Z"),
+      },
+    ]);
+
+    const created = await derivedEvents(prisma);
+
+    expect(created.map((e) => [e.fromState, e.toState, e.sourceRawEventId])).toEqual([
+      [null, "open", "raw_legacy"],
+      ["open", "in_progress", "raw_legacy"],
+    ]);
+  });
+});
+
+describe("buildLinearBatch — sequential status changes on a linked issue", () => {
+  const triageState: LinearWorkflowState = { id: "s0", name: "Triage", type: "triage" };
+  const todoState: LinearWorkflowState = { id: "s4", name: "Todo", type: "unstarted" };
+
+  function batchPrisma(rawEvents: { id: string; providerEventId: string; payload: unknown; fetchedAt: Date }[]) {
+    return {
+      integration: { findUniqueOrThrow: async () => ({ id: "integ-1", organizationId: "org-1" }) },
+      rawEvent: {
+        findMany: async ({ where }: { where: { providerEventId?: { startsWith: string }; OR?: unknown[] } }) => {
+          if (where.OR) return rawEvents.map(({ id }) => ({ id }));
+          return rawEvents.filter((row) => row.providerEventId.startsWith(where.providerEventId!.startsWith));
+        },
+      },
+      caseLink: { findMany: async () => [{ caseId: "case-1", externalId: issue.identifier }] },
+    } as unknown as PrismaClient;
+  }
+
+  async function project(rawEvents: Parameters<typeof batchPrisma>[0]) {
+    const batch = await buildLinearBatch(batchPrisma(rawEvents), "integ-1");
+    expect(batch.failures).toEqual([]);
+    return batch.eventGroups[0]!.events;
+  }
+
+  /** What the projector would store, given what it stored last time. */
+  function reconcile(stored: (Awaited<ReturnType<typeof project>>[number] & { id: string })[], derived: Awaited<ReturnType<typeof project>>) {
+    const { toCreate, toDeleteIds } = diffNormalizedEvents(stored, derived);
+    let next = 0;
+    return {
+      toDeleteIds,
+      stored: [
+        ...stored.filter((row) => !toDeleteIds.includes(row.id)),
+        ...toCreate.map((event) => ({ ...event, id: `new_${stored.length + next++}` })),
+      ],
+    };
+  }
+
+  const issueRow = { id: "raw_issue", providerEventId: `issue:${issue.id}:hash`, payload: issue, fetchedAt: new Date("2026-01-01T09:01:00Z") };
+  const entry = (toState: LinearWorkflowState, updatedAt: string): LinearHistoryEntry => ({
+    id: "h1",
+    createdAt: "2026-01-01T10:00:00.000Z",
+    updatedAt,
+    actor: { id: "user-agent", name: "Agent" },
+    fromState: triageState,
+    toState,
+  });
+  // Linear coalesces both changes into entry h1: Triage -> Todo, then rewrites it to Triage -> In Progress.
+  const toOpen = { id: "raw_open", providerEventId: `issue_history:${issue.id}:h1:open`, payload: entry(todoState, "2026-01-01T10:00:00.000Z"), fetchedAt: new Date("2026-01-01T10:01:00Z") };
+  const toInProgress = { id: "raw_in_progress", providerEventId: `issue_history:${issue.id}:h1:started`, payload: entry(startedState, "2026-01-01T10:05:00.000Z"), fetchedAt: new Date("2026-01-01T10:06:00Z") };
+  // A later, separate entry: In Progress -> Done.
+  const toDone = {
+    id: "raw_done",
+    providerEventId: `issue_history:${issue.id}:h2:done`,
+    payload: { id: "h2", createdAt: "2026-01-02T10:00:00.000Z", updatedAt: "2026-01-02T10:00:00.000Z", actor: null, fromState: startedState, toState: completedState },
+    fetchedAt: new Date("2026-01-02T10:01:00Z"),
+  };
+
+  it("appends each status change as a new event instead of replacing the previous one", async () => {
+    const first = reconcile([], await project([issueRow, toOpen]));
+    expect(first.stored.map((e) => [e.fromState, e.toState])).toEqual([
+      [null, "new"],
+      ["new", "open"],
+    ]);
+
+    const second = reconcile(first.stored, await project([issueRow, toOpen, toInProgress]));
+    expect(second.toDeleteIds).toEqual([]);
+    expect(second.stored.slice(0, 2)).toEqual(first.stored);
+    expect(second.stored.map((e) => [e.fromState, e.toState, e.occurredAt.toISOString()])).toEqual([
+      [null, "new", "2026-01-01T09:00:00.000Z"],
+      ["new", "open", "2026-01-01T10:00:00.000Z"],
+      ["open", "in_progress", "2026-01-01T10:05:00.000Z"],
+    ]);
+
+    const third = reconcile(second.stored, await project([issueRow, toOpen, toInProgress, toDone]));
+    expect(third.toDeleteIds).toEqual([]);
+    expect(third.stored.slice(0, 3)).toEqual(second.stored);
+    expect(third.stored.map((e) => [e.fromState, e.toState])).toEqual([
+      [null, "new"],
+      ["new", "open"],
+      ["open", "in_progress"],
+      ["in_progress", "resolved"],
+    ]);
+  });
+
+  it("writes nothing when the same versions are projected again", async () => {
+    const rows = [issueRow, toOpen, toInProgress, toDone];
+    const first = reconcile([], await project(rows));
+    const { toCreate, toDeleteIds } = diffNormalizedEvents(first.stored, await project(rows));
+    expect(toCreate).toEqual([]);
+    expect(toDeleteIds).toEqual([]);
   });
 });

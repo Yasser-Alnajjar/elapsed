@@ -52,7 +52,6 @@ export function PolicyMatchingFields({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Priority */}
         <div className="space-y-2">
           <Label>Priority</Label>
 
@@ -77,7 +76,6 @@ export function PolicyMatchingFields({
           </p>
         </div>
 
-        {/* Tier */}
         <div className="space-y-2">
           <Label>Tier</Label>
 
@@ -92,7 +90,6 @@ export function PolicyMatchingFields({
           </Select>
         </div>
 
-        {/* Customer */}
         {customers.length > 0 && (
           <div className="space-y-2">
             <Label>Customers</Label>
@@ -122,7 +119,6 @@ export function PolicyMatchingFields({
           </div>
         )}
 
-        {/* Calendar */}
         <div className="space-y-2">
           <Label>Calendar</Label>
 

@@ -1,4 +1,4 @@
-import type { FilterOption } from "@/components/shared/filter-group";
+import type { FilterOption } from "@/components/shared/data-table/filter-options";
 import { LEG_STYLES } from "@/lib/status-styles";
 import type { LegFilter } from "./types";
 

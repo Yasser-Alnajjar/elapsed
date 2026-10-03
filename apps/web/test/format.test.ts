@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatCommitmentKind,
   formatNextCycle,
-  latestCommitmentOfKind,
   nextReplyCycleNumbers,
 } from "../src/lib/format";
 
@@ -51,33 +50,6 @@ describe("nextReplyCycleNumbers", () => {
 
   it("returns an empty map when there are no next_reply commitments", () => {
     expect(nextReplyCycleNumbers([{ id: "fr", kind: "first_response" as const, startedAt: "2026-09-17T09:00:00.000Z" }]).size).toBe(0);
-  });
-});
-
-describe("latestCommitmentOfKind", () => {
-  it("picks the next_reply commitment with the latest startedAt, regardless of input order", () => {
-    const commitments = [
-      { id: "c1", kind: "next_reply" as const, startedAt: "2026-09-17T10:00:00.000Z" },
-      { id: "c3", kind: "next_reply" as const, startedAt: "2026-09-17T14:00:00.000Z" },
-      { id: "c2", kind: "next_reply" as const, startedAt: "2026-09-17T12:00:00.000Z" },
-    ];
-    expect(latestCommitmentOfKind(commitments, "next_reply")?.id).toBe("c3");
-  });
-
-  it("ignores commitments of a different kind", () => {
-    const commitments = [
-      { id: "fr", kind: "first_response" as const, startedAt: "2026-09-17T09:00:00.000Z" },
-      { id: "c1", kind: "next_reply" as const, startedAt: "2026-09-17T10:00:00.000Z" },
-    ];
-    expect(latestCommitmentOfKind(commitments, "first_response")?.id).toBe("fr");
-    expect(latestCommitmentOfKind(commitments, "next_reply")?.id).toBe("c1");
-  });
-
-  it("returns undefined when no commitment of that kind exists", () => {
-    const commitments = [
-      { id: "fr", kind: "first_response" as const, startedAt: "2026-09-17T09:00:00.000Z" },
-    ];
-    expect(latestCommitmentOfKind(commitments, "next_reply")).toBeUndefined();
   });
 });
 

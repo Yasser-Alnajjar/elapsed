@@ -16,8 +16,7 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low  shadow-sm">
-        {/* Header */}
+      <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low shadow-sm">
         <div className="flex items-center justify-between px-6 pt-6">
           <div className="flex items-center gap-2">
             <History className="size-5.5 text-primary" />
@@ -34,7 +33,6 @@ export function ActivityTimeline({ data }: { data: CaseDetailData }) {
         {data.timeline.length === 0 ? (
           <p className="text-sm text-on-surface-variant">No activity yet.</p>
         ) : (
-          /* Vertical dot-track container */
           <ol
             ref={containerRef}
             onScroll={onScroll}

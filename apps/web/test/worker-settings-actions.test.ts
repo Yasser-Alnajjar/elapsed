@@ -68,9 +68,14 @@ describe("WorkerSettingsActions", () => {
     await expect(WorkerSettingsActions.getActivePollIntervalMs()).resolves.toBe(300_000);
   });
 
-  it("the main layout uses the light read, never the operator-only action", () => {
+  it("the tenant dashboard uses the light read, never the operator-only action", () => {
+    const dashboard = readFileSync(new URL("../src/modules/dashboard/dashboard/ssr/Dashboard.tsx", import.meta.url), "utf8");
+    expect(dashboard).toContain("WorkerSettings.getActivePollIntervalMs()");
+    expect(dashboard).not.toContain("getMonitoringData");
+  });
+
+  it("the main layout does not read worker settings", () => {
     const layout = readFileSync(new URL("../src/app/(main)/layout.tsx", import.meta.url), "utf8");
-    expect(layout).toContain("WorkerSettings.getActivePollIntervalMs()");
-    expect(layout).not.toContain("getMonitoringData");
+    expect(layout).not.toContain("WorkerSettings");
   });
 });

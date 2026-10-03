@@ -31,7 +31,6 @@ export const SlaConfigurationView = ({ data }: SlaConfigurationViewProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb / guardrail meta bar */}
       <div className="bg-surface-container-low flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-1.5 shadow-sm">
         <div className="text-outline flex min-w-0 items-center gap-2 font-mono text-xxs uppercase tracking-widest">
           <span>Settings</span>
@@ -49,7 +48,6 @@ export const SlaConfigurationView = ({ data }: SlaConfigurationViewProps) => {
         </span>
       </div>
 
-      {/* Headline */}
       <div>
         <span className="text-secondary font-mono text-xxs font-semibold uppercase tracking-widest">
           Deterministic timers
@@ -63,7 +61,6 @@ export const SlaConfigurationView = ({ data }: SlaConfigurationViewProps) => {
         </p>
       </div>
 
-      {/* Instrument cluster */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <SlaSection
           className="xl:col-span-5"

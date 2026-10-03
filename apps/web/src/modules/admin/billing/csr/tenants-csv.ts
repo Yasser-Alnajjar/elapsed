@@ -1,4 +1,4 @@
-import { buildCsv } from "@/lib/csv";
+import { buildCsv } from "@sla/core";
 import { formatBillingDate, formatMoney, formatRate } from "@/lib/billing-format";
 import { BILLING_PLAN_TIER_LABELS, type AdminBillingTenantRow } from "@/lib/types/admin-billing";
 import { SUBSCRIPTION_STATUS_LABELS } from "@/lib/types/billing";

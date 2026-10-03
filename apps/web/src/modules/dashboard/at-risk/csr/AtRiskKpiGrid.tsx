@@ -4,10 +4,8 @@ import {
   AlertTriangle,
   Clock,
   Network,
-  Timer,
   CirclePause,
 } from "lucide-react";
-import { useMemo } from "react";
 
 import { Reveal } from "@/components/shared/reveal";
 import { formatMinutes } from "@/lib/format";
@@ -37,19 +35,15 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
   // Phase 2 item 4: never evaluate the whole open set for a KPI tile).
   const pageRows = data.rows;
 
-  const engineeringCount = useMemo(
-    () => pageRows.filter((row) => row.currentLeg === "engineering").length,
-    [pageRows],
-  );
+  const engineeringCount = pageRows.filter(
+    (row) => row.currentLeg === "engineering",
+  ).length;
 
-  const avgMinutesInLeg = useMemo(
-    () =>
-      pageRows.length > 0
-        ? pageRows.reduce((sum, row) => sum + row.minutesInCurrentLeg, 0) /
-          pageRows.length
-        : null,
-    [pageRows],
-  );
+  const avgMinutesInLeg =
+    pageRows.length > 0
+      ? pageRows.reduce((sum, row) => sum + row.minutesInCurrentLeg, 0) /
+        pageRows.length
+      : null;
 
   const locusDetail =
     pageRows.length > 0

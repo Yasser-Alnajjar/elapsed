@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import { BrandMark } from "@/components/shared/brand-mark";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { cn } from "@/lib/utils";
+import { MONO_LABEL } from "./marketing-ui";
 
 const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
@@ -17,6 +20,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     links: [
       { href: "/about", label: "About" },
       { href: "/docs/faq", label: "FAQ" },
+      { href: "/docs/security", label: "Security" },
     ],
   },
   {
@@ -37,40 +41,38 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border/60">
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 py-14 sm:grid-cols-2 md:grid-cols-5">
-        <div className="space-y-3 sm:col-span-2 md:col-span-1">
-          <BrandMark logoClassName="size-10" />
+    <footer className="mt-8 w-full border-t border-border bg-background">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-8 pb-6 lg:px-6">
+        <div className="grid grid-cols-1 gap-6 border-b border-border pb-8 md:grid-cols-2 lg:grid-cols-5">
+          <div className="flex flex-col gap-2">
+            <BrandMark logoClassName="size-7" className="font-semibold" />
+            <p className="text-foreground-subtle text-xs leading-relaxed">
+              Know before your customer does. One clock across support, triage, and engineering handoffs.
+            </p>
+          </div>
 
-          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-            Know before your customer does.
-          </p>
+          {COLUMNS.map((column) => (
+            <div key={column.title} className="flex flex-col gap-2">
+              <h3 className={cn(MONO_LABEL, "text-foreground-subtle tracking-widest")}>{column.title}</h3>
+              <ul className="flex flex-col gap-1 text-xs">
+                {column.links.map((link) => (
+                  <li key={link.href} className="flex">
+                    <Link href={link.href} className="text-muted-foreground transition-colors hover:text-foreground">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        {COLUMNS.map((column) => (
-          <div key={column.title} className="space-y-3">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {column.title}
-            </h3>
-            <ul className="space-y-2.5">
-              {column.links.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        <div className="flex flex-col items-center justify-between gap-4 pt-4 sm:flex-row">
+          <p className="text-foreground-subtle font-mono text-xs">&copy; {new Date().getFullYear()} Elapsed. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span className={cn(MONO_LABEL, "text-foreground-subtle")}>Mode</span>
+            <ThemeToggle />
           </div>
-        ))}
-      </div>
-
-      <div className="border-t border-border/60">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-6 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} Elapsed. All rights reserved.</p>
         </div>
       </div>
     </footer>

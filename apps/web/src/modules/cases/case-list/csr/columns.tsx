@@ -1,8 +1,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 import { DataTableColumnHeader } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-
 import type { CaseListRow } from "@/lib/types/cases";
 
 import {
@@ -13,20 +14,14 @@ import {
   SlaTargetRunwayCell,
 } from "./cells";
 
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-
-const HEADER_CLASS =
-  "[&_button]:h-auto [&_button]:text-inherit [&_button]:font-[inherit]";
-
-export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
+export const CASE_LIST_COLUMNS: ColumnDef<CaseListRow>[] = [
   {
     id: "priorityDualKey",
+    meta: { name: "Priority & dual-key" },
     minSize: 170,
     accessorFn: (row) => row.externalId,
     header: ({ column }) => (
       <DataTableColumnHeader
-        className={HEADER_CLASS}
         column={column}
         title="Priority & dual-key"
       />
@@ -37,12 +32,12 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
   },
   {
     id: "subject",
+    meta: { name: "Customer & subject" },
     minSize: 200,
     maxSize: 205,
     accessorFn: (row) => row.subject ?? row.customerName ?? "",
     header: ({ column }) => (
       <DataTableColumnHeader
-        className={HEADER_CLASS}
         column={column}
         title="Customer & subject"
       />
@@ -53,13 +48,13 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
   },
   {
     id: "correlation",
+    meta: { name: "Correlation" },
     minSize: 120,
     maxSize: 140,
     accessorFn: (row) =>
       row.primaryLink ? row.primaryLink.confidence : "unlinked",
     header: ({ column }) => (
       <DataTableColumnHeader
-        className={HEADER_CLASS}
         column={column}
         title="Correlation"
       />
@@ -73,12 +68,12 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
   },
   {
     id: "slaTargetRunway",
+    meta: { name: "SLA target & runway" },
     minSize: 190,
     accessorFn: (row) =>
       row.liveCommitment?.remainingMinutes ?? row.worstCommitmentStatus ?? "",
     header: ({ column }) => (
       <DataTableColumnHeader
-        className={HEADER_CLASS}
         column={column}
         title="SLA target & runway"
       />
@@ -91,11 +86,11 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
 
   {
     id: "currentStateAssignee",
+    meta: { name: "Current state & assignee" },
     minSize: 140,
     accessorFn: (row) => row.assigneeName ?? "",
     header: ({ column }) => (
       <DataTableColumnHeader
-        className={HEADER_CLASS}
         column={column}
         title="Current state & assignee"
       />
@@ -108,18 +103,18 @@ export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
   {
     id: "action",
     minSize: 100,
+    meta: { align: "end" },
     header: () => <span className="sr-only">Action</span>,
     cell: ({ row }) => (
-      <div className="text-end">
-        <Button variant="subtle" size="sm" asChild>
-          <Link href={`/cases/${row.original.caseId}`}>
-            <span>View Case</span>
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </Button>
-      </div>
+      <Button variant="subtle" size="sm" asChild>
+        <Link href={`/cases/${row.original.caseId}`}>
+          <span>View Case</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </Button>
     ),
     enableSorting: false,
+    enableHiding: false,
     enableColumnFilter: false,
   },
 ];

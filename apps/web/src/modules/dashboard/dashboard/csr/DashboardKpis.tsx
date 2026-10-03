@@ -6,6 +6,7 @@ import {
   Network,
 } from "lucide-react";
 import { Reveal } from "@/components/shared/reveal";
+import type { CommitmentKind } from "@sla/core";
 import { formatCommitmentKind } from "@/lib/format";
 import type { DashboardData } from "@/lib/types/dashboard";
 import { KpiTile } from "./KpiTile";
@@ -48,7 +49,7 @@ function BreachedCasesTile({ data }: { data: DashboardData }) {
                 className="text-on-surface-variant flex items-center gap-1.5"
               >
                 <span className="bg-outline size-1.5 rounded-full" />
-                {count} {formatCommitmentKind(kind as never)}
+                {count} {formatCommitmentKind(kind as CommitmentKind)}
               </span>
             ))}
           </div>

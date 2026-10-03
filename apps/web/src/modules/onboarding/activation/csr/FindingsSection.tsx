@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Sparkles, Workflow } from "lucide-react";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,26 +40,32 @@ function TopAccountsTable({
       <h3 className="font-label-caps text-label-caps mb-3 uppercase tracking-wider text-on-surface-variant">
         Top affected accounts
       </h3>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Account</TableHead>
-            <TableHead>Escalations</TableHead>
-            <TableHead>Exceeded target</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {accounts.map((account) => (
-            <TableRow key={account.customerName}>
-              <TableCell className="font-medium">
-                {account.customerName}
-              </TableCell>
-              <TableCell>{account.escalatedCases}</TableCell>
-              <TableCell>{account.breachedCases}</TableCell>
+      <DataTableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Account</TableHead>
+              <TableHead align="end">Escalations</TableHead>
+              <TableHead align="end">Exceeded target</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {accounts.map((account) => (
+              <TableRow key={account.customerName}>
+                <TableCell className="font-medium">
+                  {account.customerName}
+                </TableCell>
+                <TableCell align="end" className="tabular-nums">
+                  {account.escalatedCases}
+                </TableCell>
+                <TableCell align="end" className="tabular-nums">
+                  {account.breachedCases}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DataTableCard>
     </div>
   );
 }

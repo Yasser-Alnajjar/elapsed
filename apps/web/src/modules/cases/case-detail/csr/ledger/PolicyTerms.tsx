@@ -49,8 +49,7 @@ export function PolicyCalendarCards({
   );
 }
 
-/* ─── "Applied Contract Clauses" prose ──────────────────────── */
-
+/** The pause and business-hours rules this commitment's clock follows, in prose. */
 export function AppliedClauses({
   commitment,
 }: {

@@ -1,16 +1,7 @@
 import type { Column } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, EyeOff } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 
-import { DataTableColumnFilter } from "./data-table-column-filter";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@components/ui/dropdown-menu";
 
 interface DataTableColumnHeaderProps<TData, TValue> {
   column: Column<TData, TValue>;
@@ -18,57 +9,43 @@ interface DataTableColumnHeaderProps<TData, TValue> {
   className?: string;
 }
 
+/**
+ * A column heading. A sortable column is one button that cycles ascending →
+ * descending → unsorted, with the arrow always showing the current state; a
+ * column that cannot sort is plain text. Alignment comes from the column's
+ * `meta.align` (set it to `"end"` for numbers), so a heading sits over its cells.
+ */
 export function DataTableColumnHeader<TData, TValue>({
   column,
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
-  const canSort = column.columnDef.enableSorting ?? false;
-  const canFilter = column.columnDef.enableColumnFilter ?? false;
+  const end = column.columnDef.meta?.align === "end";
 
-  if (!canSort && !canFilter) {
-    return <div className={cn("flex items-center", className)}>{title}</div>;
+  if (!column.getCanSort()) {
+    return <span className={className}>{title}</span>;
   }
 
-  return (
-    <div className={cn("flex items-center justify-between gap-2", className)}>
-      {canSort ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-ml-3 h-8 data-[state=open]:bg-accent text-foreground font-medium focus-visible:ring-0 focus-visible:ring-offset-0"
-            >
-              <span>{title}</span>
-              {column.getIsSorted() === "desc" ? (
-                <ArrowDown className="ms-2 h-4 w-4" />
-              ) : column.getIsSorted() === "asc" ? (
-                <ArrowUp className="ms-2 h-4 w-4" />
-              ) : null}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-32">
-            <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-              <ArrowUp className="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
-              Asc
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-              <ArrowDown className="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
-              Desc
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
-              <EyeOff className="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
-              Hide
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <span className={cn("font-medium text-sm", className)}>{title}</span>
-      )}
+  const sorted = column.getIsSorted();
+  const Icon =
+    sorted === "desc" ? ArrowDown : sorted === "asc" ? ArrowUp : ChevronsUpDown;
 
-      {canFilter && <DataTableColumnFilter column={column} title={title} />}
-    </div>
+  return (
+    <button
+      type="button"
+      onClick={column.getToggleSortingHandler()}
+      className={cn(
+        "-mx-2 inline-flex items-center gap-1 rounded px-2 py-1 uppercase transition-colors outline-none hover:bg-interactive/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
+        end && "flex-row-reverse",
+        sorted && "text-foreground",
+        className,
+      )}
+    >
+      <span>{title}</span>
+      <Icon
+        aria-hidden
+        className={cn("size-3.5 shrink-0", !sorted && "opacity-40")}
+      />
+    </button>
   );
 }

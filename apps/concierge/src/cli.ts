@@ -1,13 +1,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
 import { parseArgs } from "node:util";
+import { isValidTimeZone } from "@sla/core";
 import { analyzeExport, type Findings } from "./analyze";
 import { parseCsv } from "./csv";
 import { parseJiraExport, parseStatusOverrides } from "./jira";
 import { buildCalendar, buildPolicyVersions, parseResolutionTargets } from "./policy";
 import { buildReport, renderMarkdown } from "./report";
 import { renderHtml } from "./report-html";
-import { isValidTimeZone, parseDuration, parseTimestamp } from "./time";
+import { parseDuration, parseTimestamp } from "./time";
 import { parseZendeskExport } from "./zendesk";
 
 const USAGE = `Concierge escalation analysis: Zendesk + Jira CSV exports -> one-page findings.

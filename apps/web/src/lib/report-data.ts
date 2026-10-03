@@ -1,5 +1,7 @@
 import { perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
+  buildCsvHeaderLine,
+  buildCsvRowLines,
   evaluateCommitment,
   type BusinessCalendarVersion,
   type CommitmentKind,
@@ -10,7 +12,6 @@ import {
   type WeeklyWindow,
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
-import { buildCsvHeaderLine, buildCsvRowLines } from "./csv";
 import { REPORT_ISSUE_COLUMNS, REPORT_TICKET_URL_COLUMN, externalUrlFor } from "./providers";
 import {
   formatCommitmentKind,
@@ -428,9 +429,4 @@ export function complianceReportRowsToJsonChunk(
   if (rows.length === 0) return "";
   const body = rows.map((row) => JSON.stringify(row)).join(",");
   return isFirstBatch ? body : `,${body}`;
-}
-
-/** Full JSON array from an already-collected row set — used by tests and any non-streaming caller. */
-export function complianceReportToJson(rows: ComplianceReportRow[]): string {
-  return `[${complianceReportRowsToJsonChunk(rows, true)}]`;
 }

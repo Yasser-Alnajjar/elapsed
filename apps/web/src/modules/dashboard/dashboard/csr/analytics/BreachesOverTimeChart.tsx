@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { BreachesOverTimeLegPoint } from "@/lib/types/dashboard";
+import { CHART_TOOLTIP_STYLE } from "./chart-tooltip";
 
 function formatDayLabel(date: string): string {
   return new Date(`${date}T00:00:00.000Z`).toLocaleDateString(undefined, {
@@ -92,13 +93,7 @@ export function BreachesOverTimeChart({
               <Tooltip
                 labelFormatter={(label) => formatDayLabel(String(label))}
                 cursor={{ fill: "var(--popover)" }}
-                contentStyle={{
-                  background: "var(--popover)",
-                  borderColor: "var(--border)",
-                  borderRadius: 8,
-                  color: "var(--popover-foreground)",
-                  fontSize: 12,
-                }}
+                contentStyle={CHART_TOOLTIP_STYLE}
               />
               <Bar
                 dataKey="supportCount"

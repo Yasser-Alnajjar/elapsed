@@ -2,13 +2,7 @@ import { formatExactTimestamp } from "@/lib/format";
 import type { AttributionLedger } from "@/lib/types/dashboard";
 import { LEG_STYLES } from "@/lib/status-styles";
 
-/**
- * The Stitch dashboard's "30-Day Attribution Ledger" — period-scoped leg-hour
- * totals and linking precision. Had no equivalent in the pre-reconstruction
- * dashboard; built from scratch against `DashboardData.attributionLedger`
- * (see `dashboard-data.ts`'s `getDashboardData`), which sums the same
- * `sumLegMinutes` primitive the rest of the app uses.
- */
+/** The "30-Day Attribution Ledger": period-scoped leg-hour totals and linking precision. */
 export function AttributionLedgerCard({
   ledger,
   engineeringMeasured = true,

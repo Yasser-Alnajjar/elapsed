@@ -10,7 +10,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Reveal } from "@/components/shared/reveal";
-import { Utils } from "@/lib/utils";
+import { formatLongDateTime } from "@/lib/format";
 import type { IntegrationProvider } from "@/lib/types/integrations";
 import {
   descriptionClass,
@@ -72,7 +72,7 @@ export function IntegrationDetailHeader({
               </h1>
             </div>
             <p className={descriptionClass}>
-              Connected {Utils.formatDateTimeV2(connectedAt)} via read-only
+              Connected {formatLongDateTime(connectedAt)} via read-only
               access
             </p>
           </div>

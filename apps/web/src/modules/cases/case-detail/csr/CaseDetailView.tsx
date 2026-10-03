@@ -72,19 +72,15 @@ export const CaseDetailView = ({
           </AlertDescription>
         </Alert>
       )}
-      {/* ── Sub-header breadcrumb + case identity banner ── */}
       <CaseHeader data={data} />
 
-      {/* ── Dual commitment cards ── */}
       <CommitmentSummary
         data={data}
         selectedCommitmentId={selectedCommitmentId}
       />
 
-      {/* ── Segmented Case Journey ── */}
       <CaseJourney data={data} />
 
-      {/* ── High-density two-column core: exact Stitch 7/5 composition ── */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div className="flex flex-col gap-6 xl:col-span-7">
           <CalculationLedger

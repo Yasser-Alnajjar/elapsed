@@ -1,4 +1,4 @@
-import { Prisma } from "../generated/prisma/client";
+import { isUniqueConstraintError } from "./prisma-errors";
 import type { Customer, IntegrationProvider, PrismaClient } from "../generated/prisma/client";
 
 /**
@@ -62,13 +62,9 @@ export async function upsertCustomerByIdentity(
       },
     });
   } catch (error) {
-    if (!isUniqueViolation(error)) throw error;
+    if (!isUniqueConstraintError(error)) throw error;
     const winner = await findCustomerByIdentity(prisma, ref);
     if (!winner) throw error;
     return winner;
   }
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }

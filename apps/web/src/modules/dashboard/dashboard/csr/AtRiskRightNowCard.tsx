@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Gauge } from "lucide-react";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  DataTableCard,
+  DataTableFooter,
+} from "@/components/shared/data-table/data-table-card";
+import { DataTableEmpty } from "@/components/shared/data-table/data-table-states";
 import type { DashboardData } from "@/lib/types/dashboard";
 import { AtRiskSnapshotTable } from "./AtRiskSnapshotTable";
 
@@ -15,11 +19,8 @@ export function AtRiskRightNowCard({
   engineeringMeasured: boolean;
 }) {
   return (
-    <div
-      id="at-risk-table"
-      className="bg-surface-container-low shadow-soft scroll-mt-20 overflow-hidden rounded-xl"
-    >
-      <div className="bg-surface-container/60 border-surface-container-highest/60 flex flex-col items-start justify-between gap-2 border-b p-4 sm:flex-row sm:items-center">
+    <DataTableCard id="at-risk-table" className="scroll-mt-20">
+      <div className="flex flex-col items-start justify-between gap-2 border-b border-border p-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <span className="bg-warning size-3 animate-ping rounded-full shrink-0" />
           <div>
@@ -38,30 +39,28 @@ export function AtRiskRightNowCard({
         </span>
       </div>
       {rows.length === 0 ? (
-        <div className="p-8">
-          <EmptyState
-            icon={Gauge}
-            title="Nothing at risk right now"
-            description="No open commitments are projected to breach soon."
-          />
-        </div>
+        <DataTableEmpty
+          icon={Gauge}
+          title="Nothing at risk right now"
+          description="No open commitments are projected to breach soon."
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <AtRiskSnapshotTable
-            rows={rows}
-            engineeringMeasured={engineeringMeasured}
-          />
-        </div>
+        <AtRiskSnapshotTable
+          rows={rows}
+          engineeringMeasured={engineeringMeasured}
+        />
       )}
       {overflowCount > 0 && (
-        <p className="border-border-subtle bg-surface-subtle text-muted-foreground border-t px-4 py-2.5 text-xs">
-          +{overflowCount} more open commitment(s) not shown —{" "}
-          <Link href="/cases" className="text-primary hover:underline">
-            see full case list
-          </Link>
-          .
-        </p>
+        <DataTableFooter>
+          <span>
+            +{overflowCount} more open commitment(s) not shown —{" "}
+            <Link href="/cases" className="text-primary hover:underline">
+              see full case list
+            </Link>
+            .
+          </span>
+        </DataTableFooter>
       )}
-    </div>
+    </DataTableCard>
   );
 }

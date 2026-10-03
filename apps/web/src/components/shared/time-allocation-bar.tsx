@@ -30,16 +30,14 @@ export function TimeAllocationBar({
       ? Math.min(100, (elapsedMinutes / targetMinutes) * 100)
       : 0;
 
-  const legTotal =
-    supportLegMinutes + engineeringLegMinutes + waitingCustomerLegMinutes;
-
-  const supportShare = legTotal > 0 ? (supportLegMinutes / legTotal) * 100 : 0;
-
-  const engineeringShare =
-    legTotal > 0 ? (engineeringLegMinutes / legTotal) * 100 : 0;
-
-  const waitingCustomerShare =
-    legTotal > 0 ? (waitingCustomerLegMinutes / legTotal) * 100 : 0;
+  const legs = [
+    { label: "Support", minutes: supportLegMinutes, color: "bg-leg-support" },
+    { label: "Eng", minutes: engineeringLegMinutes, color: "bg-leg-engineering" },
+    { label: "Pending Customer", minutes: waitingCustomerLegMinutes, color: "bg-leg-waiting" },
+  ];
+  const legTotal = legs.reduce((sum, leg) => sum + leg.minutes, 0);
+  const shareOf = (minutes: number) =>
+    legTotal > 0 ? (minutes / legTotal) * 100 : 0;
 
   return (
     <div className="min-w-0">
@@ -56,53 +54,26 @@ export function TimeAllocationBar({
       </p>
 
       <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-interactive">
-        <div
-          className="h-full bg-leg-support"
-          style={{ width: `${(percentExpended * supportShare) / 100}%` }}
-        />
-
-        <div
-          className="h-full bg-leg-engineering"
-          style={{
-            width: `${(percentExpended * engineeringShare) / 100}%`,
-          }}
-        />
-
-        <div
-          className="h-full bg-leg-waiting"
-          style={{
-            width: `${(percentExpended * waitingCustomerShare) / 100}%`,
-          }}
-        />
+        {legs.map((leg) => (
+          <div
+            key={leg.label}
+            className={cn("h-full", leg.color)}
+            style={{ width: `${(percentExpended * shareOf(leg.minutes)) / 100}%` }}
+          />
+        ))}
       </div>
 
       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xxs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <span className={cn("size-1.5 rounded-full bg-leg-support")} />
-          Support:{" "}
-          <span className="font-mono tabular-nums">
-            {formatMinutes(supportLegMinutes)}
-          </span>{" "}
-          ({supportShare.toFixed(0)}%)
-        </span>
-
-        <span className="inline-flex items-center gap-1">
-          <span className={cn("size-1.5 rounded-full bg-leg-engineering")} />
-          Eng:{" "}
-          <span className="font-mono tabular-nums">
-            {formatMinutes(engineeringLegMinutes)}
-          </span>{" "}
-          ({engineeringShare.toFixed(0)}%)
-        </span>
-
-        <span className="inline-flex items-center gap-1">
-          <span className={cn("size-1.5 rounded-full bg-leg-waiting")} />
-          Pending Customer:{" "}
-          <span className="font-mono tabular-nums">
-            {formatMinutes(waitingCustomerLegMinutes)}
-          </span>{" "}
-          ({waitingCustomerShare.toFixed(0)}%)
-        </span>
+        {legs.map((leg) => (
+          <span key={leg.label} className="inline-flex items-center gap-1">
+            <span className={cn("size-1.5 rounded-full", leg.color)} />
+            {leg.label}:{" "}
+            <span className="font-mono tabular-nums">
+              {formatMinutes(leg.minutes)}
+            </span>{" "}
+            ({shareOf(leg.minutes).toFixed(0)}%)
+          </span>
+        ))}
 
         <span>
           Runway:{" "}
