@@ -209,7 +209,7 @@ export default function IntercomIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            In SLA Breach Monitoring, go to{" "}
+            In Elapsed, go to{" "}
             <strong>Settings → Integrations → Intercom → Configure</strong> and
             paste in the Client ID and Client Secret, then save.
           </p>

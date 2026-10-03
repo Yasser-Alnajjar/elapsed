@@ -16,7 +16,10 @@ const baseCandidate = {
 
 describe("formatSlackMessage", () => {
   it("names the customer and ticket for an at-risk warning", () => {
-    const text = formatSlackMessage(baseCandidate, { externalId: "4821", customerName: "Acme Co." });
+    const text = formatSlackMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: "Acme Co.",
+    });
     expect(text).toContain("at risk");
     expect(text).toContain("#4821");
     expect(text).toContain("Acme Co.");
@@ -25,30 +28,44 @@ describe("formatSlackMessage", () => {
   });
 
   it("omits the customer clause when there is none", () => {
-    const text = formatSlackMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const text = formatSlackMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(text).not.toContain("for ");
     expect(text).toContain("#4821");
   });
 
   it("distinguishes first_response from resolution", () => {
-    const text = formatSlackMessage({ ...baseCandidate, kind: "first_response" }, {
-      externalId: "1",
-      customerName: null,
-    });
+    const text = formatSlackMessage(
+      { ...baseCandidate, kind: "first_response" },
+      {
+        externalId: "1",
+        customerName: null,
+      },
+    );
     expect(text).toContain("First response");
   });
 
   it("labels a next_reply candidate as Next reply", () => {
-    const text = formatSlackMessage({ ...baseCandidate, kind: "next_reply" }, {
-      externalId: "1",
-      customerName: null,
-    });
+    const text = formatSlackMessage(
+      { ...baseCandidate, kind: "next_reply" },
+      {
+        externalId: "1",
+        customerName: null,
+      },
+    );
     expect(text).toContain("Next reply");
   });
 
   it("reports a breach with elapsed-over time, not remaining time", () => {
     const text = formatSlackMessage(
-      { ...baseCandidate, status: "breached", threshold: BREACH_NOTIFICATION_THRESHOLD, breachedByMinutes: 130 },
+      {
+        ...baseCandidate,
+        status: "breached",
+        threshold: BREACH_NOTIFICATION_THRESHOLD,
+        breachedByMinutes: 130,
+      },
       { externalId: "4821", customerName: "Acme Co." },
     );
     expect(text).toContain("breached");
@@ -57,14 +74,20 @@ describe("formatSlackMessage", () => {
   });
 
   it("includes the policy name, target, and start time (3.9)", () => {
-    const text = formatSlackMessage(baseCandidate, { externalId: "4821", customerName: "Acme Co." });
+    const text = formatSlackMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: "Acme Co.",
+    });
     expect(text).toContain("Policy: Urgent SLA");
     expect(text).toContain("Target: 4h");
     expect(text).toContain("Started: Sep 17, 2026, 09:00 UTC");
   });
 
   it("includes the exact breach time only once breached", () => {
-    const atRisk = formatSlackMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const atRisk = formatSlackMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(atRisk).not.toContain("Breached:");
 
     const breached = formatSlackMessage(
@@ -81,7 +104,10 @@ describe("formatSlackMessage", () => {
   });
 
   it("includes a case link in Slack mrkdwn syntax only when caseUrl is provided (E-19)", () => {
-    const withoutLink = formatSlackMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const withoutLink = formatSlackMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(withoutLink).not.toContain("View ticket");
 
     const withLink = formatSlackMessage(baseCandidate, {
@@ -89,13 +115,18 @@ describe("formatSlackMessage", () => {
       customerName: null,
       caseUrl: "https://app.example.com/cases/case_1",
     });
-    expect(withLink).toContain("<https://app.example.com/cases/case_1|View ticket>");
+    expect(withLink).toContain(
+      "<https://app.example.com/cases/case_1|View ticket>",
+    );
   });
 });
 
 describe("formatEmailMessage", () => {
   it("names the customer and ticket for an at-risk warning", () => {
-    const { subject, text, html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: "Acme Co." });
+    const { subject, text, html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: "Acme Co.",
+    });
     expect(subject).toContain("at risk");
     expect(subject).toContain("#4821");
     expect(text).toContain("#4821");
@@ -109,25 +140,34 @@ describe("formatEmailMessage", () => {
   });
 
   it("omits the customer clause when there is none", () => {
-    const { subject, text, html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const { subject, text, html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(subject).not.toContain("(");
     expect(text).toContain("#4821");
     expect(html).not.toContain("Customer:");
   });
 
   it("distinguishes first_response from resolution", () => {
-    const { subject } = formatEmailMessage({ ...baseCandidate, kind: "first_response" }, {
-      externalId: "1",
-      customerName: null,
-    });
+    const { subject } = formatEmailMessage(
+      { ...baseCandidate, kind: "first_response" },
+      {
+        externalId: "1",
+        customerName: null,
+      },
+    );
     expect(subject).toContain("First response");
   });
 
   it("labels a next_reply candidate as Next reply", () => {
-    const { subject, text, html } = formatEmailMessage({ ...baseCandidate, kind: "next_reply" }, {
-      externalId: "1",
-      customerName: null,
-    });
+    const { subject, text, html } = formatEmailMessage(
+      { ...baseCandidate, kind: "next_reply" },
+      {
+        externalId: "1",
+        customerName: null,
+      },
+    );
     expect(subject).toContain("Next reply");
     expect(text).toContain("Next reply");
     expect(html).toContain("Next reply");
@@ -135,7 +175,12 @@ describe("formatEmailMessage", () => {
 
   it("reports a breach with elapsed-over time, not remaining time", () => {
     const { subject, text, html } = formatEmailMessage(
-      { ...baseCandidate, status: "breached", threshold: BREACH_NOTIFICATION_THRESHOLD, breachedByMinutes: 130 },
+      {
+        ...baseCandidate,
+        status: "breached",
+        threshold: BREACH_NOTIFICATION_THRESHOLD,
+        breachedByMinutes: 130,
+      },
       { externalId: "4821", customerName: "Acme Co." },
     );
     expect(subject).toContain("breached");
@@ -146,18 +191,28 @@ describe("formatEmailMessage", () => {
   });
 
   it("defaults the HTML brand name when none is given", () => {
-    const { html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null });
-    expect(html).toContain("SLA Breach Monitoring");
+    const { html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
+    expect(html).toContain("Elapsed");
   });
 
   it("uses the organization's configured brand name in the HTML body", () => {
-    const { html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null }, { name: "Acme Support" });
+    const { html } = formatEmailMessage(
+      baseCandidate,
+      { externalId: "4821", customerName: null },
+      { name: "Acme Support" },
+    );
     expect(html).toContain("Acme Support");
-    expect(html).not.toContain("SLA Breach Monitoring");
+    expect(html).not.toContain("Elapsed");
   });
 
   it("renders a ticket link only when a caseUrl is provided", () => {
-    const withoutLink = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const withoutLink = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(withoutLink.html).not.toContain("View ticket");
 
     const withLink = formatEmailMessage(baseCandidate, {
@@ -170,7 +225,10 @@ describe("formatEmailMessage", () => {
   });
 
   it("includes the policy name, target, and start time in text and HTML (3.9)", () => {
-    const { text, html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const { text, html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(text).toContain("Policy: Urgent SLA");
     expect(text).toContain("Target: 4h");
     expect(text).toContain("Started: Sep 17, 2026, 09:00 UTC");
@@ -180,7 +238,10 @@ describe("formatEmailMessage", () => {
   });
 
   it("includes the exact breach time only once breached", () => {
-    const { html: atRiskHtml } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null });
+    const { html: atRiskHtml } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+    });
     expect(atRiskHtml).not.toContain("Breached:");
 
     const { text, html } = formatEmailMessage(
@@ -208,7 +269,10 @@ describe("formatEmailMessage", () => {
   });
 
   it("escapes a customer name containing HTML special characters", () => {
-    const { html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: "<b>Acme</b> & Co." });
+    const { html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: "<b>Acme</b> & Co.",
+    });
     expect(html).not.toContain("<b>Acme</b>");
     expect(html).toContain("&lt;b&gt;Acme&lt;/b&gt; &amp; Co.");
   });
@@ -224,7 +288,11 @@ describe("formatEmailMessage", () => {
   });
 
   it("falls back to just the ticket number when the case has no subject", () => {
-    const { html } = formatEmailMessage(baseCandidate, { externalId: "4821", customerName: null, subject: null });
+    const { html } = formatEmailMessage(baseCandidate, {
+      externalId: "4821",
+      customerName: null,
+      subject: null,
+    });
     expect(html).toContain("#4821");
   });
 

@@ -1,33 +1,58 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, History, Loader2, Mail, ShieldCheck } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  History,
+  Loader2,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EMAIL_SECURITY_OPTIONS, type EmailSecurity, type EmailSettingsStatus } from "@/lib/types/email-settings";
-import { useSmtpSettingsForm, type SmtpActionState } from "./useSmtpSettingsForm";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  EMAIL_SECURITY_OPTIONS,
+  type EmailSecurity,
+  type EmailSettingsStatus,
+} from "@/lib/types/email-settings";
+import {
+  useSmtpSettingsForm,
+  type SmtpActionState,
+} from "./useSmtpSettingsForm";
 
 interface EmailNotificationsCardProps {
   status: EmailSettingsStatus;
 }
 
-const labelClass = "text-outline font-mono text-xxs font-semibold uppercase tracking-wider";
+const labelClass =
+  "text-outline font-mono text-xxs font-semibold uppercase tracking-wider";
 
 function ResultBanner({ result }: { result: SmtpActionState["result"] }) {
   if (!result) return null;
   return (
     <Alert variant={result.ok ? "success" : "destructive"} className="mt-3">
       {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-      <AlertDescription>{result.ok ? result.message : result.error}</AlertDescription>
+      <AlertDescription>
+        {result.ok ? result.message : result.error}
+      </AlertDescription>
     </Alert>
   );
 }
 
-export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) {
+export function EmailNotificationsCard({
+  status,
+}: EmailNotificationsCardProps) {
   const {
     isEdit,
     fields,
@@ -57,9 +82,12 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
             <Mail className="size-5" />
           </span>
           <div>
-            <CardTitle className="text-on-surface text-lg font-medium tracking-tight">Email Notifications</CardTitle>
+            <CardTitle className="text-on-surface text-lg font-medium tracking-tight">
+              Email Notifications
+            </CardTitle>
             <p className="text-xs text-on-surface-variant">
-              SMTP server used to email at-risk and breach alerts to everyone in this organization.
+              SMTP server used to email at-risk and breach alerts to everyone in
+              this organization.
             </p>
           </div>
         </div>
@@ -78,7 +106,10 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
             {status.updatedAt && (
               <span className="text-outline flex items-center gap-1 tabular-nums">
                 <History className="size-3" />
-                Updated {new Date(status.updatedAt).toISOString().slice(11, 19)} UTC
+                Updated {new Date(status.updatedAt)
+                  .toISOString()
+                  .slice(11, 19)}{" "}
+                UTC
               </span>
             )}
           </div>
@@ -86,7 +117,9 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label className={labelClass} htmlFor="smtp-host">SMTP Host</Label>
+              <Label className={labelClass} htmlFor="smtp-host">
+                SMTP Host
+              </Label>
               <Input
                 id="smtp-host"
                 value={fields.host}
@@ -96,7 +129,9 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
               />
             </div>
             <div className="space-y-1.5">
-              <Label className={labelClass} htmlFor="smtp-port">SMTP Port</Label>
+              <Label className={labelClass} htmlFor="smtp-port">
+                SMTP Port
+              </Label>
               <Input
                 id="smtp-port"
                 type="number"
@@ -112,8 +147,13 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className={labelClass} htmlFor="smtp-security">Security</Label>
-              <Select value={fields.security} onValueChange={(value) => setSecurity(value as EmailSecurity)}>
+              <Label className={labelClass} htmlFor="smtp-security">
+                Security
+              </Label>
+              <Select
+                value={fields.security}
+                onValueChange={(value) => setSecurity(value as EmailSecurity)}
+              >
                 <SelectTrigger id="smtp-security" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -127,7 +167,9 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className={labelClass} htmlFor="smtp-username">Username</Label>
+              <Label className={labelClass} htmlFor="smtp-username">
+                Username
+              </Label>
               <Input
                 id="smtp-username"
                 value={fields.username}
@@ -140,19 +182,27 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className={labelClass} htmlFor="smtp-password">Password</Label>
+              <Label className={labelClass} htmlFor="smtp-password">
+                Password
+              </Label>
               <Input
                 id="smtp-password"
                 type="password"
                 autoComplete="off"
                 value={fields.password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder={isEdit ? "Leave blank to keep the current password" : "SMTP password"}
+                placeholder={
+                  isEdit
+                    ? "Leave blank to keep the current password"
+                    : "SMTP password"
+                }
                 required={!isEdit}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className={labelClass} htmlFor="smtp-from-email">From Email</Label>
+              <Label className={labelClass} htmlFor="smtp-from-email">
+                From Email
+              </Label>
               <Input
                 id="smtp-from-email"
                 type="email"
@@ -165,12 +215,14 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
           </div>
 
           <div className="space-y-1.5">
-            <Label className={labelClass} htmlFor="smtp-from-name">From Name</Label>
+            <Label className={labelClass} htmlFor="smtp-from-name">
+              From Name
+            </Label>
             <Input
               id="smtp-from-name"
               value={fields.fromName}
               onChange={(event) => setFromName(event.target.value)}
-              placeholder="SLA Breach Monitoring"
+              placeholder="Elapsed"
             />
           </div>
 
@@ -182,17 +234,33 @@ export function EmailNotificationsCard({ status }: EmailNotificationsCardProps) 
           )}
 
           <div className="bg-surface-container -mx-6 -mb-6 mt-2 flex flex-wrap items-center justify-end gap-2 px-6 py-4">
-            <Button type="button" size="sm" variant="surface" onClick={handleTestConnection} disabled={anyPending}>
+            <Button
+              type="button"
+              size="sm"
+              variant="surface"
+              onClick={handleTestConnection}
+              disabled={anyPending}
+            >
               {testConnection.pending && <Loader2 className="animate-spin" />}
               {testConnection.pending ? "Testing…" : "Test Connection"}
             </Button>
-            <Button type="button" size="sm" variant="surface" onClick={handleSendTest} disabled={anyPending}>
+            <Button
+              type="button"
+              size="sm"
+              variant="surface"
+              onClick={handleSendTest}
+              disabled={anyPending}
+            >
               {testSend.pending && <Loader2 className="animate-spin" />}
               {testSend.pending ? "Sending…" : "Send Test Email"}
             </Button>
             <Button type="submit" size="sm" disabled={anyPending}>
               {saving && <Loader2 className="animate-spin" />}
-              {saving ? "Saving…" : isEdit ? "Save changes" : "Save Configuration"}
+              {saving
+                ? "Saving…"
+                : isEdit
+                  ? "Save changes"
+                  : "Save Configuration"}
             </Button>
           </div>
 

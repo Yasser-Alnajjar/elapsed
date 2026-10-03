@@ -80,7 +80,7 @@ export default function GettingStartedPage() {
 
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">
-              Get started with SLA Breach Monitoring
+              Get started with Elapsed
             </h1>
 
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
@@ -95,9 +95,9 @@ export default function GettingStartedPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Overview</h2>
 
           <p className="leading-7 text-muted-foreground">
-            SLA Breach Monitoring brings customer support and engineering
-            activity together into a single view. It helps teams identify cases
-            where customer-facing work continues while the case is being handled
+            Elapsed brings customer support and engineering activity together
+            into a single view. It helps teams identify cases where
+            customer-facing work continues while the case is being handled
             across different systems or teams.
           </p>
 
@@ -115,9 +115,8 @@ export default function GettingStartedPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            SLA Breach Monitoring is designed for teams responsible for customer
-            response, support operations, customer success, and engineering
-            delivery.
+            Elapsed is designed for teams responsible for customer response,
+            support operations, customer success, and engineering delivery.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">

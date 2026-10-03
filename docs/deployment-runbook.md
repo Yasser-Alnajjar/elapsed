@@ -1,6 +1,6 @@
 # Production Docker Deployment Runbook
 
-This document describes the correct deployment flow for the SLA Breach Monitoring production Docker stack.
+This document describes the correct deployment flow for the Elapsed production Docker stack.
 
 The stack consists of:
 

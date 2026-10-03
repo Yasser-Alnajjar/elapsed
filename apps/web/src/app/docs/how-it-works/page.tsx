@@ -98,7 +98,7 @@ export default function HowItWorksPage() {
 
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">
-              How SLA Breach Monitoring works
+              How Elapsed works
             </h1>
 
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
@@ -125,10 +125,10 @@ export default function HowItWorksPage() {
           </p>
 
           <p className="leading-7 text-muted-foreground">
-            SLA Breach Monitoring reconstructs one honest elapsed-time number
-            per commitment, across however many systems the work touched, from
-            the events those systems actually reported — and shows its work, so
-            the number is something you can explain rather than defend.
+            Elapsed reconstructs one honest elapsed-time number per commitment,
+            across however many systems the work touched, from the events those
+            systems actually reported — and shows its work, so the number is
+            something you can explain rather than defend.
           </p>
 
           <Alert>
@@ -204,10 +204,10 @@ export default function HowItWorksPage() {
 
           <p className="leading-7 text-muted-foreground">
             A customer submits a P1 ticket in Zendesk. The moment the ticket is
-            created, SLA Breach Monitoring matches it against your imported
-            Zendesk SLA policies and opens two commitments — a first-response
-            target and a resolution target — each bound to the exact policy
-            version and business calendar in effect at that instant.
+            created, Elapsed matches it against your imported Zendesk SLA
+            policies and opens two commitments — a first-response target and a
+            resolution target — each bound to the exact policy version and
+            business calendar in effect at that instant.
           </p>
 
           <p className="leading-7 text-muted-foreground">

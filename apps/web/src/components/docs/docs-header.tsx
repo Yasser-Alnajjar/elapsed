@@ -18,7 +18,7 @@ export async function DocsHeader() {
         <span className="truncate text-sm font-semibold">Documentation</span>
 
         <span className="hidden text-sm text-muted-foreground sm:inline">
-          SLA Breach Monitoring
+          Elapsed
         </span>
       </div>
       <div className="flex-1" />

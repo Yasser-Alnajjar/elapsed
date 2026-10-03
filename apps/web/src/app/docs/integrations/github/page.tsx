@@ -40,7 +40,10 @@ export default function GithubIntegrationPage() {
               Tracks engineering-leg time directly from pull requests, for teams
               whose escalations show up as code changes before they show up as
               tickets. This integration is in Beta — see{" "}
-              <Link href="#limitations" className="underline underline-offset-4">
+              <Link
+                href="#limitations"
+                className="underline underline-offset-4"
+              >
                 Known limitations
               </Link>
               .
@@ -66,8 +69,8 @@ export default function GithubIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            GitHub is connected through a GitHub App, not a classic OAuth App.
-            A GitHub App can be limited to read-only permissions and to the
+            GitHub is connected through a GitHub App, not a classic OAuth App. A
+            GitHub App can be limited to read-only permissions and to the
             repositories you install it on.
           </p>
 
@@ -83,7 +86,7 @@ export default function GithubIntegrationPage() {
                 and click <strong>New GitHub App</strong>.
               </>,
               <>
-                Name it (e.g. &quot;SLA Breach Monitoring&quot;), set a{" "}
+                Name it (e.g. &quot;Elapsed&quot;), set a{" "}
                 <strong>Homepage URL</strong> (any valid URL for your deployment
                 works), and set the <strong>Callback URL</strong> to{" "}
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -134,7 +137,7 @@ export default function GithubIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            In SLA Breach Monitoring, go to{" "}
+            In Elapsed, go to{" "}
             <strong>Settings → Integrations → GitHub → Configure</strong> and
             paste in the Client ID and Client Secret, then save.
           </p>
@@ -163,10 +166,10 @@ export default function GithubIntegrationPage() {
             <AlertDescription>
               A GitHub App can be installed on many repositories and has no
               single &quot;workspace&quot; the way a Jira site or Linear
-              workspace does, so your organization names one repository to
-              track when connecting. Connecting fails with an error if the
-              GitHub App isn&apos;t installed on that repository, or if the
-              user authorizing it can&apos;t read it.
+              workspace does, so your organization names one repository to track
+              when connecting. Connecting fails with an error if the GitHub App
+              isn&apos;t installed on that repository, or if the user
+              authorizing it can&apos;t read it.
             </AlertDescription>
           </Alert>
         </section>
@@ -187,21 +190,20 @@ export default function GithubIntegrationPage() {
           <p className="leading-7 text-muted-foreground">
             The token this product holds can only do what both the GitHub App
             and the user who connected it are allowed to do, and only on
-            repositories the App is installed on. It can&apos;t write to
-            GitHub.
+            repositories the App is installed on. It can&apos;t write to GitHub.
           </p>
 
           <Alert variant="warning">
             <Info className="size-4" />
             <AlertTitle>Connected with a classic OAuth App?</AlertTitle>
             <AlertDescription>
-              Earlier versions connected GitHub through a classic OAuth App
-              with the{" "}
+              Earlier versions connected GitHub through a classic OAuth App with
+              the{" "}
               <code className="rounded bg-muted px-1 py-0.5 text-xs">repo</code>{" "}
               scope, which includes write access. It was never used to write,
               but that connection keeps its broader token until you switch. To
-              switch, create a GitHub App as described above, replace the
-              Client ID and secret under{" "}
+              switch, create a GitHub App as described above, replace the Client
+              ID and secret under{" "}
               <strong>Settings → Integrations → GitHub → Configure</strong>,
               reconnect, then delete the old OAuth App in GitHub to revoke its
               token.

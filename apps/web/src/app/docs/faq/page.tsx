@@ -7,19 +7,19 @@ import { Separator } from "@/components/ui/separator";
 
 const faqs = [
   {
-    q: "What systems does SLA Breach Monitoring support?",
+    q: "What systems does Elapsed support?",
     a: "Zendesk and Intercom as ticket sources; Jira, Linear, and GitHub as engineering-side sources; Slack and email for alerts.",
   },
   {
-    q: "Is SLA Breach Monitoring read-only?",
+    q: "Is Elapsed read-only?",
     a: "Yes, for every connected data source (Zendesk, Jira, Linear, Intercom, GitHub) — it only reads. The only outbound writes anywhere in the product are a Slack message and an alert email. GitHub is connected through a GitHub App you create with read-only permissions, installed only on the repositories you choose.",
   },
   {
-    q: "Does SLA Breach Monitoring modify Zendesk?",
+    q: "Does Elapsed modify Zendesk?",
     a: "No. No ticket, field, tag, or comment is ever created or changed.",
   },
   {
-    q: "Does SLA Breach Monitoring modify Jira?",
+    q: "Does Elapsed modify Jira?",
     a: "No. No issue, status, comment, or field is ever created or changed.",
   },
   {
@@ -102,7 +102,7 @@ export default function FaqPage() {
 
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
               Quick, direct answers to the questions that come up most when
-              evaluating or running SLA Breach Monitoring.
+              evaluating or running Elapsed.
             </p>
           </div>
         </header>
