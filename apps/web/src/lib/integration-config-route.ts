@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getIntegrationConfigStatus,
   saveIntegrationConfig,
+  deleteIntegrationConfig,
   type ConfigurableIntegrationProvider,
   getPrismaClient,
 } from "@sla/db";
@@ -10,7 +11,7 @@ import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 
 /**
- * Shared GET/POST handlers for `/api/integrations/{provider}/config`,
+ * Shared GET/POST/DELETE handlers for `/api/integrations/{provider}/config`,
  * reused by the zendesk/jira/slack route files — the three configurable
  * integrations all save the same shape (client id + secret), so this is the
  * one place that logic lives rather than being copy-pasted three times.
@@ -105,5 +106,43 @@ export function createIntegrationConfigHandlers(
     return NextResponse.json(status);
   }
 
-  return { GET, POST };
+  /**
+   * Permanently deletes the configuration (see `deleteIntegrationConfig`):
+   * unlike `/disconnect`, the integration returns to its unconfigured state
+   * and must be configured from scratch before it can be connected again.
+   * Refused with 409 while the integration is connected — disconnect first.
+   */
+  async function DELETE() {
+    const session = await getServerSession(authOptions);
+    if (!session)
+      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+    const denied = requireOwner(session);
+    if (denied) return denied;
+
+    const result = await deleteIntegrationConfig(
+      getPrismaClient(),
+      session.user.organizationId,
+      provider,
+    );
+
+    if (result === "not_configured") {
+      return NextResponse.json(
+        { error: "This integration is not configured" },
+        { status: 404 },
+      );
+    }
+    if (result === "connected") {
+      return NextResponse.json(
+        {
+          error:
+            "Disconnect this integration before deleting its configuration",
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json({ configured: false, clientId: null });
+  }
+
+  return { GET, POST, DELETE };
 }

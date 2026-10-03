@@ -10,6 +10,7 @@ export {
   getIntegrationConfig,
   getIntegrationConfigStatus,
   saveIntegrationConfig,
+  deleteIntegrationConfig,
   encryptSecret,
   decryptSecret,
   IntegrationConfigUnreadableError,
@@ -18,6 +19,7 @@ export type {
   ConfigurableIntegrationProvider,
   IntegrationOAuthCredentials,
   IntegrationConfigStatus,
+  DeleteIntegrationConfigResult,
 } from "./integration-config";
 export {
   isEncryptedToken,

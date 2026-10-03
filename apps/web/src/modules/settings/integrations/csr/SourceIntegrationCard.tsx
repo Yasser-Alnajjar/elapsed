@@ -51,6 +51,7 @@ export function SourceIntegrationCard({
         provider={provider}
         providerLabel={label}
         config={config}
+        connected={view.connected}
         descriptionClass={descriptionClass}
         helpUrl={spec.help.url}
         helpLabel={spec.help.label}

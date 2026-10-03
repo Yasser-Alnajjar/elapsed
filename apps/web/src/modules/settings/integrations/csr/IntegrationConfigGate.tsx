@@ -7,12 +7,15 @@ import type {
   ConfigurableIntegrationProvider,
   IntegrationConfigStatus,
 } from "@/lib/types/integrations";
+import { DeleteConfigurationButton } from "./DeleteConfigurationButton";
 import { IntegrationConfigForm } from "./IntegrationConfigForm";
 
 interface IntegrationConfigGateProps {
   provider: ConfigurableIntegrationProvider;
   providerLabel: string;
   config: IntegrationConfigStatus;
+  /** Whether the provider currently has a live connection. Delete configuration is only offered while it doesn't — a connected integration shows Disconnect instead. */
+  connected: boolean;
   descriptionClass: string;
   /** Rendered instead of the config form once `config.configured` is true — the existing connect/connected UI for this provider. */
   children: ReactNode;
@@ -20,7 +23,8 @@ interface IntegrationConfigGateProps {
   helpUrl?: string;
   helpLabel?: string;
   /**
-   * Called after the config form saves successfully, in addition to
+   * Called after the config form saves (or the configuration is deleted)
+   * successfully, in addition to
    * `router.refresh()`. Callers that hold their own client-side copy of
    * server data (e.g. onboarding's `useOnboardingBackfill`) need this since
    * `router.refresh()` alone re-renders the server tree but won't update
@@ -35,14 +39,16 @@ interface IntegrationConfigGateProps {
  * (existing connect/connected UI never renders, since there's nothing to
  * connect with) — the client id/secret inputs themselves only appear once
  * that button is clicked, not up front. Configured: renders `children`
- * as-is, plus a small affordance to edit the saved configuration later —
+ * as-is, plus small affordances to edit the saved configuration later —
  * the client secret is only ever write-only, so editing reuses the same
- * form with the client id prefilled.
+ * form with the client id prefilled — or, while not connected, to delete it
+ * outright, which returns the card to the unconfigured state.
  */
 export function IntegrationConfigGate({
   provider,
   providerLabel,
   config,
+  connected,
   descriptionClass,
   children,
   helpUrl,
@@ -52,7 +58,7 @@ export function IntegrationConfigGate({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
 
-  const handleSaved = () => {
+  const handleConfigChanged = () => {
     router.refresh();
     onConfigured?.();
   };
@@ -76,7 +82,7 @@ export function IntegrationConfigGate({
         <IntegrationConfigForm
           provider={provider}
           providerLabel={providerLabel}
-          onSaved={handleSaved}
+          onSaved={handleConfigChanged}
         />
       </div>
     );
@@ -91,7 +97,7 @@ export function IntegrationConfigGate({
           initialClientId={config.clientId}
           onSaved={() => {
             setEditing(false);
-            handleSaved();
+            handleConfigChanged();
           }}
           onCancel={() => setEditing(false)}
         />
@@ -102,14 +108,23 @@ export function IntegrationConfigGate({
   return (
     <>
       {children}
-      <Button
-        type="button"
-        variant="link"
-        onClick={() => setEditing(true)}
-        className="mt-3 h-auto self-start p-0 text-xs font-normal text-on-surface-variant underline-offset-2 hover:text-foreground hover:underline"
-      >
-        Edit configuration
-      </Button>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <Button
+          type="button"
+          variant="link"
+          onClick={() => setEditing(true)}
+          className="h-auto self-start p-0 text-xs font-normal text-on-surface-variant underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Edit configuration
+        </Button>
+        {!connected && (
+          <DeleteConfigurationButton
+            provider={provider}
+            providerLabel={providerLabel}
+            onDeleted={handleConfigChanged}
+          />
+        )}
+      </div>
     </>
   );
 }

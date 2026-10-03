@@ -45,6 +45,7 @@ export function SlackIntegrationCard({
         provider="slack"
         providerLabel="Slack"
         config={config}
+        connected={slack.connected}
         descriptionClass={descriptionClass}
         helpUrl="https://api.slack.com/apps"
         helpLabel="Get your Slack app credentials"

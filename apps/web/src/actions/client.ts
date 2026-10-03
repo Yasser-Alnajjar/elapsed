@@ -157,6 +157,19 @@ export const Actions = {
         input,
       );
     },
+    async deleteIntegrationConfig(provider: ConfigurableIntegrationProvider) {
+      const response = await fetch(`/api/integrations/${provider}/config`, {
+        method: "DELETE",
+      });
+      if (response.ok) return { ok: true as const };
+      const body = await response.json().catch(() => null);
+      return {
+        ok: false as const,
+        error:
+          (body?.error as string | undefined) ??
+          "Failed to delete configuration",
+      };
+    },
     async disconnect(provider: IntegrationProvider | "slack") {
       const response = await fetch(`/api/integrations/${provider}/disconnect`, {
         method: "POST",

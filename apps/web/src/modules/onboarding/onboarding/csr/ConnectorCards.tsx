@@ -144,6 +144,7 @@ export function AlternativeConnectorCard({
         provider={provider.provider}
         providerLabel={provider.label}
         config={provider.config}
+        connected={provider.connected}
         descriptionClass={DESCRIPTION_CLASS}
         helpUrl={help?.url}
         helpLabel={help?.label}
@@ -187,6 +188,7 @@ export function PrimaryConnectorCard({
         provider={provider.provider}
         providerLabel={provider.label}
         config={provider.config}
+        connected={provider.connected}
         descriptionClass={DESCRIPTION_CLASS}
         helpUrl={help?.url}
         helpLabel={help?.label}

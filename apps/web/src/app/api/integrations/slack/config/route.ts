@@ -1,3 +1,3 @@
 import { createIntegrationConfigHandlers } from "@/lib/integration-config-route";
 
-export const { GET, POST } = createIntegrationConfigHandlers("slack");
+export const { GET, POST, DELETE } = createIntegrationConfigHandlers("slack");
