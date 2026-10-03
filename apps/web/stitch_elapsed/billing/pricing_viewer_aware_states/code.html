@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elapsed — Pricing & Viewer-Aware Subscription Experience</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            background: 'var(--background)',
+            surface: 'var(--surface)',
+            'surface-raised': 'var(--surface-raised)',
+            'surface-overlay': 'var(--surface-overlay)',
+            'surface-hover': 'var(--surface-hover)',
+            border: 'var(--border)',
+            'border-strong': 'var(--border-strong)',
+            foreground: 'var(--foreground)',
+            'foreground-muted': 'var(--foreground-muted)',
+            'foreground-subtle': 'var(--foreground-subtle)',
+            primary: {
+              DEFAULT: '#0ea5e9',
+              hover: '#38bdf8',
+              subtle: 'rgba(14, 165, 233, 0.12)',
+            },
+            success: {
+              DEFAULT: '#10b981',
+              subtle: 'rgba(16, 185, 129, 0.12)',
+              border: 'rgba(16, 185, 129, 0.3)',
+            },
+            warning: {
+              DEFAULT: '#f59e0b',
+              subtle: 'rgba(245, 158, 11, 0.12)',
+              border: 'rgba(245, 158, 11, 0.35)',
+            },
+            danger: {
+              DEFAULT: '#f43f5e',
+              subtle: 'rgba(244, 63, 94, 0.12)',
+              border: 'rgba(244, 63, 94, 0.35)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root.dark {
+      --background: #060a12;
+      --surface: #0b1324;
+      --surface-raised: #111c34;
+      --surface-overlay: #1a2745;
+      --surface-hover: #233356;
+      --border: #1c273c;
+      --border-strong: #2d3c59;
+      --foreground: #f8fafc;
+      --foreground-muted: #94a3b8;
+      --foreground-subtle: #64748b;
+    }
+    :root:not(.dark) {
+      --background: #f8fafc;
+      --surface: #ffffff;
+      --surface-raised: #f1f5f9;
+      --surface-overlay: #ffffff;
+      --surface-hover: #e2e8f0;
+      --border: #cbd5e1;
+      --border-strong: #94a3b8;
+      --foreground: #0f172a;
+      --foreground-muted: #475569;
+      --foreground-subtle: #64748b;
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-background text-foreground min-h-screen font-sans antialiased transition-colors duration-200">
+
+  <!-- Interactive Controls Bar (Viewer State & Theme Matrix Switcher) -->
+  <div class="sticky top-0 z-50 border-b border-border bg-surface-overlay/95 backdrop-blur px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 shadow-md">
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/20 text-primary font-mono font-semibold uppercase tracking-wider text-[10px]">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+        Interactive Viewer State Simulator
+      </span>
+      <span class="text-foreground-muted hidden md:inline">Select test matrix persona to test exact CTA and Context Strip behaviors:</span>
+    </div>
+    
+    <div class="flex items-center gap-2 flex-wrap">
+      <select id="stateSelector" onchange="switchViewerState(this.value)" class="bg-surface-raised border border-border-strong text-foreground rounded px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary">
+        <option value="state-anonymous">1. Anonymous Visitor</option>
+        <option value="state-member">2. Member (Non-Owner)</option>
+        <option value="state-trial-owner" selected>3. Owner · Active Trial (Ends Oct 17)</option>
+        <option value="state-trial-ended">4. Owner · Trial Ended (Unsubscribed)</option>
+        <option value="state-team-active">5. Owner · Active on Team (Renews Nov 3)</option>
+        <option value="state-starter-active">6. Owner · Active on Starter</option>
+        <option value="state-downgrade-scheduled">7. Owner · Downgrade Scheduled (To Starter on Nov 3)</option>
+        <option value="state-seats-blocking">8. Owner · 7 Seats in Use (Starter Blocked)</option>
+        <option value="state-past-due">9. Owner · Past Due (Direct Invoice Grace)</option>
+        <option value="state-internal">10. Internal Org (Not Billed)</option>
+      </select>
+
+      <button onclick="toggleTheme()" class="px-2.5 py-1 rounded bg-surface border border-border hover:bg-surface-hover text-foreground font-mono text-[11px] flex items-center gap-1.5">
+        <span id="themeLabel">Light Mode</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Site Header (Existing Marketing Standard) -->
+  <header class="border-b border-border bg-background/80 backdrop-blur sticky top-[41px] z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-8">
+        <a href="#" class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded border border-primary/40 bg-surface-raised flex items-center justify-center p-1">
+            <svg viewBox="0 0 200 44" class="w-full h-full" fill="none">
+              <circle cx="20" cy="22" r="14" fill="#0ea5e9"/>
+              <path d="M40 22H160" stroke="#0ea5e9" stroke-width="8"/>
+              <circle cx="180" cy="22" r="14" fill="#f59e0b"/>
+            </svg>
+          </div>
+          <span class="font-bold tracking-tight text-base font-sans">Elapsed</span>
+          <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface-raised text-primary border border-border">SLA Observability</span>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-6 text-sm text-foreground-muted">
+          <a href="#" class="hover:text-foreground transition-colors">Product</a>
+          <a href="#" class="hover:text-foreground transition-colors">Architecture</a>
+          <a href="#" class="text-foreground font-medium">Pricing</a>
+          <a href="#" class="hover:text-foreground transition-colors">Status</a>
+          <a href="#" class="hover:text-foreground transition-colors">Docs</a>
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div id="authNavAnonymous" class="flex items-center gap-3">
+          <a href="#" class="text-sm font-medium text-foreground-muted hover:text-foreground">Sign in</a>
+          <a href="#" class="text-xs font-semibold px-3 py-1.5 rounded bg-primary text-background hover:bg-primary-hover transition-colors">Start free trial</a>
+        </div>
+        <div id="authNavSignedIn" class="hidden items-center gap-3">
+          <div class="flex items-center gap-2 text-xs font-mono text-foreground-muted border-r border-border pr-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-foreground font-semibold">Dataship Global</span>
+            <span id="roleBadge" class="text-[10px] uppercase px-1 rounded bg-surface-raised border border-border text-foreground-subtle">OWNER</span>
+          </div>
+          <a href="#" class="text-xs font-medium px-3 py-1.5 rounded bg-surface border border-border hover:bg-surface-hover text-foreground">Open App</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+    <div class="text-center max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-raised border border-border text-xs text-foreground-muted mb-4 font-mono">
+        <span class="text-primary font-bold">14-DAY TRIAL</span>
+        <span>·</span>
+        <span>Full access across all connectors</span>
+        <span>·</span>
+        <span>No credit card required</span>
+      </div>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+        Simple pricing, per organization
+      </h1>
+      <p class="mt-4 text-base md:text-lg text-foreground-muted leading-relaxed">
+        Flat monthly rates with no per-seat penalties, usage spikes, or credit cards. One honest clock keeping Support and Engineering synchronized before SLAs breach.
+      </p>
+
+      <!-- Compact Viewer Context Strip (Viewer-Aware) -->
+      <div id="viewerContextStrip" class="mt-8 max-w-2xl mx-auto p-3 rounded-lg border border-border bg-surface text-left transition-all">
+        <!-- Rendered dynamically via switchViewerState() -->
+      </div>
+    </div>
+
+    <!-- Pricing Cards Grid (3 Columns Desktop, 1 Column Mobile) -->
+    <div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+
+      <!-- Plan Card 1: Starter -->
+      <div id="cardStarter" class="relative rounded-lg border border-border bg-surface p-6 md:p-8 flex flex-col justify-between transition-all hover:border-border-strong">
+        <div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-foreground">Starter</h3>
+            <span id="pillStarter" class="hidden text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border"></span>
+          </div>
+          <p class="mt-2 text-xs text-foreground-muted">For small teams establishing their first unified SLA handoff.</p>
+          
+          <div class="mt-6 flex items-baseline gap-1">
+            <span class="text-4xl font-bold font-mono tracking-tight tabular text-foreground">$49</span>
+            <span class="text-sm font-mono text-foreground-subtle">/ month</span>
+          </div>
+          <div class="text-[11px] font-mono text-foreground-subtle mt-1">Flat rate · USD only · No per-seat billing</div>
+
+          <div class="my-6 border-t border-border"></div>
+
+          <div class="text-[10px] font-mono uppercase tracking-wider text-foreground-subtle font-semibold mb-3">INCLUDED CAPABILITIES</div>
+          <ul class="space-y-3 text-xs text-foreground-muted">
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground font-mono">5</strong> licensed seats included</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">1 Support</strong> integration (Zendesk or Intercom)</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">1 Engineering</strong> integration (Jira, Linear, GitHub)</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground font-mono">3</strong> active SLA policies</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Email notification dispatch</span>
+            </li>
+            <li class="flex items-start gap-2.5 text-foreground-subtle">
+              <svg class="w-4 h-4 text-foreground-subtle shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/>
+              </svg>
+              <span>No automated Slack countdown threads</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-border/50">
+          <div id="ctaStarterContainer">
+            <!-- CTA injected dynamically based on state -->
+          </div>
+          <div id="helperStarter" class="mt-2 text-center text-[11px] text-foreground-subtle font-mono min-h-[16px]"></div>
+        </div>
+      </div>
+
+      <!-- Plan Card 2: Team (Most Popular) -->
+      <div id="cardTeam" class="relative rounded-lg border-2 border-primary bg-surface-raised p-6 md:p-8 flex flex-col justify-between shadow-xl shadow-primary/5 transition-all">
+        <!-- Badge -->
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-primary text-background font-mono text-[10px] font-bold uppercase tracking-wider shadow">
+            ● Most Popular
+          </span>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-foreground">Team</h3>
+            <span id="pillTeam" class="hidden text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border"></span>
+          </div>
+          <p class="mt-2 text-xs text-foreground-muted">Continuous handoff observability for scaling engineering & support orgs.</p>
+          
+          <div class="mt-6 flex items-baseline gap-1">
+            <span class="text-4xl font-bold font-mono tracking-tight tabular text-foreground">$149</span>
+            <span class="text-sm font-mono text-foreground-subtle">/ month</span>
+          </div>
+          <div class="text-[11px] font-mono text-foreground-subtle mt-1">Flat rate · USD only · Complete feature set</div>
+
+          <div class="my-6 border-t border-border"></div>
+
+          <div class="text-[10px] font-mono uppercase tracking-wider text-primary font-semibold mb-3">EVERYTHING IN STARTER, PLUS:</div>
+          <ul class="space-y-3 text-xs text-foreground-muted">
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground font-mono">20</strong> licensed seats included</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Unlimited</strong> support integrations</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Unlimited</strong> issue tracker integrations</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Unlimited</strong> SLA contract policies</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Slack alerts before breach</strong> with dynamic runway card</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Full case correlation</strong> (regex, commit keys, PR auto-links)</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-border">
+          <div id="ctaTeamContainer">
+            <!-- CTA injected dynamically based on state -->
+          </div>
+          <div id="helperTeam" class="mt-2 text-center text-[11px] text-foreground-subtle font-mono min-h-[16px]"></div>
+        </div>
+      </div>
+
+      <!-- Plan Card 3: Enterprise -->
+      <div id="cardEnterprise" class="relative rounded-lg border border-border bg-surface p-6 md:p-8 flex flex-col justify-between transition-all hover:border-border-strong">
+        <div>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-foreground">Enterprise</h3>
+            <span class="text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground-subtle">Custom</span>
+          </div>
+          <p class="mt-2 text-xs text-foreground-muted">Custom contract terms, strict legal compliance, and dedicated telemetry pipelines.</p>
+          
+          <div class="mt-6 flex items-baseline gap-1">
+            <span class="text-3xl font-bold font-mono tracking-tight text-foreground">Contract</span>
+            <span class="text-sm font-mono text-foreground-subtle">/ custom</span>
+          </div>
+          <div class="text-[11px] font-mono text-foreground-subtle mt-1">Priced by contract · Invoiced annually or Net-30</div>
+
+          <div class="my-6 border-t border-border"></div>
+
+          <div class="text-[10px] font-mono uppercase tracking-wider text-foreground-subtle font-semibold mb-3">ENTERPRISE ASSURANCE</div>
+          <ul class="space-y-3 text-xs text-foreground-muted">
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span><strong class="text-foreground">Unlimited</strong> seats & dedicated poller daemons</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Sub-minute high-frequency sync frequency</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Cryptographic dispute audit defense package builder</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Custom legal MSA, security covenants, and vendor forms</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Dedicated Customer Success Architect</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-border/50">
+          <div id="ctaEnterpriseContainer">
+            <!-- Talk to us mailto or text -->
+          </div>
+          <div class="mt-2 text-center text-[11px] text-foreground-subtle font-mono">Custom terms & procurement support</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Live Limit Policy Reassurance Strip -->
+    <div class="mt-12 rounded-lg border border-border bg-surface p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded bg-primary-subtle border border-primary/30 flex items-center justify-center shrink-0 text-primary">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-foreground">Operational Continuity Guarantee</h4>
+          <p class="text-xs text-foreground-muted mt-0.5">
+            If your organization temporarily exceeds integration or policy thresholds, <strong class="text-foreground">monitoring, alerts, cases, and historical data never pause</strong>. You will receive an informational warning banner, but continuous protection is never interrupted.
+          </p>
+        </div>
+      </div>
+      <div class="shrink-0 flex items-center gap-2 text-xs font-mono text-foreground-subtle">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>DAEMON HEALTH: 99.992%</span>
+      </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="mt-20 max-w-4xl mx-auto">
+      <div class="text-center mb-10">
+        <div class="text-[10px] font-mono uppercase tracking-widest text-primary font-bold mb-1">QUESTIONS & ANSWERS</div>
+        <h2 class="text-2xl font-bold tracking-tight text-foreground">Frequently asked questions</h2>
+      </div>
+
+      <div class="space-y-4">
+        <!-- FAQ 1: How billing works (Mandatory) -->
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            How does billing work?
+          </h3>
+          <p class="mt-2 text-xs text-foreground-muted leading-relaxed">
+            Elapsed subscriptions are billed flat monthly in USD. There are no credit cards required to start. Invoices are issued directly to your organization on a net-14 settlement schedule. When your trial ends or when you initiate a paid plan, your direct invoice is generated in your Billing tab. You can cancel at any time—cancellations always take effect at the end of the current billing period, and monitoring never pauses.
+          </p>
+        </div>
+
+        <!-- FAQ 2: Limits & Overages -->
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            What happens if we exceed integration or policy limits?
+          </h3>
+          <p class="mt-2 text-xs text-foreground-muted leading-relaxed">
+            Nothing is ever switched off. Going over your plan's integration or SLA policy count simply shows an informational warning in your Settings. Ingestion, handoff calculations, alerts, and historical proof chains continue running uninterrupted.
+          </p>
+        </div>
+
+        <!-- FAQ 3: Upgrades & Downgrades -->
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            How do plan upgrades and downgrades take effect?
+          </h3>
+          <p class="mt-2 text-xs text-foreground-muted leading-relaxed">
+            Upgrades (Starter → Team) apply immediately, and the prorated difference for the remaining days in your cycle is added to your next direct invoice. Downgrades (Team → Starter) remain active until the end of your prepaid period. If your current team has more seats in use than the target plan allows (e.g. 7 seats used vs. Starter's 5 limit), you must remove members before scheduling the downgrade.
+          </p>
+        </div>
+
+        <!-- FAQ 4: Who can manage billing -->
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            Who in our company has permission to modify billing?
+          </h3>
+          <p class="mt-2 text-xs text-foreground-muted leading-relaxed">
+            Only the designated <strong class="text-foreground font-mono">Organization Owner</strong> can subscribe, change plans, or schedule cancellation. Organization Members have read-only access to view current plan entitlements and download invoice receipts.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="mt-20 border-t border-border bg-background py-10 text-xs text-foreground-subtle">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-4 h-4 rounded bg-primary/20 border border-primary/40 flex items-center justify-center text-[10px] text-primary font-bold">E</div>
+        <span class="font-medium text-foreground">Elapsed Observability Inc.</span>
+        <span>·</span>
+        <span>One honest clock across the handoff.</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="#" class="hover:text-foreground">Terms of Service</a>
+        <a href="#" class="hover:text-foreground">Privacy Policy</a>
+        <a href="#" class="hover:text-foreground">Security & Attestation</a>
+        <a href="#" class="hover:text-foreground">System Status</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- State Simulation JavaScript Engine -->
+  <script>
+    // State definitions according to user prompt specification
+    const states = {
+      'state-anonymous': {
+        signedIn: false,
+        strip: null,
+        starterCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground transition-colors">Start free trial</a>',
+        starterHelper: '14 days full access · No card required',
+        starterPill: null,
+        teamCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-primary hover:bg-primary-hover text-center text-xs font-semibold text-background transition-colors shadow">Start free trial</a>',
+        teamHelper: '14 days full access · No card required',
+        teamPill: null,
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io?subject=Enterprise%20Plan%20Inquiry" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground transition-colors">Talk to us</a>'
+      },
+      'state-member': {
+        signedIn: true,
+        role: 'MEMBER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              <span class="font-semibold text-foreground">Dataship Global</span>
+              <span class="font-mono text-foreground-muted">· Current plan: Team</span>
+            </div>
+            <span class="text-[11px] font-mono text-foreground-subtle">Read-only view</span>
+          </div>
+        `,
+        starterCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface border border-border text-foreground-subtle cursor-not-allowed text-xs font-semibold opacity-60">Choose Starter</button>',
+        starterHelper: 'Only an organization owner can manage billing.',
+        starterPill: null,
+        teamCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface-raised border border-border text-foreground-subtle cursor-not-allowed text-xs font-semibold opacity-60">Current plan</button>',
+        teamHelper: 'Only an organization owner can manage billing.',
+        teamPill: { text: '● Current plan', class: 'bg-primary-subtle text-primary border-primary/30' },
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-trial-owner': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              <span class="font-semibold text-foreground">Trial</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="font-mono text-foreground-muted">ends Oct 17, 2026 (9 days remaining)</span>
+            </div>
+            <span class="text-[11px] font-mono text-primary font-medium">All features active</span>
+          </div>
+        `,
+        starterCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground transition-colors">Choose Starter</a>',
+        starterHelper: 'Billing starts when your trial ends on Oct 17.',
+        starterPill: null,
+        teamCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-primary hover:bg-primary-hover text-center text-xs font-semibold text-background transition-colors shadow">Choose Team</a>',
+        teamHelper: 'Billing starts when your trial ends on Oct 17.',
+        teamPill: null,
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-trial-ended': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span class="font-semibold text-amber-400">Trial ended</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="text-foreground-muted">Monitoring keeps running uninterrupted</span>
+            </div>
+            <span class="text-[11px] font-mono text-amber-400">Action required</span>
+          </div>
+        `,
+        starterCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Subscribe to Starter</a>',
+        starterHelper: 'Starts now; first invoice issued today.',
+        starterPill: null,
+        teamCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-primary hover:bg-primary-hover text-center text-xs font-semibold text-background shadow">Subscribe to Team</a>',
+        teamHelper: 'Starts now; first invoice issued today.',
+        teamPill: null,
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-team-active': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="font-semibold text-foreground">Team</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="text-emerald-400 font-mono font-medium">Active</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="font-mono text-foreground-muted">Renews Nov 3, 2026</span>
+            </div>
+            <a href="#" class="text-[11px] font-mono text-primary hover:underline">Manage in Billing →</a>
+          </div>
+        `,
+        starterCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Downgrade to Starter</a>',
+        starterHelper: 'Takes effect Nov 3, 2026',
+        starterPill: null,
+        teamCTA: `
+          <div class="flex flex-col gap-2">
+            <button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border-strong text-foreground font-semibold text-xs opacity-90 cursor-default">Current plan</button>
+            <a href="#" class="text-center text-xs text-primary hover:underline font-mono">Manage billing →</a>
+          </div>
+        `,
+        teamHelper: 'Renews Nov 3, 2026',
+        teamPill: { text: '● Active Plan', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-starter-active': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="font-semibold text-foreground">Starter</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="text-emerald-400 font-mono font-medium">Active</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="font-mono text-foreground-muted">Renews Nov 3, 2026</span>
+            </div>
+            <a href="#" class="text-[11px] font-mono text-primary hover:underline">Manage in Billing →</a>
+          </div>
+        `,
+        starterCTA: `
+          <div class="flex flex-col gap-2">
+            <button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border-strong text-foreground font-semibold text-xs opacity-90 cursor-default">Current plan</button>
+            <a href="#" class="text-center text-xs text-primary hover:underline font-mono">Manage billing →</a>
+          </div>
+        `,
+        starterHelper: 'Renews Nov 3, 2026',
+        starterPill: { text: '● Active Plan', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+        teamCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-primary hover:bg-primary-hover text-center text-xs font-semibold text-background shadow">Upgrade to Team</a>',
+        teamHelper: 'Applies now; price difference for this period is invoiced.',
+        teamPill: null,
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-downgrade-scheduled': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs bg-amber-500/5 p-2 rounded border border-amber-500/20">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span class="font-semibold text-foreground">Moves to Starter on Nov 3, 2026</span>
+              <span class="text-foreground-subtle">(Currently active on Team)</span>
+            </div>
+            <a href="#" class="text-[11px] font-mono text-amber-400 font-semibold hover:underline">Withdraw in Billing</a>
+          </div>
+        `,
+        starterCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-xs cursor-default">Scheduled for Nov 3</button>',
+        starterHelper: 'Scheduled for end of period.',
+        starterPill: { text: 'Scheduled', class: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+        teamCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-primary hover:bg-primary-hover text-center text-xs font-semibold text-background shadow">Keep Team</a>',
+        teamHelper: 'Withdraws scheduled downgrade and keeps Team benefits.',
+        teamPill: { text: 'Current (Pending Downgrade)', class: 'bg-surface-overlay text-foreground-muted border-border' },
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-seats-blocking': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs bg-surface p-1">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="font-semibold text-foreground">Team · Active</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="font-mono text-rose-400">7 seats in use</span>
+            </div>
+            <span class="text-[11px] font-mono text-foreground-subtle">Starter allows max 5 seats</span>
+          </div>
+        `,
+        starterCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-rose-500/30 text-rose-300 text-xs font-semibold opacity-80 cursor-not-allowed">7 seats are in use; Starter allows 5</button>',
+        starterHelper: 'Remove members or invitations in Organization before downgrading.',
+        starterPill: null,
+        teamCTA: `
+          <div class="flex flex-col gap-2">
+            <button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border-strong text-foreground font-semibold text-xs opacity-90 cursor-default">Current plan</button>
+            <a href="#" class="text-center text-xs text-primary hover:underline font-mono">Manage members →</a>
+          </div>
+        `,
+        teamHelper: 'Renews Nov 3, 2026',
+        teamPill: { text: '● Current plan', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-past-due': {
+        signedIn: true,
+        role: 'OWNER',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs bg-rose-500/10 p-2.5 rounded border border-rose-500/30">
+            <div class="flex items-center gap-2 text-rose-300">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              <span class="font-bold">Past Due · Direct Invoice #INV-2026-09</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="text-rose-200">Grace period active · Monitoring never pauses</span>
+            </div>
+            <a href="#" class="text-[11px] font-mono text-rose-300 underline font-semibold">View invoice in Billing →</a>
+          </div>
+        `,
+        starterCTA: '<a href="#" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Downgrade to Starter</a>',
+        starterHelper: 'Takes effect at next settlement.',
+        starterPill: null,
+        teamCTA: `
+          <div class="flex flex-col gap-2">
+            <button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-rose-500/40 text-foreground font-semibold text-xs cursor-default">Current plan (Past Due)</button>
+            <a href="#" class="text-center text-xs text-rose-400 hover:underline font-mono">Resolve invoice in Billing →</a>
+          </div>
+        `,
+        teamHelper: 'Direct invoice net-14 settlement window active',
+        teamPill: { text: '✕ Past Due', class: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
+        enterpriseCTA: '<a href="mailto:sales@elapsed.io" class="block w-full py-2.5 px-4 rounded bg-surface-raised border border-border hover:bg-surface-hover text-center text-xs font-semibold text-foreground">Talk to us</a>'
+      },
+      'state-internal': {
+        signedIn: true,
+        role: 'OPS',
+        strip: `
+          <div class="flex items-center justify-between gap-3 text-xs bg-primary-subtle p-2.5 rounded border border-primary/30">
+            <div class="flex items-center gap-2 text-primary">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              <span class="font-semibold text-foreground">Elapsed Operational Node</span>
+              <span class="text-foreground-muted">·</span>
+              <span class="text-primary font-mono">Your organization is not billed</span>
+            </div>
+            <span class="text-[10px] font-mono uppercase bg-primary/20 text-primary px-2 py-0.5 rounded">INTERNAL TIER</span>
+          </div>
+        `,
+        starterCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border text-foreground-subtle text-xs font-mono opacity-50 cursor-not-allowed">Not Applicable</button>',
+        starterHelper: 'Internal tenant allocation',
+        starterPill: null,
+        teamCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border text-foreground-subtle text-xs font-mono opacity-50 cursor-not-allowed">Not Applicable</button>',
+        teamHelper: 'Unmetered internal SLA observer',
+        teamPill: { text: 'INTERNAL', class: 'bg-primary-subtle text-primary border-primary/30' },
+        enterpriseCTA: '<button disabled class="w-full py-2.5 px-4 rounded bg-surface-overlay border border-border text-foreground-subtle text-xs font-mono opacity-50 cursor-not-allowed">Direct Operator Provisioning</button>'
+      }
+    };
+
+    function switchViewerState(stateKey) {
+      const state = states[stateKey];
+      if (!state) return;
+
+      // Update Nav
+      const navAnon = document.getElementById('authNavAnonymous');
+      const navUser = document.getElementById('authNavSignedIn');
+      const roleBadge = document.getElementById('roleBadge');
+
+      if (state.signedIn) {
+        navAnon.classList.add('hidden');
+        navUser.classList.remove('hidden');
+        navUser.classList.add('flex');
+        if (roleBadge) roleBadge.textContent = state.role || 'OWNER';
+      } else {
+        navAnon.classList.remove('hidden');
+        navUser.classList.add('hidden');
+        navUser.classList.remove('flex');
+      }
+
+      // Update Context Strip
+      const stripEl = document.getElementById('viewerContextStrip');
+      if (state.strip) {
+        stripEl.innerHTML = state.strip;
+        stripEl.classList.remove('hidden');
+      } else {
+        stripEl.classList.add('hidden');
+      }
+
+      // Update Starter Card
+      document.getElementById('ctaStarterContainer').innerHTML = state.starterCTA;
+      document.getElementById('helperStarter').textContent = state.starterHelper || '';
+      const pillStarter = document.getElementById('pillStarter');
+      if (state.starterPill) {
+        pillStarter.textContent = state.starterPill.text;
+        pillStarter.className = `text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${state.starterPill.class}`;
+        pillStarter.classList.remove('hidden');
+      } else {
+        pillStarter.classList.add('hidden');
+      }
+
+      // Update Team Card
+      document.getElementById('ctaTeamContainer').innerHTML = state.teamCTA;
+      document.getElementById('helperTeam').textContent = state.teamHelper || '';
+      const pillTeam = document.getElementById('pillTeam');
+      if (state.teamPill) {
+        pillTeam.textContent = state.teamPill.text;
+        pillTeam.className = `text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${state.teamPill.class}`;
+        pillTeam.classList.remove('hidden');
+      } else {
+        pillTeam.classList.add('hidden');
+      }
+
+      // Update Enterprise Card
+      document.getElementById('ctaEnterpriseContainer').innerHTML = state.enterpriseCTA;
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      document.getElementById('themeLabel').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    }
+
+    // Initialize Default State
+    document.addEventListener('DOMContentLoaded', () => {
+      switchViewerState('state-trial-owner');
+    });
+  </script>
+</body>
+</html>
