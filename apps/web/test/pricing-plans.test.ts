@@ -14,7 +14,7 @@ describe("pricing page and plan constant (N6.1, N6.6)", () => {
     const { PricingView } = await import("../src/modules/marketing/pricing/csr/PricingView");
     const html = decode(renderToStaticMarkup(createElement(PricingView, { viewer: resolvePricingViewer(null) })));
 
-    const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1]).filter((h) => h !== "Frequently asked questions");
+    const headings = [...html.matchAll(/<h3[^>]*>([^<]+)<\/h3>/g)].map((m) => m[1]).filter((h) => !h.startsWith("Need contract terms"));
     expect(headings).toEqual(PLAN_LIST.map((plan) => plan.name));
 
     for (const plan of PLAN_LIST) {
