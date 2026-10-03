@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { describeAuditChange, type AuditChange } from "@/lib/admin-audit-delta";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatUtcTimestamp } from "@/lib/admin-format";
 import type { AdminAuditRow } from "@/lib/types/admin";
 import { cn } from "@/lib/utils";
@@ -227,17 +228,7 @@ function Decoded({
 }
 
 function RawPayload({ raw }: { raw: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(raw);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard access can be denied; the text is on screen to select by hand.
-    }
-  }
+  const { copied, copy } = useCopyToClipboard();
 
   return (
     <div className="flex flex-col gap-2">
@@ -245,7 +236,7 @@ function RawPayload({ raw }: { raw: string }) {
         <MonoLabel>Stored payload (JSON)</MonoLabel>
         <button
           type="button"
-          onClick={() => void copy()}
+          onClick={() => void copy(raw)}
           className="border-border text-muted-foreground hover:border-primary hover:text-primary inline-flex items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-xxs font-semibold uppercase transition-colors"
         >
           {copied ? (

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../generated/prisma/client";
+import { isUniqueConstraintError } from "./prisma-errors";
 import { generateSecureToken, hashToken } from "./secure-token";
 import { EmailAlreadyRegisteredError, normalizeEmail } from "./invitations";
 
@@ -30,10 +31,6 @@ export class EmailVerificationTokenUsedError extends Error {
     super("This verification link has already been used");
     this.name = "EmailVerificationTokenUsedError";
   }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 }
 
 export interface IssueTokenResult {

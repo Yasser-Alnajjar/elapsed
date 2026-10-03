@@ -89,7 +89,9 @@ export interface NormalizedEvent {
   sourceSequence?: number;
 }
 
-export type CommitmentKind = "first_response" | "resolution" | "next_reply";
+/** Every commitment kind, in display order. */
+export const COMMITMENT_KINDS = ["first_response", "next_reply", "resolution"] as const;
+export type CommitmentKind = (typeof COMMITMENT_KINDS)[number];
 
 /**
  * `Commitment.cycleKey` of every single-cycle kind (first_response,

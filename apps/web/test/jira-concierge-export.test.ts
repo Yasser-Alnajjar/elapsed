@@ -11,7 +11,7 @@ import {
   toIsoUtc,
   type JiraExportClient,
 } from "@/lib/jira-concierge-export";
-import { buildCsv } from "@/lib/csv";
+import { buildCsv } from "@sla/core";
 import { readStoredZip } from "@/lib/zip";
 
 const STATUSES: JiraStatus[] = [

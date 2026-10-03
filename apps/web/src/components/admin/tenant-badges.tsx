@@ -9,7 +9,6 @@ import {
   type PlanStatus,
   type TenantHealth,
 } from "@/lib/types/admin";
-import type { LinkCoverage } from "@/lib/types/link-coverage";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";
 import { cn } from "@/lib/utils";
 import { TONE_SURFACE, TONE_TEXT, type Tone } from "@/lib/status-styles";
@@ -98,12 +97,6 @@ export function PlanChip({ plan }: { plan: string | null }) {
 export function formatPlan(plan: string | null): string {
   if (plan === null) return "Not recorded";
   return PLAN_LABELS[plan as PlanId] ?? plan;
-}
-
-/** "62% (31 of 50)", or "No cases" when there is nothing to measure. */
-export function formatLinkCoverage(coverage: LinkCoverage): string {
-  if (coverage.ratio === null) return "No recent cases";
-  return `${Math.round(coverage.ratio * 100)}% (${coverage.linkedCases} of ${coverage.cases})`;
 }
 
 /** What an operator needs to know about one integration in one word and a colour. */

@@ -12,8 +12,6 @@ import { cn } from "@/lib/utils";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";
 import type { TimelineEventDetail } from "@/lib/types/cases";
 
-/* ─── Per-event pill labels (Stitch "State Transitions") ─────── */
-
 const EVENT_TYPE_PILL_LABEL: Record<string, string> = {
   case_created: "CLOCK START",
   state_changed: "STATE CHANGE",
@@ -31,10 +29,6 @@ const EVENT_TYPE_PILL_LABEL: Record<string, string> = {
   commitment_cancelled: "CANCELLED",
 };
 
-/* ─── Per-event dot ring + pill colour ──────────────────────────
-   dot  = ring color on the dot node
-   pill = background / text on the label chip
-*/
 const DOT_CLASS: Record<string, string> = {
   commitment_met: COMMITMENT_STATUS_STYLES.met.fill,
   case_closed: "bg-tertiary",
@@ -64,8 +58,6 @@ const PILL_CLASS: Record<string, string> = {
 };
 
 const PROVIDER_LABELS = INTEGRATION_PROVIDER_LABELS as Record<string, string>;
-
-/* ─── Event body text ────────────────────────────────────────── */
 
 function EventBody({ event }: { event: TimelineEventDetail }): ReactNode {
   if (event.type === "state_changed" && event.fromState && event.toState) {
@@ -227,7 +219,6 @@ export function TimelineEventItem({
           "before:absolute before:-inset-s-4.75 before:top-2.5 before:-bottom-5 before:w-0.5 before:bg-surface-container-high",
       )}
     >
-      {/* Dot node */}
       <div
         className={cn(
           "absolute -inset-s-6 top-1 size-3 rounded-full ring-4 ring-surface-container-low",
@@ -236,7 +227,6 @@ export function TimelineEventItem({
         )}
       />
 
-      {/* Timestamp row + pill */}
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-medium text-primary">
           {formatDateTime(event.occurredAt)}
@@ -251,17 +241,14 @@ export function TimelineEventItem({
         </span>
       </div>
 
-      {/* Event body */}
       <div className="mt-0.5 text-sm leading-5">
         <EventBody event={event} />
       </div>
 
-      {/* Description */}
       <div className="mt-0.5 text-xs leading-4">
         <EventDescription event={event} />
       </div>
 
-      {/* Actor + provider — small meta line */}
       <div className="mt-1 flex items-center gap-2 text-xxs leading-3.5 text-outline">
         <span>{formatActor(event.actor)}</span>
         <span>·</span>

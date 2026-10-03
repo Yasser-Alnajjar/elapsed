@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
-import { buildCsv } from "@/lib/csv";
+import { buildCsv } from "@sla/core";
 import { getCaseListData, parseCaseListParams } from "@/lib/case-list-data";
 import {
   formatCommitmentKind,

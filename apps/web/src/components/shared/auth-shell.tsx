@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { ReactNode } from "react";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "../ui/theme-toggle";
@@ -16,7 +16,7 @@ export const authLabelClass =
   "font-mono text-[10px] font-semibold uppercase leading-3 tracking-[0.06em]";
 
 /** Base for every text field: canvas fill, sky focus ring. */
-export const authInputBase =
+const authInputBase =
   "w-full text-foreground placeholder:text-foreground-subtle transition-all focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Solid sky primary action. */

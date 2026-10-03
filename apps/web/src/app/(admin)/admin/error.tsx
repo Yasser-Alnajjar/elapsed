@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminPanel, MonoLabel } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatUtcTimestamp } from "@/lib/admin-format";
 
 /**
@@ -20,22 +21,11 @@ export default function AdminError({
   reset: () => void;
 }) {
   const [occurredAt, setOccurredAt] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
 
   useEffect(() => {
     setOccurredAt(new Date().toISOString());
   }, []);
-
-  async function copyReference() {
-    if (!error.digest) return;
-    try {
-      await navigator.clipboard.writeText(error.digest);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard access can be denied; the id is on screen to select by hand.
-    }
-  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 py-10">
@@ -63,7 +53,7 @@ export default function AdminError({
               {error.digest && (
                 <button
                   type="button"
-                  onClick={() => void copyReference()}
+                  onClick={() => void copy(error.digest!)}
                   aria-label="Copy reference id"
                   className="text-foreground-subtle hover:text-foreground shrink-0"
                 >

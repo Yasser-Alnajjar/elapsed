@@ -42,7 +42,7 @@ export function IntegrationConfigForm({
     setSaving(true);
     setError(null);
 
-    const { ok, body, status } =
+    const { ok, body } =
       await Actions.Integrations.saveIntegrationConfig(provider, {
         clientId,
         clientSecret: clientSecret || undefined,

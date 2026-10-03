@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 import type { CaseListData } from "@/lib/types/cases";
 
-import { useCaseListColumns } from "./columns";
+import { CASE_LIST_COLUMNS } from "./columns";
 import { CaseListToolbar } from "./filters";
 import { CaseListMetrics } from "./metrics";
 import { CaseListHeader } from "./CaseListHeader";
@@ -36,8 +36,6 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
     setPageSize,
     pending,
   } = useCaseListQuery();
-  const columns = useCaseListColumns();
-
   const counts = data.counts;
 
   if (data.rowCount === 0 && !hasActiveFilters) {
@@ -74,7 +72,7 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
       <Reveal delay={0.1}>
         <DataTable
           rowClassName="[&>td]:align-top"
-          columns={columns}
+          columns={CASE_LIST_COLUMNS}
           data={data.cases}
           reorderable
           resizable

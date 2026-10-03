@@ -92,12 +92,6 @@ export interface TrialState {
   expired: boolean;
 }
 
-/** `limit: null` is unlimited. */
-export interface UsageQuota {
-  used: number;
-  limit: number | null;
-}
-
 /** Seats in use against the licensed count and the plan's ceiling. */
 export interface SeatUsage {
   used: number;

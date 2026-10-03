@@ -5,7 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCommitmentKind } from "@/lib/format";
-import { COMMITMENT_KINDS, type PolicyFormState } from "./native-policy-form";
+import { COMMITMENT_KINDS } from "@sla/core";
+import type { PolicyFormState } from "./native-policy-form";
 
 /** One row per commitment kind: include it, then give its target in minutes. */
 export function PolicyTargetsField({

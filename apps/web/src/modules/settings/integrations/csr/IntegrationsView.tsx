@@ -93,7 +93,6 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
 
       <SecurityPrinciples />
 
-      {/* Bottom helper note */}
       <div className="bg-surface-container-low border-outline-variant/20 flex flex-col items-center justify-between gap-4 rounded-xl border px-6 py-4 shadow-sm sm:flex-row">
         <span className="text-on-surface-variant flex items-center gap-2 text-sm">
           <Webhook className="text-primary size-5 shrink-0" />

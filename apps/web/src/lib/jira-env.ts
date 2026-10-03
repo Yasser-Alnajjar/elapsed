@@ -4,9 +4,8 @@ import { getIntegrationConfig, getPrismaClient } from "@sla/db";
 export const JIRA_STATE_COOKIE = "jira_oauth_state";
 
 /**
- * Resolves this organization's Jira OAuth app config: its own
- * client id/secret (saved from the Integrations settings UI) if configured,
- * otherwise the legacy JIRA_CLIENT_ID/JIRA_CLIENT_SECRET env vars.
+ * Resolves this organization's Jira OAuth app config: its own client
+ * id/secret, saved from the Integrations settings UI.
  */
 export async function getJiraOAuthConfig(organizationId: string): Promise<JiraOAuthConfig> {
   const appUrl = process.env.NEXTAUTH_URL;

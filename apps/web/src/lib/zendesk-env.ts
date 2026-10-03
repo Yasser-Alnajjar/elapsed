@@ -4,9 +4,8 @@ import { getIntegrationConfig, getPrismaClient } from "@sla/db";
 export const ZENDESK_STATE_COOKIE = "zendesk_oauth_state";
 
 /**
- * Resolves this organization's Zendesk OAuth app config: its own
- * client id/secret (saved from the Integrations settings UI) if configured,
- * otherwise the legacy ZENDESK_CLIENT_ID/ZENDESK_CLIENT_SECRET env vars.
+ * Resolves this organization's Zendesk OAuth app config: its own client
+ * id/secret, saved from the Integrations settings UI.
  */
 export async function getZendeskOAuthConfig(organizationId: string): Promise<ZendeskOAuthConfig> {
   const appUrl = process.env.NEXTAUTH_URL;

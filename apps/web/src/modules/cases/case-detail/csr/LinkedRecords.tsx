@@ -13,7 +13,6 @@ import type { CaseDetailData } from "@/lib/types/cases";
 export function LinkedRecords({ data }: { data: CaseDetailData }) {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link2 size={16} className="text-leg-engineering-text" />
@@ -35,7 +34,6 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
         )}
       </div>
 
-      {/* Customer Ticket */}
       <div className="rounded-lg bg-surface-container p-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -85,7 +83,6 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
         </div>
       </div>
 
-      {/* Linked Records */}
       {data.links.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {data.links.map((link, index) => (
@@ -152,13 +149,6 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
             </span>
           </div>
         </div>
-      )}
-
-      {/* Empty State */}
-      {data.links.length === 0 && !data.case.ticketUrl && (
-        <p className="py-2 text-center text-sm text-on-surface-variant">
-          No linked records.
-        </p>
       )}
     </div>
   );

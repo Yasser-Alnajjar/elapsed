@@ -44,10 +44,6 @@ function sessionFor(organizationId: string): Session {
   };
 }
 
-function postRequest() {
-  return new Request("http://localhost/api/integrations/slack/disconnect", { method: "POST" });
-}
-
 describe("POST /api/integrations/slack/disconnect", () => {
   beforeEach(() => {
     vi.resetModules();

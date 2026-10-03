@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, History, Info } from "lucide-react";
-import { Utils } from "@/lib/utils";
+import { formatLongDateTime } from "@/lib/format";
 import type { IntegrationDetailData } from "@/lib/types/integrations";
 import { GithubBackfillButton } from "../../integrations/csr/GithubCard";
 import { IntercomBackfillButton } from "../../integrations/csr/IntercomCard";
@@ -77,7 +77,7 @@ export function BackfillSection({
         <div className={panelClass}>
           <span className={labelClass}>Baseline ingestion cycle</span>
           <span className="text-on-surface font-mono text-sm font-semibold">
-            Finished {Utils.formatDateTimeV2(backfillCompletedAt)}
+            Finished {formatLongDateTime(backfillCompletedAt)}
           </span>
         </div>
       )}

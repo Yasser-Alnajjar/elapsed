@@ -90,14 +90,12 @@ export const SignUpForm = () => {
 
                   <TermsField />
 
-                  {/* Server Error */}
                   {status && (
                     <AuthAlert tone="danger" icon={<AlertCircle aria-hidden />}>
                       {status}
                     </AuthAlert>
                   )}
 
-                  {/* Submit */}
                   <div className="pt-2">
                     <button
                       type="submit"

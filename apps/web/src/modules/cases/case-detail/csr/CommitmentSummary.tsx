@@ -27,7 +27,6 @@ export function CommitmentSummary({
   const cycleNumbers = nextReplyCycleNumbers(data.commitments);
   return (
     <Reveal delay={0.1}>
-      {" "}
       {commitments.length === 0 ? (
         <EmptyState
           icon={Inbox}
@@ -35,16 +34,15 @@ export function CommitmentSummary({
         />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {" "}
           {commitments.map((commitment) => (
             <CommitmentCard
               key={commitment.id}
               commitment={commitment}
               cycleNumber={cycleNumbers.get(commitment.id)}
             />
-          ))}{" "}
+          ))}
         </div>
-      )}{" "}
+      )}
     </Reveal>
   );
 }

@@ -3,11 +3,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The Stitch dashboard's 4-tile KPI card: label/icon row, a hero metric with
- * an inline qualifier, and a visually separate footer strip for a secondary
- * breakdown. Built as its own component (not a `StatTile` variant) so
- * restyling it for this one screen can't regress the generic tile other
- * pages already use.
+ * A dashboard KPI card: label/icon row, a hero metric with an inline
+ * qualifier, and a separate footer strip for a secondary breakdown.
  */
 export function KpiTile({
   label,

@@ -171,6 +171,13 @@ export const Actions = {
           "Failed to delete configuration",
       };
     },
+    /** Mints a single-use link that lets someone outside the organization finish one provider's OAuth grant. */
+    async createConnectLink(provider: IntegrationProvider, intendedFor?: string) {
+      return postJSON<{ url?: string }>("/api/integrations/connect-links", {
+        provider,
+        intendedFor,
+      });
+    },
     async disconnect(provider: IntegrationProvider | "slack") {
       const response = await fetch(`/api/integrations/${provider}/disconnect`, {
         method: "POST",

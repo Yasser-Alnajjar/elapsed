@@ -1,5 +1,6 @@
 import type { IntegrationProvider, PlanStatus, PrismaClient } from "../generated/prisma/client";
 import { isPlanId, PLANS, type LimitedResource } from "./plans";
+import { isUniqueConstraintError } from "./prisma-errors";
 import { getOrganizationUsage, type OrganizationUsage, type ProviderRoleOf } from "./usage";
 
 /**
@@ -93,9 +94,6 @@ export function integrationResource(provider: IntegrationProvider, roleOf: Provi
 
 export const ENTITLEMENT_EVENT_KINDS = ["limit_warned", "creation_blocked", "trial_expired"] as const;
 export type EntitlementEventKind = (typeof ENTITLEMENT_EVENT_KINDS)[number];
-
-const isUniqueConstraintError = (error: unknown) =>
-  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 
 const dayKey = (now: Date) => now.toISOString().slice(0, 10);
 

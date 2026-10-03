@@ -117,13 +117,3 @@ export async function deliverWebhookNotifications(
     notificationsFailed: notifications.notificationsFailed,
   };
 }
-
-/** Both halves back to back, for callers that don't hold the organization lock. */
-export async function runWebhookPipelineTail(
-  prisma: PrismaClient,
-  organizationId: string,
-  options: WebhookPipelineOptions = {},
-): Promise<WebhookPipelineResult> {
-  const { result, claims } = await computeWebhookPipeline(prisma, organizationId, options);
-  return deliverWebhookNotifications(prisma, result, claims);
-}

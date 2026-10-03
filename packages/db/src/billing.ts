@@ -1,6 +1,7 @@
 import type { BillingInvoice, BillingSubscription, PlanStatus, Prisma, PrismaClient } from "../generated/prisma/client";
 import type { BillingProvider, SubscriptionSnapshot } from "./billing-provider";
 import { isPlanId, PLAN_IDS, PLANS, type PlanId } from "./plans";
+import { isUniqueConstraintError } from "./prisma-errors";
 import { countSeatsInUse } from "./usage";
 
 /**
@@ -425,9 +426,6 @@ function validateSeats(plan: PlanId, seatQuantity: number, seatsInUse: number): 
   }
   if (seatQuantity > max) throw new BillingError("invalid_seats", `The ${PLANS[plan].name} plan allows at most ${max} seats.`);
 }
-
-const isUniqueConstraintError = (error: unknown) =>
-  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 
 // ---- Reads that write ----------------------------------------------------------
 

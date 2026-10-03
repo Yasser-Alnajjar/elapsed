@@ -13,6 +13,7 @@ import {
 
 import { EmptyState } from "@/components/shared/empty-state";
 import type { ComplianceTrendPoint } from "@/lib/types/dashboard";
+import { CHART_TOOLTIP_STYLE } from "./chart-tooltip";
 
 const BENCHMARK = 95;
 const GUIDE_LINE = 90;
@@ -24,11 +25,15 @@ export function SlaComplianceTrendChart({
   data: ComplianceTrendPoint[];
   currentCompliance: number | null;
 }) {
-  const values = data
-    .map((point) => point.compliancePercent)
-    .filter((value): value is number => value !== null);
+  // A null day had no closed commitments to measure, so it takes no space on the chart.
+  const chartData = data
+    .filter(
+      (point): point is ComplianceTrendPoint & { compliancePercent: number } =>
+        point.compliancePercent !== null,
+    )
+    .map((point, index) => ({ ...point, index }));
 
-  if (values.length === 0) {
+  if (chartData.length === 0) {
     return (
       <div className="bg-surface-container-low shadow-soft flex h-full min-h-0 flex-col overflow-hidden rounded-xl p-4">
         <div className="shrink-0">
@@ -50,33 +55,13 @@ export function SlaComplianceTrendChart({
     );
   }
 
+  const values = chartData.map((point) => point.compliancePercent);
   const peak = Math.max(...values);
   const low = Math.min(...values);
-
-  /**
-   * Only render days that actually have a compliance value.
-   *
-   * Null means "no closed commitments / no measurable compliance"
-   * for that day, so it should not consume horizontal chart space.
-   */
-  const chartData = data
-    .filter(
-      (
-        point,
-      ): point is ComplianceTrendPoint & {
-        compliancePercent: number;
-      } => point.compliancePercent !== null,
-    )
-    .map((point, index) => ({
-      ...point,
-      index,
-    }));
-
   const maxIndex = Math.max(chartData.length - 1, 1);
 
   return (
     <div className="bg-surface-container-low shadow-soft flex h-full min-h-0 flex-col overflow-hidden rounded-xl p-4">
-      {/* Header */}
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h3 className="text-on-surface text-base font-medium">
@@ -91,7 +76,6 @@ export function SlaComplianceTrendChart({
         </span>
       </div>
 
-      {/* Chart */}
       <div className="min-h-0 min-w-0 flex-1 overflow-x-clip">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
@@ -151,13 +135,7 @@ export function SlaComplianceTrendChart({
                 value === null ? "—" : `${value}%`,
                 "Compliance",
               ]}
-              contentStyle={{
-                background: "var(--popover)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                color: "var(--popover-foreground)",
-                fontSize: 12,
-              }}
+              contentStyle={CHART_TOOLTIP_STYLE}
             />
 
             <Area
@@ -180,7 +158,6 @@ export function SlaComplianceTrendChart({
         </ResponsiveContainer>
       </div>
 
-      {/* Footer */}
       <div className="text-outline border-surface-container-highest/60 mt-2 flex shrink-0 items-center justify-between border-t pt-2 font-mono text-xxs">
         <span>{peak}% peak</span>
 

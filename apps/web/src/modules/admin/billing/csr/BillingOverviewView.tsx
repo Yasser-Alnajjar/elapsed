@@ -15,7 +15,7 @@ import {
   type BillingListControls,
 } from "@/lib/admin-billing-list";
 import { formatMoney } from "@/lib/billing-format";
-import { downloadText } from "@/lib/billing-invoices";
+import { downloadCsv } from "@/lib/download";
 import { DataTableCard, DataTablePagination, useClientPagination } from "@/components/shared/data-table";
 import { BILLING_COLUMNS, type AdminBillingOverviewData, type BillingColumn } from "@/lib/types/admin-billing";
 import { BillingDirectoryTable } from "./BillingDirectoryTable";
@@ -86,7 +86,7 @@ export function BillingOverviewView({ data }: { data: AdminBillingOverviewData }
           counts={counts}
           columns={columns}
           onColumnsChange={setColumns}
-          onExport={() => downloadText("tenant-billing.csv", tenantsToCsv(visible))}
+          onExport={() => downloadCsv("tenant-billing.csv", tenantsToCsv(visible))}
           exportDisabled={visible.length === 0}
           onReset={filtered ? () => changeControls(DEFAULT_BILLING_CONTROLS) : undefined}
         />

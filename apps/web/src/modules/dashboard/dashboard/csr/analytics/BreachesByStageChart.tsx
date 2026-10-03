@@ -6,14 +6,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { formatLeg } from "@/lib/format";
 import { legStyle } from "@/lib/status-styles";
 import type { BreachesByStageRow } from "@/lib/types/dashboard";
+import { CHART_TOOLTIP_STYLE } from "./chart-tooltip";
 
-/**
- * Stitch's "Breaches by Stage" chart is a donut, not the bar chart the
- * pre-reconstruction dashboard used — rebuilt on the same `Pie`/donut
- * pattern the app already uses elsewhere (compliance breakdown), reusing
- * `ProjectAnalyticsData.breachesByStage` unchanged (that data was already
- * correct — only the chart type was wrong).
- */
+/** Breaches split by the leg they happened in, as a donut with the dominant leg in the middle. */
 export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
   const total = data.reduce((sum, r) => sum + r.count, 0);
   const dominant = data[0];
@@ -64,13 +59,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
                       `${value} (${Math.round((Number(value) / total) * 100)}%)`,
                       formatLeg(String(entry.payload?.leg ?? "")),
                     ]}
-                    contentStyle={{
-                      background: "var(--popover)",
-                      borderColor: "var(--border)",
-                      borderRadius: 8,
-                      color: "var(--popover-foreground)",
-                      fontSize: 12,
-                    }}
+                    contentStyle={CHART_TOOLTIP_STYLE}
                   />
                 </PieChart>
               </ResponsiveContainer>

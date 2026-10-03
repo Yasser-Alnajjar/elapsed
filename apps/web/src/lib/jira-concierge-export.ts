@@ -6,7 +6,7 @@ import {
   type JiraRemoteLink,
   type JiraStatus,
 } from "@sla/jira";
-import { buildCsv } from "./csv";
+import { buildCsv } from "@sla/core";
 import type { JiraConciergeExportMetadata } from "./types/concierge-export";
 import { createZip } from "./zip";
 

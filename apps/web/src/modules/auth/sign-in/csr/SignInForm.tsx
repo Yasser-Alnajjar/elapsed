@@ -4,10 +4,7 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowRightToLine,
-  Building2,
   Clock,
-  KeyRound,
-  LayoutGrid,
   Loader2,
   Lock,
   Mail,
@@ -95,9 +92,6 @@ export const SignInForm = () => {
     router.push("/dashboard");
   }
 
-  const altSsoClass =
-    "flex h-9 cursor-not-allowed items-center justify-center gap-2 rounded-[2px] border border-border bg-surface-raised px-3 text-xs text-foreground transition-all hover:border-border-strong hover:bg-interactive";
-
   return (
     <AuthPage>
       <div className="relative z-10 flex w-full flex-col items-center justify-center">
@@ -121,71 +115,6 @@ export const SignInForm = () => {
                   Sign in with your workspace credentials to continue.
                 </p>
               </div>
-              {/* 
-              <div className="mt-1 flex flex-col gap-1">
-                <button
-                  type="button"
-                  aria-disabled
-                  title="SSO is not configured for this workspace"
-                  className="group relative flex h-10 w-full cursor-not-allowed items-center justify-between rounded-[2px] border border-border bg-surface-raised px-3.5 transition-all duration-150 hover:border-primary/50 hover:bg-interactive"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex size-5 items-center justify-center rounded-[2px] bg-primary/20 text-primary">
-                      <KeyRound aria-hidden className="size-3.75" />
-                    </span>
-                    <span className="font-mono text-sm font-medium text-foreground">
-                      Continue with Okta / SAML SSO
-                    </span>
-                  </div>
-                  <span
-                    className={cn(
-                      authLabelClass,
-                      "rounded-[2px] border border-border bg-surface-raised px-1.5 py-0.5 text-primary-fixed-dim group-hover:border-primary/30",
-                    )}
-                  >
-                    DEFAULT
-                  </span>
-                </button>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    aria-disabled
-                    title="SSO is not configured for this workspace"
-                    className={altSsoClass}
-                  >
-                    <Building2
-                      aria-hidden
-                      className="size-4 text-muted-foreground"
-                    />
-                    <span>Azure AD</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-disabled
-                    title="SSO is not configured for this workspace"
-                    className={altSsoClass}
-                  >
-                    <LayoutGrid
-                      aria-hidden
-                      className="size-4 text-muted-foreground"
-                    />
-                    <span>Google Workspace</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative my-0.5 flex items-center justify-center">
-                <div className="w-full border-t border-border" />
-                <span
-                  className={cn(
-                    authLabelClass,
-                    "absolute bg-background px-2.5 tracking-widest text-foreground-subtle",
-                  )}
-                >
-                  OR CONTINUE WITH CORPORATE EMAIL
-                </span>
-              </div> */}
-
               <Formik
                 initialValues={initialValues}
                 validationSchema={signInSchema}

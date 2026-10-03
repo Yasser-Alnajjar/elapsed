@@ -1,14 +1,11 @@
 "use client";
 
-import { AlertCircle, Info, Loader2, Zap } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Info, Zap } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { ReauthBanner } from "@/components/shared/reauth-banner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { ZendeskSyncResult } from "@/lib/types/integrations";
+import { BackfillButton } from "./BackfillButton";
 
 export function ZendeskConnectForm() {
   const [subdomain, setSubdomain] = useState("");
@@ -61,90 +58,30 @@ export function ZendeskConnectForm() {
 interface ZendeskBackfillButtonProps {
   /** Needed to send the user back through /connect without retyping it. */
   subdomain: string;
-  /** True when the stored credentials already carry `reauthRequired` (checked on the server before this renders). */
   initialReauthRequired?: boolean;
 }
 
-export function ZendeskBackfillButton({
-  subdomain,
-  initialReauthRequired = false,
-}: ZendeskBackfillButtonProps) {
-  const router = useRouter();
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<ZendeskSyncResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [reauthRequired, setReauthRequired] = useState(initialReauthRequired);
-
-  async function handleClick() {
-    setRunning(true);
-    setError(null);
-    setResult(null);
-
-    const { ok, body } = await Actions.Integrations.runZendeskBackfill();
-    setRunning(false);
-
-    if (!ok) {
-      if (body.reauthRequired) {
-        setReauthRequired(true);
-      } else {
-        setError(body.error ?? "Backfill failed");
-      }
-      return;
-    }
-
-    setResult(body);
-    router.refresh();
-  }
-
-  if (reauthRequired) {
-    return (
-      <ReauthBanner
-        provider="Zendesk"
-        reconnectHref={`/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(subdomain)}`}
-      />
-    );
-  }
-
+export function ZendeskBackfillButton({ subdomain, initialReauthRequired = false }: ZendeskBackfillButtonProps) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-3">
-      <Button
-        type="button"
-        size="sm"
-        variant="surface"
-        onClick={handleClick}
-        disabled={running}
-      >
-        {running && <Loader2 className="animate-spin" />}
-        {running ? "Running backfill…" : "Run backfill"}
-      </Button>
-
-      {error && (
-        <Alert variant="destructive" className="w-full max-w-full">
-          <AlertCircle />
-          <AlertDescription className="min-w-0 wrap-break-word">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {result && (
-        <div className="w-full min-w-0 space-y-1 text-sm text-on-surface-variant">
+    <BackfillButton
+      provider="Zendesk"
+      reconnectHref={`/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(subdomain)}`}
+      initialReauthRequired={initialReauthRequired}
+      run={Actions.Integrations.runZendeskBackfill}
+      renderResult={({ backfill, normalization }) => (
+        <>
           <p className="wrap-break-word">
-            {result.backfill.ticketsFetched} tickets ·{" "}
-            {result.backfill.ticketAuditsFetched} ticket events ·{" "}
-            {result.backfill.organizationsFetched} organizations ·{" "}
-            {result.backfill.slaPoliciesFetched} SLA policies.
+            {backfill.ticketsFetched} tickets · {backfill.ticketAuditsFetched} ticket events ·{" "}
+            {backfill.organizationsFetched} organizations · {backfill.slaPoliciesFetched} SLA policies.
           </p>
-
           <p className="wrap-break-word">
-            {result.normalization.casesUpserted} cases ·{" "}
-            {result.normalization.customersUpserted} customers ·{" "}
-            {result.normalization.eventsDerived} normalized events.
-            {result.normalization.failures.length > 0 &&
-              ` ${result.normalization.failures.length} ticket(s) failed to normalize.`}
+            {normalization.casesUpserted} cases · {normalization.customersUpserted} customers ·{" "}
+            {normalization.eventsDerived} normalized events.
+            {normalization.failures.length > 0 &&
+              ` ${normalization.failures.length} ticket(s) failed to normalize.`}
           </p>
-        </div>
+        </>
       )}
-    </div>
+    />
   );
 }

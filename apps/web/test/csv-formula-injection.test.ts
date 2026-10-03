@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCsv, buildCsvRowLines, neutralizeFormula } from "../src/lib/csv";
+import { buildCsv, buildCsvRowLines, neutralizeFormula } from "@sla/core";
 import { complianceReportToCsv, type ComplianceReportRow } from "../src/lib/report-data";
 import { ticketsToCsv } from "../src/lib/zendesk-concierge-export";
 

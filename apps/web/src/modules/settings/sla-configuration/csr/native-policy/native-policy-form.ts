@@ -5,11 +5,6 @@ import type {
   SlaPolicySummary,
 } from "@/lib/types/sla-configuration";
 
-export const COMMITMENT_KINDS: CommitmentKind[] = [
-  "first_response",
-  "next_reply",
-  "resolution",
-];
 export const PRIORITIES = ["urgent", "high", "normal", "low"] as const;
 
 /**

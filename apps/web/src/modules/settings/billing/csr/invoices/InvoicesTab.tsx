@@ -3,7 +3,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   countInvoicesByStatus,
-  downloadText,
   filterInvoices,
   invoiceYear,
   invoiceYears,
@@ -11,6 +10,7 @@ import {
   sumInvoices,
   type InvoiceControls,
 } from "@/lib/billing-invoices";
+import { downloadCsv } from "@/lib/download";
 import type { BillingOverviewData } from "@/lib/types/billing";
 import { useBillingActions } from "../billing-actions-context";
 import { useProviderSession } from "../useProviderSession";
@@ -85,7 +85,7 @@ export function InvoicesTab({ data, tabs, onEditProfile }: { data: BillingOvervi
           currentYear={currentYear}
           counts={counts}
           exportDisabled={visible.length === 0}
-          onExport={() => downloadText(`invoices-${controls.year}.csv`, invoicesToCsv(visible))}
+          onExport={() => downloadCsv(`invoices-${controls.year}.csv`, invoicesToCsv(visible))}
           onTaxSummary={openPortal}
           taxSummaryAvailable={providerAvailable}
           onReset={filtered ? resetFilters : undefined}

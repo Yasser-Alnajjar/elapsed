@@ -46,13 +46,10 @@ function SubSection({
 }
 
 /**
- * Phase 6.2–6.4: everything the dashboard's KPI tiles and charts can't show
- * because it's the *absence* of monitoring, not an SLA outcome — a case with
- * no matching policy has no commitment to evaluate, a broken integration
- * stops feeding events silently, and a failed alert delivery leaves no
- * `Notification` row to render elsewhere. Grouped into one "blind spots"
- * card per the roadmap's framing (Phase 6 goal: "everything that is
- * silently not being monitored").
+ * Everything the KPI tiles and charts can't show because it's the *absence*
+ * of monitoring, not an SLA outcome: a case with no matching policy has no
+ * commitment to evaluate, a broken integration stops feeding events silently,
+ * and a failed alert delivery leaves no `Notification` row to render elsewhere.
  */
 export function BlindSpotsPanel({
   unmatchedCases,

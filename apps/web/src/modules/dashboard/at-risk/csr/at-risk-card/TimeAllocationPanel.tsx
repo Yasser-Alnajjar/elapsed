@@ -119,7 +119,6 @@ export function TimeAllocationPanel({
         waitingCustomerLegMinutes={row.waitingCustomerLegMinutes}
       />
 
-      {/* Locus */}
       <div className="flex flex-col gap-2 pt-1 text-xxs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-1.5 text-muted-foreground">
           <CircleAlert

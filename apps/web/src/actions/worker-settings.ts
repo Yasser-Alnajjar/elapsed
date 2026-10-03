@@ -21,8 +21,8 @@ export const WorkerSettingsActions = {
   },
 
   /**
-   * The one non-sensitive value the app-wide layout needs (the sidebar's
-   * "Auto-sync Ns" footer). Deliberately exposes nothing else about the
+   * The one non-sensitive worker value a tenant page shows (the dashboard's
+   * "Auto-Sync: Ns" readout). Deliberately exposes nothing else about the
    * worker — see `getMonitoringData` for the operator-only diagnostics.
    */
   async getActivePollIntervalMs(): Promise<number> {

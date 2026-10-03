@@ -3,8 +3,7 @@
 import { ArrowLeft, Lock } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BrandLogo } from "@/components/shared/brand-logo";
-import { isNavItemActive } from "@/components/layout/nav-items";
+import { isNavItemActive, NAV_MENU_BUTTON_CLASS } from "@/components/layout/nav-items";
 import {
   Sidebar,
   SidebarContent,
@@ -21,12 +20,8 @@ import {
 } from "@/components/ui/sidebar";
 import { MonoLabel, StatusDot } from "./admin-ui";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
-import { IUser } from "@/lib/types/user";
+import type { IUser } from "@/lib/types/user";
 import { BrandMark } from "../shared/brand-mark";
-
-/** The mono, left-barred active state of the admin menu, on top of the shadcn menu button's own. */
-const MENU_BUTTON =
-  "h-9 rounded font-mono text-sm data-[active=true]:shadow-[inset_2px_0_0_var(--primary)] data-[active=true]:font-semibold";
 
 /**
  * The admin navigation, on the app's shadcn `Sidebar`: collapsible to icons
@@ -60,7 +55,7 @@ export function AdminSidebar({ user }: { user: IUser }) {
                 <SidebarMenuButton
                   asChild
                   tooltip="Customer application"
-                  className={MENU_BUTTON}
+                  className={NAV_MENU_BUTTON_CLASS}
                 >
                   <Link
                     href="/dashboard"
@@ -72,22 +67,6 @@ export function AdminSidebar({ user }: { user: IUser }) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  tooltip="Customer application"
-                  className={`text-sidebar-foreground/70 text-xs`}
-                >
-                  <Link
-                    href="/dashboard"
-                    onClick={closeSheet}
-                    className="shrink-0"
-                  >
-                    <ArrowLeft />
-                    <span>Customer application</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -107,7 +86,7 @@ export function AdminSidebar({ user }: { user: IUser }) {
                       asChild
                       isActive={active}
                       tooltip={item.label}
-                      className={MENU_BUTTON}
+                      className={NAV_MENU_BUTTON_CLASS}
                     >
                       <Link
                         href={item.href}

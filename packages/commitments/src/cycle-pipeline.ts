@@ -3,11 +3,8 @@ import {
   deriveNextReplyCycles,
   findFirstResponseEvent,
   type BusinessCalendarVersion,
-  type CommitmentKind,
   type CommitmentStatus,
   type NormalizedEvent,
-  type NormalizedState,
-  type SLAPolicyMatch,
   type SLAPolicyVersion,
 } from "@sla/core";
 import { persistNextReplyCommitments, planCycleCommitments } from "./cycle-commitments";
@@ -15,7 +12,7 @@ import { ACTIVE_COMMITMENT_WHERE } from "./active-commitment";
 import { toPolicyVersionDomain } from "./policy-domain";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
-import { COMMITMENT_KINDS, latestVersionPerPolicy, pickAnchorCommitment } from "./pipeline";
+import { SINGLE_CYCLE_KINDS, latestVersionPerPolicy, pickAnchorCommitment } from "./pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
 
 export interface NextReplyCyclePipelineResult {
@@ -106,7 +103,7 @@ export async function runNextReplyCyclePipeline(
       ...(options.caseIds ? { id: { in: [...options.caseIds] } } : {}),
       // A case with no anchor commitment is skipped below, so never load it.
       AND: [
-        { commitments: { some: { kind: { in: COMMITMENT_KINDS } } } },
+        { commitments: { some: { kind: { in: SINGLE_CYCLE_KINDS } } } },
         ...(options.scope === "active"
           ? [
               {
@@ -124,7 +121,7 @@ export async function runNextReplyCyclePipeline(
       // The same anchor kinds runCommitmentPipeline creates; a persisted
       // Next Reply commitment is never its own anchor.
       commitments: {
-        where: { kind: { in: COMMITMENT_KINDS } },
+        where: { kind: { in: SINGLE_CYCLE_KINDS } },
         select: { kind: true, policyVersionId: true, calendarVersionId: true },
       },
     },

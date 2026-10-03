@@ -91,7 +91,6 @@ export function JourneySegmentBar({
         })}
       </div>
 
-      {/* Axis captions */}
       <div className="flex flex-col items-start md:flex-row md:items-center justify-between px-1 font-mono text-xxs text-outline">
         <span>{formatDateTime(data.case.openedAt)} · Clock Start</span>
         {firstHandoffAt && (

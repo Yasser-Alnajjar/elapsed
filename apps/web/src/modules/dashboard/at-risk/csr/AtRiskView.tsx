@@ -1,8 +1,9 @@
 "use client";
 
 import { ListChecks, Search } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   DataTableCard,
@@ -12,7 +13,8 @@ import {
 } from "@/components/shared/data-table";
 import { Reveal } from "@/components/shared/reveal";
 import { Button } from "@/components/ui/button";
-import { cn, Utils } from "@/lib/utils";
+import { downloadCsv } from "@/lib/download";
+import { cn } from "@/lib/utils";
 import type { AtRiskPageData } from "@/lib/types/at-risk";
 
 import { AtRiskCard } from "./AtRiskCard";
@@ -20,7 +22,7 @@ import { AtRiskToolbar } from "./AtRiskFilters";
 import type { LegFilter, SeverityFilter } from "./types";
 import { AtRiskHeader } from "./AtRiskHeader";
 import { AtRiskKpiGrid } from "./AtRiskKpiGrid";
-import Link from "next/link";
+import { atRiskRowsToCsv } from "./at-risk-csv";
 
 /** Only the first this-many cards get the staggered entrance animation — a full page of 50 replaying `Reveal` on every server refresh is what the plan calls out (performance-plan.md Phase 2 item 4). */
 const REVEAL_LIMIT = 10;
@@ -43,27 +45,18 @@ export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
     url.reset(["severity"]);
   };
 
-  const legCounts = useMemo(
-    () => ({
-      all: data.rows.length,
-      support: data.rows.filter((row) => row.currentLeg === "support").length,
-      engineering: data.rows.filter((row) => row.currentLeg === "engineering")
-        .length,
-      waiting_customer: data.rows.filter(
-        (row) => row.currentLeg === "waiting_customer",
-      ).length,
-      unknown: data.rows.filter((row) => row.currentLeg === "unknown").length,
-    }),
-    [data.rows],
-  );
+  const countLeg = (value: LegFilter) =>
+    data.rows.filter((row) => row.currentLeg === value).length;
+  const legCounts: Record<LegFilter, number> = {
+    all: data.rows.length,
+    support: countLeg("support"),
+    engineering: countLeg("engineering"),
+    waiting_customer: countLeg("waiting_customer"),
+    unknown: countLeg("unknown"),
+  };
 
-  const filtered = useMemo(
-    () =>
-      leg === "all"
-        ? data.rows
-        : data.rows.filter((row) => row.currentLeg === leg),
-    [data.rows, leg],
-  );
+  const filtered =
+    leg === "all" ? data.rows : data.rows.filter((row) => row.currentLeg === leg);
 
   return (
     <>
@@ -71,7 +64,7 @@ export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
         <AtRiskHeader
           totalCount={data.totalCount}
           linkedCertainCount={data.linkedCertainCount}
-          onExport={() => Utils.exportToCsv("at-risk-page.csv", filtered)}
+          onExport={() => downloadCsv("at-risk-page.csv", atRiskRowsToCsv(filtered))}
           onRefresh={() => router.refresh()}
         />
       </Reveal>

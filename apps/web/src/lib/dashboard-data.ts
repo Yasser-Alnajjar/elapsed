@@ -1,5 +1,6 @@
 import { getWorkerSettingsForRead, perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import {
+  COMMITMENT_KINDS,
   deriveLegSpans,
   evaluateCommitment,
   sumLegMinutes,
@@ -33,11 +34,6 @@ import type {
 import type { IntegrationProvider } from "./types/integrations";
 import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem, preferredIssueLink } from "./providers";
 
-const COMMITMENT_KINDS: CommitmentKind[] = [
-  "first_response",
-  "next_reply",
-  "resolution",
-];
 // Everything shown on the "silently not being monitored" panels needs to
 // stay readable without scrolling, same rationale as AT_RISK_LIMIT.
 const UNMATCHED_CASES_LIMIT = 10;

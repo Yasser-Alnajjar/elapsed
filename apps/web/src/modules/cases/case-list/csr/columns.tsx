@@ -1,8 +1,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 import { DataTableColumnHeader } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-
 import type { CaseListRow } from "@/lib/types/cases";
 
 import {
@@ -13,10 +14,7 @@ import {
   SlaTargetRunwayCell,
 } from "./cells";
 
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-
-export const useCaseListColumns = (): ColumnDef<CaseListRow>[] => [
+export const CASE_LIST_COLUMNS: ColumnDef<CaseListRow>[] = [
   {
     id: "priorityDualKey",
     meta: { name: "Priority & dual-key" },

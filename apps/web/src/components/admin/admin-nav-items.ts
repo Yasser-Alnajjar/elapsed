@@ -1,11 +1,11 @@
 import { Activity, Building2, Radar, ReceiptText, ScrollText } from "lucide-react";
-import type { NavItem } from "@/components/layout/nav-items";
+import type { NavLink } from "@/components/layout/nav-items";
 
 /**
  * The platform admin's own navigation (N4.1). It lives here, not in the
  * tenant `nav-items.ts`, so a tenant user's sidebar never carries any of it.
  */
-export const ADMIN_NAV_ITEMS: NavItem[] = [
+export const ADMIN_NAV_ITEMS: NavLink[] = [
   {
     href: "/admin",
     label: "Overview",

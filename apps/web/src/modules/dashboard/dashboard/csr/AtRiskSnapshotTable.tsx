@@ -48,9 +48,9 @@ export function AtRiskSnapshotTable({
       </TableHeader>
       <TableBody>
         {rows.map((row) => {
-          const supportMinutes = row.supportLegMinutes ?? 0;
+          const supportMinutes = row.supportLegMinutes;
           const engineeringMinutes = engineeringMeasured
-            ? (row.engineeringLegMinutes ?? 0)
+            ? row.engineeringLegMinutes
             : 0;
           const legTotal = supportMinutes + engineeringMinutes;
           const supportPercent =
@@ -83,7 +83,7 @@ export function AtRiskSnapshotTable({
                   </div>
                   {row.subject && (
                     <span className="text-outline font-mono text-xxs">
-                      {row.subject ?? "—"}
+                      {row.subject}
                     </span>
                   )}
                 </div>

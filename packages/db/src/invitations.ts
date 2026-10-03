@@ -1,4 +1,5 @@
 import type { OrganizationInvitation, PrismaClient } from "../generated/prisma/client";
+import { isUniqueConstraintError } from "./prisma-errors";
 import { generateSecureToken, hashToken } from "./secure-token";
 
 /** 7 days — long enough that a recipient checking email a day or two later isn't blocked, short enough that a stale, unused invitation doesn't sit valid indefinitely. */
@@ -66,10 +67,6 @@ export class InvitationConflictError extends Error {
     super("An invitation to this email is already being sent — try again");
     this.name = "InvitationConflictError";
   }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 }
 
 async function assertEmailNotRegistered(prisma: PrismaClient, email: string): Promise<void> {

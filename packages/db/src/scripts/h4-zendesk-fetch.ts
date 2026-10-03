@@ -36,18 +36,6 @@ async function get(path: string): Promise<any> {
   return { __error: 429, path };
 }
 
-async function pages(path: string, key: string): Promise<any[]> {
-  const out: any[] = [];
-  let next: string | null = path;
-  while (next) {
-    const page: any = await get(next);
-    if (page.__error) return [page];
-    out.push(...(page[key] ?? []));
-    next = page.next_page ?? null;
-  }
-  return out;
-}
-
 const cases = (
   await db.query(`select "externalId" from cases where "organizationId"=$1 and system='zendesk' order by "openedAt"`, [orgId])
 ).rows as { externalId: string }[];

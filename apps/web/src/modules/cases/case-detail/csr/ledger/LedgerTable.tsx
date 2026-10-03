@@ -3,8 +3,6 @@ import { cn } from "@/lib/utils";
 import type { CommitmentDetail } from "@/lib/types/cases";
 import type { LedgerFigures } from "./ledger-math";
 
-/* ─── Arithmetic ledger table ────────────────────────────────── */
-
 function LedgerRow({
   label,
   sublabel,
@@ -88,13 +86,11 @@ export function LedgerTable({
 
   return (
     <div className="overflow-hidden rounded-lg bg-surface-container">
-      {/* Table header */}
       <div className="flex items-center justify-between bg-surface-container-high px-3 py-2 font-mono text-xxs font-semibold uppercase tracking-wider text-outline">
         <span>Step / Interval Calculation Ledger</span>
         <span>Duration Applied</span>
       </div>
 
-      {/* 1. Gross */}
       <LedgerRow
         label="1. Gross Wall-Clock Time"
         sublabel={`From ${formatDateTimeWithOffset(commitment.startedAt)} to ${
@@ -103,7 +99,6 @@ export function LedgerTable({
         value={formatSeconds(grossSeconds)}
       />
 
-      {/* 2. Excluded time — paused states / outside business hours */}
       <LedgerRow
         variant="deduction"
         label="2. Excluded Time"
@@ -115,7 +110,6 @@ export function LedgerTable({
         value={`−${formatSeconds(excludedSeconds)}`}
       />
 
-      {/* Net SLA Elapsed */}
       <LedgerRow
         variant="subtotal"
         label="Net SLA Elapsed Time"
@@ -123,7 +117,6 @@ export function LedgerTable({
         value={formatSeconds(liveElapsed)}
       />
 
-      {/* Target */}
       <LedgerRow
         variant="target"
         label="Target Allotment"
@@ -131,7 +124,6 @@ export function LedgerTable({
         value={formatSeconds(targetSeconds)}
       />
 
-      {/* Runway / overage */}
       <LedgerRow
         variant={runwayVariant}
         label={runwayLabel}

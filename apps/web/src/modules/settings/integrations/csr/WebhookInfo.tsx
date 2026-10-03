@@ -5,21 +5,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import type { IntegrationProvider } from "@/lib/types/integrations";
 
 function CopyField({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard access can be denied outright (e.g. an insecure context) —
-      // the value is still selectable in the input, nothing more to do.
-    }
-  }
+  const { copied, copy } = useCopyToClipboard();
 
   return (
     <div className="min-w-0 space-y-1">
@@ -37,7 +27,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
           size="icon"
           variant="surface"
           className="shrink-0"
-          onClick={handleCopy}
+          onClick={() => copy(value)}
           aria-label={`Copy ${label}`}
         >
           {copied ? (

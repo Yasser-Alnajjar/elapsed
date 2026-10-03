@@ -1,4 +1,5 @@
 import { buildCsv, type CommitmentKind, type Leg } from "@sla/core";
+import { escapeHtml } from "./email-template";
 import { DEFAULT_EMAIL_BRAND_NAME } from "./format";
 import { MAX_REPORT_BREACH_ROWS, type MonthlyReport } from "./monthly-report";
 
@@ -32,10 +33,6 @@ export function formatPeriod(period: string): string {
 
 const formatPercent = (value: number | null) => (value === null ? "n/a" : `${value}%`);
 const formatRatio = (ratio: number | null) => (ratio === null ? "n/a" : `${Math.round(ratio * 100)}%`);
-
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
 
 function plural(count: number, one: string, many: string): string {
   return `${count.toLocaleString("en-US")} ${count === 1 ? one : many}`;

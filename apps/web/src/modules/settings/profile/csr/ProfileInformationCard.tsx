@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, UserRound, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,67 +24,17 @@ interface SaveResult {
   error?: string;
 }
 
-const AVATAR_MAX_DIMENSION = 256;
-const AVATAR_JPEG_QUALITY = 0.85;
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-
-/** Resizes/crops to a square JPEG so the encoded `data:` URL stays small
- * enough to store directly on `User.image` (see `updateProfileSchema`). */
-async function fileToAvatarDataUrl(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
-  const sx = (bitmap.width - side) / 2;
-  const sy = (bitmap.height - side) / 2;
-  const size = Math.min(AVATAR_MAX_DIMENSION, side);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas is not supported in this browser");
-  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
-
-  return canvas.toDataURL("image/jpeg", AVATAR_JPEG_QUALITY);
-}
-
 export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
   const router = useRouter();
   const { update: updateSession } = useSession();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user.name ?? "");
-  const [image, setImage] = useState(user.image ?? "");
-  // const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<SaveResult | null>(null);
 
   const trimmedName = name.trim();
-  const dirty =
-    trimmedName !== (user.name ?? "") || image !== (user.image ?? "");
+  const dirty = trimmedName !== (user.name ?? "");
   const previewInitials = initialsOf(trimmedName || null, user.email);
-
-  // async function handleAvatarSelected(event: ChangeEvent<HTMLInputElement>) {
-  //   const file = event.target.files?.[0];
-  //   event.target.value = "";
-  //   if (!file) return;
-
-  //   setAvatarError(null);
-
-  //   if (!file.type.startsWith("image/")) {
-  //     setAvatarError("Choose an image file.");
-  //     return;
-  //   }
-  //   if (file.size > MAX_UPLOAD_BYTES) {
-  //     setAvatarError("Image must be 8MB or smaller.");
-  //     return;
-  //   }
-
-  //   try {
-  //     setImage(await fileToAvatarDataUrl(file));
-  //   } catch {
-  //     setAvatarError("Couldn't read that image — try a different file.");
-  //   }
-  // }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -95,7 +45,7 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
 
     const { ok, body } = await Actions.Profile.update({
       name: trimmedName,
-      image: image || null,
+      image: user.image || null,
     });
 
     setSaving(false);
@@ -135,48 +85,11 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center gap-4">
             <Avatar size="lg">
-              <AvatarImage src={image || undefined} alt="" />
+              <AvatarImage src={user.image || undefined} alt="" />
               <AvatarFallback className="text-base">
                 {previewInitials}
               </AvatarFallback>
             </Avatar>
-
-            {/* <div className="space-y-1.5">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarSelected}
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="surface"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Upload photo
-                </Button>
-                {image && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setImage("")}
-                  >
-                    <X className="size-4" />
-                    Remove
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-on-surface-variant">
-                JPG, PNG, WEBP or GIF. Up to 8MB.
-              </p>
-              {avatarError && (
-                <p className="text-xs text-error">{avatarError}</p>
-              )}
-            </div> */}
           </div>
 
           <div className="space-y-1.5">

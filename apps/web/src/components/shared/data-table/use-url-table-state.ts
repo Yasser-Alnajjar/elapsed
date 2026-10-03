@@ -1,8 +1,11 @@
 "use client";
 
-import { useQueryParams } from "@/hooks";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 
 import { useDebouncedSearch } from "./use-debounced-search";
+
+type ParamPatch = Record<string, string | number | undefined>;
 
 /**
  * Filter, search and paging state for a table whose rows come from the
@@ -15,33 +18,37 @@ import { useDebouncedSearch } from "./use-debounced-search";
 export function useUrlTableState({
   searchParam = "q",
 }: { searchParam?: string } = {}) {
-  const { getQueryObject, createQueryFromObject, isPending } = useQueryParams();
-  const query = getQueryObject();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const query: Record<string, string | undefined> = Object.fromEntries(searchParams);
 
-  const search = useDebouncedSearch(String(query[searchParam] ?? ""), (value) =>
-    createQueryFromObject({ [searchParam]: value || undefined, page: 1 }),
+  /** Applies `patch` to the current query; an `undefined` or empty value removes that param. */
+  const navigate = (patch: ParamPatch) => {
+    const params = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined || value === "") params.delete(key);
+      else params.set(key, String(value));
+    }
+    startTransition(() => router.push(`?${params}`, { scroll: false }));
+  };
+
+  const search = useDebouncedSearch(query[searchParam] ?? "", (value) =>
+    navigate({ [searchParam]: value, page: 1 }),
   );
 
   /** Sets one filter, or removes it when it is back at its default (`"all"`). */
   const setFilter = (key: string, value: string, defaultValue = "all") =>
-    createQueryFromObject({
-      [key]: value === defaultValue ? undefined : value,
-      page: 1,
-    });
+    navigate({ [key]: value === defaultValue ? undefined : value, page: 1 });
 
-  /** Sets several params at once, leaving paging alone (a sort change keeps the page). */
-  const setParams = (patch: Record<string, string | number | undefined>) =>
-    createQueryFromObject(patch);
+  const setPage = (page: number) => navigate({ page });
 
-  const setPage = (page: number) => createQueryFromObject({ page });
-
-  const setPageSize = (pageSize: number) =>
-    createQueryFromObject({ pageSize, page: 1 });
+  const setPageSize = (pageSize: number) => navigate({ pageSize, page: 1 });
 
   /** Clears search and every named filter in one navigation. */
   const reset = (filterKeys: readonly string[]) => {
     search.clear();
-    createQueryFromObject({
+    navigate({
       [searchParam]: undefined,
       ...Object.fromEntries(filterKeys.map((key) => [key, undefined])),
       page: 1,
@@ -53,10 +60,11 @@ export function useUrlTableState({
     search: search.draft,
     setSearch: search.setDraft,
     setFilter,
-    setParams,
+    /** Sets several params at once, leaving paging alone (a sort change keeps the page). */
+    setParams: navigate,
     setPage,
     setPageSize,
     reset,
-    pending: isPending,
+    pending,
   };
 }

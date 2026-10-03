@@ -34,47 +34,28 @@ export const metadata: Metadata = {
 };
 
 export default async function AppLayout({ children }: AppLayoutProps) {
-  // Read fresh from the database rather than the JWT session: name and
-  // avatar are user-editable from the Profile page (@modules/settings/profile)
-  // and must show up here immediately via `router.refresh()`, not just after
-  // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [
-    user,
-    integrations,
-    activePollIntervalMs,
-    alertSummary,
-    staleIntegrations,
-    entitlementNotice,
-  ] = await withPerfScope("layout", () =>
-    Promise.all([
-      Actions.Profile.getData(),
-      Actions.Integrations.getData(),
-      Actions.WorkerSettings.getActivePollIntervalMs(),
-      getAlertSummary(getPrismaClient(), organizationId),
-      getStaleIntegrationData(getPrismaClient(), organizationId),
-      // One settings read while enforcement is off (the default).
-      getEntitlementNotice(getPrismaClient(), organizationId, {
-        roleOf: providerRole,
-      }),
-    ]),
-  );
-
-  const alerts = alertSummary.rows;
+  const [user, integrations, alertSummary, staleIntegrations, entitlementNotice] =
+    await withPerfScope("layout", () =>
+      Promise.all([
+        // Read fresh from the database rather than the JWT session: name and
+        // avatar are editable on the Profile page and must show up here on the
+        // next `router.refresh()`, not after the next sign-in.
+        Actions.Profile.getData(),
+        Actions.Integrations.getData(),
+        getAlertSummary(getPrismaClient(), organizationId),
+        getStaleIntegrationData(getPrismaClient(), organizationId),
+        // One settings read while enforcement is off (the default).
+        getEntitlementNotice(getPrismaClient(), organizationId, {
+          roleOf: providerRole,
+        }),
+      ]),
+    );
 
   return (
     <SidebarProvider defaultOpen={false}>
-      {/* Global and page-agnostic (roadmap: event-driven live data) — mounted
-          once here rather than per-page, so every page under this layout
-          (dashboard, cases, commitments, settings, etc.) refreshes on a real
-          data change instead of only the pages that used to opt into their
-          own timer. */}
-
-      <AppSidebar
-        autoSyncSeconds={Math.round(activePollIntervalMs / 1000)}
-        isPlatformOperator={isPlatformOperator(session)}
-      />
+      <AppSidebar isPlatformOperator={isPlatformOperator(session)} />
       <SidebarInset>
         <header className="border-border bg-surface-container-lowest sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl">
           <SidebarTrigger />
@@ -127,7 +108,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
             </span>
           </div>
 
-          <AlertsPopover items={alerts} />
+          <AlertsPopover items={alertSummary.rows} />
 
           <UserMenu user={user} />
         </header>
@@ -143,6 +124,8 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           />
           <StaleDataBanner integrations={staleIntegrations} />
           {children}
+          {/* Mounted once here, not per page, so every page under this layout
+              refreshes when its organization's data actually changes. */}
           <LiveDataProvider />
         </main>
       </SidebarInset>

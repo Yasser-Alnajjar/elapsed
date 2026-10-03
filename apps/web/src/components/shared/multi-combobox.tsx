@@ -1,13 +1,13 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@components/ui/tooltip";
+} from "@/components/ui/tooltip";
 import {
   useComboboxAnchor,
   Combobox,
@@ -19,122 +19,67 @@ import {
   ComboboxContent,
   ComboboxList,
   ComboboxItem,
-} from "@components/ui/combobox";
+} from "@/components/ui/combobox";
 
-export interface ComboboxOption {
+interface ComboboxOption {
   label: string;
   value: string;
 }
 
 interface MultiComboboxProps {
-  options: Array<ComboboxOption>;
-  selected: Array<string>;
-  onChange: (selected: Array<string>) => void;
-  onCreateOption?: (inputValue: string) => void;
+  options: ComboboxOption[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
   allSelectedText?: string;
   className?: string;
   disabled?: boolean;
-  maxSelected?: number;
-  creatable?: boolean;
-  createText?: string;
 }
 
 const MAX_VISIBLE = 200;
-
-const CREATE_OPTION_VALUE = "__create__";
 
 export function MultiCombobox({
   options,
   selected,
   onChange,
-  onCreateOption,
   placeholder = "Select items...",
   searchPlaceholder = "Search...",
   emptyText = "No items found.",
   allSelectedText = "All items selected.",
   className,
   disabled = false,
-  maxSelected,
-  creatable = false,
-  createText = "Create",
 }: MultiComboboxProps) {
   const anchor = useComboboxAnchor();
-  const [inputValue, setInputValue] = React.useState("");
+  const [inputValue, setInputValue] = useState("");
 
-  // Set lookup keeps the two passes below O(n) instead of O(n*m) —
-  // matters once `options` reaches catalog size and re-filters per keystroke.
-  const selectedSet = React.useMemo(() => new Set(selected), [selected]);
-
-  const selectedOptions = React.useMemo(
-    () => options.filter((o) => selectedSet.has(o.value)),
-    [options, selectedSet],
-  );
+  // A Set keeps both passes below O(n) instead of O(n*m) once `options`
+  // reaches catalog size and re-filters on every keystroke.
+  const selectedSet = new Set(selected);
+  const selectedOptions = options.filter((o) => selectedSet.has(o.value));
 
   // Selected values are excluded from the list; the chips are the only
   // representation of a selection, and the only way to remove one.
-  const allMatchingOptions = React.useMemo(() => {
-    const query = inputValue.trim().toLowerCase();
-    return options.filter(
-      (o) =>
-        !selectedSet.has(o.value) &&
-        (!query || o.label.toLowerCase().includes(query)),
-    );
-  }, [options, inputValue, selectedSet]);
-
-  const overflow = Math.max(0, allMatchingOptions.length - MAX_VISIBLE);
-  const visibleOptions = React.useMemo(
-    () => allMatchingOptions.slice(0, MAX_VISIBLE),
-    [allMatchingOptions],
+  const query = inputValue.trim().toLowerCase();
+  const matchingOptions = options.filter(
+    (o) =>
+      !selectedSet.has(o.value) &&
+      (!query || o.label.toLowerCase().includes(query)),
   );
-
-  const canCreateOption = React.useMemo(() => {
-    if (!creatable || !inputValue.trim()) return false;
-    const lower = inputValue.toLowerCase().trim();
-    return !options.some(
-      (o) => o.label.toLowerCase() === lower || o.value.toLowerCase() === lower,
-    );
-  }, [creatable, inputValue, options]);
+  const visibleOptions = matchingOptions.slice(0, MAX_VISIBLE);
 
   // Distinguishes an exhausted catalog from a query with no hits.
   const allSelected =
-    allMatchingOptions.length === 0 &&
-    selectedOptions.length === options.length;
-
-  const handleCreateOption = React.useCallback(
-    (raw: string) => {
-      const trimmed = raw.trim();
-      if (!trimmed) return;
-
-      const newValue = trimmed.toLowerCase().replace(/\s+/g, "-");
-      if (!selectedSet.has(newValue)) {
-        if (maxSelected && selected.length >= maxSelected) return;
-        onChange([...selected, newValue]);
-      }
-      onCreateOption?.(trimmed);
-      setInputValue("");
-    },
-    [selected, selectedSet, onChange, onCreateOption, maxSelected],
-  );
-
-  const handleValueChange = (value: Array<ComboboxOption>) => {
-    if (value.some((o) => o.value === CREATE_OPTION_VALUE)) {
-      handleCreateOption(inputValue);
-      return;
-    }
-
-    const next = value.map((o) => o.value);
-    if (maxSelected && next.length > maxSelected) return;
-    onChange(next);
-  };
+    matchingOptions.length === 0 && selectedOptions.length === options.length;
 
   return (
     <Combobox
       multiple
       value={selectedOptions}
-      onValueChange={handleValueChange}
+      onValueChange={(value: ComboboxOption[]) =>
+        onChange(value.map((o) => o.value))
+      }
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       disabled={disabled}
@@ -159,29 +104,13 @@ export function MultiCombobox({
           placeholder={
             selectedOptions.length === 0 ? placeholder : searchPlaceholder
           }
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" || !canCreateOption) return;
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            handleCreateOption(inputValue);
-          }}
         />
         <ComboboxClear />
         <ComboboxTrigger />
       </ComboboxChips>
       <ComboboxContent anchor={anchor}>
         <ComboboxList>
-          {canCreateOption && (
-            <ComboboxItem
-              value={{ label: inputValue.trim(), value: CREATE_OPTION_VALUE }}
-            >
-              <span className="me-1">+</span>
-              {createText} &ldquo;{inputValue.trim()}&rdquo;
-            </ComboboxItem>
-          )}
-          {visibleOptions.length === 0 && !canCreateOption ? (
+          {visibleOptions.length === 0 ? (
             <div className="flex w-full justify-center py-2 text-center text-xs/relaxed text-muted-foreground">
               {allSelected ? allSelectedText : emptyText}
             </div>
@@ -207,9 +136,9 @@ export function MultiCombobox({
                   </ComboboxItem>
                 ),
               )}
-              {overflow > 0 && (
+              {matchingOptions.length > MAX_VISIBLE && (
                 <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                  Showing {visibleOptions.length} of {allMatchingOptions.length}
+                  Showing {visibleOptions.length} of {matchingOptions.length}
                   . Type to refine.
                 </div>
               )}

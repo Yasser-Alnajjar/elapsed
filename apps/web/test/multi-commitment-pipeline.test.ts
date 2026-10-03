@@ -262,7 +262,7 @@ describe.skipIf(!TEST_DATABASE_URL)("multiple commitments per case (real Postgre
     // The case's existing first-response commitment was created under the
     // customer's calendar override; a Next Reply commitment also exists on
     // the case. Before the fix, the unfiltered `commitments` relation counted
-    // both toward `commitments.length < COMMITMENT_KINDS.length`, wrongly
+    // both toward `commitments.length < SINGLE_CYCLE_KINDS.length`, wrongly
     // skipping the calendar-version prefetch that this sibling's
     // `calendarVersionId` needs — resolution creation would fail with
     // "No BusinessCalendarVersion loaded".

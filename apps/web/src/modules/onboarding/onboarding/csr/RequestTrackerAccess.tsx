@@ -2,8 +2,10 @@
 
 import { Copy, Link2 } from "lucide-react";
 import { useState } from "react";
+import { Actions } from "@/actions/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import type { IntegrationProvider } from "@/lib/types/integrations";
 
 /**
@@ -17,25 +19,19 @@ export function RequestTrackerAccess({ provider, label }: { provider: Integratio
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
 
   async function create() {
     setBusy(true);
     setError(null);
-    try {
-      const response = await fetch("/api/integrations/connect-links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, intendedFor: intendedFor || undefined }),
-      });
-      const body = (await response.json()) as { url?: string; error?: string };
-      if (!response.ok || !body.url) throw new Error(body.error ?? "Could not create the link");
-      setUrl(body.url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create the link");
-    } finally {
-      setBusy(false);
+    const { ok, body } = await Actions.Integrations.createConnectLink(provider, intendedFor || undefined);
+    setBusy(false);
+
+    if (!ok || !body.url) {
+      setError(body.error ?? "Could not create the link");
+      return;
     }
+    setUrl(body.url);
   }
 
   return (
@@ -56,10 +52,7 @@ export function RequestTrackerAccess({ provider, label }: { provider: Integratio
           <Button
             type="button"
             variant="outline"
-            onClick={async () => {
-              await navigator.clipboard.writeText(url);
-              setCopied(true);
-            }}
+            onClick={() => copy(url)}
           >
             <Copy className="size-4" />
             {copied ? "Copied" : "Copy"}

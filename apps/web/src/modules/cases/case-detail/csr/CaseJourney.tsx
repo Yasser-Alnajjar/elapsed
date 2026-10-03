@@ -19,7 +19,6 @@ export function CaseJourney({ data }: { data: CaseDetailData }) {
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
-      {/* Title row + legend */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <span className="font-mono text-xxs font-semibold uppercase tracking-wider text-primary">

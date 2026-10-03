@@ -38,7 +38,6 @@ export function UserMenu({ user }: { user: IUser }) {
         sideOffset={8}
         className="w-56"
       >
-        {/* User */}
         <div className="flex items-center gap-2 px-2 py-2">
           <Avatar size="default">
             <AvatarImage src={user.image ?? undefined} alt="" />
@@ -55,7 +54,6 @@ export function UserMenu({ user }: { user: IUser }) {
 
         <DropdownMenuSeparator />
 
-        {/* Theme */}
         <div className="flex items-center justify-between gap-3 px-2 py-1.5">
           <span className="text-sm">Theme</span>
           <ThemeToggle />
@@ -70,7 +68,6 @@ export function UserMenu({ user }: { user: IUser }) {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
 
-        {/* Logout */}
         <DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/sign-in" })}>
           <LogOut className="size-4" />
           Sign out

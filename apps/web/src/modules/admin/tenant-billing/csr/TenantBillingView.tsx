@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AdminClientActions } from "@/actions/admin-client";
 import { BillingToast, useBillingToast } from "@/components/billing/billing-toast";
-import { downloadText, invoicesToCsv } from "@/lib/billing-invoices";
+import { invoicesToCsv } from "@/lib/billing-invoices";
+import { downloadCsv } from "@/lib/download";
 import type { AdminBillingActionInput } from "@/lib/billing-validation";
 import type { AdminTenantBillingDetail, OperatorOverrideAction } from "@/lib/types/admin-billing";
 import type { BillingInvoice } from "@/lib/types/billing";
@@ -91,7 +92,7 @@ export function TenantBillingView({ data }: { data: AdminTenantBillingDetail }) 
         data={data}
         busy={busy}
         onChangePlan={() => setOverride({ action: "change_plan" })}
-        onExportLedger={() => downloadText(`${tenant.id}-ledger.csv`, invoicesToCsv(data.invoices))}
+        onExportLedger={() => downloadCsv(`${tenant.id}-ledger.csv`, invoicesToCsv(data.invoices))}
         onReconcile={() => act({ action: "reconcile" }, "Billing reconciled")}
       />
 

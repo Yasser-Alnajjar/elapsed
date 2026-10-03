@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   CircleCheck,
   CircleUser,
-  Hourglass,
   Inbox,
   Sparkles,
   Timer,
@@ -39,25 +38,6 @@ import type { CaseListRow } from "@/lib/types/cases";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-const MS_ICONS: Record<string, LucideIcon> = {
-  sync_alt: ArrowLeftRight,
-  inbox: Inbox,
-  verified: BadgeCheck,
-  pattern: Sparkles,
-  warning: TriangleAlert,
-  task_alt: CircleCheck,
-  timer: Timer,
-  hourglass_bottom: Hourglass,
-  account_circle: CircleUser,
-  person_off: UserX,
-};
-
-/** Stitch's Material Symbol names, rendered with lucide (the font isn't loaded). */
-export function Ms({ name, className }: { name: string; className?: string }) {
-  const Icon = MS_ICONS[name] ?? Timer;
-  return <Icon aria-hidden className={cn("shrink-0", className)} />;
-}
-
 /** "Priority & Dual-Key" — severity chip over the Zendesk⇄Jira id pairing. */
 export function PriorityDualKeyCell({ row }: { row: CaseListRow }) {
   const link = row.primaryLink;
@@ -70,7 +50,7 @@ export function PriorityDualKeyCell({ row }: { row: CaseListRow }) {
           <span>#{row.externalId}</span>
           {link && (
             <>
-              <Ms name={"sync_alt"} className="size-3.25 text-tertiary" />
+              <ArrowLeftRight aria-hidden className="size-3.25 shrink-0 text-tertiary" />
               <span className="font-semibold text-primary">
                 {formatLinkedSystemShort(link.system)}-
                 {link.externalId}
@@ -91,7 +71,7 @@ export function CustomerSubjectCell({ row }: { row: CaseListRow }) {
   return (
     <div className="flex max-w-47.5 min-w-0 flex-col">
       <div className="flex items-center gap-1">
-        <span className=" text-xs font-semibold text-on-surface truncate">
+        <span className="truncate text-xs font-semibold text-on-surface">
           {row.customerName ?? "—"}
         </span>
         {row.tier && (
@@ -113,7 +93,7 @@ export function CustomerSubjectCell({ row }: { row: CaseListRow }) {
       </Tooltip>
       <div className="mt-1 flex items-center gap-2">
         <span className="flex items-center gap-1 font-mono text-xxs text-outline">
-          <Ms name={"inbox"} className="size-2.75 text-outline" />
+          <Inbox aria-hidden className="size-2.75 shrink-0 text-outline" />
           Zendesk #{row.externalId}
         </span>
       </div>
@@ -144,7 +124,11 @@ export function CorrelationCell({ row }: { row: CaseListRow }) {
       variant={isCertain ? "success" : "outline"}
       className="gap-1.5 text-nowrap"
     >
-      <Ms name={isCertain ? "verified" : "pattern"} className="size-3.25" />
+      {isCertain ? (
+        <BadgeCheck aria-hidden className="size-3.25 shrink-0" />
+      ) : (
+        <Sparkles aria-hidden className="size-3.25 shrink-0" />
+      )}
       <span className="leading-tight">
         Linked — {isCertain ? "Certain" : link.confidence}
       </span>
@@ -157,14 +141,14 @@ function RunwayFrame({
   kind,
   targetMinutes,
   status,
-  icon,
+  icon: Icon,
   percent,
   children,
 }: {
   kind: CommitmentKind;
   targetMinutes: number;
   status: string;
-  icon: string;
+  icon: LucideIcon;
   percent: number;
   children: ReactNode;
 }) {
@@ -192,7 +176,7 @@ function RunwayFrame({
           style.text,
         )}
       >
-        <Ms name={icon} className="size-3.5" />
+        <Icon aria-hidden className="size-3.5 shrink-0" />
         {children}
       </div>
       <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-container-lowest">
@@ -206,7 +190,7 @@ function RunwayFrame({
 }
 
 /** Final outcome for a case with no live clock: elapsed vs. target with a progress bar. */
-export function SettledRunway({
+function SettledRunway({
   settled,
 }: {
   settled: NonNullable<CaseListRow["settledCommitment"]>;
@@ -222,7 +206,7 @@ export function SettledRunway({
       kind={settled.kind}
       targetMinutes={settled.targetMinutes}
       status={settled.status}
-      icon={settled.status === "breached" ? "warning" : "task_alt"}
+      icon={settled.status === "breached" ? TriangleAlert : CircleCheck}
       percent={percent}
     >
       <span>
@@ -266,10 +250,10 @@ export function SlaTargetRunwayCell({ row }: { row: CaseListRow }) {
       status={live.status}
       icon={
         live.status === "breached"
-          ? "warning"
+          ? TriangleAlert
           : live.status === "met"
-            ? "task_alt"
-            : "timer"
+            ? CircleCheck
+            : Timer
       }
       percent={percentExpended}
     >
@@ -280,11 +264,6 @@ export function SlaTargetRunwayCell({ row }: { row: CaseListRow }) {
     </RunwayFrame>
   );
 }
-
-// "Leg Allocation (Supp↔Eng)" was removed from the case list
-// (performance-plan.md Phase 2 item 1): it needs per-case events, which the
-// snapshot list no longer loads. Still available live on the case-detail
-// page.
 
 /** "Current State & Assignee". */
 export function CurrentStateAssigneeCell({ row }: { row: CaseListRow }) {
@@ -315,10 +294,11 @@ export function CurrentStateAssigneeCell({ row }: { row: CaseListRow }) {
         )}
       </div>
       <span className="mt-0.5 flex items-center gap-1 text-xs text-on-surface-variant">
-        <Ms
-          name={row.assigneeName ? "account_circle" : "person_off"}
-          className="size-3.5 text-outline"
-        />
+        {row.assigneeName ? (
+          <CircleUser aria-hidden className="size-3.5 shrink-0 text-outline" />
+        ) : (
+          <UserX aria-hidden className="size-3.5 shrink-0 text-outline" />
+        )}
         {row.assigneeName ? (
           <span className="max-w-27.5 truncate">{row.assigneeName}</span>
         ) : (

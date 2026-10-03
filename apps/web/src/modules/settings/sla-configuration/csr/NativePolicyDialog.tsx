@@ -178,7 +178,6 @@ export function NativePolicyDialog({
             defaultCalendarId={defaultCalendarId}
           />
 
-          {/* Warning thresholds */}
           <div className="space-y-2">
             <Label htmlFor="warn-at-percent">
               Warning thresholds (% of target)
@@ -203,7 +202,6 @@ export function NativePolicyDialog({
             </p>
           </div>
 
-          {/* Versioning notice */}
           {mode === "edit" && (
             <div className="rounded-lg bg-surface-container px-3 py-2.5">
               <p className="text-xs leading-5 text-on-surface-variant">
@@ -214,7 +212,6 @@ export function NativePolicyDialog({
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle />
@@ -222,7 +219,6 @@ export function NativePolicyDialog({
             </Alert>
           )}
 
-          {/* Footer */}
           <DialogFooter className="gap-2">
             <Button
               type="button"

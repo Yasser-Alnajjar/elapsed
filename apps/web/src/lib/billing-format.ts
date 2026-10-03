@@ -1,4 +1,4 @@
-import type { BillingInterval, PaymentMethod } from "./types/billing";
+import type { BillingInterval } from "./types/billing";
 
 /**
  * Display formatting for billing, shared by the tenant page and the admin
@@ -113,15 +113,4 @@ export function formatDaysHours(ms: number): string {
   const days = Math.floor(totalHours / 24);
   const hours = totalHours % 24;
   return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
-}
-
-/** "08/29". */
-export function formatCardExpiry(method: Pick<PaymentMethod, "expMonth" | "expYear">): string {
-  if (method.expMonth === null || method.expYear === null) return "—";
-  return `${String(method.expMonth).padStart(2, "0")}/${String(method.expYear % 100).padStart(2, "0")}`;
-}
-
-/** "Visa ···· 4242". */
-export function formatPaymentMethod(method: Pick<PaymentMethod, "brand" | "last4">): string {
-  return `${method.brand} ···· ${method.last4}`;
 }

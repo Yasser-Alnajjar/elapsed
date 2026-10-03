@@ -3,6 +3,18 @@ import { deriveWorkerStatus, getWorkerSettingsForRead, getWorkStateNextRuns, typ
 import type { WorkerMonitoringData } from "./types/worker-settings";
 
 /**
+ * The active-poll interval alone, for the dashboard's Auto-Sync readout.
+ * Kept separate from `getWorkerMonitoringData` so a tenant page never touches
+ * (or receives) worker status, timestamps or other operator diagnostics.
+ */
+export const getActivePollIntervalMs = cache(async function getActivePollIntervalMs(
+  prisma: PrismaClient,
+): Promise<number> {
+  const settings = await getWorkerSettingsForRead(prisma);
+  return settings.activePollIntervalMs;
+});
+
+/**
  * Assembles the operator Monitoring page's read model. Worker settings are
  * global (shared by every organization — see `@sla/db`'s `WorkerSettings`
  * doc comment), so unlike every other `*-data.ts` in this directory this
@@ -14,18 +26,6 @@ import type { WorkerMonitoringData } from "./types/worker-settings";
  * `React.cache`-wrapped so one request reads the singleton row once even if
  * several server components ask for it.
  */
-/**
- * The active-poll interval alone, for the app-wide layout's sidebar footer.
- * Kept separate from `getWorkerMonitoringData` so the layout never touches
- * (or receives) worker status, timestamps or other operator diagnostics.
- */
-export const getActivePollIntervalMs = cache(async function getActivePollIntervalMs(
-  prisma: PrismaClient,
-): Promise<number> {
-  const settings = await getWorkerSettingsForRead(prisma);
-  return settings.activePollIntervalMs;
-});
-
 export const getWorkerMonitoringData = cache(async function getWorkerMonitoringData(
   prisma: PrismaClient,
   canEdit: boolean,

@@ -33,10 +33,6 @@ export interface IntegrationConnectionView {
   subdomain: string | null;
 }
 
-// export interface ZendeskConnectionView extends IntegrationConnectionView {
-//   subdomain: string | null;
-// }
-
 /** Narrow, display-only view of `SlackIntegration` — never the row itself (it carries a bot access token). */
 export interface SlackConnectionView {
   connected: boolean;

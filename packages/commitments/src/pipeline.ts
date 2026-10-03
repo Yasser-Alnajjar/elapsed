@@ -20,7 +20,7 @@ import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 export { toCalendarVersionDomain } from "./calendar-domain";
 
 /** The single-cycle kinds this pipeline creates. Also `runNextReplyCyclePipeline`'s anchor kinds (cycle-pipeline.ts). */
-export const COMMITMENT_KINDS: CommitmentKind[] = [
+export const SINGLE_CYCLE_KINDS: CommitmentKind[] = [
   "first_response",
   "resolution",
 ];
@@ -113,7 +113,7 @@ export function missingCommitmentKinds(
   existingKinds: CommitmentKind[],
 ): CommitmentKind[] {
   const existing = new Set(existingKinds);
-  return COMMITMENT_KINDS.filter((kind) => !existing.has(kind));
+  return SINGLE_CYCLE_KINDS.filter((kind) => !existing.has(kind));
 }
 
 /**
@@ -237,7 +237,7 @@ export async function runCommitmentPipeline(
       // Only cases still missing a kind (NOT EXISTS per kind) — a case with
       // both is skipped below anyway, so never loading it saves the row, its
       // JSON attributes, and the nested commitments read on every tick.
-      OR: COMMITMENT_KINDS.map((kind) => ({ commitments: { none: { kind } } })),
+      OR: SINGLE_CYCLE_KINDS.map((kind) => ({ commitments: { none: { kind } } })),
     },
     select: {
       id: true,
@@ -253,7 +253,7 @@ export async function runCommitmentPipeline(
       // Next Reply commitment must never be picked as the "sibling" below or
       // counted toward the calendar-version prefetch's completeness check.
       commitments: {
-        where: { kind: { in: COMMITMENT_KINDS } },
+        where: { kind: { in: SINGLE_CYCLE_KINDS } },
         select: { kind: true, policyVersionId: true, calendarVersionId: true },
       },
     },
@@ -288,7 +288,7 @@ export async function runCommitmentPipeline(
   const missingCalendarVersionIds = [
     ...new Set(
       cases.flatMap((c) =>
-        c.commitments.length < COMMITMENT_KINDS.length
+        c.commitments.length < SINGLE_CYCLE_KINDS.length
           ? c.commitments
               .map((cm) => cm.calendarVersionId)
               .filter((id) => !calendarsById.has(id))

@@ -4,9 +4,8 @@ import { Search, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { formatUtcClock } from "@/lib/admin-format";
-import { IUser } from "@/lib/types/user";
+import type { IUser } from "@/lib/types/user";
 import { UserMenu } from "../layout/user-menu";
 
 /**
