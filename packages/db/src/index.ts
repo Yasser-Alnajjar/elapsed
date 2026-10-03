@@ -224,6 +224,7 @@ export {
   markInvoicePaid,
   planPriceCents,
   previewNextInvoice,
+  prorateUpgradeCents,
   reconcileSubscription,
   resumeSubscription,
   seatBounds,

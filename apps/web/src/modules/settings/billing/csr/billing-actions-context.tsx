@@ -7,6 +7,8 @@ export interface BillingRunResult {
   ok: boolean;
   /** The server's message when it refused. */
   error?: string;
+  /** The server's error code (`conflict`, `invalid_seats`, …), or `network` when it was unreachable. */
+  code?: string;
 }
 
 export interface BillingActionsValue {

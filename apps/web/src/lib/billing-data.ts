@@ -280,6 +280,7 @@ export async function getBillingOverview(
     organizationName: organization.name,
     canManage,
     providerAvailable,
+    internal: organization.planStatus === "internal",
     asOf: now.toISOString(),
     subscription,
     trial,

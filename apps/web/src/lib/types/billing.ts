@@ -213,6 +213,8 @@ export interface BillingOverviewData {
   canManage: boolean;
   /** Whether a payment provider is connected (portal, payment methods, invoice PDFs). */
   providerAvailable: boolean;
+  /** An internal organization is never billed, so it has no plan to choose. */
+  internal: boolean;
   asOf: string;
   /** Null until a plan is chosen. */
   subscription: SubscriptionSummary | null;

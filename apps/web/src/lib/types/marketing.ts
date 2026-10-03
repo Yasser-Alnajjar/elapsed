@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { PlanId } from "@sla/db/plans";
 
 export interface MarketingFeature {
   icon: LucideIcon;
@@ -19,12 +20,11 @@ export interface MarketingPrinciple {
 }
 
 export interface PricingPlan {
+  id: PlanId;
   name: string;
   price: string;
   cadence: string;
   description: string;
-  cta: string;
-  href: string;
   highlighted: boolean;
   features: string[];
 }
