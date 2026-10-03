@@ -2,8 +2,10 @@ import { cache } from "react";
 import type { PrismaClient } from "@sla/db";
 import { getIntegrationConfigStatus } from "@sla/db";
 import type { ZendeskCredentials } from "@sla/zendesk";
+import { providerRole } from "./providers";
 import type {
   IntegrationConnectionView,
+  IntegrationProvider,
   IntegrationsPageData,
 } from "./types/integrations";
 
@@ -25,11 +27,15 @@ const ROW_SELECT = {
 
 /** Never return `credentials`/the row itself — only these display-only scalars. */
 function toConnectionView(
+  provider: IntegrationProvider,
   integration: IntegrationRow,
   subdomain: string | null = null,
 ): IntegrationConnectionView {
+  const role = providerRole(provider);
+
   if (!integration) {
     return {
+      role,
       connected: false,
       reauthRequired: false,
       permissionDenied: false,
@@ -45,6 +51,7 @@ function toConnectionView(
   } | null;
 
   return {
+    role,
     connected: credentials !== null,
     reauthRequired: credentials?.reauthRequired === true,
     permissionDenied: integration.status === "permission_denied",
@@ -149,16 +156,16 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
 
   return {
     zendesk: {
-      ...toConnectionView(zendeskIntegration),
+      ...toConnectionView("zendesk", zendeskIntegration),
       subdomain: zendeskCredentials?.subdomain ?? null,
     },
     jira: {
-      ...toConnectionView(jiraIntegration),
+      ...toConnectionView("jira", jiraIntegration),
       subdomain: jiraSubdomain ?? null,
     },
-    linear: toConnectionView(linearIntegration),
-    intercom: toConnectionView(intercomIntegration, intercomWorkspaceId),
-    github: toConnectionView(githubIntegration, githubRepo),
+    linear: toConnectionView("linear", linearIntegration),
+    intercom: toConnectionView("intercom", intercomIntegration, intercomWorkspaceId),
+    github: toConnectionView("github", githubIntegration, githubRepo),
     slack: {
       connected: slackIntegration !== null,
       teamName: slackIntegration?.teamName ?? null,
