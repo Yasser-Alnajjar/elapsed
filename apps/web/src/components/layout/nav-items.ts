@@ -3,6 +3,7 @@ import {
   Bell,
   Book,
   Building2,
+  CreditCard,
   Home,
   LayoutDashboard,
   ListChecks,
@@ -26,6 +27,12 @@ export interface NavItem {
 }
 
 export const SETTINGS_NAV_ITEMS: NavItem[] = [
+  {
+    href: "/billing",
+    label: "Billing & usage",
+    icon: CreditCard,
+    description: "Plan, seats, usage, invoices and payment details.",
+  },
   {
     href: "/settings/sla/configuration",
     label: "SLA",

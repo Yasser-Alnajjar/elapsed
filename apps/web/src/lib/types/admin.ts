@@ -56,6 +56,7 @@ export const ADMIN_AUDIT_ACTIONS = [
   "resume_polling",
   "request_renormalize",
   "update_worker_settings",
+  "billing_override",
 ] as const;
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
 
@@ -66,6 +67,7 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   resume_polling: "Resumed polling",
   request_renormalize: "Requested re-normalization",
   update_worker_settings: "Changed worker settings",
+  billing_override: "Billing override",
 };
 
 export interface AdminAuditRow {

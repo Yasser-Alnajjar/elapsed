@@ -1,4 +1,4 @@
-import { Activity, Building2, Radar, ScrollText } from "lucide-react";
+import { Activity, Building2, Radar, ReceiptText, ScrollText } from "lucide-react";
 import type { NavItem } from "@/components/layout/nav-items";
 
 /**
@@ -24,6 +24,12 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     label: "Monitoring",
     icon: Activity,
     description: "Monitor worker health and adjust polling intervals.",
+  },
+  {
+    href: "/admin/billing",
+    label: "Billing operations",
+    icon: ReceiptText,
+    description: "Revenue, subscriptions and payment risk across every tenant.",
   },
   {
     href: "/admin/audit",

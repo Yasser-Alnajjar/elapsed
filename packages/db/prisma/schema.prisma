@@ -67,6 +67,13 @@ model Organization {
   trialEndsAt       DateTime?
   /// Free text for the operator, for example an invoice or contract id.
   billingReference  String?
+  /// Internal billing (N6.5). The subscription mirrors its plan and status
+  /// into `plan` / `planStatus` / `trialEndsAt` above, which is what the
+  /// entitlement checks read; see `packages/db/src/billing.ts`.
+  billingAccount      BillingAccount?
+  billingSubscription BillingSubscription?
+  billingInvoices     BillingInvoice[]
+  billingEvents       BillingEvent[]
 
   @@map("organizations")
 }
@@ -976,6 +983,123 @@ enum PlanStatus {
   internal
 }
 
+/// Who and where an organization is billed (N6.5): the billing profile
+/// invoices are issued against. Provider-neutral; a payment provider's
+/// customer id can be added here as its own column when one is integrated.
+model BillingAccount {
+  id             String               @id @default(cuid())
+  organizationId String               @unique
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  billingEmail   String?
+  legalName      String?
+  addressLines   String[]
+  /// ISO 3166 country or subdivision code, e.g. `US-CA`.
+  country        String?
+  taxId          String?
+  /// Extra invoice recipients, copied on every invoice.
+  ccEmails       String[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  subscription   BillingSubscription?
+
+  @@map("billing_accounts")
+}
+
+/// The organization's subscription (N6.5). One row per organization: a
+/// cancelled subscription is restarted in place and `BillingEvent` keeps the
+/// history. Every change goes through `packages/db/src/billing.ts`, which
+/// bumps `version` (optimistic concurrency) and mirrors plan and status onto
+/// the organization in the same transaction.
+model BillingSubscription {
+  id                 String           @id @default(cuid())
+  organizationId     String           @unique
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  billingAccountId   String           @unique
+  billingAccount     BillingAccount   @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  /// A `PlanId` from `plans.ts`.
+  plan               String
+  /// `trial` | `active` | `past_due` | `cancelled`; never `internal`.
+  status             PlanStatus
+  /// Licensed seats: at least the seats in use, at most the plan's seat limit.
+  seatQuantity       Int
+  /// The plan's list price when the current period started; null for a custom-priced plan.
+  unitPriceCents     Int?
+  currency           String           @default("USD")
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  trialEndsAt        DateTime?
+  cancelAtPeriodEnd  Boolean          @default(false)
+  cancelRequestedAt  DateTime?
+  endedAt            DateTime?
+  /// A downgrade scheduled for the end of the current period.
+  pendingPlan        String?
+  version            Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  invoices           BillingInvoice[]
+
+  @@map("billing_subscriptions")
+}
+
+enum BillingInvoiceStatus {
+  open
+  paid
+  void
+}
+
+/// An invoice issued by the internal billing lifecycle. Immutable once paid
+/// or void; `idempotencyKey` makes each issue (`cycle:<period start>`,
+/// `update:<subscription version>`) happen once.
+model BillingInvoice {
+  id             String               @id @default(cuid())
+  organizationId String
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   BillingSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  /// `INV-<year>-<sequence>`, unique per organization.
+  number         String
+  status         BillingInvoiceStatus @default(open)
+  /// `subscription_create` | `subscription_cycle` | `subscription_update`.
+  reason         String
+  plan           String
+  seatQuantity   Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  /// `{ label, detail, amountCents }[]`.
+  lines          Json
+  totalCents     Int
+  currency       String               @default("USD")
+  idempotencyKey String
+  issuedAt       DateTime             @default(now())
+  dueAt          DateTime
+  paidAt         DateTime?
+  voidedAt       DateTime?
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, issuedAt])
+  @@index([subscriptionId])
+  @@map("billing_invoices")
+}
+
+/// Append-only billing history (N6.5): every subscription transition, invoice
+/// and operator override, with who made it.
+model BillingEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// See `BILLING_EVENT_TYPES` in `packages/db/src/billing.ts`.
+  type           String
+  /// `user` | `operator` | `system`.
+  actorType      String
+  actorEmail     String?
+  data           Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@map("billing_events")
+}
+
 /// Append-only record of what a platform operator did or looked at (N4.2).
 /// Platform-level, not tenant data: no tenant read path exists, and there is no
 /// update or delete path in code (`admin-boundary.test.ts` asserts it).
@@ -985,7 +1109,7 @@ model AdminAuditLog {
   id             String   @id @default(cuid())
   actorEmail     String
   /// `view_tenant`, `update_plan`, `pause_polling`, `resume_polling`,
-  /// `request_renormalize`, `update_worker_settings`.
+  /// `request_renormalize`, `update_worker_settings`, `billing_override`.
   action         String
   organizationId String?
   integrationId  String?

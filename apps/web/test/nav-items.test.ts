@@ -46,7 +46,13 @@ describe("nav items", () => {
     expect(isNavItemActive(path, "/settings")).toBe(false);
   });
 
-  it("lists the four admin sections in order", () => {
-    expect(ADMIN_NAV_ITEMS.map((i) => i.href)).toEqual(["/admin", "/admin/tenants", "/admin/monitoring", "/admin/audit"]);
+  it("lists the five admin sections in order", () => {
+    expect(ADMIN_NAV_ITEMS.map((i) => i.href)).toEqual(["/admin", "/admin/tenants", "/admin/monitoring", "/admin/billing", "/admin/audit"]);
+  });
+
+  it("puts billing first under Configuration, outside the settings URLs", () => {
+    expect(SETTINGS_NAV_ITEMS[0]?.href).toBe("/billing");
+    expect(isNavItemActive("/billing", "/billing")).toBe(true);
+    expect(isNavItemActive("/admin/billing/ten_glx_9921", "/billing")).toBe(false);
   });
 });

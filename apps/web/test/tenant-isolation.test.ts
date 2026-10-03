@@ -367,6 +367,42 @@ async function seedExtras(
   await prisma.entitlementEvent.create({
     data: { organizationId: org.organizationId, kind: "limit_warned", resource: "seats", dedupeKey: "seats:2026-10-02", used: 6, limit: 5 },
   });
+  // Billing (N6.5): account, subscription, invoice and history, all per organization.
+  const billingAccount = await prisma.billingAccount.create({
+    data: { organizationId: org.organizationId, billingEmail: `billing@${label}.test`, legalName: `${label} Billing Inc.`, addressLines: [], ccEmails: [] },
+  });
+  const billingSubscription = await prisma.billingSubscription.create({
+    data: {
+      organizationId: org.organizationId,
+      billingAccountId: billingAccount.id,
+      plan: "team",
+      status: "trial",
+      seatQuantity: 20,
+      unitPriceCents: 14_900,
+      currentPeriodStart: new Date(Date.now() - 86_400_000),
+      currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+      trialEndsAt: new Date(Date.now() + 30 * 86_400_000),
+    },
+  });
+  await prisma.billingInvoice.create({
+    data: {
+      organizationId: org.organizationId,
+      subscriptionId: billingSubscription.id,
+      number: `${label.toUpperCase()}-INV-1`,
+      reason: "subscription_create",
+      plan: "team",
+      seatQuantity: 20,
+      periodStart: new Date(),
+      periodEnd: new Date(Date.now() + 30 * 86_400_000),
+      lines: [],
+      totalCents: 14_900,
+      idempotencyKey: `${label}-create`,
+      dueAt: new Date(Date.now() + 14 * 86_400_000),
+    },
+  });
+  await prisma.billingEvent.create({
+    data: { organizationId: org.organizationId, type: "operator_note", actorType: "operator", data: { note: `${label} billing note` } },
+  });
 
   const commitments = await prisma.commitment.findMany({
     where: { caseId: org.caseId },
@@ -816,6 +852,22 @@ describe.skipIf(!TEST_DATABASE_URL)("tenant isolation (real Postgres)", () => {
   describe("models the original suite did not name (H-10)", () => {
     const url = "http://localhost:3000/api";
     const idParams = (id: string) => ({ params: Promise.resolve({ id }) });
+
+    it("billing (N6.5): the billing page reads only this org's subscription, invoices and profile, and invoice overrides cannot cross orgs", async () => {
+      const { getBillingOverview } = await import("../src/lib/billing-data");
+      const billing = await getBillingOverview(prisma, { organizationId: orgA.organizationId, canManage: true, providerAvailable: false });
+      const text = JSON.stringify(billing).toLowerCase();
+      expect(text).toContain("alpha-inv-1");
+      expect(text).toContain("alpha billing inc.");
+      expect(text).not.toContain("bravo");
+
+      const dbModule = await import("@sla/db");
+      const foreign = await prisma.billingInvoice.findFirstOrThrow({ where: { organizationId: orgB.organizationId } });
+      await expect(
+        dbModule.markInvoicePaid(prisma, { organizationId: orgA.organizationId, invoiceId: foreign.id, actor: { type: "operator", email: "ops@test" } }),
+      ).rejects.toMatchObject({ code: "not_found" });
+      expect((await prisma.billingInvoice.findUniqueOrThrow({ where: { id: foreign.id } })).status).toBe("open");
+    });
 
     it("reads: members, pending invitations, import review, integrations (Slack, config) and case detail (events, links, notifications, policy changes) show only this org", async () => {
       expectOnlyOrgA(await (await routes.members.GET()).json());
