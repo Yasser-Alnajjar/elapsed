@@ -50,7 +50,9 @@ COPY --from=builder /repo/apps/web/.next/static ./apps/web/.next/static
 USER nextjs
 EXPOSE 3000
 # GET /api/health (roadmap step 29) checks DB connectivity only — see
-# apps/web/src/app/api/health/route.ts.
+# apps/web/src/app/api/health/route.ts. Use 127.0.0.1, not localhost: busybox
+# wget resolves localhost to ::1 first, but Next's standalone server only
+# listens on IPv4 (0.0.0.0), so the probe gets "Connection refused".
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 CMD ["node", "apps/web/server.js"]
