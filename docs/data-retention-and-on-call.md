@@ -75,16 +75,19 @@ this was reproduced, with a caveat:
   scans `normalized_events`. Without the index, the delete was still running
   after 17 minutes and was cancelled. With an index on that column, added to
   the throwaway database only, it finished in about 2 seconds. It also held
-  locks for the whole run. The schema was not changed.
-- Recorded as a finding, not fixed. Adding the index is a schema change, and
-  the deletion procedure is a Decision.
+  locks for the whole run.
+- **Index added 2026-10-03** (migration
+  `20261003120000_normalized_event_source_raw_event_index`, roadmap H-5).
+  Re-measured on two 2,000-case perf-seed organizations: 1.4 s with the
+  index, cancelled at 120 s without it. The deletion procedure itself is still
+  a Decision (below).
 
 **Backups** keep deleted data until they age out (see the table above).
 
 ## Decisions (owner) — not built
 
 1. A retention period for `RawEvent`, and whether anything prunes or archives it.
-2. A supported tenant-deletion procedure: the missing index above, a script,
+2. A supported tenant-deletion procedure: a script (the index above is now in place),
    a rehearsed run, and a check that no tenant-owned data is left behind.
 3. Whether a customer deletion request carries a time promise.
 4. Whether disconnect should also clear `IntegrationConfig`, and whether

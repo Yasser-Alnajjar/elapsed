@@ -339,6 +339,10 @@ model NormalizedEvent {
   sourceRawEvent   RawEvent            @relation(fields: [sourceRawEventId], references: [id])
 
   @@index([caseId, occurredAt])
+  // Backs the RESTRICT check on `sourceRawEventId`: without it, every
+  // cascaded RawEvent delete (organization or integration delete) scans this
+  // table (H-5).
+  @@index([sourceRawEventId])
   @@map("normalized_events")
 }
 
