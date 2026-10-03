@@ -19,10 +19,10 @@ import { cn } from "@/lib/utils";
 import { LinkCoverageMeter } from "./LinkCoverageMeter";
 
 const HEALTH_EDGE: Record<TenantHealth, string> = {
-  unhealthy: "border-l-error",
-  attention: "border-l-warning",
-  healthy: "border-l-transparent",
-  none: "border-l-transparent",
+  unhealthy: "border-s-error",
+  attention: "border-s-warning",
+  healthy: "border-s-success",
+  none: "border-s-transparent",
 };
 
 const COLUMNS = [

@@ -1,3 +1,4 @@
+import type { PriorityTier } from "../format";
 import type {
   CanonicalPriority,
   ClockState,
@@ -261,7 +262,7 @@ export interface CaseListRow {
 export type CaseListStatusFilter = "all" | CommitmentStatus;
 export type CaseListOpenFilter = "all" | "open" | "closed";
 export type CaseListLinkFilter = "all" | "linked" | "unlinked";
-export type CaseListSeverityFilter = "all" | "P1" | "P2" | "P3" | "P4";
+export type CaseListSeverityFilter = "all" | PriorityTier;
 /**
  * A sortable case-list column id (matches the `ColumnDef.id`s in
  * `csr/columns.tsx`), not the underlying database field it maps to — see

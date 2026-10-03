@@ -22,7 +22,7 @@ export function AdminShell({
 }) {
   return (
     <AdminOperatorProvider actorEmail={user.email?.toLowerCase() ?? "-"}>
-      <SidebarProvider defaultOpen>
+      <SidebarProvider defaultOpen={false}>
         <AdminSidebar user={user} />
         {/* `SidebarInset` is the page's <main> landmark. */}
         <SidebarInset>

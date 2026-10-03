@@ -12,9 +12,8 @@ import {
 import type { LinkCoverage } from "@/lib/types/link-coverage";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";
 import { cn } from "@/lib/utils";
-import { StatusDot, Tag, TONE_SURFACE, TONE_TEXT } from "./admin-ui";
-
-type Tone = "neutral" | "primary" | "success" | "warning" | "danger";
+import { TONE_SURFACE, TONE_TEXT, type Tone } from "@/lib/status-styles";
+import { StatusDot, Tag } from "./admin-ui";
 
 const HEALTH: Record<
   TenantHealth,

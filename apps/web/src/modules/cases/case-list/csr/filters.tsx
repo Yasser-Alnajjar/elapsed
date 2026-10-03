@@ -1,15 +1,16 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  FilterGroup,
+  PRIORITY_TIER_FILTER_OPTIONS,
+} from "@/components/shared/filter-group";
 import { Input } from "@/components/ui/input";
-import { cn, Utils } from "@/lib/utils";
+import { Utils } from "@/lib/utils";
 
 import {
-  GROUP_LABEL,
   LINK_FILTERS,
   OPEN_FILTERS,
-  SEVERITY_FILTERS,
   STATUS_FILTERS,
   type LinkFilter,
   type OpenFilter,
@@ -86,7 +87,7 @@ export function CaseListFilters({
         </div>{" "}
         <FilterGroup
           label="SEVERITY:"
-          options={SEVERITY_FILTERS}
+          options={PRIORITY_TIER_FILTER_OPTIONS}
           value={severity}
           counts={severityCounts}
           onChange={setSeverity}
@@ -113,74 +114,6 @@ export function CaseListFilters({
           onChange={setOpenState}
         />{" "}
       </div>{" "}
-    </div>
-  );
-}
-type FilterOption<T extends string> = {
-  value: T;
-  label: string;
-  tone?: string;
-  dot?: string;
-  badge?: string;
-};
-interface FilterGroupProps<T extends string> {
-  label: string;
-  options: readonly FilterOption<T>[];
-  value: T;
-  counts?: Partial<Record<T, number>>;
-  onChange: (value: T) => void;
-  variant?: "default" | "status";
-}
-function FilterGroup<T extends string>({
-  label,
-  options,
-  value,
-  counts,
-  onChange,
-}: FilterGroupProps<T>) {
-  return (
-    <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded bg-surface-container-lowest p-1 lg:shrink-0 lg:self-auto">
-      {" "}
-      <span className={GROUP_LABEL}>{label}</span>{" "}
-      {options.map((filter) => {
-        const active = value === filter.value;
-        const count = counts?.[filter.value];
-        return (
-          <Button
-            key={filter.value}
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-pressed={active}
-            onClick={() => onChange(filter.value)}
-            className={cn(
-              "gap-1 rounded px-2.5 py-1 font-mono text-xxs font-semibold tracking-wider",
-              "transition-colors duration-150",
-              filter.tone,
-              active
-                ? cn("bg-current/10", "hover:bg-current/15")
-                : cn("hover:bg-current/10"),
-            )}
-          >
-            {" "}
-            {filter.dot && (
-              <span className={cn("size-1.5 rounded-full", filter.dot)} />
-            )}{" "}
-            <span>{filter.label}</span>{" "}
-            {count !== undefined && (
-              <span
-                className={cn(
-                  "rounded px-1 font-mono text-xxs",
-                  active ? "bg-current/15" : filter.badge,
-                )}
-              >
-                {" "}
-                {count}{" "}
-              </span>
-            )}{" "}
-          </Button>
-        );
-      })}{" "}
     </div>
   );
 }

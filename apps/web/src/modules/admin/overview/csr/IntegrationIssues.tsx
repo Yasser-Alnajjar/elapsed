@@ -6,12 +6,8 @@ import {
   Terminal,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  AdminPanel,
-  Fact,
-  Tag,
-  TONE_SURFACE,
-} from "@/components/admin/admin-ui";
+import { AdminPanel, Fact, Tag } from "@/components/admin/admin-ui";
+import { TONE_SURFACE } from "@/lib/status-styles";
 import { describeIntegrationIssue } from "@/lib/admin-integration-issue";
 import { shortId } from "@/lib/admin-format";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@sla/db";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * Deliberately unauthenticated (see `proxy.ts`'s `PUBLIC_API_PATHS`) — an
@@ -19,7 +20,7 @@ export async function GET() {
     console.error(
       JSON.stringify({
         event: "health_check_failed",
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       }),
     );
     return NextResponse.json({ status: "error", checks: { database: "error" } }, { status: 503 });

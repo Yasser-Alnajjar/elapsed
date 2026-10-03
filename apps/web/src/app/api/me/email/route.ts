@@ -11,10 +11,7 @@ import {
   clearAuthThrottle,
   recordFailedAuthAttempt,
 } from "@/lib/auth-throttle";
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage } from "@/lib/utils";
 
 const requestEmailChangeSchema = z.object({
   newEmail: z.string().trim().toLowerCase().email("Enter a valid email address"),

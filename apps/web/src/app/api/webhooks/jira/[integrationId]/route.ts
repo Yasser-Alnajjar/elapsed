@@ -17,6 +17,7 @@ import { PROVIDERS, WEB_PROVIDERS } from "@/lib/providers";
 import { caseRefResolverFor } from "@/lib/case-ref";
 import { getJiraOAuthConfig } from "@/lib/jira-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
+import { errorMessage } from "@/lib/utils";
 
 export const maxDuration = 60;
 
@@ -207,7 +208,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
       return NextResponse.json({ status: "ignored", reason: "permission denied" });
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     await prisma.integration.update({
       where: { id: integration.id },
       data: { lastSyncAt: new Date(), lastSyncError: message, consecutiveFailures: { increment: 1 }, failingSince: integration.failingSince ?? new Date() },

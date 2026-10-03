@@ -22,6 +22,7 @@ import {
 import { MonoLabel, StatusDot } from "./admin-ui";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
 import { IUser } from "@/lib/types/user";
+import { BrandMark } from "../shared/brand-mark";
 
 /** The mono, left-barred active state of the admin menu, on top of the shadcn menu button's own. */
 const MENU_BUTTON =
@@ -40,24 +41,10 @@ export function AdminSidebar({ user }: { user: IUser }) {
 
   return (
     <Sidebar side="left" collapsible="icon">
-      <SidebarHeader className="gap-0 p-0">
-        <div className="bg-surface-raised border-sidebar-border flex h-14 items-center justify-between border-b px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <Link
-            href="/admin"
-            onClick={closeSheet}
-            aria-label="Platform admin home"
-            className="flex items-center gap-2.5"
-          >
-            <BrandLogo className="size-6" />
-            <span className="text-foreground font-mono text-base font-bold tracking-tight group-data-[collapsible=icon]:hidden">
-              ELAPSED
-            </span>
-          </Link>
-          <span className="border-primary/30 bg-primary/10 text-primary rounded border px-1.5 py-0.5 font-mono text-[10px] leading-3 font-semibold tracking-[0.06em] group-data-[collapsible=icon]:hidden">
-            OPS
-          </span>
-        </div>
-
+      <SidebarHeader>
+        <Link href="/dashboard" aria-label="dashboard">
+          <BrandMark logoClassName="size-8" />
+        </Link>
         <div className="border-sidebar-border border-b bg-warning/8 px-4 py-2 group-data-[collapsible=icon]:hidden">
           <span className="text-warning-text font-mono text-[10px] font-semibold tracking-[0.08em] uppercase">
             Internal · Platform admin
@@ -73,14 +60,34 @@ export function AdminSidebar({ user }: { user: IUser }) {
                 <SidebarMenuButton
                   asChild
                   tooltip="Customer application"
-                  className={`${MENU_BUTTON} text-sidebar-foreground/70 text-xs`}
+                  className={MENU_BUTTON}
                 >
-                  <Link href="/dashboard" onClick={closeSheet}>
-                    <ArrowLeft />
+                  <Link
+                    href="/dashboard"
+                    onClick={closeSheet}
+                    className="shrink-0"
+                  >
+                    <ArrowLeft className="size-4 shrink-0" />
                     <span>Customer application</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {/* <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Customer application"
+                  className={`text-sidebar-foreground/70 text-xs`}
+                >
+                  <Link
+                    href="/dashboard"
+                    onClick={closeSheet}
+                    className="shrink-0"
+                  >
+                    <ArrowLeft />
+                    <span>Customer application</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

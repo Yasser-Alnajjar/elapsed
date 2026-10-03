@@ -7,6 +7,8 @@ import {
   subscribeLiveStatus,
 } from "@/lib/live-status-store";
 import type { LiveConnectionStatus } from "@/lib/live-data-connection";
+import { TONE_DOT, TONE_TEXT, type Tone } from "@/lib/status-styles";
+import { cn } from "@/lib/utils";
 
 const LABEL: Record<LiveConnectionStatus, string> = {
   connected: "Live",
@@ -14,16 +16,10 @@ const LABEL: Record<LiveConnectionStatus, string> = {
   offline: "Offline",
 };
 
-const DOT_CLASS: Record<LiveConnectionStatus, string> = {
-  connected: "bg-success animate-pulse",
-  reconnecting: "bg-warning animate-pulse",
-  offline: "bg-error",
-};
-
-const TEXT_CLASS: Record<LiveConnectionStatus, string> = {
-  connected: "text-success",
-  reconnecting: "text-warning",
-  offline: "text-error",
+const TONE: Record<LiveConnectionStatus, Tone> = {
+  connected: "success",
+  reconnecting: "warning",
+  offline: "danger",
 };
 
 const TITLE: Record<LiveConnectionStatus, string> = {
@@ -52,8 +48,20 @@ export function LiveStatusBadge() {
       className="flex items-center gap-1.5 rounded border border-border-subtle bg-surface-container px-2.5 py-1"
       title={TITLE[status]}
     >
-      <span className={`size-1.5 rounded-full ${DOT_CLASS[status]}`} aria-hidden />
-      <span className={`font-mono text-xxs font-semibold uppercase tracking-wider ${TEXT_CLASS[status]}`}>
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          TONE_DOT[TONE[status]],
+          status !== "offline" && "animate-pulse",
+        )}
+        aria-hidden
+      />
+      <span
+        className={cn(
+          "font-mono text-xxs font-semibold uppercase tracking-wider",
+          TONE_TEXT[TONE[status]],
+        )}
+      >
         {LABEL[status]}
       </span>
     </div>

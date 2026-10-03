@@ -4,7 +4,8 @@ import { Activity, Gauge, Radio, RefreshCw, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { AdminClientActions } from "@/actions/admin-client";
-import { AdminPanel, AuditNotice, Fact, MonoLabel, PageHeader, SectionTitle, StatTile, StatusDot, TONE_TEXT } from "@/components/admin/admin-ui";
+import { AdminPanel, AuditNotice, Fact, MonoLabel, PageHeader, SectionTitle, StatTile, StatusDot } from "@/components/admin/admin-ui";
+import { TONE_TEXT, WORKER_STATUS_TONE } from "@/lib/status-styles";
 import { Button } from "@/components/ui/button";
 import { formatUtcTimestamp } from "@/lib/admin-format";
 import { formatIntervalMs } from "@/lib/format";
@@ -13,13 +14,11 @@ import type { LiveDataStatusView, LiveListenerConnectionState } from "@/lib/type
 import {
   ACTIVE_POLL_OPTIONS,
   RECONCILIATION_OPTIONS,
+  WORKER_STATUS_LABELS,
   type WorkerMonitoringData,
-  type WorkerStatus,
 } from "@/lib/types/worker-settings";
 import { IntervalSettingRow } from "./IntervalSettingRow";
 
-const STATUS_LABEL: Record<WorkerStatus, string> = { running: "Running", degraded: "Degraded", stopped: "Stopped" };
-const STATUS_TONE: Record<WorkerStatus, "success" | "warning" | "danger"> = { running: "success", degraded: "warning", stopped: "danger" };
 
 const LIVE_STATE_LABEL: Record<LiveListenerConnectionState, string> = { connected: "Live", reconnecting: "Reconnecting", offline: "Offline" };
 const LIVE_STATE_TONE: Record<LiveListenerConnectionState, "success" | "warning" | "danger"> = {
@@ -106,9 +105,9 @@ export function MonitoringView({ data, liveData }: MonitoringViewProps) {
           label="Worker"
           icon={Activity}
           value={
-            <span className={`flex items-center gap-2 text-2xl ${TONE_TEXT[STATUS_TONE[settings.status]]}`}>
-              <StatusDot tone={STATUS_TONE[settings.status]} pulse={settings.status === "running"} className="size-2.5" />
-              {STATUS_LABEL[settings.status]}
+            <span className={`flex items-center gap-2 text-2xl ${TONE_TEXT[WORKER_STATUS_TONE[settings.status]]}`}>
+              <StatusDot tone={WORKER_STATUS_TONE[settings.status]} pulse={settings.status === "running"} className="size-2.5" />
+              {WORKER_STATUS_LABELS[settings.status]}
             </span>
           }
           detail="Reported by the worker process itself, not this page."

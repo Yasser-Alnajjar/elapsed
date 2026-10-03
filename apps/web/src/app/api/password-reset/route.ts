@@ -3,10 +3,7 @@ import { z } from "zod";
 import { getPrismaClient, requestPasswordReset } from "@sla/db";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildPasswordResetEmail } from "@/lib/password-reset-email";
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage } from "@/lib/utils";
 
 const requestSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),

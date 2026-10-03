@@ -44,7 +44,7 @@ export function AdminTopbar({ user }: { user: IUser }) {
   }
 
   return (
-    <header className="bg-card/90 border-border sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl lg:px-6">
+    <header className="bg-surface-container-lowest border-border sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl lg:px-6">
       <SidebarTrigger className="shrink-0" />
 
       <form

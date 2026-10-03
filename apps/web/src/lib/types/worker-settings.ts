@@ -2,6 +2,12 @@ import type { WorkerStatus } from "@sla/db";
 
 export type { WorkerStatus };
 
+export const WORKER_STATUS_LABELS: Record<WorkerStatus, string> = {
+  running: "Running",
+  degraded: "Degraded",
+  stopped: "Stopped",
+};
+
 // Deliberately not imported from `@sla/db` (which also exports these): this
 // file is imported by client components (`modules/operator/monitoring/csr`),
 // and a *value* import of anything from `@sla/db`'s barrel would pull the

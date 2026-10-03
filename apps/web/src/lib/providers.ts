@@ -50,6 +50,12 @@ export type IssueLinkSystem = IntegrationProvider;
 export const isIssueLinkSystem = (system: string): system is IssueLinkSystem =>
   (ISSUE_LINK_PROVIDERS as string[]).includes(system);
 
+/** The one tracker-issue link to show for a case — `certain` over `probable` when a case somehow carries both; null when it has none. */
+export function preferredIssueLink<T extends { system: string; confidence: string }>(links: T[]): T | null {
+  const trackerLinks = links.filter((l) => isIssueLinkSystem(l.system));
+  return trackerLinks.find((l) => l.confidence === "certain") ?? trackerLinks[0] ?? null;
+}
+
 /** Providers that have a capability, in registry order. */
 export const providersWithCapability = (capability: keyof ProviderCapabilities): IntegrationProvider[] =>
   ALL_PROVIDERS.filter((p) => PROVIDERS[p].capabilities[capability]);

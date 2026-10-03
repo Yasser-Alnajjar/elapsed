@@ -1,5 +1,6 @@
 import { formatExactTimestamp } from "@/lib/format";
 import type { AttributionLedger } from "@/lib/types/dashboard";
+import { LEG_STYLES } from "@/lib/status-styles";
 
 /**
  * The Stitch dashboard's "30-Day Attribution Ledger" — period-scoped leg-hour
@@ -20,19 +21,19 @@ export function AttributionLedgerCard({
     {
       label: "Total support leg hours",
       value: ledger.supportLegHours,
-      dot: "bg-primary",
+      dot: LEG_STYLES.support.fill,
       valueClassName: "text-on-surface",
     },
     {
       label: "Total engineering leg hours",
       value: engineeringMeasured ? ledger.engineeringLegHours : null,
-      dot: "bg-error",
-      valueClassName: "text-error",
+      dot: LEG_STYLES.engineering.fill,
+      valueClassName: LEG_STYLES.engineering.text,
     },
     {
       label: "Waiting on customer/vendor",
       value: ledger.waitingCustomerLegHours,
-      dot: "bg-outline",
+      dot: LEG_STYLES.waiting_customer.fill,
       valueClassName: "text-outline",
     },
   ];

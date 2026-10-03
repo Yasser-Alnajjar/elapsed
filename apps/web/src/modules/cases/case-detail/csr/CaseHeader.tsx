@@ -4,9 +4,15 @@ import { Check, Copy, ExternalLink, Link2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { PriorityTierChip } from "@/components/shared/priority-tier-chip";
 import { Reveal } from "@/components/shared/reveal";
-import { cn } from "@/lib/utils";
-import { formatDateTime, formatLeg, formatTicketSource } from "@/lib/format";
+import {
+  formatDateTime,
+  formatLeg,
+  formatPriorityTier,
+  formatPriorityTierName,
+  formatTicketSource,
+} from "@/lib/format";
 import type { CaseDetailData } from "@/lib/types/cases";
 
 import { CaseRunwayHero, pickHeroCommitment } from "./CaseRunwayHero";
@@ -26,26 +32,6 @@ export function formatCaseIdentity(
   if (requesterName) return `Requester: ${requesterName}`;
   return "—";
 }
-
-/** Priority label → Stitch badge styling */
-const PRIORITY_CHIP: Record<string, { label: string; className: string }> = {
-  urgent: {
-    label: "P1 — CRITICAL",
-    className: "bg-error-container text-error",
-  },
-  high: {
-    label: "P2 — HIGH",
-    className: "bg-error-container text-error",
-  },
-  normal: {
-    label: "P3 — NORMAL",
-    className: "bg-surface-container-highest text-on-surface-variant",
-  },
-  low: {
-    label: "P4 — LOW",
-    className: "bg-surface-container-highest text-on-surface-variant",
-  },
-};
 
 /** Copyable dual-key chip — "#ZD-8921" or "#ZD-8921 ↔ ENG-4102" */
 function CopyKeysButton({ reference }: { reference: string }) {
@@ -88,7 +74,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
 
   const heroCommitment = pickHeroCommitment(data.commitments);
 
-  const priorityChip = c.priority ? PRIORITY_CHIP[c.priority] : null;
+  const priorityTier = formatPriorityTier(c.priority);
   const identity = formatCaseIdentity(c.customerName, c.requesterName);
 
   return (
@@ -156,15 +142,10 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
         <div className="flex max-w-3xl flex-col gap-2">
           {/* Badge row */}
           <div className="flex flex-wrap items-center gap-2">
-            {priorityChip && (
-              <span
-                className={cn(
-                  "rounded px-2 py-0.5 font-mono text-xxs font-semibold uppercase tracking-wider",
-                  priorityChip.className,
-                )}
-              >
-                {priorityChip.label}
-              </span>
+            {priorityTier && (
+              <PriorityTierChip priority={c.priority} className="px-2">
+                {priorityTier} — {formatPriorityTierName(priorityTier)}
+              </PriorityTierChip>
             )}
 
             {/* ZD key chip */}

@@ -128,6 +128,22 @@
   --clock-running: var(--success);
   --clock-paused: var(--neutral);
 
+  /* ── Commitment status / ticket priority tier ──
+   * One hue per business value; restyle a status on every screen by
+   * changing its line here (class mappings: src/lib/status-styles.ts).
+   * Declared once: they only alias reference tokens, and `.dark` overrides
+   * those on this same <html> element, so they resolve per theme. */
+  --status-on-track: var(--primary);
+  --status-at-risk: var(--warning);
+  --status-breached: var(--danger);
+  --status-met: var(--success);
+  --status-cancelled: var(--foreground-muted);
+
+  --priority-p1: var(--danger);
+  --priority-p2: var(--warning);
+  --priority-p3: var(--foreground-muted);
+  --priority-p4: var(--foreground-subtle);
+
   /* ── Sidebar ──────────────────────────────────── */
   --sidebar: var(--sidebar-background);
   --sidebar-foreground: var(--foreground);
@@ -541,6 +557,17 @@
 
   --color-clock-running: var(--clock-running);
   --color-clock-paused: var(--clock-paused);
+
+  --color-status-on-track: var(--status-on-track);
+  --color-status-at-risk: var(--status-at-risk);
+  --color-status-breached: var(--status-breached);
+  --color-status-met: var(--status-met);
+  --color-status-cancelled: var(--status-cancelled);
+
+  --color-priority-p1: var(--priority-p1);
+  --color-priority-p2: var(--priority-p2);
+  --color-priority-p3: var(--priority-p3);
+  --color-priority-p4: var(--priority-p4);
 
   /* ─────────────────────────────────────────────
    * Charts

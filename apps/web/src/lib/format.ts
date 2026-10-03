@@ -81,16 +81,37 @@ export function formatLeg(leg: string): string {
  * low/none) to a Stitch-style "P1"/"P2"/"P3" severity label — display-only,
  * not a stored field; never used for matching, sorting weight, or SLA logic.
  */
-const PRIORITY_TIER_LABELS: Record<string, string> = {
+export type PriorityTier = "P1" | "P2" | "P3" | "P4";
+
+const PRIORITY_TIER_LABELS: Record<string, PriorityTier> = {
   urgent: "P1",
   high: "P2",
   normal: "P3",
   low: "P4",
 };
 
-export function formatPriorityTier(priority: string | null): string | null {
+export function formatPriorityTier(priority: string | null): PriorityTier | null {
   if (!priority) return null;
   return PRIORITY_TIER_LABELS[priority] ?? null;
+}
+
+const PRIORITY_TIER_NAMES: Record<PriorityTier, string> = {
+  P1: "Critical",
+  P2: "High",
+  P3: "Normal",
+  P4: "Low",
+};
+
+/** A tier's plain-language name, e.g. "Critical" for P1. */
+export function formatPriorityTierName(tier: PriorityTier): string {
+  return PRIORITY_TIER_NAMES[tier];
+}
+
+/** Reverse of `formatPriorityTier`: the raw ticket priority strings that map to `tier`, for server-side severity filters. */
+export function rawPrioritiesForTier(tier: PriorityTier): string[] {
+  return Object.keys(PRIORITY_TIER_LABELS).filter(
+    (priority) => PRIORITY_TIER_LABELS[priority] === tier,
+  );
 }
 
 // Record<CommitmentKind, string>, not Record<string, string>: a new
@@ -406,4 +427,28 @@ export function formatCaseLinkMethod(method: string): string {
 /** The provider's display name; for a Case, the ticket source that created it. */
 export function formatTicketSource(system: IntegrationProvider): string {
   return INTEGRATION_PROVIDER_LABELS[system];
+}
+
+const LINKED_SYSTEM_SHORT_LABELS: Record<string, string> = {
+  jira: "ENG",
+  linear: "LIN",
+  github: "GH",
+};
+
+/** The short prefix a linked tracker issue is shown with, e.g. "ENG" in "ENG-142". */
+export function formatLinkedSystemShort(system: string): string {
+  return LINKED_SYSTEM_SHORT_LABELS[system] ?? system.toUpperCase();
+}
+
+/** Up to two initials for an avatar: from the name's first two words, else the email's first two letters. */
+export function initialsOf(name: string | null, email: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    const initials = parts
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("");
+    if (initials) return initials.toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
 }

@@ -1,4 +1,5 @@
 import { Leg, CommitmentKind, CommitmentStatus } from "@sla/core";
+import type { PriorityTier } from "../format";
 import type { IntegrationProvider } from "./integrations";
 
 /**
@@ -46,7 +47,7 @@ export interface AtRiskRowData {
   linkedIssue: AtRiskLinkedIssue | null;
 }
 
-export type AtRiskSeverityFilter = "all" | "P1" | "P2" | "P3" | "P4";
+export type AtRiskSeverityFilter = "all" | PriorityTier;
 
 export interface AtRiskParams {
   page: number;
