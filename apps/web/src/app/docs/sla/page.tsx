@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 
 const toc = [
   {
@@ -320,32 +321,32 @@ export default function SlaPage() {
             every imported policy and are not adjustable from the settings UI.
           </p>
 
-          <div className="overflow-hidden rounded-lg border">
+          <DataTableCard>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="ps-4">Status</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Definition</TableHead>
-                  <TableHead className="pe-4">Transition trigger</TableHead>
+                  <TableHead>Transition trigger</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {statuses.map((row) => (
                   <TableRow key={row.status}>
-                    <TableCell className="ps-4">
+                    <TableCell>
                       <Badge variant={row.variant}>{row.status}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {row.definition}
                     </TableCell>
-                    <TableCell className="pe-4 text-muted-foreground">
+                    <TableCell className="text-muted-foreground">
                       {row.trigger}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTableCard>
 
           <p className="text-sm text-muted-foreground">
             Crossing into at risk or breached triggers a Slack and/or email

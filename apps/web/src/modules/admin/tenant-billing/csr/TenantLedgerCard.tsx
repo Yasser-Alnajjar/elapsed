@@ -1,13 +1,14 @@
 import { ReceiptText } from "lucide-react";
 import { AdminPanel, MonoLabel, Tag } from "@/components/admin/admin-ui";
 import { InvoiceStatusPill } from "@/components/billing/billing-ui";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatBillingDate, formatMoney } from "@/lib/billing-format";
 import type { AdminTenantBillingDetail } from "@/lib/types/admin-billing";
 import type { BillingInvoice } from "@/lib/types/billing";
 import { cn } from "@/lib/utils";
 
-const HEAD = "text-foreground-subtle px-2.5 py-2 text-left font-mono text-[10px] font-semibold tracking-[0.06em] uppercase";
-const ACTION = "rounded px-2 py-1 font-mono text-[10px] font-semibold uppercase transition-colors disabled:pointer-events-none disabled:opacity-40";
 
 interface TenantLedgerCardProps {
   data: AdminTenantBillingDetail;
@@ -38,62 +39,62 @@ export function TenantLedgerCard({ data, busy, onMarkPaid, onVoid, onRetry }: Te
         {data.invoices.length === 0 ? (
           <p className="text-muted-foreground bg-surface-raised rounded p-4 text-sm">No invoices yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[460px] border-separate border-spacing-y-1 text-sm">
-              <thead>
-                <tr className="bg-surface-container/60">
-                  <th scope="col" className={cn(HEAD, "rounded-l")}>Invoice</th>
-                  <th scope="col" className={HEAD}>Due</th>
-                  <th scope="col" className={HEAD}>Amount</th>
-                  <th scope="col" className={HEAD}>Status</th>
-                  <th scope="col" className={cn(HEAD, "rounded-r text-right")}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
+          <DataTableCard>
+            <Table className="min-w-[460px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Due</TableHead>
+                  <TableHead align="end">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead align="end">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.invoices.map((invoice) => {
                   const overdue = invoice.status === "open" && Date.parse(invoice.dueAt) < now;
                   return (
-                    <tr key={invoice.id} className="bg-surface-raised/40 hover:bg-surface-hover transition-colors">
-                      <td className="rounded-l px-2.5 py-2.5">
+                    <TableRow key={invoice.id}>
+                      <TableCell>
                         <span className="flex flex-col">
                           <span className="text-foreground font-mono text-xs font-bold">{invoice.number}</span>
                           <span className="text-foreground-subtle font-mono text-[10px]">{invoice.detail}</span>
                         </span>
-                      </td>
-                      <td className={cn("px-2.5 py-2.5 font-mono text-[10px] whitespace-nowrap", overdue ? "text-error font-bold" : "text-muted-foreground")}>
+                      </TableCell>
+                      <TableCell nowrap className={cn("font-mono text-[10px]", overdue ? "text-error font-bold" : "text-muted-foreground")}>
                         {invoice.status === "paid" ? `Paid ${formatBillingDate(invoice.paidAt)}` : formatBillingDate(invoice.dueAt)}
-                      </td>
-                      <td className={cn("px-2.5 py-2.5 font-mono text-xs font-bold tabular-nums", overdue ? "text-error" : "text-foreground")}>
+                      </TableCell>
+                      <TableCell align="end" nowrap className={cn("font-mono text-xs font-bold tabular-nums", overdue ? "text-error" : "text-foreground")}>
                         {formatMoney(invoice.amountCents, invoice.currency)}
-                      </td>
-                      <td className="px-2.5 py-2.5">
+                      </TableCell>
+                      <TableCell>
                         <InvoiceStatusPill status={invoice.status} />
-                      </td>
-                      <td className="rounded-r px-2.5 py-2.5">
+                      </TableCell>
+                      <TableCell align="end">
                         {invoice.status === "open" ? (
                           <div className="flex items-center justify-end gap-1">
-                            <button type="button" disabled={busy} onClick={() => onMarkPaid(invoice)} className={cn(ACTION, "bg-success/15 text-success hover:bg-success hover:text-background")}>
+                            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => onMarkPaid(invoice)} className="text-success">
                               Mark paid
-                            </button>
-                            <button type="button" disabled={busy} onClick={() => onVoid(invoice)} className={cn(ACTION, "bg-surface-container text-foreground-subtle hover:text-foreground")}>
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => onVoid(invoice)}>
                               Void
-                            </button>
+                            </Button>
                             {data.providerAvailable && (
-                              <button type="button" disabled={busy} onClick={() => onRetry(invoice)} className={cn(ACTION, "bg-error/15 text-error hover:bg-error hover:text-error-foreground")}>
+                              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => onRetry(invoice)} className="text-error">
                                 Retry
-                              </button>
+                              </Button>
                             )}
                           </div>
                         ) : (
-                          <span className="text-foreground-subtle block text-right font-mono text-[10px] uppercase">Settled</span>
+                          <span className="text-foreground-subtle font-mono text-[10px] uppercase">Settled</span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </DataTableCard>
         )}
       </div>
       <div className="bg-surface-container rounded-lg p-3">

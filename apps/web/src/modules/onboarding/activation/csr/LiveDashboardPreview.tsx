@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import {
+  DataTableCard,
+  DataTableFooter,
+} from "@/components/shared/data-table/data-table-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { ActivationPageData } from "@/lib/types/onboarding";
 import { AtRiskSnapshotTable } from "@modules/dashboard/dashboard/csr/AtRiskSnapshotTable";
@@ -18,8 +22,8 @@ export function LiveDashboardPreview({
   const overflowCount = Math.max(0, total - rows.length);
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-container shadow-elevated">
-      <div className="flex flex-col gap-3 bg-surface-container-low p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+    <DataTableCard>
+      <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="size-2.5 rounded-full bg-error" />
@@ -48,25 +52,23 @@ export function LiveDashboardPreview({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <AtRiskSnapshotTable
-              rows={rows}
-              engineeringMeasured={engineeringMeasured}
-            />
-          </div>
+          <AtRiskSnapshotTable
+            rows={rows}
+            engineeringMeasured={engineeringMeasured}
+          />
           {overflowCount > 0 && (
-            <div className="border-t border-outline-variant/20 px-5 py-3">
+            <DataTableFooter>
               <Link
                 href="/at-risk"
-                className="font-body-sm text-body-sm text-primary hover:underline"
+                className="text-primary hover:underline"
               >
                 +{overflowCount} more open commitment
                 {overflowCount === 1 ? "" : "s"} — view all
               </Link>
-            </div>
+            </DataTableFooter>
           )}
         </>
       )}
-    </div>
+    </DataTableCard>
   );
 }

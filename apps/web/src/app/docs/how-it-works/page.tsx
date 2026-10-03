@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 
 const toc = [
   { id: "the-problem", title: "The problem", level: 2 as const },
@@ -171,28 +172,28 @@ export default function HowItWorksPage() {
             A short glossary
           </h2>
 
-          <div className="overflow-hidden rounded-lg border px-4">
+          <DataTableCard>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="ps-4">Term</TableHead>
-                  <TableHead className="pe-4">Meaning</TableHead>
+                  <TableHead>Term</TableHead>
+                  <TableHead>Meaning</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {glossary.map((row) => (
                   <TableRow key={row.term}>
-                    <TableCell className="ps-4 font-medium">
+                    <TableCell className="font-medium">
                       {row.term}
                     </TableCell>
-                    <TableCell className="pe-4 text-muted-foreground">
+                    <TableCell className="text-muted-foreground">
                       {row.meaning}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTableCard>
         </section>
 
         <Separator />

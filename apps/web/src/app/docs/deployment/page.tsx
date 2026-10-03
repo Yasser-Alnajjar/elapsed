@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 import { getAppUrl } from "@/lib/app-url";
 
 const toc = [
@@ -251,20 +252,20 @@ scripts/rotate-secrets.sh .env.prod`}</code>
             of starting with blank values.
           </p>
 
-          <div className="overflow-hidden rounded-lg border">
+          <DataTableCard>
             <Table className="min-w-190">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="ps-4">Variable</TableHead>
+                  <TableHead>Variable</TableHead>
                   <TableHead>Used by</TableHead>
-                  <TableHead className="pe-4">Notes</TableHead>
+                  <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {environment.map((item) => (
                   <TableRow key={item.variable}>
-                    <TableCell className="ps-4 align-top">
+                    <TableCell className="align-top">
                       <code className="text-xs">{item.variable}</code>
                     </TableCell>
 
@@ -272,14 +273,14 @@ scripts/rotate-secrets.sh .env.prod`}</code>
                       {item.usedBy}
                     </TableCell>
 
-                    <TableCell className="pe-4 align-top leading-6 text-muted-foreground">
+                    <TableCell className="align-top leading-6 text-muted-foreground">
                       {item.notes}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTableCard>
 
           <Alert>
             <ShieldCheck className="size-4" />

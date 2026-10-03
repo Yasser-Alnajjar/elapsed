@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DocsLayout } from "@/components/docs/docs-layout";
 import { Badge } from "@/components/ui/badge";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getProviderAccessFacts, SLACK_ACCESS_FACT } from "@/lib/security-summary";
 
@@ -37,6 +38,7 @@ export default function SecuritySummaryPage() {
         <section id="access" className="space-y-4">
           <h2 className="text-2xl font-semibold">Access to your systems</h2>
           <p className="text-muted-foreground">Every data source is connected through that provider&apos;s own OAuth flow, with read-only access.</p>
+          <DataTableCard>
           <Table>
             <TableHeader>
               <TableRow>
@@ -67,6 +69,7 @@ export default function SecuritySummaryPage() {
               ))}
             </TableBody>
           </Table>
+          </DataTableCard>
           <p className="text-sm text-muted-foreground">
             Slack is outbound only, used to post alerts and reports. Bot scopes:{" "}
             {SLACK_ACCESS_FACT.scopes.map((scope) => (

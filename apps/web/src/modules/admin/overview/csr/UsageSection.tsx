@@ -1,6 +1,8 @@
 import { BellRing, Timer, Users } from "lucide-react";
 import Link from "next/link";
-import { AdminPanel, MonoLabel, SectionTitle, StatTile, Tag } from "@/components/admin/admin-ui";
+import { SectionTitle, StatTile, Tag } from "@/components/admin/admin-ui";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatUtcShort } from "@/lib/admin-format";
 import type { AdminUsageData } from "@/lib/types/admin";
 import { cn } from "@/lib/utils";
@@ -62,40 +64,39 @@ export function UsageSection({ usage }: { usage: AdminUsageData }) {
       </div>
 
       {usage.organizations.length > 0 && (
-        <AdminPanel className="overflow-x-auto p-0">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr>
-                {["Organization", "Last seen (UTC)", "Alerts opened / sent", "Time to first value"].map((column) => (
-                  <th key={column} scope="col" className="border-border border-b px-4 py-2.5 whitespace-nowrap">
-                    <MonoLabel>{column}</MonoLabel>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+        <DataTableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Organization</TableHead>
+                <TableHead>Last seen (UTC)</TableHead>
+                <TableHead>Alerts opened / sent</TableHead>
+                <TableHead>Time to first value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {usage.organizations.map((row) => (
-                <tr key={row.organizationId} className="border-border border-b last:border-b-0">
-                  <td className="px-4 py-2.5">
+                <TableRow key={row.organizationId}>
+                  <TableCell>
                     <Link href={`/admin/tenants/${row.organizationId}`} className="text-foreground font-medium underline-offset-2 hover:underline">
                       {row.name}
                     </Link>{" "}
                     {!row.activeThisWeek && <Tag tone="warning">not seen this week</Tag>}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-2.5 font-mono text-xs tabular-nums">
+                  </TableCell>
+                  <TableCell nowrap className="text-muted-foreground font-mono text-xs tabular-nums">
                     {row.lastSeenAt ? formatUtcShort(row.lastSeenAt) : "never"}
-                  </td>
-                  <td className={cn("px-4 py-2.5 font-mono text-xs tabular-nums", row.alertsSent30d > 0 && row.alertsOpened30d === 0 && "text-warning")}>
+                  </TableCell>
+                  <TableCell nowrap className={cn("font-mono text-xs tabular-nums", row.alertsSent30d > 0 && row.alertsOpened30d === 0 && "text-warning")}>
                     {row.alertsOpened30d} / {row.alertsSent30d}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-2.5 font-mono text-xs tabular-nums">
+                  </TableCell>
+                  <TableCell nowrap className="text-muted-foreground font-mono text-xs tabular-nums">
                     {row.minutesToFirstValue === null ? "not yet" : formatDuration(row.minutesToFirstValue)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </AdminPanel>
+            </TableBody>
+          </Table>
+        </DataTableCard>
       )}
     </section>
   );

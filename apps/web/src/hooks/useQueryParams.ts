@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
 /**
@@ -11,6 +12,11 @@ export const useQueryParams = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathName = usePathname();
+  // Navigations run in a transition so callers can tell a fetch is in flight
+  // (`isPending`) and dim the table instead of leaving it looking stale.
+  const [isPending, startTransition] = useTransition();
+  const push = (href: string) =>
+    startTransition(() => router.push(href, { scroll: false }));
 
   /**
    * Retrieves query parameters as an object.
@@ -58,10 +64,10 @@ export const useQueryParams = () => {
     // Convert to string and update the URL
     if (pathName) {
       const queryString = params.toString();
-      router.push(`${pathName}?${queryString}`, { scroll: false });
+      push(`${pathName}?${queryString}`);
     } else {
       const queryString = params.toString();
-      router.push(`?${queryString}`, { scroll: false });
+      push(`?${queryString}`);
     }
   };
 
@@ -84,20 +90,15 @@ export const useQueryParams = () => {
 
       const newQueryString = params.toString();
 
-      router.push(
-        newQueryString ? `${currentPath}?${newQueryString}` : currentPath,
-        {
-          scroll: false,
-        },
-      );
+      push(newQueryString ? `${currentPath}?${newQueryString}` : currentPath);
     } else {
       // Clear all query parameters
-      router.push(currentPath, { scroll: false });
+      push(currentPath);
     }
   };
 
   const clearAll = () => {
-    router.push(`${pathName}`, { scroll: false });
+    push(`${pathName}`);
   };
 
   const updatePaginationQuery = ({
@@ -123,7 +124,7 @@ export const useQueryParams = () => {
     params.set("take", take.toString());
 
     // Push updated query to the router
-    router.push(`?${params.toString()}`, { scroll: false });
+    push(`?${params.toString()}`);
   };
 
   return {
@@ -132,5 +133,6 @@ export const useQueryParams = () => {
     modifyQueryParams,
     updatePaginationQuery,
     clearAll,
+    isPending,
   };
 };

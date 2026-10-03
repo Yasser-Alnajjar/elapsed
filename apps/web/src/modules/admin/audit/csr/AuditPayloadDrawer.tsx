@@ -4,6 +4,15 @@ import { ArrowRight, Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Fact, MonoLabel } from "@/components/admin/admin-ui";
+import { DataTableCard } from "@/components/shared/data-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -182,42 +191,36 @@ function Decoded({
         </dl>
       )}
       {entries.length > 0 && (
-        <div className="border-border overflow-hidden rounded border">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-surface-raised">
-                <th className="px-3 py-2">
-                  <MonoLabel>Field</MonoLabel>
-                </th>
-                <th className="px-3 py-2">
-                  <MonoLabel>Before</MonoLabel>
-                </th>
-                <th className="px-3 py-2">
-                  <MonoLabel>After</MonoLabel>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-border divide-y">
+        <DataTableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Field</TableHead>
+                <TableHead>Before</TableHead>
+                <TableHead>After</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {entries.map((entry) => (
-                <tr key={entry.field}>
-                  <td className="text-foreground px-3 py-2.5 font-mono text-xs">
+                <TableRow key={entry.field}>
+                  <TableCell className="text-foreground font-mono text-xs">
                     {entry.field}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs">
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
                     <span className="text-error line-through decoration-1">
                       {entry.before ?? "—"}
                     </span>
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs">
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
                     <span className="text-success font-semibold">
                       {entry.after ?? "—"}
                     </span>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </DataTableCard>
       )}
     </>
   );

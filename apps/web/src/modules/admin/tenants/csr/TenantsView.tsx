@@ -3,11 +3,13 @@
 import { SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { AuditNotice, PageHeader } from "@/components/admin/admin-ui";
 import {
-  AdminPanel,
-  AuditNotice,
-  PageHeader,
-} from "@/components/admin/admin-ui";
+  DataTableCard,
+  DataTableEmpty,
+  DataTableFooter,
+  DataTableRangeSummary,
+} from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { formatUtcTimestamp } from "@/lib/admin-format";
 import {
@@ -71,43 +73,43 @@ export function TenantsView({ data, initialQuery }: TenantsViewProps) {
 
       <TenantsSummary data={data} />
 
-      <TenantsToolbar
-        controls={controls}
-        counts={counts}
-        refreshing={refreshing}
-        onChange={(next) => setControls((current) => ({ ...current, ...next }))}
-        onRefresh={() => startRefresh(() => router.refresh())}
-      />
+      {/* `@container` lets the list pick table or cards by the room it actually has (the sidebar eats some). */}
+      <DataTableCard className="@container">
+        <TenantsToolbar
+          controls={controls}
+          counts={counts}
+          refreshing={refreshing}
+          onChange={(next) => setControls((current) => ({ ...current, ...next }))}
+          onRefresh={() => startRefresh(() => router.refresh())}
+          onReset={filtered ? () => setControls(DEFAULT_TENANT_CONTROLS) : undefined}
+        />
 
-      {/* `@container` lets the list pick table or cards by the room it actually has (the sidebar eats some), and
-          `overflow-clip` rounds the corners without becoming a scroll box, so the table header can stick to the page. */}
-      <AdminPanel className="@container overflow-clip">
         {visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
-            <SearchX className="text-foreground-subtle size-6" aria-hidden />
-            <div>
-              <p className="text-foreground text-sm font-semibold">
-                {data.tenants.length === 0
-                  ? "No organizations yet"
-                  : "No tenants match"}
-              </p>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                {data.tenants.length === 0
-                  ? "Organizations appear here as customers sign up."
-                  : "Nothing fits the current search and filters."}
-              </p>
-            </div>
-            {filtered && (
-              <Button
-                type="button"
-                variant="surface"
-                size="sm"
-                onClick={() => setControls(DEFAULT_TENANT_CONTROLS)}
-              >
-                Reset filters
-              </Button>
-            )}
-          </div>
+          <DataTableEmpty
+            icon={SearchX}
+            title={
+              data.tenants.length === 0
+                ? "No organizations yet"
+                : "No tenants match"
+            }
+            description={
+              data.tenants.length === 0
+                ? "Organizations appear here as customers sign up."
+                : "Nothing fits the current search and filters."
+            }
+            action={
+              filtered && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setControls(DEFAULT_TENANT_CONTROLS)}
+                >
+                  Reset filters
+                </Button>
+              )
+            }
+          />
         ) : (
           <>
             <div className="hidden @min-[1130px]:block">
@@ -119,21 +121,15 @@ export function TenantsView({ data, initialQuery }: TenantsViewProps) {
           </>
         )}
 
-        <div className="bg-surface-raised border-border text-foreground-subtle flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5 font-mono text-xxs">
-          <span>
-            Showing{" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {visible.length}
-            </span>{" "}
-            of{" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {data.tenants.length}
-            </span>{" "}
-            tenants
-          </span>
+        <DataTableFooter>
+          <DataTableRangeSummary
+            shown={visible.length}
+            total={data.tenants.length}
+            label="tenants"
+          />
           <span>Snapshot as of {formatUtcTimestamp(data.asOf)}</span>
-        </div>
-      </AdminPanel>
+        </DataTableFooter>
+      </DataTableCard>
     </div>
   );
 }

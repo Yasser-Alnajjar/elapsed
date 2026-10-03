@@ -2,17 +2,21 @@
 
 import { ListChecks, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  DataTableCard,
+  DataTableEmpty,
+  DataTablePagination,
+  useUrlTableState,
+} from "@/components/shared/data-table";
 import { Reveal } from "@/components/shared/reveal";
-import { Utils } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { cn, Utils } from "@/lib/utils";
 import type { AtRiskPageData } from "@/lib/types/at-risk";
-import { useQueryParams } from "@hooks";
 
 import { AtRiskCard } from "./AtRiskCard";
-import { AtRiskFilters } from "./AtRiskFilters";
-import { AtRiskPagination } from "./AtRiskPagination";
+import { AtRiskToolbar } from "./AtRiskFilters";
 import type { LegFilter, SeverityFilter } from "./types";
 import { AtRiskHeader } from "./AtRiskHeader";
 import { AtRiskKpiGrid } from "./AtRiskKpiGrid";
@@ -23,34 +27,21 @@ const REVEAL_LIMIT = 10;
 
 export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
   const router = useRouter();
-  const { getQueryObject, createQueryFromObject } = useQueryParams();
-  const query = getQueryObject();
+  const url = useUrlTableState();
 
   // `severity` and `q` are server-side (persisted `Case.priority` / a
   // search filter on persisted case fields) — changing either re-fetches a
   // fresh, still-bounded page. `leg` is derived from live evaluation with no
   // persisted equivalent, so it only narrows the rows already on this page.
-  const severity = (query.severity as SeverityFilter) ?? "all";
+  const severity = (url.query.severity as SeverityFilter) ?? "all";
   const [leg, setLeg] = useState<LegFilter>("all");
 
-  const searchDraft0 = String(query.q ?? "");
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [searchDraft, setSearchDraft] = useState(searchDraft0);
-  useEffect(() => setSearchDraft(searchDraft0), [searchDraft0]);
-
-  const setQuery = (value: string) => {
-    setSearchDraft(value);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      createQueryFromObject({ q: value || undefined, page: 1 });
-    }, 300);
+  const hasActiveFilters =
+    severity !== "all" || leg !== "all" || url.search !== "";
+  const resetFilters = () => {
+    setLeg("all");
+    url.reset(["severity"]);
   };
-
-  const setSeverity = (value: SeverityFilter) =>
-    createQueryFromObject({
-      severity: value === "all" ? undefined : value,
-      page: 1,
-    });
 
   const legCounts = useMemo(
     () => ({
@@ -88,60 +79,78 @@ export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
       <AtRiskKpiGrid data={data} />
 
       <Reveal delay={0.15} className="mt-4">
-        <AtRiskFilters
-          severity={severity}
-          leg={leg}
-          query={searchDraft}
-          severityCounts={data.counts.severity}
-          legCounts={legCounts}
-          onSeverityChange={setSeverity}
-          onLegChange={setLeg}
-          onQueryChange={setQuery}
-          pageSize={data.pageSize}
-        />
-      </Reveal>
-
-      <div className="mt-4 flex flex-col gap-3">
-        {data.totalCount === 0 ? (
-          <Reveal delay={0.2}>
-            <EmptyState
-              icon={ListChecks}
-              title="No open commitments"
-              description="Everything currently tracked is closed."
-            />
-          </Reveal>
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            title="No commitments match these filters"
-            description="Try clearing the severity, locus, or search filters."
+        <DataTableCard>
+          <AtRiskToolbar
+            severity={severity}
+            leg={leg}
+            query={url.search}
+            severityCounts={data.counts.severity}
+            legCounts={legCounts}
+            onSeverityChange={(value) => url.setFilter("severity", value)}
+            onLegChange={setLeg}
+            onQueryChange={url.setSearch}
+            onReset={hasActiveFilters ? resetFilters : undefined}
           />
-        ) : (
-          filtered.map((row, index) =>
-            index < REVEAL_LIMIT ? (
-              <Reveal
-                key={row.commitmentId}
-                delay={Math.min(0.02 * index, 0.3)}
-              >
-                <AtRiskCard row={row} />
-              </Reveal>
-            ) : (
-              <AtRiskCard key={row.commitmentId} row={row} />
-            ),
-          )
-        )}
-      </div>
 
-      {data.rowCount > 0 && (
-        <div className="mt-4">
-          <AtRiskPagination
+          <div
+            aria-busy={url.pending || undefined}
+            className={cn(
+              "flex flex-col gap-3 p-3 transition-opacity sm:p-4",
+              url.pending && "opacity-60",
+            )}
+          >
+            {data.totalCount === 0 ? (
+              <DataTableEmpty
+                icon={ListChecks}
+                title="No open commitments"
+                description="Everything currently tracked is closed."
+              />
+            ) : filtered.length === 0 ? (
+              <DataTableEmpty
+                icon={Search}
+                title="No commitments match these filters"
+                description="Try clearing the severity, locus, or search filters."
+                action={
+                  hasActiveFilters && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={resetFilters}
+                    >
+                      Reset filters
+                    </Button>
+                  )
+                }
+              />
+            ) : (
+              filtered.map((row, index) =>
+                index < REVEAL_LIMIT ? (
+                  <Reveal
+                    key={row.commitmentId}
+                    delay={Math.min(0.02 * index, 0.3)}
+                  >
+                    <AtRiskCard row={row} />
+                  </Reveal>
+                ) : (
+                  <AtRiskCard key={row.commitmentId} row={row} />
+                ),
+              )
+            )}
+          </div>
+
+          <DataTablePagination
             page={data.page}
             pageSize={data.pageSize}
             pageCount={data.pageCount}
             rowCount={data.rowCount}
+            itemLabel="open commitments"
+            onPageChange={url.setPage}
+            onPageSizeChange={url.setPageSize}
+            pending={url.pending}
           />
-        </div>
-      )}
+        </DataTableCard>
+      </Reveal>
 
       {data.totalCount > 0 && (
         <Reveal delay={0.2} className="mt-4">

@@ -30,8 +30,6 @@ export const DEFAULT_BILLING_CONTROLS: BillingListControls = {
   sort: "next_billing",
 };
 
-export const BILLING_PAGE_SIZE = 7;
-
 function matchesQuery(row: AdminBillingTenantRow, query: string): boolean {
   if (query === "") return true;
   return [row.name, row.id, row.ownerEmail ?? "", row.rateNote.text].some((value) => value.toLowerCase().includes(query));
@@ -66,29 +64,6 @@ export function selectBillingTenants(rows: AdminBillingTenantRow[], controls: Bi
         (controls.health === "all" || row.health === controls.health),
     )
     .sort((a, b) => SORTS[controls.sort](a, b) || a.name.localeCompare(b.name));
-}
-
-export function pageCountOf(total: number, pageSize = BILLING_PAGE_SIZE): number {
-  return Math.max(1, Math.ceil(total / pageSize));
-}
-
-export function pageOf<T>(rows: T[], page: number, pageSize = BILLING_PAGE_SIZE): T[] {
-  return rows.slice(page * pageSize, page * pageSize + pageSize);
-}
-
-/** Page buttons to show (0-based), with `null` for an ellipsis: first, last, and the current page's neighbours. */
-export function pageWindow(page: number, pageCount: number): (number | null)[] {
-  if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index);
-  const pages = new Set([0, pageCount - 1, page - 1, page, page + 1].filter((p) => p >= 0 && p < pageCount));
-  if (page <= 1) pages.add(2);
-  if (page >= pageCount - 2) pages.add(pageCount - 3);
-  const sorted = [...pages].sort((a, b) => a - b);
-  const window: (number | null)[] = [];
-  sorted.forEach((p, index) => {
-    if (index > 0 && p - sorted[index - 1]! > 1) window.push(null);
-    window.push(p);
-  });
-  return window;
 }
 
 export function countByTier(rows: AdminBillingTenantRow[]): Record<"all" | BillingPlanTier, number> {

@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 
 const toc = [
   { id: "oauth-apps", title: "Bringing your own OAuth app", level: 2 as const },
@@ -126,20 +127,20 @@ export default function ConfigurationPage() {
             Settings reference
           </h2>
 
-          <div className="overflow-hidden rounded-lg border">
+          <DataTableCard>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="ps-4">Setting</TableHead>
+                  <TableHead>Setting</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>What it means</TableHead>
-                  <TableHead className="pe-4">Default</TableHead>
+                  <TableHead>Default</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {settings.map((row) => (
                   <TableRow key={row.setting}>
-                    <TableCell className="ps-4 font-medium">
+                    <TableCell className="font-medium">
                       {row.setting}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -148,14 +149,14 @@ export default function ConfigurationPage() {
                     <TableCell className="text-muted-foreground">
                       {row.meaning}
                     </TableCell>
-                    <TableCell className="pe-4 text-muted-foreground">
+                    <TableCell className="text-muted-foreground">
                       {row.default}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTableCard>
         </section>
 
         <section id="engineering-target" className="scroll-mt-24 space-y-4">

@@ -71,9 +71,9 @@ export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
 
   return (
     <>
-      <TableRow className="hover:bg-surface-container border-outline-variant/20">
+      <TableRow>
         <TableCell>
-          <div className="flex items-center gap-2 ps-4">
+          <div className="flex items-center gap-2">
             <Avatar>
               <AvatarFallback
                 className={
@@ -99,7 +99,11 @@ export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
           </div>
         </TableCell>
 
-        <TableCell className="text-on-surface-variant font-mono text-xs">
+        <TableCell
+          truncate
+          title={member.email}
+          className="text-on-surface-variant font-mono text-xs"
+        >
           {member.email}
         </TableCell>
 
@@ -137,34 +141,28 @@ export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
           </div>
         </TableCell>
 
-        <TableCell className="text-on-surface-variant  font-mono text-xs">
+        <TableCell nowrap className="text-on-surface-variant font-mono text-xs">
           {formatDateTime(member.createdAt)}
         </TableCell>
 
-        <TableCell className=" text-end">
-          <div className="pe-4">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={handleRemove}
-              disabled={isSelf || formik.isSubmitting}
-              title={isSelf ? "You can't remove yourself" : undefined}
-            >
-              {formik.isSubmitting ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <X />
-              )}
-              Remove
-            </Button>
-          </div>
+        <TableCell align="end">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={handleRemove}
+            disabled={isSelf || formik.isSubmitting}
+            title={isSelf ? "You can't remove yourself" : undefined}
+          >
+            {formik.isSubmitting ? <Loader2 className="animate-spin" /> : <X />}
+            Remove
+          </Button>
         </TableCell>
       </TableRow>
 
       {formik.status && (
-        <TableRow className="border-outline-variant/20">
-          <TableCell colSpan={5} className="px-4 pb-3 pt-0">
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={5} className="pt-0">
             <Alert variant="destructive">
               <AlertCircle />
               <AlertDescription>{formik.status}</AlertDescription>
