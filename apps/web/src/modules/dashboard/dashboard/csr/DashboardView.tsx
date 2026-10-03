@@ -169,7 +169,10 @@ export const DashboardView = ({
       {!data.engineeringMeasured && (
         <Reveal delay={0.02}>
           <div className="bg-surface-container-low shadow-soft relative flex flex-col gap-2 overflow-hidden rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="bg-primary absolute inset-y-0 inset-s-0 w-1.5" aria-hidden />
+            <div
+              className="bg-primary absolute inset-y-0 inset-s-0 w-1.5"
+              aria-hidden
+            />
             <div className="flex items-start gap-3 ps-2">
               <span className="bg-surface-container-highest flex size-8 shrink-0 items-center justify-center rounded">
                 <Network className="text-primary size-4" />
@@ -179,8 +182,9 @@ export const DashboardView = ({
                   Engineering time appears once a tracker is connected
                 </p>
                 <p className="text-outline text-sm">
-                  Support-side commitments and breaches are measured already. Engineering figures stay blank, not
-                  zero, until a work tracker is linked.
+                  Support-side commitments and breaches are measured already.
+                  Engineering figures stay blank, not zero, until a work tracker
+                  is linked.
                 </p>
               </div>
             </div>
@@ -437,20 +441,22 @@ export const DashboardView = ({
           />
         </Reveal>
       </div>
-      {data.engineeringMeasured && (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {data.engineeringMeasured && (
+          <Reveal delay={0.23}>
+            <LinkCoveragePanel coverage={data.linkCoverage} />
+          </Reveal>
+        )}
         <Reveal delay={0.23}>
-          <LinkCoveragePanel coverage={data.linkCoverage} />
+          <BlindSpotsPanel
+            unmatchedCases={data.unmatchedCases}
+            unmatchedOverflowCount={data.unmatchedOverflowCount}
+            integrationHealth={data.integrationHealth}
+            failedAlerts={data.failedAlerts}
+            failedAlertsOverflowCount={data.failedAlertsOverflowCount}
+          />
         </Reveal>
-      )}
-      <Reveal delay={0.23}>
-        <BlindSpotsPanel
-          unmatchedCases={data.unmatchedCases}
-          unmatchedOverflowCount={data.unmatchedOverflowCount}
-          integrationHealth={data.integrationHealth}
-          failedAlerts={data.failedAlerts}
-          failedAlertsOverflowCount={data.failedAlertsOverflowCount}
-        />
-      </Reveal>
+      </div>
     </div>
   );
 };
