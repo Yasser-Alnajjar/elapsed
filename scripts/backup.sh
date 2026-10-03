@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 # Dumps the bundled Postgres to a timestamped, compressed file and prunes old
-# dumps. Meant for cron on the host running docker-compose.prod.yml; see the
+# dumps. Meant for cron on the host running docker-compose.yml; see the
 # "Backups" section of docs/deployment.md.
 #
 # Environment (all optional):
-#   COMPOSE_FILE    compose file with the `postgres` service  (docker-compose.prod.yml, else docker-compose.yml)
-#   ENV_FILE        env file passed to compose                (.env.prod, if it exists)
+#   COMPOSE_FILE    compose file with the `postgres` service  (docker-compose.yml, else docker-compose.yml)
+#   ENV_FILE        env file passed to compose                (.env, if it exists)
 #   BACKUP_DIR      where dumps are written                   (./backups)
 #   RETENTION_DAYS  dumps older than this are deleted         (14)
 #   DB_NAME         database to dump            (the container's $POSTGRES_DB)
@@ -18,9 +18,9 @@ set -eu
 cd "$(dirname "$0")/.."
 
 if [ -z "${COMPOSE_FILE:-}" ]; then
-  if [ -f docker-compose.prod.yml ]; then COMPOSE_FILE=docker-compose.prod.yml; else COMPOSE_FILE=docker-compose.yml; fi
+  if [ -f docker-compose.yml ]; then COMPOSE_FILE=docker-compose.yml; else COMPOSE_FILE=docker-compose.yml; fi
 fi
-ENV_FILE="${ENV_FILE:-.env.prod}"
+ENV_FILE="${ENV_FILE:-.env}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
 

@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { ADMIN_NAV_ITEMS } from "../src/components/admin/admin-nav-items";
-import { buildNavItems, type NavItem, isNavItemActive, NAV_ITEMS, SETTINGS_NAV_ITEMS } from "../src/components/layout/nav-items";
+import {
+  buildNavItems,
+  type NavItem,
+  type NavLink,
+  type NavSection,
+  isNavItemActive,
+  NAV_ITEMS,
+  SETTINGS_NAV_ITEMS,
+} from "../src/components/layout/nav-items";
+
+const links = (sections: NavSection[]): NavLink[] => sections.flatMap((s) => ("items" in s ? s.items : [s]));
 
 describe("nav items", () => {
   it("Monitoring is no longer under Settings", () => {
@@ -9,10 +19,9 @@ describe("nav items", () => {
 
   it("gives operators one way into /admin, and no operator group", () => {
     const items = buildNavItems(true);
-    const admin = items.find((i) => i.href === "/admin");
-    expect(admin).toBeDefined();
-    expect(admin?.items).toBeUndefined();
-    expect(items.some((i) => i.href.startsWith("/operator"))).toBe(false);
+    const admins = links(items).filter((i) => i.href.startsWith("/admin"));
+    expect(admins.map((i) => i.href)).toEqual(["/admin"]);
+    expect(links(items).some((i) => i.href.startsWith("/operator"))).toBe(false);
   });
 
   it("gives non-operators no admin or operator navigation at all", () => {
