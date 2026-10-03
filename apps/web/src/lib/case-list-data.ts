@@ -1,7 +1,7 @@
 import "server-only";
 import { withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import type { CommitmentKind, CommitmentStatus } from "@sla/core";
-import { formatPriorityTier } from "./format";
+import { formatPriorityTier, rawPrioritiesForTier } from "./format";
 import { ISSUE_LINK_PROVIDERS } from "./providers";
 import type {
   CaseListCounts,
@@ -43,16 +43,6 @@ function worstOf<T extends { status: CommitmentStatus }>(rows: T[]): T | undefin
 }
 
 const LINK_SYSTEMS = ISSUE_LINK_PROVIDERS;
-
-// Reverse of `PRIORITY_TIER_LABELS` (lib/format.ts) — the raw ticket
-// priority strings that map to each Stitch severity tier.
-const SEVERITY_RAW_PRIORITIES: Record<Exclude<CaseListSeverityFilter, "all">, string[]> =
-  {
-    P1: ["urgent"],
-    P2: ["high"],
-    P3: ["normal"],
-    P4: ["low"],
-  };
 
 // Only columns with a real, persisted, monotonic value are sortable
 // server-side. Maps a case-list column id (csr/columns.tsx) to the Prisma
@@ -103,7 +93,7 @@ function buildWhere(
   }
 
   if (params.severity !== "all") {
-    where.priority = { in: SEVERITY_RAW_PRIORITIES[params.severity] };
+    where.priority = { in: rawPrioritiesForTier(params.severity) };
   }
 
   const q = params.q.trim();
@@ -200,9 +190,7 @@ async function getCounts(
     P4: 0,
   };
   for (const group of priorityGroups as { priority: string | null; _count: number }[]) {
-    const tier = formatPriorityTier(group.priority) as
-      | Exclude<CaseListSeverityFilter, "all">
-      | null;
+    const tier = formatPriorityTier(group.priority);
     if (tier) severity[tier] += group._count;
   }
 

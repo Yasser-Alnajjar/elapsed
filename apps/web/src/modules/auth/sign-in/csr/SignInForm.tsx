@@ -6,8 +6,6 @@ import {
   ArrowRightToLine,
   Building2,
   Clock,
-  Eye,
-  EyeOff,
   KeyRound,
   LayoutGrid,
   Loader2,
@@ -16,7 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { Actions } from "@/actions/client";
@@ -27,6 +25,7 @@ import {
   AuthPage,
   authButtonClass,
   authLabelClass,
+  PasswordVisibilityToggle,
 } from "@/components/shared/auth-shell";
 import {
   formatCooldownClock,
@@ -34,6 +33,7 @@ import {
 } from "@/lib/auth-rate-limit";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSignInCooldown } from "./useSignInCooldown";
 
 const signInSchema = Yup.object({
   email: Yup.string()
@@ -51,30 +51,8 @@ export const SignInForm = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  // Seconds remaining in a server-imposed cooldown.
-  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
-  const [cooldownReason, setCooldownReason] = useState<
-    "RATE_LIMITED" | "AUTH_THROTTLED" | null
-  >(null);
-
-  useEffect(() => {
-    if (cooldownSeconds === null) return;
-
-    if (cooldownSeconds <= 0) {
-      setCooldownSeconds(null);
-      setCooldownReason(null);
-      return;
-    }
-
-    const timer = setTimeout(
-      () => setCooldownSeconds((seconds) => (seconds ?? 1) - 1),
-      1000,
-    );
-
-    return () => clearTimeout(timer);
-  }, [cooldownSeconds]);
-
-  const inCooldown = cooldownSeconds !== null && cooldownSeconds > 0;
+  const { cooldownSeconds, cooldownReason, inCooldown, start: startCooldown } =
+    useSignInCooldown();
 
   const initialValues: SignInFormValues = {
     email: "",
@@ -106,8 +84,7 @@ export const SignInForm = () => {
           result.error === "AUTH_THROTTLED") &&
         "retryAfterSeconds" in result
       ) {
-        setCooldownReason(result.error);
-        setCooldownSeconds(result.retryAfterSeconds);
+        startCooldown(result.error, result.retryAfterSeconds);
       } else {
         setError("Incorrect email or password");
       }
@@ -294,18 +271,12 @@ export const SignInForm = () => {
                               : undefined
                           }
                         />
-                        <button
-                          type="button"
-                          aria-label="Toggle password visibility"
-                          onClick={() => setShowPassword((shown) => !shown)}
+                        <PasswordVisibilityToggle
+                          shown={showPassword}
+                          onToggle={() => setShowPassword((shown) => !shown)}
                           className="absolute inset-e-2.5 flex items-center p-1 text-foreground-subtle transition-colors hover:text-foreground"
-                        >
-                          {showPassword ? (
-                            <EyeOff aria-hidden className="size-4.25" />
-                          ) : (
-                            <Eye aria-hidden className="size-4.25" />
-                          )}
-                        </button>
+                          iconClassName="size-4.25"
+                        />
                       </div>
                       <AuthFieldError
                         id="password-error"

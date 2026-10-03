@@ -5,10 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildEmailVerificationEmail } from "@/lib/email-verification-email";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage } from "@/lib/utils";
 
 /**
  * Resend the signup-verification email for the signed-in user's own

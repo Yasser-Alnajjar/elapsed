@@ -1,8 +1,8 @@
-# SLA Breach Monitoring — Product Documentation
+# Elapsed — Product Documentation
 
-*Know before your customer does.*
+_Know before your customer does._
 
-This document explains what SLA Breach Monitoring does, how it works, how to set it up, what every screen means, and what to expect once your systems are connected. It is written for whoever will actually use and administer the product day to day: a Head of Support, a Support Operations lead, a Customer Success manager, an Engineering Manager, or a Zendesk/Jira administrator.
+This document explains what Elapsed does, how it works, how to set it up, what every screen means, and what to expect once your systems are connected. It is written for whoever will actually use and administer the product day to day: a Head of Support, a Support Operations lead, a Customer Success manager, an Engineering Manager, or a Zendesk/Jira administrator.
 
 ---
 
@@ -12,7 +12,7 @@ Support teams make time-bound promises to customers — respond to a P1 within a
 
 The customer's clock doesn't know or care which tool the work is sitting in. It keeps running. But visibility usually stops at the moment of escalation — support can see that a ticket is "waiting on engineering," but not how long it's actually been waiting, whether it's about to breach, or where the time went once it's over.
 
-SLA Breach Monitoring connects to your helpdesk and your engineering tracker(s), reconstructs one continuous timeline per customer case across every connected system, and gives you:
+Elapsed connects to your helpdesk and your engineering tracker(s), reconstructs one continuous timeline per customer case across every connected system, and gives you:
 
 - A single dashboard of what's at risk right now and what has already breached
 - A case-level timeline showing exactly which system owned the work at every point in time
@@ -30,17 +30,17 @@ If you're evaluating this product for the first time, read this document once, i
 
 ## 2. The Problem SLA Solves
 
-A typical enterprise support commitment looks like this: *"P1 tickets get a first response within 1 hour and a resolution within 8 business hours."*
+A typical enterprise support commitment looks like this: _"P1 tickets get a first response within 1 hour and a resolution within 8 business hours."_
 
 That commitment is easy to track as long as the ticket stays inside the helpdesk. The moment it's escalated — linked to a Jira issue, handed to an engineer, turned into a pull request — three things happen at once:
 
 1. **The clock doesn't pause just because the work moved.** Unless the ticket enters a status your policy explicitly treats as a pause (see [Section 12](#12-sla-calculation)), the customer's resolution target keeps counting down while the case sits in someone else's tracker.
-2. **Visibility splits across two systems that don't talk to each other in SLA terms.** Zendesk shows "escalated." Jira shows "In Progress," "Blocked," or "Done." Neither tool tells you what fraction of the *customer's* 8-hour window has already been consumed while the case sat in the other one.
+2. **Visibility splits across two systems that don't talk to each other in SLA terms.** Zendesk shows "escalated." Jira shows "In Progress," "Blocked," or "Done." Neither tool tells you what fraction of the _customer's_ 8-hour window has already been consumed while the case sat in the other one.
 3. **The two systems produce different numbers for the same case**, because each one is doing time arithmetic under its own rules, its own calendar, and its own definition of "paused." Reconciling that by hand — checking two tools, cross-referencing ticket and issue IDs, subtracting timestamps — is exactly the kind of hour-before-a-QBR work this product exists to remove.
 
-This is why the product's core claim is narrow and specific: it doesn't try to manage your support workflow, your engineering workflow, or your tickets. It reconstructs *one* honest elapsed-time number per commitment, across however many systems the work touched, from the events those systems actually reported — and it shows its work, so the number is something you can explain rather than something you have to defend.
+This is why the product's core claim is narrow and specific: it doesn't try to manage your support workflow, your engineering workflow, or your tickets. It reconstructs _one_ honest elapsed-time number per commitment, across however many systems the work touched, from the events those systems actually reported — and it shows its work, so the number is something you can explain rather than something you have to defend.
 
-**A word on how we talk about this.** When a commitment breaches while most of the elapsed time occurred inside engineering's queue, that is a fact about *where the time went* — not a verdict about who is at fault. You will not find this product describing a breach as "caused by engineering" or naming a "responsible team." It reports time by stage. What you do with that information is a management decision, not something the tool decides for you.
+**A word on how we talk about this.** When a commitment breaches while most of the elapsed time occurred inside engineering's queue, that is a fact about _where the time went_ — not a verdict about who is at fault. You will not find this product describing a breach as "caused by engineering" or naming a "responsible team." It reports time by stage. What you do with that information is a management decision, not something the tool decides for you.
 
 ---
 
@@ -48,22 +48,22 @@ This is why the product's core claim is narrow and specific: it doesn't try to m
 
 A short glossary up front — full definitions are in [Section 26](#26-glossary):
 
-| Term | Meaning |
-|---|---|
-| **Customer** | An account, derived automatically from your helpdesk's organizations/companies — never typed in by hand. |
-| **Case** | One customer request, followed across every system it touches (a Zendesk ticket, possibly linked to a Jira issue, a Linear issue, or a GitHub pull request). |
-| **Commitment** | One obligation attached to a case — e.g. "first response, 1 hour" or "resolution, 8 business hours" — bound to the specific policy and calendar in effect when it was created. |
-| **Leg** | Which system currently "owns" the case: `support`, `engineering`, `waiting_customer`, or `unknown`. |
-| **At risk** | A commitment has consumed enough of its target time to cross a warning threshold, but has not yet run out. |
-| **Breached** | A commitment's target has been exceeded. |
-| **Timeline** | The ordered sequence of every recorded event on a case, across every connected system, used to compute everything above. |
-| **Working time** | Elapsed time counted only during the hours your calendar defines as open (or all the time, for a 24/7 policy). |
-| **Paused time** | Time that doesn't count against a commitment, because the case is in a state your policy defines as customer-caused waiting. |
-| **Remaining time** | Target minus elapsed working time. |
+| Term               | Meaning                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Customer**       | An account, derived automatically from your helpdesk's organizations/companies — never typed in by hand.                                                                       |
+| **Case**           | One customer request, followed across every system it touches (a Zendesk ticket, possibly linked to a Jira issue, a Linear issue, or a GitHub pull request).                   |
+| **Commitment**     | One obligation attached to a case — e.g. "first response, 1 hour" or "resolution, 8 business hours" — bound to the specific policy and calendar in effect when it was created. |
+| **Leg**            | Which system currently "owns" the case: `support`, `engineering`, `waiting_customer`, or `unknown`.                                                                            |
+| **At risk**        | A commitment has consumed enough of its target time to cross a warning threshold, but has not yet run out.                                                                     |
+| **Breached**       | A commitment's target has been exceeded.                                                                                                                                       |
+| **Timeline**       | The ordered sequence of every recorded event on a case, across every connected system, used to compute everything above.                                                       |
+| **Working time**   | Elapsed time counted only during the hours your calendar defines as open (or all the time, for a 24/7 policy).                                                                 |
+| **Paused time**    | Time that doesn't count against a commitment, because the case is in a state your policy defines as customer-caused waiting.                                                   |
+| **Remaining time** | Target minus elapsed working time.                                                                                                                                             |
 
 **A worked example, matching how the product actually behaves:**
 
-A customer submits a P1 ticket in Zendesk. The moment the ticket is created, SLA Breach Monitoring matches it against your imported Zendesk SLA policies and opens two commitments: a first-response target and a resolution target, each bound to the exact policy version and business calendar in effect at that instant.
+A customer submits a P1 ticket in Zendesk. The moment the ticket is created, Elapsed matches it against your imported Zendesk SLA policies and opens two commitments: a first-response target and a resolution target, each bound to the exact policy version and business calendar in effect at that instant.
 
 Support responds, then escalates the ticket by linking it to a Jira issue (through Jira's own remote-link mechanism — no manual re-entry). The case's **leg** switches from `support` to `engineering` the instant that link is recorded. The resolution commitment's clock keeps running — it does not pause on escalation, only on customer-caused waiting (by default, only Zendesk's "Pending" status).
 
@@ -126,12 +126,12 @@ Once Zendesk (and optionally Jira) is connected, a historical backfill runs auto
 
 Nothing above required you to configure anything — every number so far came from data already in Zendesk and Jira. From here, configuration is optional and lives under **Settings → SLA** and **Settings → Integrations**. See [Section 19](#19-configuration) for the complete reference. In short:
 
-| Setting | What it means | Default if left alone |
-|---|---|---|
-| Engineering leg target | An optional, org-wide target (in hours) for how long a case should spend in the engineering leg | Not set — cases can sit in engineering indefinitely without triggering an at-risk/breach state for that leg specifically (the underlying customer commitment still runs) |
-| Customer calendar override | Pin a specific customer to a different business calendar than the one their matched policy would otherwise use | The customer uses whatever calendar their matched SLA policy resolves to |
-| SLA policy target override | Override the imported minutes for a first-response or resolution target on a given policy | The imported Zendesk value is used as-is |
-| Slack alert channel | Which Slack channel receives at-risk/breach alerts | No Slack channel connected — no Slack alerts sent |
+| Setting                    | What it means                                                                                                  | Default if left alone                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Engineering leg target     | An optional, org-wide target (in hours) for how long a case should spend in the engineering leg                | Not set — cases can sit in engineering indefinitely without triggering an at-risk/breach state for that leg specifically (the underlying customer commitment still runs) |
+| Customer calendar override | Pin a specific customer to a different business calendar than the one their matched policy would otherwise use | The customer uses whatever calendar their matched SLA policy resolves to                                                                                                 |
+| SLA policy target override | Override the imported minutes for a first-response or resolution target on a given policy                      | The imported Zendesk value is used as-is                                                                                                                                 |
+| Slack alert channel        | Which Slack channel receives at-risk/breach alerts                                                             | No Slack channel connected — no Slack alerts sent                                                                                                                        |
 
 ---
 
@@ -139,15 +139,15 @@ Nothing above required you to configure anything — every number so far came fr
 
 The product connects to two kinds of systems: **ticket sources**, which create Cases and carry the customer commitment, and **engineering-side sources**, which contribute status and timing to a case's engineering leg without creating their own Cases. Slack and email are outbound-only notification channels, not data sources.
 
-| Integration | Role | Auth | Sync | Webhook |
-|---|---|---|---|---|
-| [Zendesk](#6-zendesk-integration) | Ticket source | OAuth2, read-only | Poll (5 min / 60 min) + webhook | Yes |
-| [Jira](#7-jira-integration) | Engineering source | OAuth2, read-only | Poll (5 min / 60 min) + webhook | Yes |
-| [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk) | OAuth2, read-only | Poll only | No |
-| [Linear](/docs/integrations/linear) | Engineering source (alternative to Jira) | OAuth2, read-only | Poll only | No |
-| [GitHub](/docs/integrations/github) **(Beta)** | Engineering source (pull requests) | OAuth2 | Poll only | No |
-| Slack | Alert channel | OAuth2 (bot token) | Outbound only | — |
-| Email | Alert channel | SMTP (self-service, per organization) | Outbound only | — |
+| Integration                                        | Role                                     | Auth                                  | Sync                            | Webhook |
+| -------------------------------------------------- | ---------------------------------------- | ------------------------------------- | ------------------------------- | ------- |
+| [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
+| [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
+| [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk)   | OAuth2, read-only                     | Poll only                       | No      |
+| [Linear](/docs/integrations/linear)                | Engineering source (alternative to Jira) | OAuth2, read-only                     | Poll only                       | No      |
+| [GitHub](/docs/integrations/github) **(Beta)**     | Engineering source (pull requests)       | OAuth2                                | Poll only                       | No      |
+| Slack                                              | Alert channel                            | OAuth2 (bot token)                    | Outbound only                   | —       |
+| Email                                              | Alert channel                            | SMTP (self-service, per organization) | Outbound only                   | —       |
 
 Intercom and GitHub are **Beta**: built and usable, but with known gaps (see each one's "Known limitations" section on its own integration page, linked above) and no onboarding-progress reporting (Zendesk and Jira only — see below). Zendesk and Jira are the only integrations covered by task 2.9's live-account verification checklist so far.
 
@@ -170,15 +170,19 @@ Before any of the five data-source integrations can be connected, your organizat
 ## 6. Zendesk Integration
 
 ### Purpose
+
 Zendesk is the system of record for what you promised. It supplies your SLA policy definitions, your business-hours calendars, your customers (as Zendesk organizations), and the full ticket history the resolution and first-response clocks are computed from.
 
 ### Connection
+
 From Settings → Integrations (or during onboarding), enter your Zendesk subdomain and approve the OAuth prompt.
 
 ### Permissions
+
 OAuth scope: **`read`**. No write scope is ever requested.
 
 ### Data imported
+
 - Tickets (incremental export — every ticket, current and historical, within the 90-day backfill window)
 - Full audit trail per ticket (every status change and event)
 - Organizations (become **Customers**)
@@ -187,25 +191,31 @@ OAuth scope: **`read`**. No write scope is ever requested.
 - Requester and assignee display names, resolved from the ticket's own sideloaded user list. Display only — shown on the case header, never used for policy matching, routing, or SLA calculations. See [Section 22](#22-security-and-access).
 
 ### Data used for calculations
+
 - Ticket status transitions drive the case timeline and the `pending_customer` pause state.
 - Imported SLA policies supply commitment targets (first-response and resolution minutes) and warning thresholds.
 - Imported business-hours schedules supply the calendar used to compute working time, unless overridden per customer (Section 19).
 
 ### Data used for correlation
-Zendesk doesn't initiate correlation itself in this product — Jira and Linear look for a Zendesk ticket URL in *their own* records (remote links, attachments) and match it back to a Zendesk ticket by exact subdomain. See [Section 15](#15-correlation-between-systems).
+
+Zendesk doesn't initiate correlation itself in this product — Jira and Linear look for a Zendesk ticket URL in _their own_ records (remote links, attachments) and match it back to a Zendesk ticket by exact subdomain. See [Section 15](#15-correlation-between-systems).
 
 ### Data not modified
+
 Nothing. No ticket, field, tag, or comment is ever created or changed in Zendesk.
 
 ### Sync behavior
+
 Polled every 5 minutes (active cases) and every 30 minutes (full reconciliation). A webhook is also available (Section 20) to close the last few minutes of latency on ticket status changes; it requires a one-time manual setup in Zendesk Admin Center (instructions are shown on the integration's detail page, with a copyable endpoint URL and bearer token). The trigger's request body must be `{"ticket_id": "{{ticket.id}}", "timestamp": "{{ticket.updated_at_with_timestamp}}"}`. The timestamp is required for replay protection, and plain `{{ticket.updated_at}}` won't work because Zendesk renders it as a date with no time (e.g. "May 18"), so those deliveries are rejected with `401`. Zendesk's **Test webhook** button sends a sample body with no `timestamp` and doesn't fill in placeholders, so it gets the same `401`. To test from there, replace the body with a real ticket id and the current UTC time, such as `{"ticket_id": "123", "timestamp": "2026-09-17T08:40Z"}`, and send it within 5 minutes of that time. SLA policies and business-hours schedules are re-imported every cycle, so a policy edit in Zendesk is picked up automatically without reconnecting.
 
 ### Known limitations
+
 - Only two Zendesk SLA metrics currently map to commitments: **First reply time** → first-response, and **resolution time** → resolution. Other Zendesk metrics (next-reply time, requester-wait time, agent-work time, periodic-update time) are not currently imported as separate commitments.
 - Policy conditions based on fields other than **priority** and **organization** (e.g. tags, ticket form, group) are not currently applied — a policy using them will still import, but those extra conditions are dropped from the match, which can make the imported policy match more broadly than it does inside Zendesk itself.
 - If a policy references a business-hours schedule that hasn't been imported yet, it falls back to an always-open (24/7) calendar until that schedule is available — the product never guesses at a calendar.
 
 ### Troubleshooting
+
 See [Section 23](#23-troubleshooting).
 
 ---
@@ -213,47 +223,58 @@ See [Section 23](#23-troubleshooting).
 ## 7. Jira Integration
 
 ### Purpose
+
 Jira supplies the engineering side of the timeline: what happened to an escalated case after a Zendesk ticket was linked to a Jira issue.
 
 ### Connection
+
 From Settings → Integrations (or during onboarding), click Connect and approve Atlassian's OAuth consent screen. The product uses the first Jira site your account has access to.
 
 ### Permissions
+
 OAuth scopes: **`read:jira-work offline_access`**. `offline_access` exists only to obtain a refresh token so the connection doesn't need re-approval on every use — it grants no additional data access. No write scope is ever requested.
 
 ### Data imported
+
 - Issues (via JQL search, incrementally by `updated` timestamp)
 - Each issue's changelog (status transitions)
 - Each issue's remote links (used to find the linked Zendesk ticket)
 - Site-wide status list (for readable status labels)
 
 ### Data used for calculations
+
 Every status transition on a linked Jira issue becomes a normalized event on the case's timeline and contributes to leg attribution (Section 14) — whether the case is currently in the `engineering` leg, and for how long.
 
 ### Data used for correlation
+
 A Jira issue's own **remote links** are read for a URL pointing at your Zendesk subdomain. If found, the case is linked with `certain` confidence via the method labeled **"Remote link."** Zendesk's own official Jira-links registry (read as part of the Zendesk connection, Section 6) is the authoritative correlation signal and is checked independently — it still establishes the link even if this issue's remote link is missing or stale. See [Section 15](#15-correlation-between-systems) for exactly how strict this match is.
 
 ### Data not modified
+
 Nothing. No issue, status, comment, or field in Jira is ever created or changed.
 
 ### Sync behavior
+
 Same two-speed poll as Zendesk (5 min / 60 min), plus an optional webhook (manually registered in Jira's own admin settings — Section 20) for near-real-time updates on issue creation and updates.
 
 ### What happens when...
-| Situation | Behavior |
-|---|---|
-| A Jira issue is linked to a Zendesk ticket (via Jira's remote link) | The case's leg switches to `engineering` on the next sync; the customer commitment keeps running under its own pause rules — linking does not pause anything by itself. |
-| A Jira issue is **not** linked | The case simply has no engineering leg. It is excluded from "escalated" counts, and its leg reads as `support` (or `unknown` if no ticket status has been observed at all). |
-| A link is missing or the connection between two records can't be confirmed | The case is treated as unlinked — never guessed at. Coverage (how many escalated cases could be linked) is something the product reports honestly, not something it inflates. |
-| A linked issue's status changes | Recorded as a new event on the timeline immediately at the next poll (or the next webhook delivery). |
-| A linked issue is resolved or closed | The case's leg switches back to `support`. Note: **only Zendesk closing the ticket closes the case itself** — a Jira issue reaching "Done" does not close the Zendesk case or its commitments. |
-| Jira data is missing or a fetch temporarily fails | The last known state is kept; the next successful poll catches up. If the failure is due to an expired/revoked connection, the integration is marked "Needs reconnect." |
+
+| Situation                                                                  | Behavior                                                                                                                                                                                       |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Jira issue is linked to a Zendesk ticket (via Jira's remote link)        | The case's leg switches to `engineering` on the next sync; the customer commitment keeps running under its own pause rules — linking does not pause anything by itself.                        |
+| A Jira issue is **not** linked                                             | The case simply has no engineering leg. It is excluded from "escalated" counts, and its leg reads as `support` (or `unknown` if no ticket status has been observed at all).                    |
+| A link is missing or the connection between two records can't be confirmed | The case is treated as unlinked — never guessed at. Coverage (how many escalated cases could be linked) is something the product reports honestly, not something it inflates.                  |
+| A linked issue's status changes                                            | Recorded as a new event on the timeline immediately at the next poll (or the next webhook delivery).                                                                                           |
+| A linked issue is resolved or closed                                       | The case's leg switches back to `support`. Note: **only Zendesk closing the ticket closes the case itself** — a Jira issue reaching "Done" does not close the Zendesk case or its commitments. |
+| Jira data is missing or a fetch temporarily fails                          | The last known state is kept; the next successful poll catches up. If the failure is due to an expired/revoked connection, the integration is marked "Needs reconnect."                        |
 
 ### Known limitations
+
 - Only one Jira site is used per organization (the first one your OAuth grant has access to).
 - There is no manual "link this ticket to this issue" action in the product today — correlation is entirely automatic, based on Jira's own remote-link data. See [Section 27](#27-product-limitations).
 
 ### Troubleshooting
+
 See [Section 23](#23-troubleshooting).
 
 ---
@@ -292,7 +313,7 @@ Once the Zendesk backfill completes, a button appears: **"Findings are ready →
 
 The findings screen (`/onboarding/findings`) is the first payoff of connecting your systems — a plain-language summary of your last 90 days, computed with zero configuration.
 
-**If you have escalated cases:** a summary sentence such as *"Over the last 90 days, 318 tickets were escalated to Jira. 47 of them exceeded their customer resolution target,"* plus, when available, the average time escalated tickets spent waiting to be picked up in the engineering leg. Below that, a **Top affected accounts** table (up to 5 rows) showing which customers had the most escalations and breaches.
+**If you have escalated cases:** a summary sentence such as _"Over the last 90 days, 318 tickets were escalated to Jira. 47 of them exceeded their customer resolution target,"_ plus, when available, the average time escalated tickets spent waiting to be picked up in the engineering leg. Below that, a **Top affected accounts** table (up to 5 rows) showing which customers had the most escalations and breaches.
 
 **If you have no escalated cases yet:** an empty state explaining that findings will appear automatically once Jira is connected and issues get linked — nothing further to configure.
 
@@ -308,15 +329,15 @@ The dashboard (`/dashboard`) is the single screen meant to answer "what needs at
 
 ### Unusual cycle times (shown only when detected)
 
-A warning banner listing customer/commitment-type combinations whose recent resolution times are statistically unusual compared to their own history — e.g. *"Acme Corp · Resolution is running slower than usual: recent median 6h 40m vs. baseline 2h 10m (5 recent of 18 historical cases)."* This is a statistical comparison (a modified z-score against the customer's own historical median), not a prediction or an AI-generated insight, and it requires at least 12 historical closed commitments and 5 recent ones before it will say anything for a given customer/kind pair.
+A warning banner listing customer/commitment-type combinations whose recent resolution times are statistically unusual compared to their own history — e.g. _"Acme Corp · Resolution is running slower than usual: recent median 6h 40m vs. baseline 2h 10m (5 recent of 18 historical cases)."_ This is a statistical comparison (a modified z-score against the customer's own historical median), not a prediction or an AI-generated insight, and it requires at least 12 historical closed commitments and 5 recent ones before it will say anything for a given customer/kind pair.
 
 ### The three headline numbers
 
-| Tile | What it means | Period |
-|---|---|---|
-| **Breached** | Count of commitments that crossed their target and are still open or closed as breached | Last 30 days |
-| **Compliance** | Percentage of closed commitments in the period that closed **met** rather than **breached**, with a trend indicator against the prior 30-day period | Last 30 days |
-| **Aging in engineering** | Count of cases currently sitting in the `engineering` leg right now | Point-in-time, not period-scoped |
+| Tile                     | What it means                                                                                                                                       | Period                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **Breached**             | Count of commitments that crossed their target and are still open or closed as breached                                                             | Last 30 days                     |
+| **Compliance**           | Percentage of closed commitments in the period that closed **met** rather than **breached**, with a trend indicator against the prior 30-day period | Last 30 days                     |
+| **Aging in engineering** | Count of cases currently sitting in the `engineering` leg right now                                                                                 | Point-in-time, not period-scoped |
 
 ### SLA Analytics
 
@@ -345,6 +366,7 @@ The **All cases** page (`/cases`) lists every case your organization has — ope
 The case detail page's header (Section 12) additionally shows the case's current fine-grained status (e.g. "Pending customer", not just Open/Closed) and its currently-assigned agent, when the connected system reports one.
 
 **What each field means:**
+
 - **SLA status** rolls up all of a case's commitments into one badge, in this priority order: Breached > At Risk > On Track > Met > Cancelled.
 - **Case status** is separate from SLA status — a case can be closed and still show a breached SLA status, because closing the ticket doesn't erase what already happened to its commitments.
 - **Priority, Tier, Channel** are read as-is from the source ticket; they are not modified or interpreted by this product beyond being used to match SLA policies (priority) or, where populated, customer tier.
@@ -425,7 +447,7 @@ Editing a policy's target never rewrites history in the sense of altering a past
 
 ### Worked example
 
-*"An 8-hour resolution target does not necessarily mean 8 calendar hours. If the applicable calendar is business-hours based, only working time counts toward the commitment — a case opened Friday afternoon under a 9-to-5 weekday calendar may not come due until partway through the following week, even though far more than 8 clock hours will have passed."*
+_"An 8-hour resolution target does not necessarily mean 8 calendar hours. If the applicable calendar is business-hours based, only working time counts toward the commitment — a case opened Friday afternoon under a 9-to-5 weekday calendar may not come due until partway through the following week, even though far more than 8 clock hours will have passed."_
 
 ---
 
@@ -433,13 +455,13 @@ Editing a policy's target never rewrites history in the sense of altering a past
 
 A commitment moves through a small, fixed set of statuses:
 
-| Status | Definition | What causes the transition |
-|---|---|---|
-| **On track** | Elapsed working time is below every configured warning threshold | Default state on creation |
-| **At risk** | Elapsed working time has crossed a configured warning threshold (default thresholds: 50%, 80%, 95% of target) but the target has not been exceeded | Working time crosses a threshold |
-| **Breached** | Elapsed working time has exceeded the target, or the commitment completed after its target was already consumed | Target exceeded, evaluated on every sync cycle |
-| **Met** | The commitment completed with elapsed working time still within target | First response: an agent's first public reply (Zendesk public comment, Intercom admin reply) before target is exceeded. A case closing before any reply is never "met" — see [Section 13](#13-sla-calculation). Resolution: the case closes (Zendesk marks it solved) before target is exceeded |
-| **Cancelled** | Defined in the data model but not currently produced by any part of the product | — |
+| Status        | Definition                                                                                                                                         | What causes the transition                                                                                                                                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **On track**  | Elapsed working time is below every configured warning threshold                                                                                   | Default state on creation                                                                                                                                                                                                                                                                       |
+| **At risk**   | Elapsed working time has crossed a configured warning threshold (default thresholds: 50%, 80%, 95% of target) but the target has not been exceeded | Working time crosses a threshold                                                                                                                                                                                                                                                                |
+| **Breached**  | Elapsed working time has exceeded the target, or the commitment completed after its target was already consumed                                    | Target exceeded, evaluated on every sync cycle                                                                                                                                                                                                                                                  |
+| **Met**       | The commitment completed with elapsed working time still within target                                                                             | First response: an agent's first public reply (Zendesk public comment, Intercom admin reply) before target is exceeded. A case closing before any reply is never "met" — see [Section 13](#13-sla-calculation). Resolution: the case closes (Zendesk marks it solved) before target is exceeded |
+| **Cancelled** | Defined in the data model but not currently produced by any part of the product                                                                    | —                                                                                                                                                                                                                                                                                               |
 
 **Notifications:** crossing into **at risk** or **breached** triggers a Slack and/or email alert, if configured (Section 16) — but only for the customer-facing first-response and resolution commitments. The separate, optional engineering-leg target (Section 19) is currently dashboard-only and does not send its own alert.
 
@@ -455,12 +477,12 @@ Correlation is how a Zendesk ticket gets connected to a Jira issue, a Linear iss
 
 ### How each link is established
 
-| Link | Method | How it's verified |
-|---|---|---|
-| Jira issue → Zendesk ticket | **Official link** | Read from Zendesk's own official Jira-links registry (`GET /api/v2/jira/links` — the data behind the official Zendesk↔Jira integration), which hands back the Zendesk ticket id and Jira issue key directly. This is the authoritative signal: no URL to parse, no hostname to validate. |
-| Jira issue → Zendesk ticket | **Remote link** | Read from Jira's own remote-links data for that issue. Accepted only if the linked URL's hostname is *exactly* your connected Zendesk subdomain — a similar-looking or different tenant's domain is never accepted. |
-| Linear issue → Zendesk ticket | **Remote link** | Same rule as Jira, applied to Linear's attachment/link data. |
-| GitHub pull request → case | **Pattern match** | The PR's title or branch name is scanned for a Jira- or Linear-style issue key (e.g. `ENG-1234`). If that key already has a confirmed Jira or Linear link to a case, the pull request is linked to the same case(s). A PR can reference more than one issue key and link to more than one case if so. |
+| Link                          | Method            | How it's verified                                                                                                                                                                                                                                                                                     |
+| ----------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jira issue → Zendesk ticket   | **Official link** | Read from Zendesk's own official Jira-links registry (`GET /api/v2/jira/links` — the data behind the official Zendesk↔Jira integration), which hands back the Zendesk ticket id and Jira issue key directly. This is the authoritative signal: no URL to parse, no hostname to validate.              |
+| Jira issue → Zendesk ticket   | **Remote link**   | Read from Jira's own remote-links data for that issue. Accepted only if the linked URL's hostname is _exactly_ your connected Zendesk subdomain — a similar-looking or different tenant's domain is never accepted.                                                                                   |
+| Linear issue → Zendesk ticket | **Remote link**   | Same rule as Jira, applied to Linear's attachment/link data.                                                                                                                                                                                                                                          |
+| GitHub pull request → case    | **Pattern match** | The PR's title or branch name is scanned for a Jira- or Linear-style issue key (e.g. `ENG-1234`). If that key already has a confirmed Jira or Linear link to a case, the pull request is linked to the same case(s). A PR can reference more than one issue key and link to more than one case if so. |
 
 Both Jira methods run independently and can both fire for the same
 relationship — that's expected, not a bug. If a Jira issue and a Zendesk
@@ -530,7 +552,7 @@ A separate endpoint (`/api/reports/commitments`) generates a complete CSV of **e
 
 **Columns, in order:** Customer, Ticket, Zendesk URL, Jira issues, Linear issues, GitHub pull requests, Commitment (First response/Resolution), Status, Target, Elapsed, Breached by, Opened at, Due at, Closed at.
 
-**Where to find it:** the **Export full report** button beside the *SLA Analytics* heading on the dashboard. The file is built in one pass rather than streamed, so an organization with a very large commitment history may wait a few seconds for the download to start.
+**Where to find it:** the **Export full report** button beside the _SLA Analytics_ heading on the dashboard. The file is built in one pass rather than streamed, so an organization with a very large commitment history may wait a few seconds for the download to start.
 
 **Not currently available:** PDF export. Do not expect a formatted, presentation-ready report — the current export is CSV only.
 
@@ -538,10 +560,10 @@ A separate endpoint (`/api/reports/commitments`) generates a complete CSV of **e
 
 ## 18. Filters and Search
 
-| Screen | Search | Filters | Sort | Pagination |
-|---|---|---|---|---|
-| Dashboard — At risk now | Free-text search | None beyond the fixed "open commitments" scope | Column sort | Fixed list, capped with an overflow note |
-| All cases | Free-text search | None beyond what search covers | Every column sortable | Adjustable page size (10–100), page navigation |
+| Screen                  | Search           | Filters                                        | Sort                  | Pagination                                     |
+| ----------------------- | ---------------- | ---------------------------------------------- | --------------------- | ---------------------------------------------- |
+| Dashboard — At risk now | Free-text search | None beyond the fixed "open commitments" scope | Column sort           | Fixed list, capped with an overflow note       |
+| All cases               | Free-text search | None beyond what search covers                 | Every column sortable | Adjustable page size (10–100), page navigation |
 
 There is currently no dedicated date-range picker, status filter, customer filter, priority filter, or integration filter as a distinct UI control — the dashboard's period-scoped numbers (breaches, compliance) use a fixed rolling 30-day window, and the Findings screen uses a fixed rolling 90-day window; neither is currently adjustable from the UI.
 
@@ -551,13 +573,13 @@ There is currently no dedicated date-range picker, status filter, customer filte
 
 Every setting that exists in the product today, in one place.
 
-| Setting | Location | What it means | Default | When to change it | Effect of changing it |
-|---|---|---|---|---|---|
-| **Zendesk/Jira/Linear/Intercom/GitHub OAuth app credentials** | Settings → Integrations, per provider "Configure" | Your organization's own OAuth Client ID/Secret for that provider — required before that provider can be connected | Not configured | Once, before first connecting that provider | Enables the Connect button for that provider |
-| **Engineering leg target** | Settings → SLA | An optional, org-wide target (in hours) for how long a case should stay in the engineering leg before it's flagged at-risk/breached *for that leg specifically* | Not set | If you want visibility into engineering turnaround time as its own metric | Cases exceeding the target show as at-risk/breached in the "Aging in engineering" view; does **not** send its own Slack/email alert |
-| **Customer calendar override** | Settings → SLA | Pin a specific customer to one of your imported business calendars, instead of whatever their matched policy would otherwise resolve to | Uses the calendar from the matched SLA policy | If one customer's contractual hours differ from your general policy | Applies to **new** commitments only — commitments already created keep their original calendar |
-| **SLA policy target override** | Settings → SLA | Override the imported minutes for a first-response or resolution target on a specific policy | Uses the value imported from Zendesk | If the imported value doesn't match your actual contractual target | Creates a new policy version; existing commitments keep their original target, new commitments use the override |
-| **Slack alert channel** | Settings → Integrations → Slack | Which Slack channel receives at-risk/breach alerts | None — no alerts sent until a channel is chosen | Once, after connecting Slack | Alerts start posting to the chosen channel |
+| Setting                                                       | Location                                          | What it means                                                                                                                                                   | Default                                         | When to change it                                                         | Effect of changing it                                                                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Zendesk/Jira/Linear/Intercom/GitHub OAuth app credentials** | Settings → Integrations, per provider "Configure" | Your organization's own OAuth Client ID/Secret for that provider — required before that provider can be connected                                               | Not configured                                  | Once, before first connecting that provider                               | Enables the Connect button for that provider                                                                                        |
+| **Engineering leg target**                                    | Settings → SLA                                    | An optional, org-wide target (in hours) for how long a case should stay in the engineering leg before it's flagged at-risk/breached _for that leg specifically_ | Not set                                         | If you want visibility into engineering turnaround time as its own metric | Cases exceeding the target show as at-risk/breached in the "Aging in engineering" view; does **not** send its own Slack/email alert |
+| **Customer calendar override**                                | Settings → SLA                                    | Pin a specific customer to one of your imported business calendars, instead of whatever their matched policy would otherwise resolve to                         | Uses the calendar from the matched SLA policy   | If one customer's contractual hours differ from your general policy       | Applies to **new** commitments only — commitments already created keep their original calendar                                      |
+| **SLA policy target override**                                | Settings → SLA                                    | Override the imported minutes for a first-response or resolution target on a specific policy                                                                    | Uses the value imported from Zendesk            | If the imported value doesn't match your actual contractual target        | Creates a new policy version; existing commitments keep their original target, new commitments use the override                     |
+| **Slack alert channel**                                       | Settings → Integrations → Slack                   | Which Slack channel receives at-risk/breach alerts                                                                                                              | None — no alerts sent until a channel is chosen | Once, after connecting Slack                                              | Alerts start posting to the chosen channel                                                                                          |
 
 **Settings that do not exist in the current implementation** (do not look for these — they are not hidden elsewhere): per-policy pause-state configuration (which statuses pause a clock, beyond the fixed defaults above), custom warning-threshold percentages, per-user notification preferences, role-based permissions, and a public API key.
 
@@ -565,12 +587,12 @@ Every setting that exists in the product today, in one place.
 
 ## 20. Data Synchronization
 
-| Mechanism | Cadence | What it covers |
-|---|---|---|
-| **Initial backfill** | Once per integration, at connect time | Last 90 days of history from that provider (fixed window) |
-| **Active-set poll** | Every 5 minutes by default | Open cases with a live commitment — the working set most likely to need a fresh evaluation |
-| **Reconciliation sweep** | Every 30 minutes by default (30 minutes is the maximum) | Every case, including closed ones — catches anything a webhook or an active-set poll might have missed |
-| **Webhook (Zendesk, Jira only)** | Real time, on delivery | The single ticket/issue the webhook fired for — re-fetches it, re-evaluates it, and can send an alert within moments, independent of the poll schedule |
+| Mechanism                        | Cadence                                                 | What it covers                                                                                                                                         |
+| -------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Initial backfill**             | Once per integration, at connect time                   | Last 90 days of history from that provider (fixed window)                                                                                              |
+| **Active-set poll**              | Every 5 minutes by default                              | Open cases with a live commitment — the working set most likely to need a fresh evaluation                                                             |
+| **Reconciliation sweep**         | Every 30 minutes by default (30 minutes is the maximum) | Every case, including closed ones — catches anything a webhook or an active-set poll might have missed                                                 |
+| **Webhook (Zendesk, Jira only)** | Real time, on delivery                                  | The single ticket/issue the webhook fired for — re-fetches it, re-evaluates it, and can send an alert within moments, independent of the poll schedule |
 
 **Providers without webhook support** (Intercom, Linear, GitHub) rely entirely on the poll schedule above — expect data from those systems to be current as of the last successful 5-minute (or, worst case, 30-minute) sync, not instantaneous.
 
@@ -619,66 +641,79 @@ When the product cannot confidently determine something — a link, a leg bounda
 ## 23. Troubleshooting
 
 ### Zendesk won't connect
+
 - **Symptom:** OAuth redirect fails, or you're returned to the connect screen without success.
 - **Possible cause:** an incorrect subdomain, or the OAuth application isn't configured for your organization yet.
 - **Check:** confirm the subdomain matches exactly what precedes `.zendesk.com` in your Zendesk URL, and that your organization has configured Zendesk OAuth credentials under Settings → Integrations → Zendesk → Configure.
 - **Resolution:** re-enter the correct subdomain and retry. If the "Configure" step hasn't been completed, complete it first — you can't connect without it.
 
 ### Jira won't connect
+
 - **Symptom:** Atlassian's consent screen doesn't appear, or the connection fails afterward.
 - **Possible cause:** Jira OAuth credentials not configured for your organization, or the approving user doesn't have access to a Jira site.
 - **Check:** Settings → Integrations → Jira → Configure has valid credentials; the Atlassian account approving the connection has access to the Jira site you intend to connect.
 - **Resolution:** complete the Configure step, then retry the connection.
 
 ### Jira authorization is pending
+
 - **Symptom:** a Head of Support has connected Zendesk, but Jira approval is waiting on an engineering administrator.
 - **What to do in the meantime:** proceed with onboarding on Zendesk alone — findings and first-response/resolution accuracy are available without Jira. Connect Jira later from Settings → Integrations with no loss of Zendesk history.
 
 ### No tickets appear
+
 - **Symptom:** the dashboard or cases list is empty after connecting Zendesk.
 - **Possible cause:** backfill hasn't completed yet, or there are genuinely no tickets in the last 90 days.
 - **Check:** the Integrations → Zendesk detail page's "Sync status" card shows whether a backfill has completed and when it last ran.
 - **Resolution:** wait for backfill to complete, or trigger it manually from the "Run backfill" button on that page.
 
 ### No Jira issues appear
+
 - **Symptom:** cases never show an engineering leg even though your team escalates to Jira.
 - **Possible cause:** Jira isn't connected yet, its backfill hasn't finished, or issues aren't linked using Jira's native remote-link feature.
 - **Check:** Integrations → Jira detail page's sync status; confirm your team links issues via Jira's "link" feature (or the official Zendesk-for-Jira app, if in use) rather than pasting URLs into free text.
 - **Resolution:** connect Jira if not already connected; if it is connected and synced, review your team's linking habits — a pasted URL is not detected as a link.
 
 ### No cases are linked
+
 - **Symptom:** Findings or the dashboard show a low or zero "escalations" number despite genuine escalations happening.
 - **Possible cause:** links are being created outside Jira/Linear's native remote-link or attachment feature.
 - **Resolution:** see [Section 15](#15-correlation-between-systems) and standardize on the native linking feature going forward — this cannot be fixed retroactively for tickets that were linked by convention rather than by feature.
 
 ### Historical data is missing
+
 - **Symptom:** tickets or issues older than 90 days don't appear.
 - **Cause:** the backfill window is a fixed 90 days in the current implementation; nothing older is imported.
 - **Resolution:** none available today — this is a fixed limit, not a setting.
 
 ### SLA numbers look unexpected
+
 - **Symptom:** a commitment's remaining/elapsed time doesn't match your mental math.
 - **Check:** open the case detail page and expand "How this was calculated" on the commitment in question — it shows the exact policy version, calendar, and pause rule applied. Most surprises trace back to a business-hours calendar (not 24/7) or the fixed "Pending customer" pause rule not matching your team's actual workflow status.
 
 ### A case is showing the wrong state
+
 - **Symptom:** the leg (support/engineering/waiting on customer) doesn't match what you'd expect.
 - **Check:** the case detail page's activity timeline for the most recent status event; leg attribution is driven entirely by the last recorded status from your connected systems, not by manual assignment.
 
 ### Timeline is incomplete
+
 - **Symptom:** gaps in the case journey or activity timeline.
 - **Possible cause:** the case predates when an integration was connected, or a sync hasn't caught up yet.
 - **Check:** whether the earliest event shown corresponds to when the relevant integration was first connected and backfilled.
 
 ### Slack notifications are not arriving
+
 - **Symptom:** no alerts despite commitments crossing thresholds.
 - **Check:** Settings → Integrations → Slack shows a chosen channel; confirm the bot hasn't been removed from that channel in Slack itself.
 - **Resolution:** reconnect Slack and re-select a channel if needed.
 
 ### Data appears stale
+
 - **Symptom:** a known recent change in Zendesk/Jira hasn't shown up yet.
 - **Expected behavior:** allow up to 5 minutes for an active case under normal polling, or up to 30 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).
 
 ### Integration needs reauthentication
+
 - **Symptom:** an integration shows "Needs reconnect" on the Integrations page, or a reconnect banner appears elsewhere.
 - **Cause:** the stored access/refresh token was rejected or has expired.
 - **Resolution:** click the reconnect link/button for that provider and re-approve the OAuth prompt. No history is lost — only the credential is refreshed.
@@ -689,16 +724,16 @@ When the product cannot confidently determine something — a link, a leg bounda
 
 ## 24. Frequently Asked Questions
 
-**What systems does SLA Breach Monitoring support?**
+**What systems does Elapsed support?**
 Zendesk and Intercom as ticket sources; Jira, Linear, and GitHub as engineering-side sources; Slack and email for alerts.
 
-**Is SLA Breach Monitoring read-only?**
+**Is Elapsed read-only?**
 Yes, for every connected data source (Zendesk, Jira, Linear, Intercom, GitHub) — it only reads. The only outbound writes anywhere in the product are a Slack message and an alert email. GitHub is connected through a read-only GitHub App (Section 22).
 
-**Does SLA Breach Monitoring modify Zendesk?**
+**Does Elapsed modify Zendesk?**
 No. No ticket, field, tag, or comment is ever created or changed.
 
-**Does SLA Breach Monitoring modify Jira?**
+**Does Elapsed modify Jira?**
 No. No issue, status, comment, or field is ever created or changed.
 
 **How far back does historical data go?**
@@ -759,42 +794,43 @@ No. The one place that might look like it — the "unusual cycle times" dashboar
 2. **Support responds within 40 minutes.** The first-response commitment closes **met**.
 3. **The ticket is escalated** — an engineer links it to a Jira issue using Jira's native link feature. On the next sync, this is read back as a certain, verified remote link. The case's leg switches from `support` to `engineering`. The resolution commitment keeps running; escalation itself does not pause it.
 4. **Engineering works the issue.** Every status change on the Jira issue (e.g. "To Do" → "In Progress" → "In Review") is recorded as a normalized event on the case's timeline.
-5. **The case becomes at risk.** As elapsed working time crosses 80% of the 8-hour target, the dashboard shows the case in "At risk now," and — if Slack is connected — a message posts: *"⚠️ Resolution SLA at risk — #4821 for Acme Corp, 80% of target used, 1h 36m remaining."*
+5. **The case becomes at risk.** As elapsed working time crosses 80% of the 8-hour target, the dashboard shows the case in "At risk now," and — if Slack is connected — a message posts: _"⚠️ Resolution SLA at risk — #4821 for Acme Corp, 80% of target used, 1h 36m remaining."_
 6. **The Jira issue is resolved**, and the Zendesk ticket is marked solved, at a total elapsed working time just under the 8-hour target.
 7. **The resolution commitment closes met.** The dashboard's compliance number for the period reflects it; the case's SLA status column reads "Met."
 8. **The final timeline**, viewed on the case detail page, shows: a short support-leg span at the start, a long engineering-leg span in the middle, the exact Jira status transitions that occurred during it, the "how this was calculated" disclosure naming the exact policy and calendar version used, and a link out to both the original Zendesk ticket and the Jira issue.
 
-That case detail page — timeline, leg breakdown, calculation disclosure, and links to both source records — is the artifact meant to answer, without a verbal explanation, *"what actually happened with this ticket?"*
+That case detail page — timeline, leg breakdown, calculation disclosure, and links to both source records — is the artifact meant to answer, without a verbal explanation, _"what actually happened with this ticket?"_
 
 ---
 
 ## 26. Glossary
 
-| Term | Definition |
-|---|---|
-| **SLA** | Service Level Agreement — a time-bound commitment made to a customer (e.g. respond within 1 hour). |
-| **Commitment** | One specific obligation on one case (first response or resolution), bound permanently to the policy and calendar version in effect when it was created. |
-| **Case** | One customer request, followed across every connected system it touches. |
-| **Escalation** | A case that has been linked to at least one engineering-tracker record (Jira, Linear, or GitHub). |
-| **Engineering leg** | The period(s) during which a case is owned by the engineering tracker rather than the helpdesk. |
-| **At Risk** | A commitment has crossed a warning threshold but has not yet exceeded its target. |
-| **Breached** | A commitment's elapsed working time has exceeded its target. |
-| **Met** | A commitment closed within its target. |
-| **Working Hours** | The portion of elapsed time that falls inside a calendar's defined open windows; only this time counts toward a business-hours commitment. |
-| **Business Calendar** | A named set of weekly working windows, a timezone, and holidays (or an always-open 24/7 calendar), imported from Zendesk or applied by default. |
-| **Pause** | A period during which a commitment's clock is not counting, triggered by the "Pending customer" normalized state under policies created in Elapsed, and by a solved ticket (until reopened) for Resolution. Zendesk-imported policies do not pause on Pending. |
-| **Correlation** | The process of matching a case to a record in another connected system (e.g. a Zendesk ticket to a Jira issue), using only verifiable, deterministic evidence. |
-| **Backfill** | The one-time import of the last 90 days of history from a newly connected integration. |
-| **Synchronization (sync)** | The ongoing process of polling connected systems for changes and updating cases, commitments, and evaluations accordingly. |
-| **Timeline** | The ordered sequence of every normalized event on a case, across every connected system. |
-| **Normalized Event** | A single recorded fact about a case (created, status changed, linked, unlinked, closed), translated from a provider's own data into this product's provider-independent vocabulary. |
-| **Integration** | A connection to an external system (Zendesk, Jira, Linear, Intercom, GitHub, or Slack). |
+| Term                       | Definition                                                                                                                                                                                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SLA**                    | Service Level Agreement — a time-bound commitment made to a customer (e.g. respond within 1 hour).                                                                                                                                                             |
+| **Commitment**             | One specific obligation on one case (first response or resolution), bound permanently to the policy and calendar version in effect when it was created.                                                                                                        |
+| **Case**                   | One customer request, followed across every connected system it touches.                                                                                                                                                                                       |
+| **Escalation**             | A case that has been linked to at least one engineering-tracker record (Jira, Linear, or GitHub).                                                                                                                                                              |
+| **Engineering leg**        | The period(s) during which a case is owned by the engineering tracker rather than the helpdesk.                                                                                                                                                                |
+| **At Risk**                | A commitment has crossed a warning threshold but has not yet exceeded its target.                                                                                                                                                                              |
+| **Breached**               | A commitment's elapsed working time has exceeded its target.                                                                                                                                                                                                   |
+| **Met**                    | A commitment closed within its target.                                                                                                                                                                                                                         |
+| **Working Hours**          | The portion of elapsed time that falls inside a calendar's defined open windows; only this time counts toward a business-hours commitment.                                                                                                                     |
+| **Business Calendar**      | A named set of weekly working windows, a timezone, and holidays (or an always-open 24/7 calendar), imported from Zendesk or applied by default.                                                                                                                |
+| **Pause**                  | A period during which a commitment's clock is not counting, triggered by the "Pending customer" normalized state under policies created in Elapsed, and by a solved ticket (until reopened) for Resolution. Zendesk-imported policies do not pause on Pending. |
+| **Correlation**            | The process of matching a case to a record in another connected system (e.g. a Zendesk ticket to a Jira issue), using only verifiable, deterministic evidence.                                                                                                 |
+| **Backfill**               | The one-time import of the last 90 days of history from a newly connected integration.                                                                                                                                                                         |
+| **Synchronization (sync)** | The ongoing process of polling connected systems for changes and updating cases, commitments, and evaluations accordingly.                                                                                                                                     |
+| **Timeline**               | The ordered sequence of every normalized event on a case, across every connected system.                                                                                                                                                                       |
+| **Normalized Event**       | A single recorded fact about a case (created, status changed, linked, unlinked, closed), translated from a provider's own data into this product's provider-independent vocabulary.                                                                            |
+| **Integration**            | A connection to an external system (Zendesk, Jira, Linear, Intercom, GitHub, or Slack).                                                                                                                                                                        |
 
 ---
 
 ## 27. Product Limitations
 
 ### Currently Supported
+
 - Zendesk and Intercom as ticket sources; Jira, Linear, and GitHub as engineering-leg sources
 - Automatic 90-day backfill with live progress reporting
 - Deterministic correlation via each provider's native linking feature (never fuzzy-matched)
@@ -809,12 +845,14 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 - Real-time webhooks for Zendesk and Jira, supplementing the poll schedule
 
 ### Partially Supported
+
 - **Reports/export:** the full compliance CSV works but has no in-app button linking to it yet.
 - **Onboarding progress:** live counters cover Zendesk and Jira only; Intercom/Linear/GitHub backfill status is visible on the Integrations page instead.
 - **Tier-based SLA policy matching:** the engine supports it, but no current integration populates a tier value, so it has no practical effect today.
 - **Webhooks:** available for Zendesk and Jira only; Intercom, Linear, and GitHub are polling-only.
 
 ### Not Supported
+
 - Manual case-link creation or confirmation of a "probable" match (the underlying data model reserves fields for this, but no path in the product creates or exposes it today)
 - Per-policy pause-state configuration or custom warning-threshold percentages
 - PDF export or scheduled/recurring report delivery
@@ -829,12 +867,14 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 ## 28. Customer Setup Checklist
 
 ### Before setup
+
 - [ ] A Zendesk administrator (or someone who can create an OAuth app) is available
 - [ ] A Jira administrator is available, if engineering-leg visibility is in scope
 - [ ] Your team agrees on which native linking feature (Jira remote links, Linear attachments) it will use to connect tickets to engineering work going forward
 - [ ] You know which Zendesk SLA policies you expect to see imported
 
 ### Setup
+
 - [ ] Create your account (organization name, work email, password)
 - [ ] Configure Zendesk OAuth credentials, then connect Zendesk
 - [ ] Configure Jira OAuth credentials, then connect Jira (can be done later without losing progress)
@@ -846,6 +886,7 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 - [ ] Configure SMTP under Settings → Integrations → Notifications if you want email alerts too
 
 ### Validation
+
 - [ ] Confirm your customer list under Settings → SLA → Customer calendars matches your actual accounts
 - [ ] Confirm ticket counts on the Findings/dashboard screens look plausible against your own Zendesk view
 - [ ] Open a known escalated ticket and confirm it shows a Jira/Linear/GitHub link on its case detail page
@@ -854,6 +895,7 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 - [ ] Trigger a test scenario (or wait for a real one) and confirm a Slack alert arrives
 
 ### Ready for monitoring
+
 - [ ] Zendesk connected and backfilled
 - [ ] Jira (and Linear/GitHub/Intercom, if used) connected and backfilled
 - [ ] SLA policies and calendars reviewed and corrected where needed

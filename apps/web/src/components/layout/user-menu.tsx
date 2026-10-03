@@ -15,17 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { IUser } from "@/lib/types/user";
 import { ThemeToggle } from "../ui/theme-toggle";
 import Link from "next/link";
-export function initialsOf(name: string | null, email: string): string {
-  if (name) {
-    const parts = name.trim().split(/\s+/);
-    const initials = parts
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("");
-    if (initials) return initials.toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
-}
+import { initialsOf } from "@/lib/format";
 export function UserMenu({ user }: { user: IUser }) {
   const initials = initialsOf(user.name, user.email);
   const isMobile = useIsMobile();

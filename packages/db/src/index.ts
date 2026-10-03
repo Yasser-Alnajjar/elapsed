@@ -10,6 +10,7 @@ export {
   getIntegrationConfig,
   getIntegrationConfigStatus,
   saveIntegrationConfig,
+  deleteIntegrationConfig,
   encryptSecret,
   decryptSecret,
   IntegrationConfigUnreadableError,
@@ -18,6 +19,7 @@ export type {
   ConfigurableIntegrationProvider,
   IntegrationOAuthCredentials,
   IntegrationConfigStatus,
+  DeleteIntegrationConfigResult,
 } from "./integration-config";
 export {
   isEncryptedToken,
@@ -190,11 +192,12 @@ export {
   planFeatureLines,
 } from "./plans";
 export type { PlanId, PlanDefinition, PlanLimits, LimitedResource } from "./plans";
-export { getOrganizationUsage } from "./usage";
+export { countSeatsInUse, getOrganizationUsage } from "./usage";
 export type { OrganizationUsage, ProviderRoleOf } from "./usage";
 export {
   isTrialExpired,
   evaluateCreation,
+  effectiveLimit,
   integrationResource,
   checkEntitlement,
   getEntitlementNotice,
@@ -202,6 +205,36 @@ export {
   settleTrialExpiryNotice,
   ENTITLEMENT_EVENT_KINDS,
 } from "./entitlements";
+export {
+  BillingError,
+  BILLING_EVENT_TYPES,
+  GRACE_EXTENSION_DAYS,
+  INVOICE_NET_TERMS_DAYS,
+  MAX_SEAT_QUANTITY,
+  addBillingNote,
+  addMonthsUtc,
+  cancelSubscription,
+  changeSeatQuantity,
+  changeSubscriptionPlan,
+  collectInvoice,
+  defaultSeatQuantity,
+  extendGrace,
+  isSelfServePlan,
+  isUpgrade,
+  markInvoicePaid,
+  planPriceCents,
+  previewNextInvoice,
+  reconcileSubscription,
+  resumeSubscription,
+  seatBounds,
+  startSubscription,
+  toSnapshot,
+  updateBillingAccount,
+  voidInvoice,
+  voidOpenInvoices,
+} from "./billing";
+export type { BillingActor, BillingAuditHook, BillingAccountInput, BillingErrorCode, BillingEventType, InvoiceLine } from "./billing";
+export type { BillingProvider, SubscriptionSnapshot } from "./billing-provider";
 export type {
   PlanSubject,
   EntitlementDecision,

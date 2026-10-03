@@ -1,5 +1,6 @@
 import { CheckCircle2, ShieldCheck, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { TONE_DOT, TONE_SURFACE, TONE_TEXT, type Tone } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,24 +12,6 @@ import { cn } from "@/lib/utils";
  * Colours are theme tokens (`bg-card`, `text-foreground-subtle`, ...), never
  * the design's hex values, so the console follows the light/dark toggle.
  */
-
-type Tone = "neutral" | "primary" | "success" | "warning" | "danger";
-
-export const TONE_TEXT: Record<Tone, string> = {
-  neutral: "text-muted-foreground",
-  primary: "text-primary",
-  success: "text-success",
-  warning: "text-warning-text",
-  danger: "text-error",
-};
-
-export const TONE_SURFACE: Record<Tone, string> = {
-  neutral: "border-border bg-surface-raised text-muted-foreground",
-  primary: "border-primary/30 bg-primary/10 text-primary",
-  success: "border-success/30 bg-success/10 text-success",
-  warning: "border-warning/35 bg-warning/10 text-warning-text",
-  danger: "border-error/35 bg-error/10 text-error",
-};
 
 /** The tiny uppercase mono caption used above values and as column headings. */
 export function MonoLabel({
@@ -84,19 +67,12 @@ export function StatusDot({
   pulse?: boolean;
   className?: string;
 }) {
-  const color = {
-    neutral: "bg-foreground-subtle",
-    primary: "bg-primary",
-    success: "bg-success",
-    warning: "bg-warning",
-    danger: "bg-error",
-  }[tone];
   return (
     <span
       aria-hidden
       className={cn(
         "inline-block size-1.5 shrink-0 rounded-full",
-        color,
+        TONE_DOT[tone],
         pulse && "animate-pulse",
         className,
       )}

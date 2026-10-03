@@ -1,4 +1,5 @@
-import { AdminPanel, PanelHeading, TONE_TEXT } from "@/components/admin/admin-ui";
+import { AdminPanel, PanelHeading } from "@/components/admin/admin-ui";
+import { TONE_TEXT } from "@/lib/status-styles";
 import { planStatusTone } from "@/components/admin/tenant-badges";
 import { PLAN_STATUSES, PLAN_STATUS_LABELS, type AdminTenantsData } from "@/lib/types/admin";
 import { cn } from "@/lib/utils";

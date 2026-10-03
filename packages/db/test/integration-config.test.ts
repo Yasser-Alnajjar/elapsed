@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PrismaClient } from "../generated/prisma/client";
 import {
   decryptSecret,
+  deleteIntegrationConfig,
   encryptSecret,
   getIntegrationConfig,
   getIntegrationConfigStatus,
@@ -241,5 +242,98 @@ describe("getIntegrationConfigStatus", () => {
       configured: true,
       clientId: "client-a",
     });
+  });
+});
+
+/**
+ * `deleteIntegrationConfig` reads connection state, then queues its writes
+ * in one `$transaction`, so this fake answers the reads from its options
+ * and records each queued write's model, method and args instead of
+ * modelling the tables — the assertions are about *what* the transaction
+ * asks the database to do, which is the contract that matters.
+ */
+function createRecordingPrisma({
+  configured = true,
+  integrationCredentials = undefined as Record<string, unknown> | null | undefined,
+  slackConnected = false,
+} = {}) {
+  const transactions: { model: string; method: string; args: unknown }[][] = [];
+  const op = (model: string, method: string) => (args: unknown) => ({ model, method, args });
+
+  const prisma = {
+    integrationConfig: {
+      findUnique: async () => (configured ? { id: "cfg-1" } : null),
+      deleteMany: op("integrationConfig", "deleteMany"),
+    },
+    slackIntegration: {
+      findUnique: async () => (slackConnected ? { id: "slack-1" } : null),
+    },
+    integration: {
+      findUnique: async () =>
+        integrationCredentials === undefined ? null : { credentials: integrationCredentials },
+    },
+    integrationConnectLink: { deleteMany: op("integrationConnectLink", "deleteMany") },
+    async $transaction(ops: { model: string; method: string; args: unknown }[]) {
+      transactions.push(ops);
+      return ops.map(() => ({ count: 1 }));
+    },
+  };
+
+  return { prisma: prisma as unknown as PrismaClient, transactions };
+}
+
+describe("deleteIntegrationConfig", () => {
+  it("returns not_configured and changes nothing when the provider isn't configured", async () => {
+    const { prisma, transactions } = createRecordingPrisma({ configured: false });
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "jira")).resolves.toBe("not_configured");
+    expect(transactions).toHaveLength(0);
+  });
+
+  it("refuses while a source integration is connected, leaving the configuration in place", async () => {
+    const { prisma, transactions } = createRecordingPrisma({ integrationCredentials: { accessToken: "x" } });
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "zendesk")).resolves.toBe("connected");
+    expect(transactions).toHaveLength(0);
+  });
+
+  it("refuses while Slack is connected", async () => {
+    const { prisma, transactions } = createRecordingPrisma({ slackConnected: true });
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "slack")).resolves.toBe("connected");
+    expect(transactions).toHaveLength(0);
+  });
+
+  it("deletes the config of a disconnected source integration and revokes its unused connect links, never touching the Integration row", async () => {
+    const { prisma, transactions } = createRecordingPrisma({ integrationCredentials: null });
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "zendesk")).resolves.toBe("deleted");
+
+    expect(transactions).toEqual([
+      [
+        { model: "integrationConfig", method: "deleteMany", args: { where: { organizationId: "org-a", provider: "zendesk" } } },
+        {
+          model: "integrationConnectLink",
+          method: "deleteMany",
+          args: { where: { organizationId: "org-a", provider: "zendesk", consumedAt: null } },
+        },
+      ],
+    ]);
+  });
+
+  it("deletes the config of a source integration that was never connected", async () => {
+    const { prisma, transactions } = createRecordingPrisma();
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "linear")).resolves.toBe("deleted");
+    expect(transactions[0]![0]).toMatchObject({ model: "integrationConfig", method: "deleteMany" });
+  });
+
+  it("deletes only the config for slack when it isn't connected", async () => {
+    const { prisma, transactions } = createRecordingPrisma();
+
+    await expect(deleteIntegrationConfig(prisma, "org-a", "slack")).resolves.toBe("deleted");
+    expect(transactions).toEqual([
+      [{ model: "integrationConfig", method: "deleteMany", args: { where: { organizationId: "org-a", provider: "slack" } } }],
+    ]);
   });
 });

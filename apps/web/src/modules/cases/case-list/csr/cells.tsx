@@ -16,8 +16,11 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
+import type { CommitmentKind } from "@sla/core";
 
 import { CountdownClock } from "@/components/shared/countdown-clock";
+import { PriorityTierChip } from "@/components/shared/priority-tier-chip";
 import { StatusBadge } from "@/components/shared/status-badge";
 
 import {
@@ -27,9 +30,11 @@ import {
 } from "@/components/ui/tooltip";
 import {
   formatCommitmentKind,
+  formatCommitmentStatus,
+  formatLinkedSystemShort,
   formatMinutes,
-  formatPriorityTier,
 } from "@/lib/format";
+import { commitmentStatusStyle } from "@/lib/status-styles";
 import type { CaseListRow } from "@/lib/types/cases";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -53,36 +58,13 @@ export function Ms({ name, className }: { name: string; className?: string }) {
   return <Icon aria-hidden className={cn("shrink-0", className)} />;
 }
 
-const LINKED_SYSTEM_LABEL: Record<string, string> = {
-  jira: "ENG",
-  linear: "LIN",
-  github: "GH",
-};
-
-const SEVERITY_TONE: Record<string, string> = {
-  P1: "bg-error-container/30 text-error",
-  P2: "bg-warning/10 text-warning",
-  P3: "bg-surface-container-highest text-on-surface-variant",
-  P4: "bg-surface-subtle text-muted-foreground",
-};
-
 /** "Priority & Dual-Key" — severity chip over the Zendesk⇄Jira id pairing. */
 export function PriorityDualKeyCell({ row }: { row: CaseListRow }) {
-  const severity = formatPriorityTier(row.priority);
   const link = row.primaryLink;
 
   return (
     <div className="flex items-center whitespace-nowrap gap-2">
-      {severity && (
-        <span
-          className={cn(
-            "shrink-0 rounded px-1.5 py-0.5 font-mono text-xxs font-semibold tracking-wider uppercase",
-            SEVERITY_TONE[severity],
-          )}
-        >
-          {severity} - {row.priority}
-        </span>
-      )}
+      <PriorityTierChip priority={row.priority} />
       <div className="flex flex-col">
         <div className="flex items-center gap-1 font-mono text-sm font-medium text-on-surface group-hover:text-primary">
           <span>#{row.externalId}</span>
@@ -90,7 +72,7 @@ export function PriorityDualKeyCell({ row }: { row: CaseListRow }) {
             <>
               <Ms name={"sync_alt"} className="size-3.25 text-tertiary" />
               <span className="font-semibold text-primary">
-                {LINKED_SYSTEM_LABEL[link.system] ?? link.system.toUpperCase()}-
+                {formatLinkedSystemShort(link.system)}-
                 {link.externalId}
               </span>
             </>
@@ -170,41 +152,58 @@ export function CorrelationCell({ row }: { row: CaseListRow }) {
   );
 }
 
-const SETTLED_TONE: Record<
-  string,
-  { text: string; bar: string; badge: string; label: string }
-> = {
-  met: {
-    text: "text-tertiary",
-    bar: "bg-tertiary",
-    badge: "bg-tertiary/20 text-tertiary font-bold",
-    label: "MET",
-  },
-  breached: {
-    text: "text-error",
-    bar: "bg-error",
-    badge: "bg-error-container/20 text-error font-bold",
-    label: "BREACHED",
-  },
-  at_risk: {
-    text: "text-warning",
-    bar: "bg-warning",
-    badge: "bg-error-container text-warning",
-    label: "AT RISK",
-  },
-  on_track: {
-    text: "text-primary",
-    bar: "bg-primary",
-    badge: "bg-primary-container/20 text-primary",
-    label: "ON TRACK",
-  },
-  cancelled: {
-    text: "text-outline",
-    bar: "bg-outline",
-    badge: "bg-surface-container-highest text-outline",
-    label: "CANCELLED",
-  },
-};
+/** The shared shape of both runway cells: kind + status chip, a value line, and a consumption bar. */
+function RunwayFrame({
+  kind,
+  targetMinutes,
+  status,
+  icon,
+  percent,
+  children,
+}: {
+  kind: CommitmentKind;
+  targetMinutes: number;
+  status: string;
+  icon: string;
+  percent: number;
+  children: ReactNode;
+}) {
+  const style = commitmentStatusStyle(status);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-xs text-on-surface-variant text-nowrap">
+          {formatCommitmentKind(kind)} ({formatMinutes(targetMinutes)} Max)
+        </span>
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 font-mono text-xxs font-semibold tracking-wider uppercase",
+            style.chip,
+            status === "at_risk" && "animate-pulse",
+          )}
+        >
+          {formatCommitmentStatus(status)}
+        </span>
+      </div>
+      <div
+        className={cn(
+          "flex items-center gap-1.5 font-mono text-sm font-semibold",
+          style.text,
+        )}
+      >
+        <Ms name={icon} className="size-3.5" />
+        {children}
+      </div>
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-container-lowest">
+        <div
+          className={cn("h-full rounded-full", style.fill)}
+          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 /** Final outcome for a case with no live clock: elapsed vs. target with a progress bar. */
 export function SettledRunway({
@@ -212,7 +211,6 @@ export function SettledRunway({
 }: {
   settled: NonNullable<CaseListRow["settledCommitment"]>;
 }) {
-  const tone = SETTLED_TONE[settled.status] ?? SETTLED_TONE.on_track!;
   const targetSeconds = settled.targetMinutes * 60;
   const elapsedSeconds = settled.elapsedSeconds ?? 0;
   const percent =
@@ -220,46 +218,21 @@ export function SettledRunway({
   const overBy = elapsedSeconds - targetSeconds;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-on-surface-variant text-nowrap">
-          {formatCommitmentKind(settled.kind)} (
-          {formatMinutes(settled.targetMinutes)} Max)
-        </span>
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 font-mono text-xxs font-semibold tracking-wider",
-            tone.badge,
-          )}
-        >
-          {tone.label}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "flex items-center gap-1.5 font-mono text-sm font-semibold",
-          tone.text,
-        )}
-      >
-        <Ms
-          name={settled.status === "breached" ? "warning" : "task_alt"}
-          className="size-3.5"
-        />
-        <span>
-          {settled.elapsedSeconds == null
-            ? "—"
-            : settled.status === "breached" && overBy > 0
-              ? `+${formatMinutes(Math.ceil(overBy / 60))} over`
-              : `${formatMinutes(Math.max(0, Math.round(elapsedSeconds / 60)))} used`}
-        </span>
-      </div>
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-container-lowest">
-        <div
-          className={cn("h-full rounded-full", tone.bar)}
-          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-        />
-      </div>
-    </div>
+    <RunwayFrame
+      kind={settled.kind}
+      targetMinutes={settled.targetMinutes}
+      status={settled.status}
+      icon={settled.status === "breached" ? "warning" : "task_alt"}
+      percent={percent}
+    >
+      <span>
+        {settled.elapsedSeconds == null
+          ? "—"
+          : settled.status === "breached" && overBy > 0
+            ? `+${formatMinutes(Math.ceil(overBy / 60))} over`
+            : `${formatMinutes(Math.max(0, Math.round(elapsedSeconds / 60)))} used`}
+      </span>
+    </RunwayFrame>
   );
 }
 
@@ -286,87 +259,25 @@ export function SlaTargetRunwayCell({ row }: { row: CaseListRow }) {
       ? Math.min(100, (live.elapsedSeconds / 60 / live.targetMinutes) * 100)
       : 0;
 
-  const statusTone =
-    live.status === "breached"
-      ? "text-error"
-      : live.status === "at_risk"
-        ? "text-error"
-        : live.status === "on_track"
-          ? "text-primary"
-          : "text-tertiary";
-
-  const barTone =
-    live.status === "breached"
-      ? "bg-error"
-      : live.status === "at_risk"
-        ? "bg-error"
-        : live.status === "on_track"
-          ? "bg-primary"
-          : "bg-tertiary";
-
-  const statusLabel =
-    live.status === "breached"
-      ? "BREACHED"
-      : live.status === "at_risk"
-        ? "AT RISK"
-        : live.status === "on_track"
-          ? "ON TRACK"
-          : "MET";
-
-  const badgeTone =
-    live.status === "breached"
-      ? "bg-error-container text-error font-bold"
-      : live.status === "at_risk"
-        ? "bg-error-container text-error"
-        : live.status === "on_track"
-          ? "bg-primary-container/20 text-primary"
-          : "bg-tertiary/20 text-tertiary font-bold";
-
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-on-surface-variant text-nowrap">
-          {formatCommitmentKind(live.kind)} ({formatMinutes(live.targetMinutes)}{" "}
-          Max)
-        </span>
-        <span
-          className={cn(
-            "rounded px-1.5 py-0.5 font-mono text-xxs font-semibold tracking-wider",
-            badgeTone,
-            live.status === "at_risk" && "animate-pulse",
-          )}
-        >
-          {statusLabel}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "flex items-center gap-1.5 font-mono text-sm font-semibold",
-          statusTone,
-        )}
-      >
-        <Ms
-          name={
-            live.status === "breached"
-              ? "warning"
-              : live.status === "met"
-                ? "task_alt"
-                : "timer"
-          }
-          className="size-3.5"
-        />
-        <CountdownClock
-          remainingMinutes={live.remainingMinutes}
-          className="font-mono"
-        />
-      </div>
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-container-lowest">
-        <div
-          className={cn("h-full rounded-full", barTone)}
-          style={{ width: `${percentExpended}%` }}
-        />
-      </div>
-    </div>
+    <RunwayFrame
+      kind={live.kind}
+      targetMinutes={live.targetMinutes}
+      status={live.status}
+      icon={
+        live.status === "breached"
+          ? "warning"
+          : live.status === "met"
+            ? "task_alt"
+            : "timer"
+      }
+      percent={percentExpended}
+    >
+      <CountdownClock
+        remainingMinutes={live.remainingMinutes}
+        className="font-mono"
+      />
+    </RunwayFrame>
   );
 }
 

@@ -21,6 +21,7 @@ import type { InvitationPreview } from "@/lib/types/invitations";
 import type { UserRole } from "@/lib/types/user";
 import { CONCIERGE_INTEGRATION_ID_FIELD } from "@/lib/types/concierge-export";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
+import type { BillingAccountFormInput, SubscriptionActionInput } from "@/lib/billing-validation";
 import type {
   ConciergeExportSelectionRequest,
   ConciergeExportSummary,
@@ -156,6 +157,19 @@ export const Actions = {
         `/api/integrations/${provider}/config`,
         input,
       );
+    },
+    async deleteIntegrationConfig(provider: ConfigurableIntegrationProvider) {
+      const response = await fetch(`/api/integrations/${provider}/config`, {
+        method: "DELETE",
+      });
+      if (response.ok) return { ok: true as const };
+      const body = await response.json().catch(() => null);
+      return {
+        ok: false as const,
+        error:
+          (body?.error as string | undefined) ??
+          "Failed to delete configuration",
+      };
     },
     async disconnect(provider: IntegrationProvider | "slack") {
       const response = await fetch(`/api/integrations/${provider}/disconnect`, {
@@ -397,6 +411,19 @@ export const Actions = {
   Organization: {
     async update(input: { name: string; timezone: string }) {
       return postJSON<OrganizationSettingsData>("/api/settings/organization", input, "PATCH");
+    },
+  },
+  Billing: {
+    /** Start, change plan or seats, cancel or resume. Errors carry `{ error, code }`. */
+    async subscription(input: SubscriptionActionInput) {
+      return postJSON<{ subscription?: unknown; code?: string }>("/api/billing/subscription", input);
+    },
+    async updateAccount(input: BillingAccountFormInput) {
+      return postJSON<{ code?: string }>("/api/billing/account", input, "PATCH");
+    },
+    /** A hosted provider page; `501 provider_unavailable` while none is connected. */
+    async providerSession(kind: "portal" | "payment_method") {
+      return postJSON<{ url?: string; code?: string }>("/api/billing/provider-session", { kind });
     },
   },
 };

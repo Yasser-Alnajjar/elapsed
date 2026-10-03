@@ -179,3 +179,68 @@ export async function saveIntegrationConfig(
     });
   }
 }
+
+/** Outcome of `deleteIntegrationConfig`. */
+export type DeleteIntegrationConfigResult =
+  | "deleted"
+  | "not_configured"
+  /** Refused: the integration is connected and must be disconnected first. */
+  | "connected";
+
+/**
+ * Permanently removes one organization's OAuth app configuration for a
+ * provider, returning the integration to its unconfigured state — unlike
+ * disconnect, which keeps this row so the integration can be reconnected.
+ *
+ * Only allowed while the integration is not connected ("connected" means
+ * live credentials, matching the settings UI: a `SlackIntegration` row, or
+ * an `Integration` row whose `credentials` aren't null). A connected
+ * integration goes through disconnect first, so this never has to tear
+ * down a live connection. A disconnected `Integration` row is kept as-is —
+ * `RawEvent.integrationId` cascades on delete and would destroy the
+ * immutable replay log. Unused connect links for the provider are revoked
+ * in the same transaction, since they could no longer complete without a
+ * configuration.
+ */
+export async function deleteIntegrationConfig(
+  prisma: PrismaClient,
+  organizationId: string,
+  provider: ConfigurableIntegrationProvider,
+): Promise<DeleteIntegrationConfigResult> {
+  const existing = await prisma.integrationConfig.findUnique({
+    where: { organizationId_provider: { organizationId, provider } },
+    select: { id: true },
+  });
+  if (!existing) return "not_configured";
+
+  const deleteConfig = prisma.integrationConfig.deleteMany({
+    where: { organizationId, provider },
+  });
+
+  if (provider === "slack") {
+    const slack = await prisma.slackIntegration.findUnique({
+      where: { organizationId },
+      select: { id: true },
+    });
+    if (slack) return "connected";
+
+    await prisma.$transaction([deleteConfig]);
+    return "deleted";
+  }
+
+  // Checked in JS rather than with a Prisma JSON filter: disconnect stores
+  // `Prisma.JsonNull`, which Prisma reads back as `null` either way.
+  const integration = await prisma.integration.findUnique({
+    where: { organizationId_provider: { organizationId, provider } },
+    select: { credentials: true },
+  });
+  if (integration && integration.credentials !== null) return "connected";
+
+  await prisma.$transaction([
+    deleteConfig,
+    prisma.integrationConnectLink.deleteMany({
+      where: { organizationId, provider, consumedAt: null },
+    }),
+  ]);
+  return "deleted";
+}

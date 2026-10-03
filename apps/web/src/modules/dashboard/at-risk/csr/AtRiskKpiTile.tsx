@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { TONE_DOT, TONE_TEXT, type Tone } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,32 +17,20 @@ export function AtRiskKpiTile({
   value,
   qualifier,
   detail,
-  tone = "default",
+  tone = "neutral",
 }: {
   icon: LucideIcon;
   label: string;
   value: ReactNode;
   qualifier?: ReactNode;
   detail?: ReactNode;
-  tone?: "default" | "destructive" | "warning" | "success";
+  tone?: Tone;
 }) {
-  const toneBGClass = {
-    destructive: "bg-error",
-    warning: "bg-warning",
-    success: "bg-success",
-    default: "bg-muted-foreground",
-  };
-  const toneTextClass = {
-    destructive: "text-error",
-    warning: "text-warning",
-    success: "text-success",
-    default: "text-muted-foreground",
-  };
   return (
     <div className="relative overflow-hidden rounded border border-border bg-card p-4">
       <div
         aria-hidden
-        className={cn("absolute inset-y-0 inset-s-0 w-1", toneBGClass[tone])}
+        className={cn("absolute inset-y-0 inset-s-0 w-1", TONE_DOT[tone])}
       />
 
       <div className="flex items-center justify-between gap-2 ps-2">
@@ -52,13 +41,13 @@ export function AtRiskKpiTile({
         >
           {label}
         </span>
-        <Icon className={cn("size-3.5 shrink-0", toneTextClass[tone])} />
+        <Icon className={cn("size-3.5 shrink-0", TONE_TEXT[tone])} />
       </div>
 
       <p
         className={cn(
           "mt-1.5 ps-2 font-mono text-2xl truncate  font-semibold tabular-nums ",
-          toneTextClass[tone],
+          TONE_TEXT[tone],
         )}
       >
         <span>{value}</span>{" "}

@@ -1,112 +1,41 @@
 "use client";
 
-import React, { useMemo } from "react";
-import type { SortingState } from "@tanstack/react-table";
-
-import { Download, ListChecks, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ListChecks, Search } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Reveal } from "@/components/shared/reveal";
 
-import { Utils } from "@/lib/utils";
-import { useQueryParams } from "@hooks";
-import type { CaseListData, CaseListSortId } from "@/lib/types/cases";
+import type { CaseListData } from "@/lib/types/cases";
 
 import { useCaseListColumns } from "./columns";
-import {
-  type LinkFilter,
-  type OpenFilter,
-  type SeverityFilter,
-  type StatusFilter,
-} from "./constants";
 import { CaseListFilters } from "./filters";
 import { CaseListMetrics } from "./metrics";
+import { CaseListHeader } from "./CaseListHeader";
+import { useCaseListQuery } from "./useCaseListQuery";
 
 interface CaseListViewProps {
   data: CaseListData;
 }
 
-/** Every case-list filter/sort/search resets pagination to page 1. */
-function withPageReset(patch: Record<string, string | number | undefined>) {
-  return { ...patch, page: 1 };
-}
-
 export const CaseListView = ({ data }: CaseListViewProps) => {
-  const { getQueryObject, createQueryFromObject } = useQueryParams();
-  const query = getQueryObject();
-
-  const globalFilter = String(query.q ?? "");
-  const status = (query.status as StatusFilter) ?? "all";
-  const openState = (query.openState as OpenFilter) ?? "all";
-  const linkState = (query.linkState as LinkFilter) ?? "all";
-  const severity = (query.severity as SeverityFilter) ?? "all";
-
-  const sorting: SortingState = query.sort
-    ? [{ id: String(query.sort), desc: query.dir !== "asc" }]
-    : [];
-
+  const {
+    searchDraft,
+    setGlobalFilter,
+    filters: { status, openState, linkState, severity },
+    setStatus,
+    setOpenState,
+    setLinkState,
+    setSeverity,
+    hasActiveFilters,
+    sorting,
+    handleSortingChange,
+    handleExport,
+  } = useCaseListQuery();
   const columns = useCaseListColumns();
-
-  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const [searchDraft, setSearchDraft] = React.useState(globalFilter);
-  React.useEffect(() => setSearchDraft(globalFilter), [globalFilter]);
-
-  const setGlobalFilter = (value: string) => {
-    setSearchDraft(value);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      createQueryFromObject(withPageReset({ q: value || undefined }));
-    }, 300);
-  };
-
-  const setStatus = (value: StatusFilter) =>
-    createQueryFromObject(
-      withPageReset({ status: value === "all" ? undefined : value }),
-    );
-  const setOpenState = (value: OpenFilter) =>
-    createQueryFromObject(
-      withPageReset({ openState: value === "all" ? undefined : value }),
-    );
-  const setLinkState = (value: LinkFilter) =>
-    createQueryFromObject(
-      withPageReset({ linkState: value === "all" ? undefined : value }),
-    );
-  const setSeverity = (value: SeverityFilter) =>
-    createQueryFromObject(
-      withPageReset({ severity: value === "all" ? undefined : value }),
-    );
-
-  const handleSortingChange = (next: SortingState) => {
-    const first = next[0];
-    createQueryFromObject({
-      sort: first ? (first.id as CaseListSortId) : undefined,
-      dir: first ? (first.desc ? "desc" : "asc") : undefined,
-    });
-  };
-
-  const handleExport = () => {
-    const params = new URLSearchParams();
-    if (status !== "all") params.set("status", status);
-    if (openState !== "all") params.set("openState", openState);
-    if (linkState !== "all") params.set("linkState", linkState);
-    if (severity !== "all") params.set("severity", severity);
-    if (globalFilter) params.set("q", globalFilter);
-    window.open(`/api/cases/export?${params.toString()}`, "_blank");
-  };
 
   const counts = data.counts;
 
-  if (
-    data.rowCount === 0 &&
-    !globalFilter &&
-    status === "all" &&
-    openState === "all" &&
-    linkState === "all" &&
-    severity === "all"
-  ) {
+  if (data.rowCount === 0 && !hasActiveFilters) {
     return (
       <Reveal delay={0}>
         <EmptyState
@@ -121,41 +50,10 @@ export const CaseListView = ({ data }: CaseListViewProps) => {
   return (
     <div className="relative flex w-full flex-col gap-6">
       <Reveal delay={0}>
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-4xl font-semibold tracking-tight text-on-surface">
-                Cases
-              </h1>
-
-              <span className="rounded bg-surface-container-high px-1 py-0.5 font-mono text-xxs font-semibold tracking-wider uppercase text-primary">
-                Operational Ledger
-              </span>
-
-              <span className="size-1.5 animate-pulse rounded-full bg-tertiary" />
-            </div>
-
-            <p className="text-sm text-on-surface-variant">
-              Continuous SLA ledger across Zendesk customer touches and Jira
-              engineering handoffs
-            </p>
-          </div>
-
-          <Button
-            type="button"
-            variant="surface"
-            size="toolbar"
-            onClick={handleExport}
-            className="group shrink-0 px-4 shadow-sm hover:bg-surface-bright"
-          >
-            <Download className="size-4.5 text-primary transition-transform group-hover:scale-110" />
-            <span>Export Full CSV</span>
-
-            <span className="rounded bg-surface-container-lowest px-1.5 py-0.5 font-mono text-xs text-on-surface-variant">
-              {counts.status.all} rec
-            </span>
-          </Button>
-        </div>
+        <CaseListHeader
+          totalCount={counts.status.all}
+          onExport={handleExport}
+        />
       </Reveal>
 
       <Reveal delay={0.05}>

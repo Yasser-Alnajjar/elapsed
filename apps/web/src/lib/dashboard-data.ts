@@ -31,7 +31,7 @@ import type {
   UnmatchedCaseRow,
 } from "./types/dashboard";
 import type { IntegrationProvider } from "./types/integrations";
-import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem } from "./providers";
+import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem, preferredIssueLink } from "./providers";
 
 const COMMITMENT_KINDS: CommitmentKind[] = [
   "first_response",
@@ -52,10 +52,8 @@ function preferredLink(
     method: string;
   }[],
 ): LinkedIssueRef | null {
-  const trackerLinks = links.filter((l) => isIssueLinkSystem(l.system));
-  if (trackerLinks.length === 0) return null;
-  const best =
-    trackerLinks.find((l) => l.confidence === "certain") ?? trackerLinks[0]!;
+  const best = preferredIssueLink(links);
+  if (!best) return null;
   return {
     system: best.system as LinkedIssueRef["system"],
     externalId: best.externalId,

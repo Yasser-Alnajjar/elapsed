@@ -39,7 +39,10 @@ export default function LinearIntegrationPage() {
               An alternative engineering-leg source alongside Jira, not a
               replacement — connect whichever tracker your engineers actually
               use. See{" "}
-              <Link href="#limitations" className="underline underline-offset-4">
+              <Link
+                href="#limitations"
+                className="underline underline-offset-4"
+              >
                 Known limitations
               </Link>
               .
@@ -82,8 +85,8 @@ export default function LinearIntegrationPage() {
                 <strong>Create new</strong>.
               </>,
               <>
-                Name the application (e.g. &quot;SLA Breach Monitoring&quot;)
-                and set its <strong>Callback URL</strong> to{" "}
+                Name the application (e.g. &quot;Elapsed&quot;) and set its{" "}
+                <strong>Callback URL</strong> to{" "}
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                   https://your-app-domain/api/integrations/linear/callback
                 </code>
@@ -115,7 +118,7 @@ export default function LinearIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            In SLA Breach Monitoring, go to{" "}
+            In Elapsed, go to{" "}
             <strong>Settings → Integrations → Linear → Configure</strong> and
             paste in the Client ID and Client Secret, then save.
           </p>

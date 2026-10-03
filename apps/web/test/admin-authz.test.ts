@@ -67,6 +67,8 @@ describe("admin pages and reads: 404 for everyone but a platform operator", () =
     ["getTenants", (a) => a.getTenants()],
     ["getTenantDetail", (a) => a.getTenantDetail("org_2")],
     ["getAuditLog", (a) => a.getAuditLog(null)],
+    ["getBillingOverview", (a) => a.getBillingOverview()],
+    ["getTenantBilling", (a) => a.getTenantBilling("ten_glx_9921")],
   ];
 
   for (const role of ["owner", "member"] as const) {

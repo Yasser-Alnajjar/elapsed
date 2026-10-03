@@ -4,10 +4,7 @@ import { createEmailVerificationToken, getPrismaClient, TRIAL_LENGTH_DAYS } from
 import { signUpSchema } from "@/lib/sign-up";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildEmailVerificationEmail } from "@/lib/email-verification-email";
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage } from "@/lib/utils";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

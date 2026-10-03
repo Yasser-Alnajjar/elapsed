@@ -1,0 +1,11 @@
+-- H-5: index the foreign key from normalized_events to raw_events. The FK is
+-- ON DELETE RESTRICT, so every cascaded raw_events delete (an organization or
+-- integration delete) checks normalized_events for a referencing row; without
+-- this index each check is a sequential scan. Measured on the 5,000-case perf
+-- seed: an organization delete ran past 17 minutes without it, about 2 seconds
+-- with it (docs/data-retention-and-on-call.md).
+--
+-- Additive only. A plain CREATE INDEX blocks writes to normalized_events while
+-- it builds; at today's production size (about 10k rows) that is well under a
+-- second.
+CREATE INDEX "normalized_events_sourceRawEventId_idx" ON "normalized_events"("sourceRawEventId");

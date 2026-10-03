@@ -75,8 +75,8 @@ export default function ZendeskIntegrationPage() {
               </>,
               <>
                 Click <strong>Add OAuth client</strong>. Give it a name (e.g.
-                &quot;SLA Breach Monitoring&quot;) — the unique identifier fills
-                in automatically.
+                &quot;Elapsed&quot;) — the unique identifier fills in
+                automatically.
               </>,
               <>
                 In <strong>Redirect URLs</strong>, add the callback URL for this
@@ -114,7 +114,7 @@ export default function ZendeskIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Back in SLA Breach Monitoring, go to{" "}
+            Back in Elapsed, go to{" "}
             <strong>Settings → Integrations → Zendesk → Configure</strong> and
             paste in the <strong>Client ID</strong> (the unique identifier from
             step 2) and the <strong>Client Secret</strong> you copied, then
@@ -172,9 +172,9 @@ export default function ZendeskIntegrationPage() {
             <li>• SLA policy definitions</li>
             <li>• Business-hours schedules and holidays</li>
             <li>
-              • Requester and assignee display names (from the ticket&apos;s
-              own user sideload). Display only — shown on the case header,
-              never used for matching, routing, or SLA calculations.
+              • Requester and assignee display names (from the ticket&apos;s own
+              user sideload). Display only — shown on the case header, never
+              used for matching, routing, or SLA calculations.
             </li>
           </ul>
         </section>
@@ -264,21 +264,33 @@ export default function ZendeskIntegrationPage() {
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                 {`{"ticket_id": "{{ticket.id}}", "timestamp": "{{ticket.updated_at_with_timestamp}}"}`}
               </code>
-              . The <code className="rounded bg-muted px-1.5 py-0.5 text-xs">timestamp</code>{" "}
+              . The{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                timestamp
+              </code>{" "}
               field is required for replay protection and must use that exact
               placeholder: plain{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{`{{ticket.updated_at}}`}</code>{" "}
               renders only a date (e.g. &ldquo;May 18&rdquo;), so those requests
-              are rejected with <code className="rounded bg-muted px-1.5 py-0.5 text-xs">401</code>.
-              Zendesk&rsquo;s <strong>Test webhook</strong> button sends a sample
-              body with no <code className="rounded bg-muted px-1.5 py-0.5 text-xs">timestamp</code>{" "}
+              are rejected with{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                401
+              </code>
+              . Zendesk&rsquo;s <strong>Test webhook</strong> button sends a
+              sample body with no{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                timestamp
+              </code>{" "}
               and doesn&rsquo;t fill in placeholders, so it gets that{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">401</code> too.
-              To test from there, replace the body with a real ticket id and the
-              current UTC time, e.g.{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                401
+              </code>{" "}
+              too. To test from there, replace the body with a real ticket id
+              and the current UTC time, e.g.{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{`{"ticket_id": "123", "timestamp": "2026-09-17T08:40Z"}`}</code>
-              , sent within 5 minutes of that time. This closes the last few minutes of latency between polls — it
-              is optional, and everything works without it.
+              , sent within 5 minutes of that time. This closes the last few
+              minutes of latency between polls — it is optional, and everything
+              works without it.
             </p>
           </div>
         </section>

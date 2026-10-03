@@ -4,13 +4,14 @@ import { AlertCircle, CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
-import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { EntitlementWarningAlert, type EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
+import { EntitlementWarningAlert } from "@/components/shared/entitlement-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { sendInvitation, type InviteStatus } from "./send-invitation";
 
 interface InviteMemberFormProps {
   onInvited: () => void;
@@ -31,34 +32,22 @@ export function InviteMemberForm({ onInvited }: InviteMemberFormProps) {
     onSubmit: async (values, { setStatus, resetForm }) => {
       setStatus(undefined);
 
-      const { ok, body } = await Actions.Invitations.invite(
-        values.email.trim(),
-      );
+      const result = await sendInvitation(values.email.trim());
 
-      if (!ok) {
-        setStatus({
-          type: "error",
-          message: body.error ?? "Failed to send invitation",
-        });
+      if (result.type === "error") {
+        setStatus(result);
         return;
       }
 
       resetForm();
 
-      setStatus({
-        type: "success",
-        message: body.resent ? "Invitation resent." : "Invitation sent.",
-        // Soft limit (N6.3): the invitation went out; this only tells the owner where they stand.
-        warning: body.entitlementWarning,
-      });
+      setStatus(result);
 
       onInvited();
     },
   });
 
-  const status = formik.status as
-    | { type: "success" | "error"; message: string; warning?: EntitlementWarningPayload }
-    | undefined;
+  const status = formik.status as InviteStatus | undefined;
 
   return (
     <Card className="bg-surface-container-low rounded-xl border-0 shadow-sm p-6">

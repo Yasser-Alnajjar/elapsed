@@ -113,8 +113,7 @@ export default function JiraIntegrationPage() {
                 </code>{" "}
                 and click <strong>Create</strong> →{" "}
                 <strong>OAuth 2.0 integration</strong>. Name the app (e.g.
-                &quot;SLA Breach Monitoring&quot;) and accept the developer
-                terms.
+                &quot;Elapsed&quot;) and accept the developer terms.
               </>,
               <>
                 Open the new app&apos;s <strong>Authorization</strong> tab, find{" "}
@@ -162,7 +161,7 @@ export default function JiraIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            In SLA Breach Monitoring, go to{" "}
+            In Elapsed, go to{" "}
             <strong>Settings → Integrations → Jira → Configure</strong> and
             paste in the Client ID and Secret, then save.
           </p>

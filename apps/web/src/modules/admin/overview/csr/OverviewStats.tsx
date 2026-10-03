@@ -1,18 +1,16 @@
 import { Activity, Building2, PlugZap, Radio } from "lucide-react";
 import Link from "next/link";
-import { StatTile, StatusDot, TONE_TEXT } from "@/components/admin/admin-ui";
+import { StatTile, StatusDot } from "@/components/admin/admin-ui";
+import { TONE_TEXT, WORKER_STATUS_TONE } from "@/lib/status-styles";
 import { formatUtcShort } from "@/lib/admin-format";
 import { formatIntervalMs } from "@/lib/format";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
-import type { WorkerMonitoringData, WorkerStatus } from "@/lib/types/worker-settings";
+import {
+  WORKER_STATUS_LABELS,
+  type WorkerMonitoringData,
+} from "@/lib/types/worker-settings";
 import { cn } from "@/lib/utils";
 
-const WORKER_TONE: Record<WorkerStatus, "success" | "warning" | "danger"> = {
-  running: "success",
-  degraded: "warning",
-  stopped: "danger",
-};
-const WORKER_LABEL: Record<WorkerStatus, string> = { running: "Running", degraded: "Degraded", stopped: "Stopped" };
 
 interface OverviewStatsProps {
   data: OperatorMonitoringData;
@@ -80,9 +78,9 @@ export function OverviewStats({ data, worker, organizationsWithIssues, failingAl
         label="Ingestion worker"
         icon={Activity}
         value={
-          <span className={cn("flex items-center gap-2 text-2xl", TONE_TEXT[WORKER_TONE[worker.status]])}>
-            <StatusDot tone={WORKER_TONE[worker.status]} pulse={worker.status === "running"} className="size-2.5" />
-            {WORKER_LABEL[worker.status]}
+          <span className={cn("flex items-center gap-2 text-2xl", TONE_TEXT[WORKER_STATUS_TONE[worker.status]])}>
+            <StatusDot tone={WORKER_STATUS_TONE[worker.status]} pulse={worker.status === "running"} className="size-2.5" />
+            {WORKER_STATUS_LABELS[worker.status]}
           </span>
         }
         detail={

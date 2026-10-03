@@ -64,7 +64,7 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
           label="Immediate Threat (< 1h Runway)"
           value={`${data.immediateThreatCount} Cases`}
           qualifier="Critical"
-          tone={data.immediateThreatCount > 0 ? "destructive" : "default"}
+          tone={data.immediateThreatCount > 0 ? "danger" : "neutral"}
           detail={sampleDetail(
             data.immediateThreatSample,
             "No cases below the critical runway threshold",
@@ -78,7 +78,7 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
           label="Elevated Risk (1h – 2.5h)"
           value={`${data.elevatedRiskCount} Cases`}
           qualifier="Approaching"
-          tone={data.elevatedRiskCount > 0 ? "warning" : "default"}
+          tone={data.elevatedRiskCount > 0 ? "warning" : "neutral"}
           detail={sampleDetail(
             data.elevatedRiskSample,
             "No cases currently approaching the threshold",
@@ -96,7 +96,7 @@ export const AtRiskKpiGrid = ({ data }: AtRiskKpiGridProps) => {
               : "—"
           }
           qualifier={locusDetail}
-          tone="default"
+          tone="neutral"
           detail="Clock burning inside Jira queues without resolution"
         />
       </Reveal>

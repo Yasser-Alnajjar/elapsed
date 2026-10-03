@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@sla/db";
+import { errorMessage } from "./utils";
 
 /**
  * Usage instrumentation (N5.7): three facts, written to the database and
@@ -10,7 +11,7 @@ import type { PrismaClient } from "@sla/db";
  * the request depends on.
  */
 const warn = (event: string, error: unknown) =>
-  console.warn(JSON.stringify({ level: "warn", event, scope: "usage_tracking", error: error instanceof Error ? error.message : String(error) }));
+  console.warn(JSON.stringify({ level: "warn", event, scope: "usage_tracking", error: errorMessage(error) }));
 
 /** A user is stamped at most once per hour. */
 export const LAST_SEEN_INTERVAL_MS = 60 * 60_000;

@@ -1,12 +1,10 @@
 "use client";
 
-import { AlertCircle, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { validateWeeklyWindows, WeeklyWindowValidationError, type WeeklyWindow } from "@sla/core";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TimezoneCombobox } from "@/components/shared/timezone-combobox";
 import type { BusinessCalendarOption } from "@/lib/types/sla-configuration";
-
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import {
+  buildWeeklyWindows,
+  initialCalendarFormState,
+  type DayState,
+} from "./calendar-editor/calendar-form";
+import { HolidaysEditor } from "./calendar-editor/HolidaysEditor";
+import { WorkingHoursEditor } from "./calendar-editor/WorkingHoursEditor";
 
 interface CalendarEditorDialogProps {
   mode: "create" | "edit";
@@ -30,60 +33,6 @@ interface CalendarEditorDialogProps {
   onSaved: () => void;
 }
 
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-    .toString()
-    .padStart(2, "0");
-  const m = (minutes % 60).toString().padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-}
-
-/** One working-hours window in a day's editor state. `fullDay` represents an exact 24h window (`openMinute: 0, closeMinute: 1440`) — the one case `<input type="time">` can't express on its own (it tops out at 23:59), so it's tracked separately rather than losing the last minute of the day (4e). */
-interface DayWindowState {
-  openTime: string;
-  closeTime: string;
-  fullDay: boolean;
-}
-
-type DayState = DayWindowState[];
-
-function windowToState(w: WeeklyWindow): DayWindowState {
-  const fullDay = w.openMinute === 0 && w.closeMinute === 1440;
-  return {
-    fullDay,
-    openTime: fullDay ? "00:00" : minutesToTime(w.openMinute),
-    closeTime: fullDay ? "23:59" : minutesToTime(w.closeMinute),
-  };
-}
-
-/** Preserves every existing window per day, in order — editing one split-shift window must never silently drop another (4c). */
-function initialDays(weekly: WeeklyWindow[]): DayState[] {
-  return DAY_LABELS.map((_, day) =>
-    weekly
-      .filter((w) => w.day === day)
-      .sort((a, b) => a.openMinute - b.openMinute)
-      .map(windowToState),
-  );
-}
-
-function initialState(calendar: BusinessCalendarOption | undefined) {
-  return {
-    name: calendar?.name ?? "",
-    timezone: calendar?.timezone ?? "UTC",
-    days: initialDays(calendar?.weekly ?? []),
-    holidays: calendar?.holidays ?? [],
-  };
-}
-
-function newWindow(): DayWindowState {
-  return { openTime: "09:00", closeTime: "17:00", fullDay: false };
-}
-
 export function CalendarEditorDialog({
   mode,
   calendar,
@@ -91,7 +40,7 @@ export function CalendarEditorDialog({
   onOpenChange,
   onSaved,
 }: CalendarEditorDialogProps) {
-  const [state, setState] = useState(() => initialState(calendar));
+  const [state, setState] = useState(() => initialCalendarFormState(calendar));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,7 +54,7 @@ export function CalendarEditorDialog({
 
   useEffect(() => {
     if (!open) return;
-    setState(initialState(calendar));
+    setState(initialCalendarFormState(calendar));
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -148,35 +97,12 @@ export function CalendarEditorDialog({
       return;
     }
 
-    const weekly: WeeklyWindow[] = [];
-    for (let day = 0; day < state.days.length; day += 1) {
-      for (const w of state.days[day]!) {
-        weekly.push(
-          w.fullDay
-            ? { day: day as WeeklyWindow["day"], openMinute: 0, closeMinute: 1440 }
-            : {
-                day: day as WeeklyWindow["day"],
-                openMinute: timeToMinutes(w.openTime),
-                closeMinute: timeToMinutes(w.closeTime),
-              },
-        );
-      }
-    }
-
-    if (weekly.length === 0) {
-      setError("Add at least one working-hours window (or leave this calendar Always Open instead).");
+    const built = buildWeeklyWindows(state.days);
+    if ("error" in built) {
+      setError(built.error);
       return;
     }
-    try {
-      validateWeeklyWindows(weekly);
-    } catch (validationError) {
-      setError(
-        validationError instanceof WeeklyWindowValidationError
-          ? validationError.message
-          : "Working hours are invalid.",
-      );
-      return;
-    }
+    const { weekly } = built;
 
     setSaving(true);
     setError(null);
@@ -272,238 +198,20 @@ export function CalendarEditorDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Working hours</Label>
-            <div
-              className="space-y-3 rounded-lg bg-surface-container p-3"
-              aria-disabled={isAlwaysOpen}
-            >
-              {DAY_LABELS.map((label, day) => {
-                const windows = state.days[day]!;
-                return (
-                  <div
-                    key={label}
-                    className="space-y-1.5 border-b border-outline-variant/30 pb-2 last:border-0 last:pb-0"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{label}</span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          updateDay(day, (ws) => [...ws, newWindow()])
-                        }
-                        disabled={saving || isAlwaysOpen}
-                      >
-                        <Plus /> Add window
-                      </Button>
-                    </div>
+          <WorkingHoursEditor
+            days={state.days}
+            onUpdateDay={updateDay}
+            disabled={saving || isAlwaysOpen}
+            alwaysOpen={isAlwaysOpen}
+          />
 
-                    {windows.length === 0 && (
-                      <p className="ps-1 text-xs text-on-surface-variant">
-                        Closed
-                      </p>
-                    )}
-
-                    {windows.map((w, index) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <div key={index} className="flex flex-wrap items-center gap-2 ps-1">
-                        {w.fullDay ? (
-                          <span className="text-sm text-on-surface-variant sm:w-70">
-                            Open 24 hours
-                          </span>
-                        ) : (
-                          <>
-                            <Input
-                              type="time"
-                              value={w.openTime}
-                              onChange={(e) =>
-                                updateDay(day, (ws) =>
-                                  ws.map((x, i) =>
-                                    i === index
-                                      ? { ...x, openTime: e.target.value }
-                                      : x,
-                                  ),
-                                )
-                              }
-                              disabled={saving || isAlwaysOpen}
-                              className="w-32"
-                            />
-                            <span className="text-sm text-on-surface-variant">
-                              to
-                            </span>
-                            <Input
-                              type="time"
-                              value={w.closeTime}
-                              onChange={(e) =>
-                                updateDay(day, (ws) =>
-                                  ws.map((x, i) =>
-                                    i === index
-                                      ? { ...x, closeTime: e.target.value }
-                                      : x,
-                                  ),
-                                )
-                              }
-                              disabled={saving || isAlwaysOpen}
-                              className="w-32"
-                            />
-                          </>
-                        )}
-
-                        <div className="flex items-center gap-1.5">
-                          <Checkbox
-                            id={`fullday-${day}-${index}`}
-                            checked={w.fullDay}
-                            onCheckedChange={(checked) =>
-                              updateDay(day, (ws) =>
-                                ws.map((x, i) =>
-                                  i === index
-                                    ? { ...x, fullDay: checked === true }
-                                    : x,
-                                ),
-                              )
-                            }
-                            disabled={saving || isAlwaysOpen}
-                          />
-                          <Label
-                            htmlFor={`fullday-${day}-${index}`}
-                            className="cursor-pointer whitespace-nowrap text-xs font-normal text-on-surface-variant"
-                          >
-                            24 hours
-                          </Label>
-                        </div>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            updateDay(day, (ws) =>
-                              ws.filter((_, i) => i !== index),
-                            )
-                          }
-                          disabled={saving || isAlwaysOpen}
-                        >
-                          <X />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-xs text-on-surface-variant">
-              A day can have more than one window (e.g. a lunch-hour split
-              shift) — add as many as this calendar needs.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Holidays</Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="surface"
-                onClick={() =>
-                  setState((s) => ({
-                    ...s,
-                    holidays: [
-                      ...s.holidays,
-                      { date: "", name: "", recurring: false },
-                    ],
-                  }))
-                }
-                disabled={saving || isAlwaysOpen}
-              >
-                <Plus /> Add holiday
-              </Button>
-            </div>
-            {state.holidays.length > 0 && (
-              <div className="space-y-2 rounded-lg bg-surface-container p-3">
-                {state.holidays.map((holiday, index) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      value={holiday.name}
-                      onChange={(e) =>
-                        setState((s) => ({
-                          ...s,
-                          holidays: s.holidays.map((h, i) =>
-                            i === index ? { ...h, name: e.target.value } : h,
-                          ),
-                        }))
-                      }
-                      placeholder="Name"
-                      disabled={saving || isAlwaysOpen}
-                      className="flex-1"
-                    />
-                    <Input
-                      value={holiday.date}
-                      onChange={(e) =>
-                        setState((s) => ({
-                          ...s,
-                          holidays: s.holidays.map((h, i) =>
-                            i === index ? { ...h, date: e.target.value } : h,
-                          ),
-                        }))
-                      }
-                      placeholder={holiday.recurring ? "MM-DD" : "YYYY-MM-DD"}
-                      disabled={saving || isAlwaysOpen}
-                      className="w-36"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id={`holiday-recurring-${index}`}
-                        checked={holiday.recurring}
-                        onCheckedChange={(checked) =>
-                          setState((s) => ({
-                            ...s,
-                            holidays: s.holidays.map((h, i) =>
-                              i === index
-                                ? {
-                                    ...h,
-                                    recurring: checked === true,
-                                    date: "",
-                                  }
-                                : h,
-                            ),
-                          }))
-                        }
-                        disabled={saving || isAlwaysOpen}
-                      />
-
-                      <Label
-                        htmlFor={`holiday-recurring-${index}`}
-                        className="cursor-pointer text-xs font-normal text-on-surface-variant"
-                      >
-                        Recurring
-                      </Label>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        setState((s) => ({
-                          ...s,
-                          holidays: s.holidays.filter((_, i) => i !== index),
-                        }))
-                      }
-                      disabled={saving || isAlwaysOpen}
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-on-surface-variant">
-              A recurring holiday is expanded into concrete dates for the next
-              several years when saved.
-            </p>
-          </div>
+          <HolidaysEditor
+            holidays={state.holidays}
+            onChange={(updater) =>
+              setState((s) => ({ ...s, holidays: updater(s.holidays) }))
+            }
+            disabled={saving || isAlwaysOpen}
+          />
 
           {error && (
             <Alert variant="destructive">

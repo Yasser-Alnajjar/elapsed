@@ -1,7 +1,8 @@
 "use client";
 
 import { RefreshCw, Search, X } from "lucide-react";
-import { AdminPanel, MonoLabel, TONE_TEXT } from "@/components/admin/admin-ui";
+import { AdminPanel, MonoLabel } from "@/components/admin/admin-ui";
+import { TONE_TEXT } from "@/lib/status-styles";
 import { healthPresentation } from "@/components/admin/tenant-badges";
 import { Button } from "@/components/ui/button";
 import type {

@@ -70,6 +70,8 @@ const realDatabaseSuites = [
   "apps/web/test/seeded-tenant-isolation.test.ts",
   "apps/web/test/admin-tenants-data.test.ts",
   "apps/web/test/admin-mutations.test.ts",
+  "packages/db/test/billing.db.test.ts",
+  "apps/web/test/billing-routes.test.ts",
 ];
 
 export default defineConfig({

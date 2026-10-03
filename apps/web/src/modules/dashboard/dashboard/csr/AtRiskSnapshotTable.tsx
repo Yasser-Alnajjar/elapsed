@@ -1,11 +1,14 @@
 import { ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
+import { PriorityTierChip } from "@/components/shared/priority-tier-chip";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { caseCommitmentHref } from "@/lib/case-links";
 import { formatCommitmentKind, formatMinutes } from "@/lib/format";
+import { LEG_STYLES } from "@/lib/status-styles";
 import type { AtRiskRow } from "@/lib/types/dashboard";
 import { CountdownClock } from "@/components/shared/countdown-clock";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * The Stitch dashboard's "At Risk Right Now" panel: a fixed 8-column
@@ -21,6 +24,8 @@ export function AtRiskSnapshotTable({
   /** False without a tracker: engineering minutes are not measured, so they are not printed as a zero (N5.2). */
   engineeringMeasured?: boolean;
 }) {
+  console.log(rows);
+
   return (
     <table className="w-full text-start border-collapse">
       <thead>
@@ -38,7 +43,9 @@ export function AtRiskSnapshotTable({
       <tbody className="divide-y divide-surface-container-highest/40 text-sm">
         {rows.map((row) => {
           const supportMinutes = row.supportLegMinutes ?? 0;
-          const engineeringMinutes = engineeringMeasured ? (row.engineeringLegMinutes ?? 0) : 0;
+          const engineeringMinutes = engineeringMeasured
+            ? (row.engineeringLegMinutes ?? 0)
+            : 0;
           const legTotal = supportMinutes + engineeringMinutes;
           const supportPercent =
             legTotal > 0 ? (supportMinutes / legTotal) * 100 : 100;
@@ -50,9 +57,9 @@ export function AtRiskSnapshotTable({
               className="hover:bg-surface-container transition-colors"
             >
               <td className="py-3.5 px-4 whitespace-nowrap">
-                <span className="bg-surface-container-highest text-on-surface-variant rounded px-2 py-0.5 font-mono text-xs font-semibold uppercase">
-                  {row.priority ?? "—"}
-                </span>
+                <PriorityTierChip priority={row.priority}>
+                  {row.priority}
+                </PriorityTierChip>
               </td>
               <td className="py-3.5 px-4 whitespace-nowrap">
                 <div className="flex flex-col gap-1">
@@ -104,27 +111,35 @@ export function AtRiskSnapshotTable({
               <td className="py-3.5 px-4 whitespace-nowrap">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2 font-mono text-xs">
-                    <span className="text-primary">
+                    <span className={LEG_STYLES.support.text}>
                       Support {formatMinutes(supportMinutes)}
                     </span>
                     <span className="text-muted-foreground">•</span>
                     {engineeringMeasured ? (
-                      <span className="text-error font-medium">
+                      <span
+                        className={cn(
+                          "font-medium",
+                          LEG_STYLES.engineering.text,
+                        )}
+                      >
                         Eng {formatMinutes(engineeringMinutes)}
                       </span>
                     ) : (
-                      <span className="text-outline" title="Engineering time appears once a tracker is connected">
+                      <span
+                        className="text-outline"
+                        title="Engineering time appears once a tracker is connected"
+                      >
                         Eng —
                       </span>
                     )}
                   </div>
                   <div className="bg-surface-container-highest flex h-1.5 w-32 overflow-hidden rounded-full">
                     <div
-                      className="bg-primary h-full"
+                      className={cn("h-full", LEG_STYLES.support.fill)}
                       style={{ width: `${supportPercent}%` }}
                     />
                     <div
-                      className="bg-error h-full"
+                      className={cn("h-full", LEG_STYLES.engineering.fill)}
                       style={{ width: `${100 - supportPercent}%` }}
                     />
                   </div>

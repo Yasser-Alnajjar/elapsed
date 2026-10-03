@@ -218,3 +218,9 @@ export interface DashboardData {
   failedAlerts: FailedAlertRow[];
   failedAlertsOverflowCount: number;
 }
+
+/** Which ticket source / tracker the dashboard names as connected. */
+export interface DashboardSourceStatus {
+  ticketSource: { label: string; connected: boolean };
+  tracker: { label: string; connected: boolean };
+}

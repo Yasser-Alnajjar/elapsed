@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+import { COMMITMENT_STATUS_STYLES } from "@/lib/status-styles";
 import { formatCommitmentKind } from "@/lib/format";
 import type { CommitmentKindHealth } from "@/lib/types/dashboard";
 
@@ -40,17 +42,17 @@ export function SlaHealthByKindCard({
               ) : (
                 <div className="bg-surface-container-highest flex h-2 w-full overflow-hidden rounded-full">
                   <div
-                    className="bg-tertiary h-full"
+                    className={cn("h-full", COMMITMENT_STATUS_STYLES.on_track.fill)}
                     style={{ width: `${(row.onTrack / total) * 100}%` }}
                     title={`${row.onTrack} on track`}
                   />
                   <div
-                    className="bg-warning h-full"
+                    className={cn("h-full", COMMITMENT_STATUS_STYLES.at_risk.fill)}
                     style={{ width: `${(row.atRisk / total) * 100}%` }}
                     title={`${row.atRisk} at risk`}
                   />
                   <div
-                    className="bg-error h-full"
+                    className={cn("h-full", COMMITMENT_STATUS_STYLES.breached.fill)}
                     style={{ width: `${(row.breached / total) * 100}%` }}
                     title={`${row.breached} breached`}
                   />
@@ -58,15 +60,15 @@ export function SlaHealthByKindCard({
               )}
               <div className="text-outline flex items-center gap-3 font-mono text-xxs">
                 <span className="flex items-center gap-1">
-                  <span className="bg-tertiary size-1.5 rounded-full" />
+                  <span className={cn("size-1.5 rounded-full", COMMITMENT_STATUS_STYLES.on_track.fill)} />
                   {row.onTrack} on track
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="bg-warning size-1.5 rounded-full" />
+                  <span className={cn("size-1.5 rounded-full", COMMITMENT_STATUS_STYLES.at_risk.fill)} />
                   {row.atRisk} at risk
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="bg-error size-1.5 rounded-full" />
+                  <span className={cn("size-1.5 rounded-full", COMMITMENT_STATUS_STYLES.breached.fill)} />
                   {row.breached} breached
                 </span>
               </div>

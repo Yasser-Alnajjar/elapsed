@@ -3,6 +3,8 @@ import {
   Bell,
   Book,
   Building2,
+  CreditCard,
+  Home,
   LayoutDashboard,
   ListChecks,
   Radar,
@@ -25,6 +27,12 @@ export interface NavItem {
 }
 
 export const SETTINGS_NAV_ITEMS: NavItem[] = [
+  {
+    href: "/billing",
+    label: "Billing & usage",
+    icon: CreditCard,
+    description: "Plan, seats, usage, invoices and payment details.",
+  },
   {
     href: "/settings/sla/configuration",
     label: "SLA",
@@ -62,40 +70,54 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
     description: "Manage your personal profile and appearance preferences.",
   },
 ];
-
-export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/cases", label: "All cases", icon: ListChecks },
-  { href: "/at-risk", label: "At Risk", icon: TriangleAlert },
+export type NavLink = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  description?: string;
+};
+export type NavGroup = { label: string; items: NavLink[] };
+export type NavSection = NavLink | NavGroup;
+export const NAV_ITEMS: NavSection[] = [
   {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-    items: SETTINGS_NAV_ITEMS,
+    label: "Main",
+    items: [
+      { href: "/", label: "Home", icon: Home, exact: true },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ],
   },
+  {
+    label: "Monitoring",
+    items: [
+      { href: "/cases", label: "All cases", icon: ListChecks },
+      { href: "/at-risk", label: "At Risk", icon: TriangleAlert },
+    ],
+  },
+  { label: "Configuration", items: SETTINGS_NAV_ITEMS },
 ];
-
-/**
- * The platform admin area (`/admin`, N4.1) has its own shell and navigation
- * (`components/admin/admin-nav-items.ts`); nothing of it lives in the tenant
- * sidebar except this single way in, shown only to a platform operator (see
- * `isPlatformOperator` in `@/lib/authz`). Hiding the link is not the gate:
- * every `/admin` route enforces it server-side.
- */
-export function buildNavItems(isPlatformOperator: boolean): NavItem[] {
-  if (!isPlatformOperator) return NAV_ITEMS;
+/** * The platform admin area (`/admin`, N4.1) has its own shell and navigation * (`components/admin/admin-nav-items.ts`); nothing of it lives in the tenant * sidebar except this single way in, shown only to a platform operator * (see `isPlatformOperator` in `@/lib/authz`). * * Hiding the link is not the authorization boundary: * every `/admin` route enforces it server-side. */ export function buildNavItems(
+  isPlatformOperator: boolean,
+): NavSection[] {
+  if (!isPlatformOperator) {
+    return NAV_ITEMS;
+  }
   return [
     ...NAV_ITEMS,
     {
-      href: "/admin",
-      label: "Platform admin",
-      icon: Radar,
-      description: "Tenants, plans and health across every organization.",
+      label: "Administration",
+      items: [
+        {
+          href: "/admin",
+          label: "Platform admin",
+          icon: Radar,
+          description: "Tenants, plans and health across every organization.",
+        },
+        { href: "/docs", label: "Documentation", icon: Book },
+      ],
     },
-    { href: "/docs", label: "Documentation", icon: Book },
   ];
 }
-
 export function isNavItemActive(
   pathname: string,
   href: string,

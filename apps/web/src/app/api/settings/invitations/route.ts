@@ -13,10 +13,7 @@ import { buildInvitationEmail } from "@/lib/invitation-email";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 import { gateCreation } from "@/lib/entitlements";
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage } from "@/lib/utils";
 
 const inviteSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),

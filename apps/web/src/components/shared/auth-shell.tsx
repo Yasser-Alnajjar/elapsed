@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { ReactNode } from "react";
-import { Shield } from "lucide-react";
+import { Eye, EyeOff, Shield } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "../ui/theme-toggle";
@@ -44,6 +44,31 @@ export function AuthFieldError({
     <p id={id} className="text-xs text-error">
       {message}
     </p>
+  );
+}
+
+/** Show/hide button that sits inside a password field's trailing edge. */
+export function PasswordVisibilityToggle({
+  shown,
+  onToggle,
+  className,
+  iconClassName,
+}: {
+  shown: boolean;
+  onToggle: () => void;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const Icon = shown ? EyeOff : Eye;
+  return (
+    <button
+      type="button"
+      aria-label="Toggle password visibility"
+      onClick={onToggle}
+      className={className}
+    >
+      <Icon aria-hidden className={iconClassName} />
+    </button>
   );
 }
 

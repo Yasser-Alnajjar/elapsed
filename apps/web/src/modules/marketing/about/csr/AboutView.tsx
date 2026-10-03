@@ -53,8 +53,8 @@ export const AboutView = () => {
               A customer request rarely stays in one system. It starts as a
               support ticket, gets escalated to engineering, waits on a release,
               and comes back to the customer — and the SLA clock keeps running
-              the whole time. We built SLA Breach Monitoring to make that whole
-              path visible, in one place, before anything breaches.
+              the whole time. We built Elapsed to make that whole path visible,
+              in one place, before anything breaches.
             </p>
           </Reveal>
         </div>

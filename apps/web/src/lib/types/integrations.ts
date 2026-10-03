@@ -2,6 +2,7 @@ import type {
   ConfigurableIntegrationProvider,
   IntegrationConfigStatus,
 } from "@sla/db";
+import type { SourceRole } from "@sla/core";
 import type { SlackChannel } from "@sla/slack";
 import type { BackfillResult as GithubBackfillResult } from "@sla/github";
 import type { BackfillResult as IntercomBackfillResult } from "@sla/intercom";
@@ -20,6 +21,8 @@ import type { BackfillResult as ZendeskBackfillResult } from "@sla/zendesk";
  * connecting user lost access provider-side — also `connected: true`.
  */
 export interface IntegrationConnectionView {
+  /** The provider adapter's role (`PROVIDERS[provider].role`) — what the integrations page groups cards by. */
+  role: SourceRole;
   connected: boolean;
   reauthRequired: boolean;
   permissionDenied: boolean;

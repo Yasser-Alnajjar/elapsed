@@ -4,22 +4,8 @@ import { Layers } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatLeg } from "@/lib/format";
+import { legStyle } from "@/lib/status-styles";
 import type { BreachesByStageRow } from "@/lib/types/dashboard";
-
-const LEG_COLORS: Record<string, string> = {
-  support: "var(--leg-support)",
-  engineering: "var(--leg-engineering)",
-  waiting_customer: "var(--leg-waiting)",
-  unknown: "var(--leg-unknown)",
-};
-
-/** Legible-on-surface variants of the leg colors, for text. */
-const LEG_TEXT_COLORS: Record<string, string> = {
-  support: "var(--stage-support-text)",
-  engineering: "var(--stage-eng-text)",
-  waiting_customer: "var(--stage-waiting-text)",
-  unknown: "var(--stage-limbo-text)",
-};
 
 /**
  * Stitch's "Breaches by Stage" chart is a donut, not the bar chart the
@@ -68,7 +54,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
                     {data.map((row) => (
                       <Cell
                         key={row.leg}
-                        fill={LEG_COLORS[row.leg] ?? "var(--primary)"}
+                        fill={legStyle(row.leg).chartFill}
                       />
                     ))}
                   </Pie>
@@ -97,7 +83,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
                 <span
                   className="mt-0.5 font-mono text-xxs font-medium uppercase"
                   style={{
-                    color: LEG_TEXT_COLORS[dominant.leg] ?? "var(--primary)",
+                    color: legStyle(dominant.leg).chartText,
                   }}
                 >
                   {formatLeg(dominant.leg)}
@@ -112,7 +98,7 @@ export function BreachesByStageChart({ data }: { data: BreachesByStageRow[] }) {
                   <span
                     className="size-2 rounded-full"
                     style={{
-                      backgroundColor: LEG_COLORS[row.leg] ?? "var(--primary)",
+                      backgroundColor: legStyle(row.leg).chartFill,
                     }}
                   />
                   <span className="text-on-surface-variant">

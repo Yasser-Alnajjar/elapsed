@@ -64,8 +64,7 @@ export default function SlackIntegrationPage() {
                   api.slack.com/apps
                 </code>{" "}
                 and click <strong>Create New App → From scratch</strong>. Name
-                it (e.g. &quot;SLA Breach Monitoring&quot;) and pick your
-                workspace.
+                it (e.g. &quot;Elapsed&quot;) and pick your workspace.
               </>,
               <>
                 Open <strong>OAuth &amp; Permissions</strong> in the sidebar.
@@ -123,7 +122,7 @@ export default function SlackIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            In SLA Breach Monitoring, go to{" "}
+            In Elapsed, go to{" "}
             <strong>Settings → Integrations → Slack → Configure</strong> and
             paste in the Client ID and Client Secret, then save.
           </p>

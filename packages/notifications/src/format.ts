@@ -16,7 +16,7 @@ export interface NotificationContext {
 }
 
 /** Falls back to this when the organization hasn't set an SMTP "from name" — the email still needs a brand to show in its header. */
-export const DEFAULT_EMAIL_BRAND_NAME = "SLA Breach Monitoring";
+export const DEFAULT_EMAIL_BRAND_NAME = "Elapsed";
 
 /** Cosmetic-only inputs the formatter needs beyond `NotificationContext`: nothing here affects dedup or delivery, so callers can omit it entirely. */
 export interface EmailBrand {
@@ -65,14 +65,21 @@ function formatInstant(iso: string): string {
  * 3.9's shared alert context line — policy, target, start and (once
  * breached) breach time — in the given `parts` array, ready to `join`.
  */
-function contextParts(candidate: NotificationCandidate, isBreach: boolean): string[] {
+function contextParts(
+  candidate: NotificationCandidate,
+  isBreach: boolean,
+): string[] {
   const parts = [
     `Policy: ${candidate.policyName}`,
     `Target: ${formatMinutes(candidate.targetMinutes)}`,
     `Started: ${formatInstant(candidate.startedAt)}`,
   ];
-  if (isBreach && candidate.breachedAt) parts.push(`Breached: ${formatInstant(candidate.breachedAt)}`);
-  if (candidate.sourceStaleSince) parts.push(`Source data stale since: ${formatInstant(candidate.sourceStaleSince)}`);
+  if (isBreach && candidate.breachedAt)
+    parts.push(`Breached: ${formatInstant(candidate.breachedAt)}`);
+  if (candidate.sourceStaleSince)
+    parts.push(
+      `Source data stale since: ${formatInstant(candidate.sourceStaleSince)}`,
+    );
   return parts;
 }
 
@@ -81,7 +88,10 @@ function contextParts(candidate: NotificationCandidate, isBreach: boolean): stri
  * side-effect free so message content can be unit tested without a Slack
  * workspace or a database.
  */
-export function formatSlackMessage(candidate: NotificationCandidate, context: NotificationContext): string {
+export function formatSlackMessage(
+  candidate: NotificationCandidate,
+  context: NotificationContext,
+): string {
   const kindLabel = KIND_LABEL[candidate.kind];
   const who = context.customerName ? ` for ${context.customerName}` : "";
   const ticket = `#${context.externalId}`;
@@ -124,7 +134,10 @@ export function formatEmailMessage(
   const metaText = meta.join(" · ");
   const targetText = formatMinutes(candidate.targetMinutes);
   const startedText = formatInstant(candidate.startedAt);
-  const breachedText = isBreach && candidate.breachedAt ? formatInstant(candidate.breachedAt) : undefined;
+  const breachedText =
+    isBreach && candidate.breachedAt
+      ? formatInstant(candidate.breachedAt)
+      : undefined;
 
   if (isBreach) {
     const over = formatMinutes(candidate.breachedByMinutes ?? 0);

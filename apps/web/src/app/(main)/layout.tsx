@@ -40,18 +40,26 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   // the next sign-in.
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, activePollIntervalMs, alertSummary, staleIntegrations, entitlementNotice] =
-    await withPerfScope("layout", () =>
-      Promise.all([
-        Actions.Profile.getData(),
-        Actions.Integrations.getData(),
-        Actions.WorkerSettings.getActivePollIntervalMs(),
-        getAlertSummary(getPrismaClient(), organizationId),
-        getStaleIntegrationData(getPrismaClient(), organizationId),
-        // One settings read while enforcement is off (the default).
-        getEntitlementNotice(getPrismaClient(), organizationId, { roleOf: providerRole }),
-      ]),
-    );
+  const [
+    user,
+    integrations,
+    activePollIntervalMs,
+    alertSummary,
+    staleIntegrations,
+    entitlementNotice,
+  ] = await withPerfScope("layout", () =>
+    Promise.all([
+      Actions.Profile.getData(),
+      Actions.Integrations.getData(),
+      Actions.WorkerSettings.getActivePollIntervalMs(),
+      getAlertSummary(getPrismaClient(), organizationId),
+      getStaleIntegrationData(getPrismaClient(), organizationId),
+      // One settings read while enforcement is off (the default).
+      getEntitlementNotice(getPrismaClient(), organizationId, {
+        roleOf: providerRole,
+      }),
+    ]),
+  );
 
   const alerts = alertSummary.rows;
 
@@ -68,7 +76,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         isPlatformOperator={isPlatformOperator(session)}
       />
       <SidebarInset>
-        <header className="border-border bg-surface-container-lowest/95 sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl">
+        <header className="border-border bg-surface-container-lowest sticky top-0 z-40 flex h-14 items-center gap-3 border-b px-4 backdrop-blur-xl">
           <SidebarTrigger />
 
           <LiveStatusBadge />
@@ -126,7 +134,9 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         <main className="mx-auto min-w-0 w-full flex-1 px-4 py-4">
           <PlanNoticeBanner
             notice={{
-              trialExpiredAt: entitlementNotice.trialExpired?.trialEndedAt.toISOString() ?? null,
+              trialExpiredAt:
+                entitlementNotice.trialExpired?.trialEndedAt.toISOString() ??
+                null,
               trialRestricted: entitlementNotice.trialExpired?.restricted,
               overLimit: entitlementNotice.overLimit,
             }}

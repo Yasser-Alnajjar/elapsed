@@ -1,19 +1,15 @@
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { formatCommitmentStatus } from "@/lib/format";
-
-const STATUS_VARIANT: Record<string, BadgeProps["variant"]> = {
-  on_track: "default",
-  at_risk: "warning",
-  met: "success",
-  breached: "destructive",
-  cancelled: "outline",
-};
+import { commitmentStatusStyle } from "@/lib/status-styles";
+import { cn } from "@/lib/utils";
 
 export function StatusBadge({ status }: { status: string }) {
   return (
     <Badge
-      variant={STATUS_VARIANT[status] ?? "default"}
-      className="text-nowrap"
+      className={cn(
+        "border-transparent text-nowrap",
+        commitmentStatusStyle(status).chip,
+      )}
     >
       {formatCommitmentStatus(status)}
     </Badge>

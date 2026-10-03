@@ -1,4 +1,5 @@
 import type { IntegrationControl, PlanRecord } from "@/lib/types/admin";
+import type { AdminBillingActionInput } from "@/lib/billing-validation";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 
 /**
@@ -37,5 +38,15 @@ export const AdminClientActions = {
   /** Pause or resume polling for one integration, or request one full re-normalization. */
   controlIntegration(integrationId: string, action: IntegrationControl) {
     return send<{ ok: boolean }>(`/api/admin/integrations/${integrationId}`, "POST", { action });
+  },
+
+  /** One billing override on one organization; audited as `billing_override`. Errors carry `{ error, code }`. */
+  billingAction(organizationId: string, input: AdminBillingActionInput) {
+    return send<{ ok?: boolean; code?: string }>(`/api/admin/billing/${organizationId}`, "POST", input);
+  },
+
+  /** Reconciles every live subscription. */
+  reconcileAllBilling() {
+    return send<{ reconciled: number }>("/api/admin/billing", "POST", {});
   },
 };

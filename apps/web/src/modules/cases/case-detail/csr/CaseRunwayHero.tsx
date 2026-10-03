@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import {
   formatClockDigits,
   formatCommitmentKind,
@@ -9,7 +7,9 @@ import {
 } from "@/lib/format";
 import type { CommitmentDetail } from "@/lib/types/cases";
 import type { Leg } from "@sla/core";
+import { commitmentStatusStyle } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
+import { useLiveRemaining } from "./useLiveRemaining";
 
 const STATUS_PRECEDENCE = ["breached", "at_risk", "on_track"] as const;
 
@@ -31,18 +31,6 @@ export function pickHeroCommitment(
   );
 }
 
-const COUNTER_CLASS: Record<string, string> = {
-  breached: "text-error",
-  at_risk: "text-error",
-  on_track: "text-on-surface",
-};
-
-const DOT_CLASS: Record<string, string> = {
-  breached: "bg-error",
-  at_risk: "bg-warning",
-  on_track: "bg-primary",
-};
-
 export function CaseRunwayHero({
   commitment,
   currentLeg,
@@ -52,32 +40,9 @@ export function CaseRunwayHero({
   currentLeg: Leg;
   linkedIssueLabel: string | null;
 }) {
-  const getRemaining = () => {
-    if (commitment.clockState !== "running" || !commitment.effectiveDueAt)
-      return commitment.remainingSeconds;
-    return Math.floor(
-      (new Date(commitment.effectiveDueAt).getTime() - Date.now()) / 1000,
-    );
-  };
+  const remainingSeconds = useLiveRemaining(commitment);
 
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    commitment.remainingSeconds,
-  );
-
-  useEffect(() => {
-    setRemainingSeconds(getRemaining());
-    if (commitment.clockState !== "running" || !commitment.effectiveDueAt)
-      return;
-    const id = window.setInterval(
-      () => setRemainingSeconds(getRemaining()),
-      1000,
-    );
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commitment.effectiveDueAt, commitment.clockState]);
-
-  const dot = DOT_CLASS[commitment.status] ?? "bg-primary";
-  const counter = COUNTER_CLASS[commitment.status] ?? "text-on-surface";
+  const { fill: dot, counter } = commitmentStatusStyle(commitment.status);
   const overdue = remainingSeconds < 0;
 
   return (

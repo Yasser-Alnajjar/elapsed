@@ -7,7 +7,8 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
-import { Fact, Tag, TONE_SURFACE } from "@/components/admin/admin-ui";
+import { Fact, Tag } from "@/components/admin/admin-ui";
+import { TONE_SURFACE } from "@/lib/status-styles";
 import { integrationState } from "@/components/admin/tenant-badges";
 import { formatSpan, formatUtcTimestamp } from "@/lib/admin-format";
 import type { AdminIntegrationDetailRow } from "@/lib/types/admin";

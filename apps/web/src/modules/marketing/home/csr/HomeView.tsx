@@ -105,9 +105,9 @@ export const HomeView = () => {
 
           <Reveal delay={0.1}>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground text-balance">
-              SLA Breach Monitoring correlates your helpdesk and engineering
-              systems into a single timeline per case, so you always know
-              what&apos;s at risk of breaching — before it does.
+              Elapsed correlates your helpdesk and engineering systems into a
+              single timeline per case, so you always know what&apos;s at risk
+              of breaching — before it does.
             </p>
           </Reveal>
           <Reveal delay={0.15}>

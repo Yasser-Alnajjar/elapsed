@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { COMMITMENT_STATUS_STYLES } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 export interface AlertItem {
@@ -61,7 +62,10 @@ export function AlertsPopover({ items }: { items: AlertItem[] }) {
           <Bell className="size-4" />
           {items.length > 0 && (
             <span
-              className="bg-error absolute inset-e-1.5 top-1.5 size-2 rounded-full"
+              className={cn(
+                "absolute inset-e-1.5 top-1.5 size-2 rounded-full",
+                COMMITMENT_STATUS_STYLES.breached.fill,
+              )}
               aria-hidden
             />
           )}
@@ -126,9 +130,7 @@ export function AlertsPopover({ items }: { items: AlertItem[] }) {
                 <span
                   className={cn(
                     "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded",
-                    breach
-                      ? "bg-error/10 text-error"
-                      : "bg-secondary/10 text-secondary",
+                    COMMITMENT_STATUS_STYLES[item.status].chip,
                   )}
                 >
                   {breach ? (
@@ -151,9 +153,7 @@ export function AlertsPopover({ items }: { items: AlertItem[] }) {
                     <span
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono text-xxs font-semibold uppercase",
-                        breach
-                          ? "bg-error/10 text-error"
-                          : "bg-secondary/10 text-secondary",
+                        COMMITMENT_STATUS_STYLES[item.status].chip,
                       )}
                     >
                       {breach

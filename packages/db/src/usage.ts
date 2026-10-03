@@ -11,6 +11,17 @@ export type OrganizationUsage = Record<keyof PlanLimits, number>;
 /** The role a provider plays. Supplied by the caller's adapter registry, so this package never names providers. */
 export type ProviderRoleOf = (provider: IntegrationProvider) => "ticket_source" | "work_tracker" | "code_host";
 
+type SeatCountClient = Pick<PrismaClient, "user" | "organizationInvitation">;
+
+/** Seats in use: members plus pending, unexpired invitations (an invitation holds a seat). Usable inside a transaction. */
+export async function countSeatsInUse(prisma: SeatCountClient, organizationId: string, now: Date = new Date()): Promise<number> {
+  const [members, pendingInvitations] = await Promise.all([
+    prisma.user.count({ where: { organizationId } }),
+    prisma.organizationInvitation.count({ where: { organizationId, status: "pending", expiresAt: { gt: now } } }),
+  ]);
+  return members + pendingInvitations;
+}
+
 /**
  * - Seats: members plus pending, unexpired invitations (an invitation holds a seat).
  * - Integrations: every row that is not `disconnected`, split by role.
@@ -25,9 +36,8 @@ export async function getOrganizationUsage(
   roleOf: ProviderRoleOf,
   now: Date = new Date(),
 ): Promise<OrganizationUsage> {
-  const [members, pendingInvitations, integrations, nativePolicies] = await Promise.all([
-    prisma.user.count({ where: { organizationId } }),
-    prisma.organizationInvitation.count({ where: { organizationId, status: "pending", expiresAt: { gt: now } } }),
+  const [seats, integrations, nativePolicies] = await Promise.all([
+    countSeatsInUse(prisma, organizationId, now),
     prisma.integration.findMany({
       where: { organizationId, status: { not: "disconnected" } },
       select: { provider: true },
@@ -42,5 +52,5 @@ export async function getOrganizationUsage(
     else engineeringIntegrations += 1;
   }
 
-  return { seats: members + pendingInvitations, ticketSourceIntegrations, engineeringIntegrations, nativePolicies };
+  return { seats, ticketSourceIntegrations, engineeringIntegrations, nativePolicies };
 }

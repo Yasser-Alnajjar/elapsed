@@ -22,6 +22,37 @@ export interface PlanSubject {
   plan: string | null;
   planStatus: PlanStatus;
   trialEndsAt: Date | null;
+  /** Seats licensed on the billing subscription (N6.5); narrows the plan's seat limit. Absent without a subscription. */
+  seatQuantity?: number | null;
+}
+
+/**
+ * The limit that applies to `resource`: the plan's, narrowed for seats by the
+ * subscription's licensed seat count. Null is unlimited, or no plan recorded.
+ */
+export function effectiveLimit(subject: Pick<PlanSubject, "plan" | "seatQuantity">, resource: LimitedResource): number | null {
+  if (!isPlanId(subject.plan)) return null;
+  const planLimit = PLANS[subject.plan].limits[resource];
+  if (resource !== "seats" || subject.seatQuantity == null) return planLimit;
+  return planLimit === null ? subject.seatQuantity : Math.min(planLimit, subject.seatQuantity);
+}
+
+/** The organization columns a decision reads, plus the licensed seats of a live subscription. */
+const SUBJECT_SELECT = {
+  plan: true,
+  planStatus: true,
+  trialEndsAt: true,
+  billingSubscription: { select: { seatQuantity: true, status: true } },
+} as const;
+
+function toSubject(row: {
+  plan: string | null;
+  planStatus: PlanStatus;
+  trialEndsAt: Date | null;
+  billingSubscription: { seatQuantity: number; status: PlanStatus } | null;
+}): PlanSubject {
+  const live = row.billingSubscription && row.billingSubscription.status !== "cancelled" ? row.billingSubscription : null;
+  return { plan: row.plan, planStatus: row.planStatus, trialEndsAt: row.trialEndsAt, seatQuantity: live?.seatQuantity ?? null };
 }
 
 export type EntitlementDecision =
@@ -48,7 +79,7 @@ export function evaluateCreation(
   if (subject.planStatus === "trial") return { outcome: "allow" };
   if (!isPlanId(subject.plan)) return { outcome: "allow" };
 
-  const limit = PLANS[subject.plan].limits[resource];
+  const limit = effectiveLimit(subject, resource);
   if (limit === null) return { outcome: "allow" };
   // Warn when this creation reaches the limit or goes past it; never block on it.
   const usedAfter = usage[resource] + 1;
@@ -119,11 +150,9 @@ export async function checkEntitlement(
 
   if (!(await readEnforced(prisma))) return { outcome: "allow" };
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { plan: true, planStatus: true, trialEndsAt: true },
-  });
-  if (!organization) return { outcome: "allow" };
+  const row = await prisma.organization.findUnique({ where: { id: organizationId }, select: SUBJECT_SELECT });
+  if (!row) return { outcome: "allow" };
+  const organization = toSubject(row);
 
   // Usage is only needed when a limit could apply.
   const needsUsage = organization.planStatus !== "internal" && !isTrialExpired(organization, now);
@@ -177,11 +206,9 @@ export async function getEntitlementNotice(
 
   const enforced = await readEnforced(prisma);
 
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { plan: true, planStatus: true, trialEndsAt: true },
-  });
-  if (!organization || organization.planStatus === "internal") return none;
+  const row = await prisma.organization.findUnique({ where: { id: organizationId }, select: SUBJECT_SELECT });
+  if (!row || row.planStatus === "internal") return none;
+  const organization = toSubject(row);
 
   if (isTrialExpired(organization, now)) {
     return { trialExpired: { state: "trial_expired", trialEndedAt: organization.trialEndsAt!, restricted: enforced }, overLimit: [] };
@@ -192,7 +219,7 @@ export async function getEntitlementNotice(
   const usage = await getOrganizationUsage(prisma, organizationId, options.roleOf, now);
   const limits = PLANS[organization.plan].limits;
   const overLimit = (Object.keys(limits) as LimitedResource[]).flatMap((resource) => {
-    const limit = limits[resource];
+    const limit = effectiveLimit(organization, resource);
     return limit !== null && usage[resource] > limit ? [{ resource, used: usage[resource], limit }] : [];
   });
   return { trialExpired: null, overLimit };

@@ -1,4 +1,5 @@
 import { sendEmail, loadDeploymentSmtpConfig, type EmailConfig, type EmailMessage } from "@sla/email";
+import { errorMessage } from "./utils";
 
 /**
  * Sends account-lifecycle email — invitations, password resets, email
@@ -23,7 +24,7 @@ export async function sendTransactionalEmail(message: EmailMessage): Promise<voi
     console.error(
       JSON.stringify({
         event: "transactional_email_not_configured",
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       }),
     );
     throw error;
@@ -35,7 +36,7 @@ export async function sendTransactionalEmail(message: EmailMessage): Promise<voi
     console.error(
       JSON.stringify({
         event: "transactional_email_send_failed",
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       }),
     );
     throw error;

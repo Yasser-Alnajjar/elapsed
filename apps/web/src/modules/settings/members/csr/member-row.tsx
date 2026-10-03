@@ -7,7 +7,7 @@ import * as Yup from "yup";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { initialsOf } from "@/components/layout/user-menu";
+import { initialsOf } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {

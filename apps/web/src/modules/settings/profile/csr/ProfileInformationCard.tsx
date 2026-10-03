@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { initialsOf } from "@/lib/format";
 import type { IUser } from "@/lib/types/user";
 
 interface ProfileInformationCardProps {
@@ -26,18 +27,6 @@ interface SaveResult {
 const AVATAR_MAX_DIMENSION = 256;
 const AVATAR_JPEG_QUALITY = 0.85;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-
-function initialsOf(name: string | null, email: string): string {
-  if (name) {
-    const parts = name.trim().split(/\s+/);
-    const initials = parts
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("");
-    if (initials) return initials.toUpperCase();
-  }
-  return email.slice(0, 2).toUpperCase();
-}
 
 /** Resizes/crops to a square JPEG so the encoded `data:` URL stays small
  * enough to store directly on `User.image` (see `updateProfileSchema`). */

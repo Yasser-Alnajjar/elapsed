@@ -1,8 +1,8 @@
-# In-depth Research: SLA Breach Monitoring
+# In-depth Research: Elapsed
 
 ## Executive Summary
 
-> **SLA Breach Monitoring as a general concept already exists and is quite mature.**
+> **Elapsed as a general concept already exists and is quite mature.**
 >
 > However, **the opportunity is not to build another SLA timer**. The opportunity is to build an independent layer that monitors commitments across multiple systems or monitors SLAs externally from the helpdesk system.
 

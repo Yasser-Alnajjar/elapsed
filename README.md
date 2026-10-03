@@ -1,10 +1,10 @@
-# SLA Breach Monitoring
+# Elapsed
 
 _Know before your customer does._
 
 Support teams promise customers response and resolution times, but once a
 ticket is escalated to engineering, the clock keeps running in a tool support
-can't see. SLA Breach Monitoring connects the helpdesk and the engineering
+can't see. Elapsed connects the helpdesk and the engineering
 tracker, rebuilds one timeline per customer case across both, and tracks
 each commitment against its target through the handoff. It warns before a
 breach and shows which stage the time went to afterwards.

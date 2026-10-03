@@ -17,8 +17,8 @@ import {
 } from "@sla/core";
 import { toCommitmentDomain, toNormalizedEventDomain } from "@sla/commitments";
 
-import { formatPriorityTier } from "./format";
-import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem } from "./providers";
+import { formatPriorityTier, rawPrioritiesForTier } from "./format";
+import { ISSUE_LINK_PROVIDERS, preferredIssueLink } from "./providers";
 import type {
   AtRiskCounts,
   AtRiskLinkedIssue,
@@ -32,18 +32,6 @@ import type {
 function minutesBetween(from: string, to: Date): number {
   return Math.round((to.getTime() - new Date(from).getTime()) / 60000);
 }
-
-// Reverse of `PRIORITY_TIER_LABELS` (lib/format.ts) — mirrors
-// `SEVERITY_RAW_PRIORITIES` in case-list-data.ts.
-const SEVERITY_RAW_PRIORITIES: Record<
-  Exclude<AtRiskSeverityFilter, "all">,
-  string[]
-> = {
-  P1: ["urgent"],
-  P2: ["high"],
-  P3: ["normal"],
-  P4: ["low"],
-};
 
 // A commitment counts as an at-risk candidate once it's open and not
 // cancelled — met/cancelled commitments never appear here.
@@ -66,10 +54,8 @@ const DEFAULT_PARAMS: AtRiskParams = {
 function preferredLink(
   links: { system: string; externalId: string; confidence: string }[],
 ): AtRiskLinkedIssue | null {
-  const trackerLinks = links.filter((l) => isIssueLinkSystem(l.system));
-  if (trackerLinks.length === 0) return null;
-  const best =
-    trackerLinks.find((l) => l.confidence === "certain") ?? trackerLinks[0]!;
+  const best = preferredIssueLink(links);
+  if (!best) return null;
   return {
     system: best.system as AtRiskLinkedIssue["system"],
     externalId: best.externalId,
@@ -94,7 +80,7 @@ function candidateWhere(
   const caseWhere: Prisma.CaseWhereInput = { organizationId, deletedAt: null };
 
   if (params.severity !== "all") {
-    caseWhere.priority = { in: SEVERITY_RAW_PRIORITIES[params.severity] };
+    caseWhere.priority = { in: rawPrioritiesForTier(params.severity) };
   }
 
   const q = params.q.trim();
@@ -431,9 +417,7 @@ function buildSeverityCounts(
     P4: 0,
   };
   for (const row of severityRows) {
-    const tier = formatPriorityTier(row.case.priority) as
-      | Exclude<AtRiskSeverityFilter, "all">
-      | null;
+    const tier = formatPriorityTier(row.case.priority);
     if (tier) severity[tier] += 1;
   }
   return { severity };
