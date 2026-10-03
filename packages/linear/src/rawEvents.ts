@@ -24,13 +24,13 @@ export function mapIssueToRawEvent(issue: LinearIssue): RawEventInput {
  * the same actor into a single entry, rewriting its `toState` in place under
  * the same id. So — like issues and attachments — the hash is folded into the
  * provider event id, letting an edited entry land as a new RawEvent instead of
- * being swallowed by skipDuplicates. The normalizer keeps the latest version
- * per entry id.
+ * being swallowed by skipDuplicates. The normalizer turns each version into
+ * its own transition, so earlier states stay on the timeline.
  *
  * The payload must include the entry's `updatedAt`: a rewrite advances it, so
  * a state that returns to one seen before (A → B → A) still hashes differently
  * from the first A. Without it the third version collides with the first, is
- * skipped as a duplicate, and the normalizer keeps the stale B.
+ * skipped as a duplicate, and the return to A never reaches the timeline.
  */
 export function mapHistoryEntryToRawEvent(issueId: string, entry: LinearHistoryEntry): RawEventInput {
   const sourceHash = computeSourceHash(entry);
