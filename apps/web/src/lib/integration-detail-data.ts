@@ -47,15 +47,23 @@ export async function getIntegrationDetailData(
     repo?: string;
   };
 
-  const subdomain =
-    credentials.subdomain ??
-    (credentials.siteUrl
-      ? new URL(credentials.siteUrl).hostname.split(".")[0]
-      : undefined);
+  let siteSubdomain: string | undefined;
+  if (credentials.siteUrl) {
+    try {
+      siteSubdomain = new URL(credentials.siteUrl).hostname.split(".")[0];
+    } catch {
+      siteSubdomain = undefined;
+    }
+  }
+  const subdomain = credentials.subdomain ?? siteSubdomain;
 
+  // `cursor` is a JSON column, so the timestamp is an ISO string at runtime.
   const cursor = integration.cursor as {
-    backfillCompletedAt?: Date | null;
+    backfillCompletedAt?: string | null;
   } | null;
+  const backfillCompletedAt = cursor?.backfillCompletedAt
+    ? new Date(cursor.backfillCompletedAt)
+    : null;
 
   return {
     provider,
@@ -70,7 +78,10 @@ export async function getIntegrationDetailData(
     consecutiveFailures: integration.consecutiveFailures,
     failingSince: integration.failingSince,
     lastSyncDurationMs: integration.lastSyncDurationMs,
-    backfillCompletedAt: cursor?.backfillCompletedAt ?? null,
+    backfillCompletedAt:
+      backfillCompletedAt && !Number.isNaN(backfillCompletedAt.getTime())
+        ? backfillCompletedAt
+        : null,
     webhookSecret: integration.webhookSecret,
     webhooks: PROVIDERS[provider].capabilities.webhooks,
     subdomain,
