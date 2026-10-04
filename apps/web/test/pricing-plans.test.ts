@@ -3,18 +3,32 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { formatPlanPrice, PLAN_LIST, planFeatureLines } from "@sla/db/plans";
 import { resolvePricingViewer } from "../src/lib/pricing-viewer";
-import { PLAN_IDS, PLAN_LABELS, PLAN_PRICE_LABELS } from "../src/lib/types/admin";
+import {
+  PLAN_IDS,
+  PLAN_LABELS,
+  PLAN_PRICE_LABELS,
+} from "../src/lib/types/admin";
 
-vi.mock("@/components/shared/reveal", () => ({ Reveal: ({ children }: { children: unknown }) => children }));
+vi.mock("@/components/shared/reveal", () => ({
+  Reveal: ({ children }: { children: unknown }) => children,
+}));
 
-const decode = (html: string) => html.replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+const decode = (html: string) =>
+  html.replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
 
 describe("pricing page and plan constant (N6.1, N6.6)", () => {
   it("renders every plan in PLANS, with its price and feature lines, and nothing else", async () => {
-    const { PricingView } = await import("../src/modules/marketing/pricing/csr/PricingView");
-    const html = decode(renderToStaticMarkup(createElement(PricingView, { viewer: resolvePricingViewer(null) })));
+    const { PricingView } =
+      await import("../src/modules/marketing/pricing/csr/PricingView");
+    const html = decode(
+      renderToStaticMarkup(
+        createElement(PricingView, { viewer: resolvePricingViewer(null) }),
+      ),
+    );
 
-    const headings = [...html.matchAll(/<h3[^>]*>([^<]+)<\/h3>/g)].map((m) => m[1]).filter((h) => !h.startsWith("Need contract terms"));
+    const headings = [...html.matchAll(/<h3[^>]*>([^<]+)<\/h3>/g)]
+      .map((m) => m[1])
+      .filter((h) => !h?.startsWith("Need contract terms"));
     expect(headings).toEqual(PLAN_LIST.map((plan) => plan.name));
 
     for (const plan of PLAN_LIST) {
@@ -24,9 +38,22 @@ describe("pricing page and plan constant (N6.1, N6.6)", () => {
   });
 
   it("describes no unbuilt feature on the page", async () => {
-    const { PricingView } = await import("../src/modules/marketing/pricing/csr/PricingView");
-    const text = decode(renderToStaticMarkup(createElement(PricingView, { viewer: resolvePricingViewer(null) }))).toLowerCase();
-    for (const claim of ["sso", "saml", "90-day", "case history", "prorated", "custom retention", "from your account settings"]) {
+    const { PricingView } =
+      await import("../src/modules/marketing/pricing/csr/PricingView");
+    const text = decode(
+      renderToStaticMarkup(
+        createElement(PricingView, { viewer: resolvePricingViewer(null) }),
+      ),
+    ).toLowerCase();
+    for (const claim of [
+      "sso",
+      "saml",
+      "90-day",
+      "case history",
+      "prorated",
+      "custom retention",
+      "from your account settings",
+    ]) {
       expect(text).not.toContain(claim);
     }
   });
