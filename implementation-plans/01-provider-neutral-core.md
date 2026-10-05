@@ -225,6 +225,7 @@ Each task is one reviewable commit or a small group of commits, and each ends wi
 - **Ticket-source recognizers, in their own adapters:**
   - `@sla/zendesk`: `recognizeZendeskTicketUrl(url, credentials) → externalId | null`. Move `parseZendeskTicketId` here from `packages/jira/src/correlate.ts:10` and `packages/linear/src/correlate.ts:12`; the host check against `{subdomain}.zendesk.com` is unchanged.
   - `@sla/intercom`: `recognizeIntercomConversationUrl(url, credentials) → externalId | null`.
+  - **Update (2026-10-05):** the live Intercom → Jira capture found no remote link at all; Intercom's Jira integration only sets the `jira_issue_key` custom attribute, usually on a Tracker ticket, which `@sla/intercom`'s `correlate` links onto the customer conversations that list the tracker (a tracker is a link record, not a Case; see the roadmap's N1.13). The capture below still applies to Linear.
   - **Do not guess Intercom's URL formats.** Capture real remote links from a live Intercom → Jira and Intercom → Linear integration first (the conversation URL built in `packages/intercom/src/client.ts:139` is one shape; inbox URLs may differ). Store them as fixtures in `packages/intercom/test/`. Accept only the org's own Intercom workspace id, the same way Zendesk accepts only the org's own subdomain.
 - **Trackers stop knowing about ticket sources.**
   - `runJiraCorrelation` and `runLinearCorrelation` take a `resolveCaseRef: (url) => Promise<{ caseId } | null>` parameter.

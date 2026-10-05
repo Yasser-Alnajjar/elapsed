@@ -483,6 +483,7 @@ Correlation is how a Zendesk ticket gets connected to a Jira issue, a Linear iss
 | ----------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Jira issue → Zendesk ticket   | **Official link** | Read from Zendesk's own official Jira-links registry (`GET /api/v2/jira/links` — the data behind the official Zendesk↔Jira integration), which hands back the Zendesk ticket id and Jira issue key directly. This is the authoritative signal: no URL to parse, no hostname to validate.              |
 | Jira issue → Zendesk ticket   | **Remote link**   | Read from Jira's own remote-links data for that issue. Accepted only if the linked URL's hostname is _exactly_ your connected Zendesk subdomain — a similar-looking or different tenant's domain is never accepted.                                                                                   |
+| Jira issue → Intercom conversation | **Official link** | Read from the `jira_issue_key` attribute that Intercom's own Jira integration sets on the Intercom object it created the issue from (Intercom writes nothing on the Jira side). When that object is a **Tracker ticket**, the issue is linked to each customer conversation that Intercom lists as linked to the tracker. Trackers themselves are not shown as cases: they are the link between conversations and the issue, not a customer's work. A conversation or customer ticket carrying the key is linked directly. Titles are never compared. Clearing or changing the key, or unlinking the tracker, unlinks the case. |
 | Linear issue → Zendesk ticket | **Remote link**   | Same rule as Jira, applied to Linear's attachment/link data.                                                                                                                                                                                                                                          |
 | GitHub pull request → case    | **Pattern match** | The PR's title or branch name is scanned for a Jira- or Linear-style issue key (e.g. `ENG-1234`). If that key already has a confirmed Jira or Linear link to a case, the pull request is linked to the same case(s). A PR can reference more than one issue key and link to more than one case if so. |
 
@@ -490,7 +491,7 @@ Both Jira methods run independently and can both fire for the same
 relationship — that's expected, not a bug. If a Jira issue and a Zendesk
 ticket are linked through both the official Jira-links registry and a
 matching Jira remote link, the product still records exactly one link
-between them, shown as **"Official Zendesk↔Jira link."** The official-link
+between them, shown as **"Official link."** The official-link
 signal is treated as authoritative: it's what's shown whenever it's present,
 even if a remote link also exists.
 

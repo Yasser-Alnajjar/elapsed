@@ -9,6 +9,7 @@ import type {
 import type { CanonicalBatch, CaseFacts, CustomerIdentityFact, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import { intercomCompanyIdentity, intercomContactIdentity } from "./customer-identity";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
+import { isIntercomTrackerTicket, linkedTrackerIds } from "./tracker";
 
 /**
  * Intercom's closed, three-value conversation lifecycle, mapped to the
@@ -419,6 +420,16 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
   const latestConversations = latestSnapshotById<IntercomConversationWithParts>(conversationRows);
   const partsByConversationId = groupPartsByConversationId(partRows);
 
+  // A Tracker ticket is the link between customer conversations and an
+  // engineering issue, not a customer's work: no Case. Any Case an earlier
+  // version made for one is soft-deleted here, which keeps its raw events;
+  // `correlateIntercomJiraKeys` links the issue to the conversations instead.
+  const trackerIds = new Set<string>();
+  for (const { value } of latestConversations.values()) {
+    for (const id of linkedTrackerIds(value)) trackerIds.add(id);
+  }
+  const deletedCaseExternalIds: string[] = [];
+
   const cases: CaseFacts[] = [];
   const eventGroups: EventGroup[] = [];
   const failures: ProjectionFailure[] = [];
@@ -428,6 +439,10 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
     value: conversation,
     rawEventIds: conversationSnapshotRawEventIds,
   } of latestConversations.values()) {
+    if (trackerIds.has(conversation.id) || isIntercomTrackerTicket(conversation)) {
+      deletedCaseExternalIds.push(conversation.id);
+      continue;
+    }
     try {
       const primaryContactId = conversation.contacts?.contacts[0]?.id;
       const primaryContact = primaryContactId ? latestContacts.get(primaryContactId)?.value : undefined;
@@ -494,7 +509,7 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
     customers: [...companyCustomers, ...contactCustomers.values()],
     cases,
     eventGroups,
-    deletedCaseExternalIds: [],
+    deletedCaseExternalIds,
     failures,
   };
 }
