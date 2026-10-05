@@ -1,5 +1,7 @@
 # 00 — Final Strategic Verdict
 
+> **Historical (written 2026-09-05; roadmap Rev 6, 2026-10-05).** This verdict and its 30-day validation plan, including the "paid pilot at $299/$699" ask, were superseded when the product was built and went live with customers (roadmap D11 closed as superseded, 2026-09-29). **Current pricing is roadmap D14: Starter $49, Team $149, Enterprise Custom.** The status of the work is in `implementation-plans/ROADMAP_Product.md`. Kept as the original reasoning.
+
 **Phase 22.** Read this first; the reasoning is in files 01–05, and every competitive claim traces to [Research-Sources.md](Research-Sources.md).
 
 ---
@@ -122,7 +124,7 @@ Starting **Monday 7 September 2026**:
 - **Week 1 (7–13 Sep)** — competitive teardown of Deviniti and SaaSJet; build a 60-company target list; send 40 personalised outreach messages
 - **Week 2 (14–20 Sep)** — 12–15 buyer interviews, product unmentioned until the last two minutes; collect 3 CSV exports
 - **Week 3 (21–27 Sep)** — build the throwaway concierge script; deliver 5 real analyses personally, on calls, watching the reactions
-- **Week 4 (28 Sep–4 Oct)** — ask everyone for a paid pilot at $299/$699. For every yes, immediately test whether the Jira OAuth grant gets approved — that answer is the most valuable data in the whole month
+- **Week 4 (28 Sep–4 Oct)** — ask everyone for a paid pilot at $299/$699 (**obsolete pilot pricing, not current pricing; see D14**). For every yes, immediately test whether the Jira OAuth grant gets approved — that answer is the most valuable data in the whole month
 
 ## Kill criteria
 

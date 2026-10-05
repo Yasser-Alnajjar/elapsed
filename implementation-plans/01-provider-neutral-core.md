@@ -120,7 +120,7 @@ Each task is one reviewable commit or a small group of commits, and each ends wi
 ### N1.0 — Entry check (≤2 h)
 - Confirm H-1 is done: the provider pair of each of the 10 tenants is recorded (roadmap D15). Specifically, record whether **any** tenant has both a Zendesk and an Intercom integration, because it decides whether N1.10 and N1.11 can produce class-B differences.
 - Confirm a fresh backup has been restored into the scratch DB with `scripts/restore-drill.sh`.
-- **Verify:** the roadmap's H-1 row is ticked, and the drill log (`DRILL_LOG`, default `docs/restore-drills.log`, written on the host by `scripts/restore-drill.sh`) has today's line.
+- **Verify:** the roadmap's H-1 row is ticked, and the drill log (`DRILL_LOG`, default `docs/restore-drills.log`, written on the host by `scripts/restore-drill.sh`; that log is a runtime artifact and is not in the repository) has today's line.
 
 ### N1.1 — Replay/diff harness, L1 (V14 safety net)
 - Add `packages/commitments/src/scripts/replay-capture.ts` and `replay-compare.ts`, next to the existing `backfill-breached-at.ts`. Register them as `replay:capture` and `replay:compare` in `packages/commitments/package.json` (same `dotenv -e ../../.env -- tsx …` pattern).
@@ -236,7 +236,7 @@ Each task is one reviewable commit or a small group of commits, and each ends wi
 - **Case lookup:** until N1.15 lands, look up by `organizationId_externalId` **and** check `case.system` equals the recognizer's provider. After N1.15, use the new source-aware key.
 - **Unchanged:** Zendesk's official-link correlation (`runZendeskJiraLinkCorrelation`) is a Zendesk-adapter capability and stays where it is. GitHub keeps correlating through Jira/Linear links (roadmap D18: frozen).
 - **Verify:**
-  - `packages/jira/test/correlate.test.ts` and `packages/linear/test/correlate.test.ts` updated; new Intercom-URL cases pass.
+  - The Jira and Linear correlation tests were updated and new Intercom-URL cases pass. (The correlation suites now live under `apps/web/test`: `official-link-correlation.test.ts`, `jira-correlation-scope.test.ts`, `tracker-link-resolution.test.ts`, with `correlate-helper.ts`; there is no `correlate.test.ts` in `packages/jira` or `packages/linear`.)
   - `apps/web/test/jira-correlation-scope.test.ts`, `official-link-correlation.test.ts` and `jira-remote-link-unlink.test.ts` pass.
   - **L2 replay:** Zendesk tenants' `certain` link counts are identical (0 differences); legs are identical.
   - Boundary rule 4 passes with no allowlist entry.
@@ -281,7 +281,7 @@ Each task is one reviewable commit or a small group of commits, and each ends wi
 - `OnboardingFlow.tsx`:
   - Replace the static Intercom card (`:159`) with the real connect flow already used in settings (`modules/settings/integrations/csr/IntercomCard.tsx`, `app/api/integrations/intercom/*`).
   - Step 3 offers Jira **or** Linear as the tracker.
-  - Keep the Beta label on Intercom and Linear (roadmap D17 — no production promotion in this phase).
+  - Keep the Beta label on Intercom (roadmap D17: no production promotion of Intercom in this phase). **Amended 2026-10-05:** Linear has since been promoted out of Beta by owner decision (D17 amendment; the label was removed in commit `e487c64`), so N1 no longer keeps it on Linear.
 - `lib/source-sync.ts`: extend the connect-time projection to Intercom (`runIntercomNormalization`, then the commitment/evaluation tail), and to Linear correlation when a Linear integration exists.
 - Review step: Intercom has no importable SLA policies (D9), so for an Intercom org the policy-review step becomes "create your first native policy", linking to the existing native policy editor under `modules/settings/sla-configuration`.
 - **Verify:**
@@ -403,6 +403,6 @@ _Filled in during the phase. Only aggregate counts; never customer data._
 - Worker registry and dispatch, shared error types, shared projector, web rendering through adapters (→ N2).
 - Dropping legacy columns and keys (→ N2.10).
 - Webhooks for Intercom or Linear; freshness (→ N3).
-- Promoting Intercom, Linear or any pair out of Beta (a separate decision, D17).
+- Promoting Intercom, GitHub or any pair out of Beta (a separate decision, D17). Linear's promotion was decided separately on 2026-10-05.
 - GitHub changes beyond `sourceRole` (D18). Any third ticket source (→ N7).
 - New `NormalizedState` values or any change to engine semantics (D1–D7 stay frozen).

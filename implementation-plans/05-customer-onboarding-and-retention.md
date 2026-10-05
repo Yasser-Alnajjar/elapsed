@@ -42,7 +42,7 @@
   3. **Review imported policies**, only if `capabilities.policyImport`; otherwise **create a first native policy**.
   4. **Connect a work tracker** (Jira or Linear; optional).
   5. **Alerts** (Slack or email).
-- Beta labels stay on Intercom and Linear until promoted (D17).
+- Beta labels stay on Intercom and GitHub until promoted (D17). Linear was promoted out of Beta on 2026-10-05 and carries no label.
 - **Verify:** onboarding-status tests for all four matrix pairs; browser walkthrough of the Zendesk + Jira and Intercom + Jira paths in local dev with stubbed integrations.
 
 ### N5.2 — Partial value before a tracker is connected
@@ -50,13 +50,11 @@
 - Show a neutral banner: "Engineering time appears once a tracker is connected". Never show zero engineering time as if it were a fact.
 - **Verify:** `findings-data` tests for a ticket-source-only org; no leg is shown as `engineering` without a `certain` link.
 
-### N5.3 — Request access for the tracker admin (⛔ D26)
+### N5.3 — Request access for the tracker admin (D26 decided: option b)
 - **The problem:** connecting integrations is owner-only (`requireOwner`), and the tracker admin is usually not a member.
-- **Options for D26:**
-  - (a) An invitation with `purpose: "connect_tracker"` that grants a member role **plus** a one-time right to connect the tracker.
-  - (b) A signed, expiring, single-use connect link that lets a non-user complete the tracker OAuth for that org only. It reuses the `lib/oauth-state.ts` signing and records who completed it.
-- **Recommendation:** (b), because it adds no user account and is scoped to one OAuth grant.
-- **Verify, once decided:** tests that the link works once, only for the named provider and org, and expires. The completion is recorded on the org's own data (for example `Integration.connectedBy`), not in the platform `AdminAuditLog`, which is for operator actions only.
+- **Decision (roadmap D26): option (b).** A signed, single-use, organization- and provider-scoped connect link, short-lived and consumed after successful use, lets a tracker admin who is not an Elapsed member connect the tracker. Option (a), a member invitation with a one-time connect right, was not chosen because it adds a user account.
+- **How:** an owner mints the link from the onboarding tracker step (`POST /api/integrations/connect-links`). Only a SHA-256 of the token is stored (`IntegrationConnectLink`); expiry is 72 h; the link is scoped to one organization and one provider (Jira or Linear). `/connect/<token>` is public and starts that provider's OAuth with a signed state (`lib/oauth-state.ts`) carrying `connectLinkId`. The callbacks consume the link atomically (`updateMany` on `consumedAt: null`, same organization and provider, unexpired) only after the grant is known good.
+- **Verify:** tests that the link works once, only for the named provider and org, and expires. The completion is recorded on the org's own data (for example `Integration.connectedBy`), not in the platform `AdminAuditLog`, which is for operator actions only.
 
 ### N5.4 — Forwardable security summary
 - A public docs page (`apps/web/src/app/docs/security/page.tsx`) generated from facts:

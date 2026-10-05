@@ -2,6 +2,7 @@
 
 > **Status:** investigation complete, **no code written**. Prepared 2026-10-01 for roadmap decision **D29** (third ticket source) and plan [`07-third-ticket-source.md`](07-third-ticket-source.md).
 > **Decision: CONDITIONAL GO** (technically viable; two conditions must be met before D29 can close as Zoho Desk — see §13).
+> **Update (Rev 6, 2026-10-05):** the owner has since closed D29 in the roadmap as **Zoho Desk for the Egyptian market**. The §13 kill criteria still apply to the N7.1 spike. N7 remains demand-based and no Zoho code exists.
 > **Method:** read the N2 contract and the Zendesk/Intercom adapters in this repo, then read Zoho's official docs (the full Desk API reference, the Desk webhook reference, the Zoho OAuth protocol pages and the Desk help-center articles). **No live Zoho calls were made** (no sandbox account or credentials). Every claim is tagged:
 >
 > - **[V]** stated in official Zoho documentation (source given)
@@ -12,7 +13,7 @@
 
 ## 0. Two findings that come before the technical verdict
 
-1. **Zoho Desk is not a D29 candidate and does not meet the D29 evidence bar.** The roadmap lists the candidates as Freshdesk, Pylon and HubSpot (`ROADMAP_Product.md` D29, N7 trigger) and requires **at least two customers or qualified prospects on the same helpdesk, recorded**. The only Zoho signal in the repo is **one** prospect, Crexendo (`plans/target-list.csv`: "JD names Zendesk and Zoho as support tooling", status `needs_qualification`). That company also lists Zendesk, so it is not even clearly a Zoho-only tenant. Technical viability does not satisfy the plan's own rule ("No theory-only choice… If no provider meets the evidence bar, N7 does not start").
+1. **(Superseded 2026-10-05: the owner closed D29 as Zoho Desk and removed the two-prospect rule from the N7 trigger. This finding is kept as the original analysis.)** Zoho Desk was not a D29 candidate and did not meet the D29 evidence bar. The roadmap then listed the candidates as Freshdesk, Pylon and HubSpot (`ROADMAP_Product.md` D29, N7 trigger) and requires **at least two customers or qualified prospects on the same helpdesk, recorded**. At the time the only Zoho signal in the repo was **one** unqualified prospect (recorded in a prospect list that has since been removed from the repository), which also listed Zendesk. Technical viability does not satisfy the plan's own rule ("No theory-only choice… If no provider meets the evidence bar, N7 does not start").
 2. **One premise in the task could not be confirmed.** The brief mentions a "documented restriction that Zoho webhooks require a publicly accessible callback URL and may not support authenticated webhook URLs directly". I found **no such statement** in the official Desk webhook reference. What *is* documented is in §4. The practical conclusion (JWT is the only auth mechanism, and no intermediary is needed) is the same either way.
 
 ---
@@ -333,7 +334,7 @@ Zendesk and Intercom columns are taken from this repo's adapters; I did **not** 
 
 **Blocking limitations.** None technical identified. Two things block *closing D29*:
 
-- **Governance:** Zoho Desk is not among the D29 candidates and has one recorded prospect against the required two (§0).
+- **Governance (resolved 2026-10-05):** the owner closed D29 as Zoho Desk and removed the two-prospect rule, so this no longer blocks closing D29.
 - **Unverified items that can flip the verdict** (kill criteria for N7.1):
   1. Workflow auto-replies cannot be distinguished from human replies → **NO-GO** (would corrupt First Response).
   2. `modifiedTime`/search surfaces neither agent replies nor status changes, *and* the by-id fallback exceeds a Standard-edition credit budget → **NO-GO** for typical tenants.
@@ -343,13 +344,14 @@ Zendesk and Intercom columns are taken from this repo's adapters; I did **not** 
 
 **Required implementation changes.** §12.
 
-### D29 recommendation
+### D29 recommendation (original) and outcome
+
+Outcome (2026-10-05): **D29 is closed as Zoho Desk** for the Egyptian market, and condition (a) below no longer applies. Condition (b), the N7.1 spike on a Zoho sandbox, **still applies**.
 
 ```
 D29 = Zoho Desk, conditional on:
-  (a) ≥ 2 recorded customers or qualified prospects on Zoho Desk (the roadmap's own rule;
-      currently 1, unqualified). Zoho Desk must also be added to the D29 candidate list
-      deliberately, since it is not on it today; and
+  (a) [no longer applies] >= 2 recorded customers or qualified prospects on Zoho Desk,
+      and adding Zoho Desk to the D29 candidate list; and
   (b) the N7.1 spike, on a Zoho sandbox, confirming the five [U] items:
       1. modifiedTime / search coverage of replies, status changes and trash;
       2. auto-reply vs human-reply classification via history actor type;
@@ -374,4 +376,4 @@ Official Zoho documentation (primary):
 
 Secondary, used only for context: [Zoho Desk for Jira (MYBytes, third-party, Atlassian Marketplace)](https://marketplace.atlassian.com/apps/1234529/zoho-desk-for-jira). A Zoho community thread on rate limits was read and **not** relied on.
 
-Repo evidence: `implementation-plans/02-provider-contract-and-projector.md`, `07-third-ticket-source.md`, `ROADMAP_Product.md` (D29, N7), `packages/ingestion/src/{contract,projector,pipeline,errors}.ts`, `packages/{zendesk,intercom}/src/*`, `packages/core/src/{types,ordering,clock-rules,evaluate}.ts`, `packages/http-retry/src/retry.ts`, `apps/web/src/app/api/webhooks/zendesk/[integrationId]/route.ts`, `plans/target-list.csv`.
+Repo evidence: `implementation-plans/02-provider-contract-and-projector.md`, `07-third-ticket-source.md`, `ROADMAP_Product.md` (D29, N7), `packages/ingestion/src/{contract,projector,pipeline,errors}.ts`, `packages/{zendesk,intercom}/src/*`, `packages/core/src/{types,ordering,clock-rules,evaluate}.ts`, `packages/http-retry/src/retry.ts`, `apps/web/src/app/api/webhooks/zendesk/[integrationId]/route.ts`.

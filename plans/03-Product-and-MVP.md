@@ -173,12 +173,12 @@ Legend: ✅ built · 🟡 built, Beta / partial · ⬜ not built · ⛔ delibera
 
 | Feature                            | Built | Note                                                                                                                                   |
 | ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Linear integration                 | 🟡    | Built, polling only, Beta.                                                                                                             |
+| Linear integration                 | ✅    | Built, polling only. **Promoted out of Beta (roadmap D17, 2026-10-05).**                                                                |
 | Optional engineering-leg target    | ✅    | One number per organization (`engineeringLegTarget`).                                                                                  |
 | Email notifications                | ✅    | Per-org SMTP (`OrganizationEmailSettings`) for alerts; a separate deployment-level SMTP (`DEPLOYMENT_SMTP_*`) for invites, resets and verification. |
 | SLA policy override UI             | ✅    | Went further than the spec: imported Zendesk policies are read-only (target overrides only) and **native policies** can be created, edited, versioned and deactivated. Imported policies match first, by Zendesk position (D12). |
 | Webhooks for real-time freshness   | 🟡    | Zendesk and Jira only. Intercom, Linear and GitHub poll.                                                                                |
-| Scheduled monthly PDF report       | ⬜    | Not built. CSV/JSON export only. Still the strongest retention feature not yet shipped.                                                |
+| Monthly report                     | 🟡    | **Built (roadmap N5.6):** emailed to every member with a CSV attached, plus a Slack message, once per organization and month. There is still no PDF. |
 
 ### NICE TO HAVE — built early
 
@@ -186,7 +186,7 @@ The spec said "only if pulled by customers". These were built ahead of any custo
 
 | Feature                          | Built | Note                                                                                              |
 | -------------------------------- | ----- | ------------------------------------------------------------------------------------------------- |
-| Intercom as a ticket source      | 🟡    | Beta, polling only, no engineering links yet. Decided D9: Beta; native policies give it commitments. |
+| Intercom as a ticket source      | 🟡    | Beta, polling only. Engineering links (Jira/Linear) for Intercom cases were added in N1.13. Decided D9: Beta; native policies give it commitments. |
 | GitHub (pull requests) as an engineering source | 🟡 | Beta. Read-only GitHub App. Not an SLA source.                                                    |
 | Custom business calendars per customer | ✅ | `customerCalendarOverride`, versioned calendars.                                                  |
 | Operator monitoring view         | ✅    | Platform-operator-only worker settings and diagnostics (`PLATFORM_ADMIN_EMAILS`).                  |
@@ -212,7 +212,7 @@ The spec said "only if pulled by customers". These were built ahead of any custo
 
 Decisions worth re-confirming, because each one changes the cost of running the business:
 
-1. **Five integrations instead of two.** Intercom, Linear and GitHub are labelled Beta and polling-only. Recommendation: **freeze them** — no new provider work until a paying customer needs it, and do not let Beta providers count toward the pricing tiers' limits or support promises.
+1. **Five integrations instead of two.** (Original 2026-09-29 wording; roadmap D16/D17 later reframed this: Linear was promoted out of Beta on 2026-10-05 and Intercom and GitHub stay Beta.) Intercom, Linear and GitHub were labelled Beta and polling-only. Recommendation then: **freeze them** — no new provider work until a paying customer needs it, and do not let Beta providers count toward the pricing tiers' limits or support promises.
 2. **Native policies and calendars.** More than the spec's "imported first, editable second", and necessary for Intercom (which has no SLA policies to import). It adds a precedence problem (D12) that the engine has to keep deterministic. Keep.
 3. **Next Reply as a third commitment.** Not in the original MUST list; it is a real Zendesk SLA metric, and buyers will ask.
 4. **Self-hosted-first deployment.** The stack ships as Docker Compose with Postgres, Nginx, one web container and one worker, plus a documented runbook. This is a hosting decision the spec never made; see [scale](#phase-10b--scale) for what it constrains.
@@ -226,7 +226,7 @@ Decisions worth re-confirming, because each one changes the cost of running the 
 | Organizations           | MUST — minimal, one per sign-up                                                    | ✅    |
 | Users                   | MUST — `owner` / `member` only                                                     | ✅    |
 | Customers               | MUST — **auto-derived**, never manually entered                                    | ✅    |
-| Integrations            | MUST — Zendesk + Jira. Intercom, Linear, GitHub are Beta                           | 🟡    |
+| Integrations            | MUST — Zendesk + Jira. Intercom and GitHub are Beta; Linear was promoted out of Beta (D17, 2026-10-05) | 🟡    |
 | SLA policies            | MUST — imported from Zendesk first, native and overrides second                    | ✅    |
 | OLA policies            | **DO NOT BUILD** as a policy system; one optional target per org                   | ✅    |
 | Team mapping            | **DO NOT BUILD**                                                                   | ✅    |
@@ -394,18 +394,19 @@ Everything needed for the first insight is already present in the connected syst
 
 # Phase 18 — Pricing
 
-> **Status as of 2026-09-29.** The pricing below is the strategy; the public pricing page (`apps/web/src/modules/marketing/pricing`) currently shows a **different, older plan set** and the product has **no billing code** (no plans, subscriptions or usage metering in the schema). Reconcile before anyone is quoted a price:
+> **Current pricing is decided by roadmap D14 (2026-10-05) and is not the model analysed below.** The owner adopted the live model: seat-based, flat monthly, USD. The escalation-volume model in this section (Starter $79 / Growth $149 / Scale $249) is **not adopted**, and the obsolete `$299 / $699` pilot pricing from `plans/05` must not be reintroduced.
 >
-> | | This document | Live pricing page |
-> | --- | --- | --- |
-> | Plans | Starter $79 · Growth $149 · Scale $249 · Enterprise | Starter $49 · Team $149 · Enterprise |
-> | Metric | Monthly escalated tickets (150 / 600 / 2,500) | Seats (5 / 20 / unlimited), policy and integration counts |
-> | Trial | Free one-time 90-day Historical Review, 14 days | 14-day trial, no card |
-> | Integrations | Zendesk + Jira in every tier | Tier-gated; Intercom, Linear and GitHub (Beta) marketed as included |
+> | Plan | Price | Seats | Integrations | Native SLA policies |
+> | --- | --- | --- | --- | --- |
+> | Starter | $49/mo | 5 | 1 support + 1 engineering | 3 |
+> | Team | $149/mo | 20 | Unlimited | Unlimited |
+> | Enterprise | Custom (contact sales) | Unlimited | Unlimited | Unlimited |
 >
-> The page prices by seats, which Phase 18 rejects (value has no relationship to agent count). Nothing enforces any of these limits in code, so tiers are currently a promise, not a control. Either update the page to the tiers here, or record a decision to change them. Also: keep Beta providers out of the tier promise, and see [Phase 10b](#phase-10b--scale) for the capacity behind the 2,500 ceiling.
+> It is one code constant (`packages/db/src/plans.ts`, `PLANS`), rendered by the pricing page and used by entitlements and an internal billing domain (roadmap N6.1–N6.10; imported policies do not count toward limits, D25; payment provider per D28, Paymob as sandbox only, production provider still open). Seats never change the price; there is no annual interval, usage metering or free tier; every organization gets a 14-day trial. The principle below that overage is soft and monitoring is never hard-stopped still holds.
+>
+> **Everything below in this Phase 18 section is the original strategy analysis, kept for its reasoning only. Where it conflicts with the table above, the table wins.**
 
-## Choosing the value metric
+## Original analysis: choosing the value metric (not adopted; see D14 above)
 
 | Model                                              | Assessment                                                                                                                                                                                                          |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -417,11 +418,11 @@ Everything needed for the first insight is already present in the connected syst
 | Pure usage                                         | **No.** Unpredictable bills kill mid-market renewals.                                                                                                                                                               |
 | **Flat tiers banded by monthly escalation volume** | **Yes.**                                                                                                                                                                                                            |
 
-**Recommendation: flat monthly subscription, tiered by monthly escalated-ticket volume.**
+**Original recommendation (NOT adopted, D14 chose seat-based tiers): flat monthly subscription, tiered by monthly escalated-ticket volume.**
 
 It scores well on every axis that matters: the value metric is the thing the product actually acts on; the price is predictable within a tier; it expands naturally as the customer grows; a support leader understands "escalations per month" without explanation; and gross margin is unaffected by seat count.
 
-## Proposed tiers
+## Original proposed tiers (NOT adopted; the current tiers are in the D14 table above)
 
 | Tier                  | Price          | Included                                                                              | Purpose                                                                       |
 | --------------------- | -------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -433,7 +434,7 @@ It scores well on every axis that matters: the value metric is the thing the pro
 
 Overage: soft — notify and upgrade at the next renewal. Never hard-stop monitoring, because a customer whose alerts went silent mid-incident churns immediately and tells people.
 
-## Reasoning on the numbers
+## Original reasoning on the numbers (for the not-adopted model)
 
 - **Target ACV $3.6k–$8.4k**, which needs roughly **12–20 customers to reach $10k MRR** — a plausible target for one founder in 12–18 months.
 - **The top self-serve tier is deliberately well above the original doc's $99 anchor.** A $99 product needs 100 customers for the same revenue, which means a self-serve funnel and a marketing budget — neither of which exists here. $99 is not a cheaper price, it is a different and harder company.

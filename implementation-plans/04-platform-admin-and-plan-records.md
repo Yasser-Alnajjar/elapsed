@@ -1,7 +1,7 @@
 # N4 — Platform Admin + Plan Records: Implementation Plan
 
 > **Roadmap phase:** [N4 in `ROADMAP_Product.md`](ROADMAP_Product.md#phase-n4--platform-admin--plan-records). Task status lives in the roadmap. This file explains **how**.
-> **Depends on:** [N3](03-provider-isolation-and-freshness.md), for `lastSuccessfulSyncAt`, failure counters and durations. **Decisions:** D14 (pricing model) determines plan *names* in N4.3. D15 (provider pairs) is captured as data in N4.7. **Unblocks:** [N5](05-customer-onboarding-and-retention.md).
+> **Depends on:** [N3](03-provider-isolation-and-freshness.md), for `lastSuccessfulSyncAt`, failure counters and durations. **Decisions (all closed):** D14 fixes the plan names used in N4.3 (`starter`, `team`, `enterprise`). D15 (Zendesk + Jira as the current provider pair) is captured as data in N4.7. **Unblocks:** [N5](05-customer-onboarding-and-retention.md).
 > **Estimate:** 3 weeks. **Branch:** `phase/n4-platform-admin-and-plan-records`.
 
 ---
@@ -11,6 +11,8 @@
 The platform operator can answer, on one page and without SQL: **who are the customers, what plan and status is each on, and is each one healthy?** Every operator action is audited. Nothing platform-level is visible to customer users.
 
 ## 2. Why this phase exists
+
+> **Historical (written 2026-09-29, before N4).** The bullets below describe the state N4 started from. N4 replaced `/operator` with the `/admin` area (roadmap N4.1–N4.6); `/operator` now only redirects.
 
 - There are 10 live customers, but the repository has no record of their plans, status or provider pairs.
 - The only cross-tenant view is `/operator`. It shows unhealthy integrations and failed alerts only (`apps/web/src/lib/operator-monitoring-data.ts`).
@@ -30,6 +32,8 @@ The platform operator can answer, on one page and without SQL: **who are the cus
 - Admin roles (support / billing / engineering), a DB-backed admin table, and impersonation are **Later (≈500 tenants)**. They are out of scope here.
 
 ## 4. Current implementation relevant to this phase
+
+> **Historical starting point (2026-09-29).** The `operator/*` paths, modules, actions and `operator-monitoring-data.ts` listed here were **replaced by N4** (2026-10-02). What exists now: routes under `apps/web/src/app/(admin)/admin/` (overview, `monitoring`, `tenants`, `tenants/[organizationId]`, `audit`, and the later `billing` pages), `apps/web/src/modules/admin/*`, `apps/web/src/lib/admin-*.ts` (auth, audit, tenants, monitoring, billing, usage), `AdminAuditLog`, and the `/api/admin/*` routes. `lib/authz.ts` and `PLATFORM_ADMIN_EMAILS` are unchanged. The list below is kept for context only.
 
 - **Routes:** `apps/web/src/app/(main)/operator/page.tsx`, `apps/web/src/app/(main)/operator/monitoring/page.tsx`
 - **Modules:** `apps/web/src/modules/operator/{csr/OperatorView.tsx, ssr/Operator.tsx, monitoring/*}`
@@ -57,13 +61,13 @@ The platform operator can answer, on one page and without SQL: **who are the cus
 
 ### N4.3 — Plan and status record per organization (manual)
 - **Schema on `Organization`:**
-  - `plan String?` — plan identifier. Kept as a string until D14 fixes the canonical plan list; N6 may tighten it to an enum.
+  - `plan String?` — plan identifier. D14 is decided, so the API accepts only `starter`, `team`, `enterprise` (or empty). The column stays a string; N6 may tighten it to an enum.
   - `planStatus` — enum `trial | active | past_due | cancelled | internal`, default `trial`.
   - `trialEndsAt DateTime?`
   - `billingReference String?` — free text, for example an invoice or contract id.
 - The admin edits these on the tenant-detail page, and every edit is audited.
 - **These fields never change monitoring behaviour** (roadmap Phase 10b principle 3: never hard-stop monitoring).
-- **Blocked in part by D14:** until the pricing model is confirmed, `plan` is free text, and the UI shows the two known candidate models (the live pricing page vs `plans/03` Phase 18) only as hints, not as enforced choices.
+- **D14 (decided):** the live pricing model is adopted (Starter $49, Team $149, Enterprise Custom, seat-based). The `plans/03` Phase 18 model is not used. The single plan constant is `packages/db/src/plans.ts` (N6.1).
 - **Verify:** `tenant-isolation.test.ts` unchanged (these are org columns); an admin edit test.
 
 ### N4.4 — Tenants list and tenant detail read models

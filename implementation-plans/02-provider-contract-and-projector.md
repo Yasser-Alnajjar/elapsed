@@ -172,7 +172,8 @@ Per-provider exit: **L2 replay for tenants using that provider shows 0 differenc
 - **Verify:** the test passes with an empty allowlist.
 
 ### N2.10 — Contract migrations (drop legacy keys)
-- Precondition: N1's dual-write has been in production for **at least one release**, and the latest L2 replay is clean.
+- Precondition: N1's dual-write has been in production for **at least one release**, and the latest L2 replay is clean. (Met on 2026-10-01: production was on the N1 release, and the EC2 production-backup L1 and L2 replays showed 0 differences.)
+- **Where it lives (Rev 6):** the migration, its `rollback.sql`, a `schema.patch` for `schema.prisma` and a README are held in `packages/db/prisma/contract/20261001110000_contract_customer_identity_and_case_source/`, deliberately **outside** `prisma/migrations`, so `migrate deploy` cannot apply it and `schema.prisma` still carries the legacy columns. To ship it: take a verified backup, move the directory into `prisma/migrations`, apply `schema.patch`, deploy it alone, then re-run the L2 replay.
 - Drop `Customer.zendeskOrgId`, `intercomCompanyId`, `intercomContactId` and their three unique keys. Drop `Case @@unique([organizationId, externalId])`. Make `Case.sourceIntegrationId` NOT NULL.
 - Remove the dual-write code.
 - **Verify:** `pnpm --filter @sla/db validate`; migration applied to the scratch DB; full test suite; L2 replay clean; `tenant-isolation.test.ts` passes.

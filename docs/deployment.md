@@ -1,6 +1,6 @@
 # Deployment
 
-This covers running SLA on your own infrastructure with Docker — a VPS, a
+This covers running Elapsed on your own infrastructure with Docker — a VPS, a
 bare-metal box, or any host that can run `docker compose`. There is no
 managed-hosting target; this is the self-host path.
 
@@ -20,7 +20,7 @@ there's no shared filesystem between them to worry about.
 - Docker Engine with the Compose plugin (`docker compose version`) on the
   host.
 - A Postgres instance reachable from the host — either the `postgres`
-  service in [`docker-compose.prod.yml`](../docker-compose.prod.yml), or
+  service in [`docker-compose.yml`](../docker-compose.yml), or
   your own managed database, in which case skip that service and point
   `DATABASE_URL` at it.
 
@@ -29,7 +29,7 @@ there's no shared filesystem between them to worry about.
 Create `.env.prod` on the host from [`.env.prod.example`](../.env.prod.example),
 then generate its secrets. `.env.prod` is gitignored: it lives only on the
 host and in your secure backups, never in the repository.
-`docker-compose.prod.yml` refuses to start any service that's missing a
+`docker-compose.yml` refuses to start any service that's missing a
 required variable, so this errors loudly rather than booting with blanks:
 
 ```bash
@@ -58,7 +58,7 @@ hand.
 | `SENTRY_DSN` | web, worker | Optional. Enables error tracking in both apps when set; omit it and the SDK stays disabled with no other effect. See [Health checks and observability](#health-checks-and-observability). |
 | `SMTP_ALLOW_PRIVATE_HOSTS` | web, worker | Optional. Set to `1` to let an **organization's** own SMTP settings (Settings → Notifications) point at a private, loopback or link-local address, for example a Mailpit container in local development or an intranet relay. Unset (the default) refuses those destinations on save, on Test Connection / Send Test Email and on every alert send. Deployment-wide SMTP and ops-alert SMTP are operator-configured and are not affected. |
 | `WORKER_HEALTH_PORT` | worker | Optional, defaults to `8081`. The port `GET /health` listens on inside the worker container. |
-| `WORKER_LOCK_RETRY_MS`, `WORKER_LOCK_PING_MS` | worker | Optional, default `15000` and `30000`. How often a standby worker retries the single-instance lock, and how often the active one checks its lock connection is still alive. See [Single worker instance](#single-worker-instance). |
+| `WORKER_LOCK_RETRY_MS`, `WORKER_LOCK_PING_MS` | worker | Optional, default `15000` and `30000`. How often a worker retries the advisory lock that elects the stalled-work watchdog, and how often the holder checks its lock connection is still alive. Organization work itself is divided by per-organization leases, not by this lock; see [Running multiple workers](#running-multiple-workers). |
 | `OPS_ALERT_SLACK_WEBHOOK_URL`, `OPS_ALERT_EMAIL` | worker | Optional. Where a stalled-worker-cycle alert goes — see [Health checks and observability](#health-checks-and-observability). This is a deployment-owner channel, unrelated to any organization's own SLA breach notifications. `OPS_ALERT_EMAIL` is only the recipient; its SMTP transport is the shared `DEPLOYMENT_SMTP_*` below, so email alerting stays off if that's unset. |
 | `DEPLOYMENT_SMTP_*` | web, worker | Deployment-owned SMTP, shared by every deployment-level email concern: account-lifecycle email sent from web (invitations, password resets, email verification — required, fails explicitly if unset when triggered) and worker's ops alert above (optional — that channel just stays off if unset). Deliberately separate from an organization's own saved SMTP (Settings → Notifications, used only for SLA breach/at-risk alerts, customer-owned) — that's the boundary that matters; there's no separate SMTP transport per deployment-level feature, since both already go through the same mailer. |
 
@@ -72,7 +72,7 @@ other 12-factor deployment.
 ## 2. Build and start
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.yml --env-file .env.prod up -d --build
 ```
 
 This builds `apps/web/Dockerfile`, `apps/worker/Dockerfile`, and
@@ -93,14 +93,14 @@ service applies them before `web`/`worker` restart:
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.yml --env-file .env.prod up -d --build
 ```
 
 If you only need to force the migration step on its own (rare — `up`
 already runs it), you can still invoke it directly:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
+docker compose -f docker-compose.yml --env-file .env.prod run --rm migrate
 ```
 
 ## 4. Create the first account
@@ -114,7 +114,7 @@ bootstrap step.
 
 ```bash
 git pull
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.yml --env-file .env.prod up -d --build
 ```
 
 Migrations run automatically as part of `up` (see above) — there is no
@@ -169,7 +169,7 @@ variables, set inline in the cron line if you need them:
 | --- | --- | --- |
 | `BACKUP_DIR` | `./backups` | Ignored by git. |
 | `RETENTION_DAYS` | `14` | Dumps older than this are deleted after each successful backup. |
-| `COMPOSE_FILE` | `docker-compose.prod.yml` | |
+| `COMPOSE_FILE` | `docker-compose.yml` | |
 | `ENV_FILE` | `.env.prod` | |
 | `DB_NAME` | the container's `POSTGRES_DB` | |
 
@@ -229,9 +229,10 @@ scripts/restore-drill.sh
 It restores the newest dump (or the one you pass) into a scratch database
 next to the real one, times the restore, checks that the tables and `cases`
 rows are there, drops the scratch database, and appends a line to
-[`restore-drills.log`](restore-drills.log) (dump, size, restore seconds, table
-and case counts). It never stops `web` or `worker`. Commit the log line so the
-recorded timing is the recovery-time figure you quote.
+`docs/restore-drills.log` (dump, size, restore seconds, table and case counts;
+the script creates the file on first use, and it is not part of the repository
+until you commit one). It never stops `web` or `worker`. Commit the log line so
+the recorded timing is the recovery-time figure you quote.
 
 ## Security notes
 
@@ -309,7 +310,7 @@ git, a chat, or a shared drive), or when someone with access leaves.
 ```bash
 scripts/backup.sh
 scripts/rotate-secrets.sh --apply-to-db .env.prod
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+docker compose -f docker-compose.yml --env-file .env.prod up -d
 ```
 
 Know what each rotation costs before running it:
@@ -440,7 +441,7 @@ irreversible), so at most the provider call in flight at that moment completes.
   aggregate `integrations.mostRecentSyncAt`/`withErrors` across every
   connected integration. Responds `503` only for `stopped`, since that's
   the one case an orchestrator restart can actually fix. Not published to
-  the host by `docker-compose.prod.yml` — only the container's own
+  the host by `docker-compose.yml` — only the container's own
   `HEALTHCHECK` (and Docker's resulting restart-on-unhealthy behavior with
   `restart: unless-stopped`) uses it; add your own `ports:` mapping if an
   external monitor should poll it directly. Every worker answers for itself

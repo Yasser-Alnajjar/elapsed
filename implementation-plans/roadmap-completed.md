@@ -1136,8 +1136,8 @@ is (a) loose ends the steps above recorded but didn't close, and (b) the one
 piece of engineering the validation plan needs.
 
 The validation plan (`plans/05`, Phase 20) started 7 Sep 2026, and it's the
-real bottleneck. Per `plans/07-Phase-Status.md` and `plans/call-scorecard.csv`,
-0 of 40 outreach messages have gone out and 0 calls are logged. Week 3
+real bottleneck. Per `plans/07-Phase-Status.md` (the outreach tracking files were
+removed later), 0 of 40 outreach messages had gone out and 0 calls were logged. Week 3
 (21–27 Sep) needs a concierge analysis script, and the kill-criteria reading
 is due around 5 Oct. So step 40 has a date on it; the rest don't.
 

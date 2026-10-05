@@ -1,6 +1,6 @@
 # Production Hygiene close-out (H-1 to H-12)
 
-> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12. **Still open, and none of them gates an N-phase:** H-2 (your D14 decision), H-6 (Sentry credentials), H-8 (blocked upstream), H-9 (Zendesk sandbox walkthrough), H-10 (host verification and third-party rotation).
+> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12, and (2026-10-05) H-2, since D14 is decided. **Still open, and none of them gates an N-phase:** H-6 (Sentry credentials), H-8 (blocked upstream), H-9 (Zendesk sandbox walkthrough), H-10 (host verification and third-party rotation).
 
 **Prepared:** 2026-09-29. Everything below that could be done without production access or your decisions has been done and is listed under "Ready". What is left needs you, and each step says exactly what to run. **Nothing here touches production until you run it.** All production commands are read-only except where marked.
 
@@ -9,7 +9,7 @@
 | ID | Item | Status | What closes it |
 | --- | --- | --- | --- |
 | H-1 | Provider pair and status per live tenant | **CLOSED 2026-09-30, accepted limitation.** 12 tenants, all Zendesk + Jira, all connected; 11 are `seed-org-*` fixtures, the real 10-customer data was not verified | [H-1 record](#h-1--provider-pairs-per-tenant) |
-| H-2 | D14 pricing decision | **Needs your decision** | [H-2 question](#h-2--d14-the-exact-question) |
+| H-2 | D14 pricing decision | **CLOSED 2026-10-05.** D14 is decided (live seat-based model: Starter $49, Team $149, Enterprise Custom) and built as `PLANS`. Which plan each customer pays on is data entry, tracked as roadmap N4.7 | [H-2 record](#h-2--d14-closed) |
 | H-3 | Pricing-page false claims | **Done** (already checked) | — |
 | H-4 | Engine vs Zendesk on live tenants | **CLOSED 2026-09-30, accepted limitation.** Export and comparison run on one tenant (the dev sandbox); all 18 UNEXPLAINED rows explained; not two live tenants | [H-4 record](#h-4--live-tenant-spot-check) |
 | H-5 | Retention / on-call note | **Done** (already checked). Two of its findings are still open, see [Findings from this pass](#findings-from-this-pass) | — |
@@ -156,7 +156,7 @@ reads (members, pending invitations, import review, integrations with Slack and 
 
 **F-D / F-G follow-up tests:** `packages/email/test/destination.test.ts` (address classification for 40+ IPv4/IPv6 forms, resolution rules, connect-to-resolved-address, operator path untouched, env override); 11 route-level cases in `tenant-isolation.test.ts` (changed host or username refused on save and on both test routes, allowed with the password or for port-only changes, six internal destinations refused on all three routes, plain member denied); `packages/db/test/email-settings.test.ts` (the old "keeps the old password on a new host" test encoded the bug and was replaced); `apps/web/test/csv-formula-injection.test.ts` (20 cases: every trigger character, look-alike exemptions, and the compliance-report and Zendesk exports); `packages/notifications/test/dispatch.test.ts` updated for the new send option.
 
-**Files changed for F-D / F-G:** `packages/email/src/destination.ts` (new), `packages/email/src/client.ts`, `packages/email/src/index.ts`, `packages/db/src/email-settings.ts`, `packages/db/src/index.ts`, `packages/notifications/src/dispatch.ts`, `apps/web/src/lib/email-settings.ts`, `apps/web/src/app/api/settings/email/route.ts`, `.../email/test-connection/route.ts`, `.../email/test-send/route.ts`, `apps/web/src/lib/csv.ts`, `docs/deployment.md` (new env var).
+**Files changed for F-D / F-G:** `packages/email/src/destination.ts` (new), `packages/email/src/client.ts`, `packages/email/src/index.ts`, `packages/db/src/email-settings.ts`, `packages/db/src/index.ts`, `packages/notifications/src/dispatch.ts`, `apps/web/src/lib/email-settings.ts`, `apps/web/src/app/api/settings/email/route.ts`, `.../email/test-connection/route.ts`, `.../email/test-send/route.ts`, `packages/core/src/csv.ts`, `docs/deployment.md` (new env var).
 
 **Findings**
 
@@ -164,7 +164,7 @@ reads (members, pending invitations, import review, integrations with Slack and 
 | --- | --- | --- | --- |
 | F-A | **High (privilege)** | The role is baked into the JWT at sign-in and never re-read; `updateMemberRole` did not bump `sessionVersion`. An owner demoted to member kept every owner-only power (remove members, disconnect integrations, change SMTP, policies) for up to 30 days. | **Fixed** in `packages/db/src/members.ts` (bumps `sessionVersion`; the member is signed out and back in with the new role). Test fails without the fix (verified). |
 | F-D | Medium | The email test and send routes connected to an owner-supplied host and port with no destination check, and a blank password fell back to the organization's **saved** password whatever host was typed. | **Fixed 2026-09-29.** (1) A blank password now applies only while host and username equal the saved ones (`savedPasswordApplies`, `SmtpPasswordRequiredError` in `packages/db/src/email-settings.ts`); enforced in `saveEmailSettings` and in `resolveTestPassword` for both test routes. (2) `@sla/email` refuses non-public destinations (`destination.ts`): resolves the host, refuses when ANY address is loopback, private, link-local, CGNAT, multicast, reserved or documentation space (IPv4, IPv6, v4-mapped, NAT64, 6to4, Teredo), and connects to the resolved address with the typed name as TLS servername, so DNS can't change between check and connect. Applied to Test Connection, Send Test Email and every alert send (`publicDestinationOnly`), and at save (private only; an unresolvable name may still be saved). `SMTP_ALLOW_PRIVATE_HOSTS=1` is the documented local/intranet escape hatch. Operator-configured SMTP is untouched. |
-| F-G | Low–medium | `lib/csv.ts` did not neutralize text cells starting with `=`, `+`, `-`, `@` (or tab/CR); case subjects, customer names and tags come from customers' end users. | **Fixed 2026-09-29** at the single choke point every export uses (compliance report CSV and stream, cases export, Zendesk and Jira concierge ZIPs): string cells get a leading `'`. Number cells, plain signed numbers and the app's own overdue durations (`-1h 5m`, shown in the cases export's Remaining/Elapsed column) are exempt, because the rule would otherwise corrupt them. Effect on the concierge analyzer: only formula-leading text (for example a subject starting `-`) gains a `'`. |
+| F-G | Low–medium | the CSV writer (now `packages/core/src/csv.ts`, formerly cited here as `lib/csv.ts`) did not neutralize text cells starting with `=`, `+`, `-`, `@` (or tab/CR); case subjects, customer names and tags come from customers' end users. | **Fixed 2026-09-29** at the single choke point every export uses (compliance report CSV and stream, cases export, Zendesk and Jira concierge ZIPs): string cells get a leading `'`. Number cells, plain signed numbers and the app's own overdue durations (`-1h 5m`, shown in the cases export's Remaining/Elapsed column) are exempt, because the rule would otherwise corrupt them. Effect on the concierge analyzer: only formula-leading text (for example a subject starting `-`) gains a `'`. |
 | F-E | Info | `LegSpan` is never read or written by any code (legs are derived in memory). The model is tenant-scoped through `Case` and seeded by the suite, but no code path exists to test. | Noted; candidate for removal in N1's legs work. |
 | F-H | Info | `operator-monitoring-data` reads `NotificationFailure` across all organizations by design (platform-operator only). | Intended; left as is. |
 | F-I | Info | The webhook returns 404 for an unknown integration id and 401 for a wrong secret, so a valid integration id can be distinguished. Ids are unguessable cuids. | Accepted. |
@@ -173,19 +173,11 @@ reads (members, pending invitations, import review, integrations with Slack and 
 
 **H-10 is still not tickable, and only the production half remains**: the production half (secret rotation of the ops SMTP password and Sentry DSN, dev services, plaintext tokens) needs `h10-verify.sh` on the host. The two code-side items in the roadmap wording, "authorization audit current" and "tenant isolation covers every model", are satisfied by this section and the tests, F-D and F-G are fixed. Remaining code-side findings are informational only (F-E, F-H, F-I). Not addressed, on purpose: SMTP port allow-listing (a public host on an odd port is not an internal-network risk) and a certificate pin for organization SMTP.
 
-## H-2 — D14, the exact question
+## H-2 — D14 (closed)
 
-> **Which pricing model is current, and which do the 10 customers pay on?**
+**Closed 2026-10-05.** The question was: which pricing model is current, and which do the 10 customers pay on? The owner decided D14: the **live model** is current. It is Starter **$49**, Team **$149**, Enterprise Custom, seat-based and flat monthly in USD, implemented once as `PLANS` in `packages/db/src/plans.ts` and rendered by the pricing page (roadmap N6.1). The `plans/03` Phase 18 model (Starter $79, Growth $149, Scale $249, by monthly escalations) is **not adopted**, and the obsolete `$299/$699` pilot pricing in `plans/05` must not be reintroduced.
 
-Current state (from the repo; nothing enforced in code, no billing tables):
-
-| | Live pricing page (`PricingView.tsx`, last changed 2026-09-27) | `plans/03` Phase 18 |
-| --- | --- | --- |
-| Plans | Starter **$49**, Team **$149**, Enterprise Custom | Starter **$79**, Growth **$149**, Scale **$249**, Enterprise |
-| Metric | Seats: 5 / 20 / unlimited | Monthly escalated tickets: 150 / 600 / 2,500 |
-| Trial | 14 days, no card | one-time free 90-day Historical Review, then 14 days |
-
-The `$299/$699` pilot pricing in `plans/05` is obsolete and must not be reintroduced. Phase 18 itself rejects seat pricing, so the page and the strategy disagree. Please answer three things: (1) which of the two models is current; (2) what each of the 10 customers actually pays or was quoted (a count per plan is enough, no names); (3) whether the pricing page should change to match, now or later. Answering (1) and (2) unblocks N4.3 plan names and N6.
+What is still open is data, not a decision: which plan each of the 10 customers actually pays or was quoted. That is roadmap N4.7 (enter it in the admin tenant page); a count per plan is enough, no names.
 
 ## Deploy-time steps from H-11 and H-12
 
@@ -200,4 +192,4 @@ Not H items, but they are owed when these changes reach production and were flag
 
 ## N1 readiness
 
-**Update 2026-09-30: H-1 and H-4 are closed (each with the accepted limitation recorded above), so N1's entry gate is met and N1 is unblocked.** N1's declared entry gate was **H-1 and H-4** (roadmap phase table and the Production Hygiene preamble). With both closed, N1 needs no further roadmap audit: N1.0 ("H-1 recorded, backup restored into the scratch DB") is then satisfied except the backup restore, which is N1's own first task (`scripts/restore-drill.sh` exists). H-2, H-6, H-8, H-9 and H-10 do not gate any N-phase (H-5 gates N5.4 and N8-S6 and is done). What could still surprise N1: an UNEXPLAINED row from H-4 becoming a correctness task, which is what H-4 exists to surface.
+**Update 2026-09-30: H-1 and H-4 are closed (each with the accepted limitation recorded above), so N1's entry gate is met and N1 is unblocked.** N1's declared entry gate was **H-1 and H-4** (roadmap phase table and the Production Hygiene preamble). With both closed, N1 needs no further roadmap audit: N1.0 ("H-1 recorded, backup restored into the scratch DB") is then satisfied except the backup restore, which is N1's own first task (`scripts/restore-drill.sh` exists). H-2 (since closed), H-6, H-8, H-9 and H-10 do not gate any N-phase (H-5 gates N5.4 and N8-S6 and is done). What could still surprise N1: an UNEXPLAINED row from H-4 becoming a correctness task, which is what H-4 exists to surface.

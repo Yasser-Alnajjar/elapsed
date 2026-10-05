@@ -1,6 +1,8 @@
 # 05 — Go-To-Market, 30-Day Validation & Kill Criteria
 **Phases 19–21.**
 
+> **Historical (roadmap Rev 5/6).** The validation-first plan, the `$299 / $699` paid pilots and the kill criteria built around the first five customers were superseded when the product went live with 10 customers (roadmap D11 closed as superseded, 2026-09-29). Ongoing measures now live in the roadmap's Validation Metrics and Review Triggers. Pricing is governed by roadmap D14 (Starter $49, Team $149, Enterprise Custom); the pilot prices below must not be reintroduced. Kept unedited for traceability.
+
 ---
 
 # Phase 19 — Go-To-Market
@@ -42,7 +44,7 @@ Move to OAuth only for paid pilots, after the analysis has proven the value.
 | **Required data** | Zendesk ticket export with audit/event history + Jira issue export with changelog, 90 days. Nothing else. |
 | **Integration setup** | None during validation. OAuth only at pilot. |
 | **Time-to-value** | 48 hours in concierge mode; under 15 minutes once the product exists |
-| **Pilot structure** | 30 days, **paid** — $299 or $699 depending on volume. Free pilots validate politeness, not demand. Discount to first-customer pricing if needed, but never to zero. |
+| **Pilot structure** | 30 days, **paid** — $299 or $699 depending on volume (**obsolete pilot pricing, not current pricing; see roadmap D14**). Free pilots validate politeness, not demand. Discount to first-customer pricing if needed, but never to zero. |
 | **Success criteria** | The customer logs in ≥3×/week, acts on ≥1 at-risk alert, and the monthly report gets forwarded to someone more senior. That last signal is the strongest predictor of renewal. |
 | **Conversion** | Convert at day 30 to a rolling monthly subscription. Ask for an annual commitment only after a customer has renewed monthly twice. |
 
@@ -99,7 +101,7 @@ What to watch for, in order of importance:
 
 Make the ask, directly, to every one of the 12–15:
 
-> "I'm building this. A 30-day pilot is $299/month for up to 150 escalations, or $699 if you're over that. I'll set it up personally. Are you in?"
+> (Obsolete pilot script, not current pricing.) "I'm building this. A 30-day pilot is $299/month for up to 150 escalations, or $699 if you're over that. I'll set it up personally. Are you in?"
 
 Then, for anyone who says yes: **immediately test the real blocker.** Ask them to get the Jira OAuth grant approved *before* taking payment. Whether that approval happens, how long it takes, and who blocks it is the single most valuable data point in the entire 30 days — and it cannot be learned any other way.
 
@@ -116,7 +118,7 @@ Then, for anyone who says yes: **immediately test the real blocker.** Ask them t
 | Analyses producing a finding the customer did not already know | ≥ 3 of 5 | 5 of 5 |
 | Analyses where a number was disputed as wrong | ≤ 1 of 5 | 0 |
 | Forwarded the analysis to someone else | ≥ 2 of 5 | 4+ |
-| **Paid pilots agreed at ≥ $299/mo** | **≥ 3** | 5+ |
+| **Paid pilots agreed at ≥ $299/mo** (obsolete pilot price; see D14) | **≥ 3** | 5+ |
 | Jira OAuth approved within 10 days of asking | ≥ 2 of 3 | 3 of 3 |
 
 ---
@@ -143,7 +145,7 @@ Explicit thresholds, decided in advance so the decision on 5 October is a readin
 | **More than 1 of 5** analyses produce a number the customer credibly disputes | **STOP AND FIX** before selling anything. A trust product cannot ship wrong arithmetic. |
 | Fewer than **9 of 15** use the official link rather than pasted URLs | **REPIVOT** the wedge to a single-system product (Jira-only cross-project), where correlation is not required |
 | 5-minute active-set polling proves infeasible on real rate limits | **RESCOPE** to resolution-only commitments (4h+), where 15-minute polling suffices. Not a kill. |
-| Getting to a first insight requires a setup call in **more than 3 of 5** cases | **KILL the self-serve model.** At $299–699/mo, a product needing onboarding calls does not have viable economics for one person. |
+| Getting to a first insight requires a setup call in **more than 3 of 5** cases | **KILL the self-serve model.** At $299–699/mo (obsolete pilot pricing), a product needing onboarding calls does not have viable economics for one person. |
 
 ## Market
 

@@ -2,7 +2,7 @@
 
 > **Roadmap phase:** [N7 in `ROADMAP_Product.md`](ROADMAP_Product.md#phase-n7--third-ticket-source). Task status lives in the roadmap. This file explains **how**.
 > **Depends on:** [N2](02-provider-contract-and-projector.md) (contract, projector, registries) and [N3](03-provider-isolation-and-freshness.md) (freshness applies automatically). It is sequenced after [N6](06-entitlements-and-billing.md) in the roadmap chain. Because N6 is trigger-based, N7 may start once N5 is done if N6's trigger has not fired; record that in the roadmap when it happens.
-> **Decision needed:** D29, which provider, chosen by evidence (customer or prospect demand), from the candidates Freshdesk, Pylon and HubSpot.
+> **Decision (closed, roadmap D29):** the third ticket source is **Zoho Desk**, for the Egyptian market. Due diligence: [`d29-zoho-desk-due-diligence.md`](d29-zoho-desk-due-diligence.md). Freshdesk, Pylon and HubSpot remain future candidates. The N7.1 spike kill criteria in that record still apply.
 > **Estimate:** 3–4 weeks. **Branch:** `phase/n7-third-ticket-source`.
 
 ---
@@ -15,15 +15,18 @@ Add a third ticket-source provider **with zero changes to `@sla/core`, `@sla/com
 
 The 2×2 matrix proves the boundary for providers that existed while the boundary was drawn. A provider added afterwards is the real test of the contract. It also answers the business question behind review trigger "change provider priority": which helpdesk the next customers use.
 
-## 3. Choosing the provider (D29)
+## 3. The provider (D29: Zoho Desk)
 
-- **Evidence required:** at least 2 customers or qualified prospects using that helpdesk, recorded in the roadmap. No theory-only choice.
+**Decided.** The old evidence rule (at least two customers or prospects on the same helpdesk, chosen from Freshdesk, Pylon or HubSpot) is **removed**; N7 is triggered by the recorded Zoho Desk demand and Egyptian-market decision (D29). D29 adopts Zoho Desk. It is technically compatible with the existing provider contract and shared projector, with no change to the core domain model. Use Zoho's API for backfill and incremental reconciliation; use webhooks only where the customer's edition supports them, keeping polling/reconciliation as the correctness mechanism. The checks below are now the N7.1 spike's pass/fail criteria for Zoho Desk, not a selection process; if one fails, stop and record it in the roadmap.
+
+**Technical checks (kept as the spike checklist):**
+
 - **Also check before committing:**
   - The provider has a read-only OAuth or API-token model.
   - It has an incremental change API or audit log.
   - It has an account/company concept for `CustomerIdentity`, or a documented fallback like Intercom's contact.
   - Its tickets are linked to Jira or Linear in a way the tracker exposes as a URL or reference.
-- **If no provider meets the evidence bar, N7 does not start.** Record that in the roadmap instead.
+- **If the N7.1 spike fails the technical kill criteria** in [`d29-zoho-desk-due-diligence.md`](d29-zoho-desk-due-diligence.md) §13, N7 stops and the failure is recorded in the roadmap.
 
 ## 4. Tasks, in implementation order
 

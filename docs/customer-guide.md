@@ -85,7 +85,7 @@ Go to the sign-up page and provide:
 
 There is no company profile to fill in, no product tour, and no onboarding survey. Creating an account immediately creates a new, empty organization and signs you in.
 
-> **Note on teams:** each sign-up creates a brand-new organization. There is currently no self-service "invite a teammate to my existing organization" flow — see [Section 27](#27-product-limitations) and the FAQ.
+> **Note on teams:** each sign-up creates a brand-new organization and makes you its **owner**. To add teammates to that organization, invite them from Settings → Members (see [Section 22](#22-security-and-access)); a teammate who signs up on their own gets a separate organization.
 
 ### Step 2 — Connect Zendesk
 
@@ -108,6 +108,8 @@ Jira is optional at this stage, but it's what turns on the escalation timeline �
 - **What is read:** issues (via JQL search), each issue's changelog (status transitions), and remote links (used to find the Zendesk ticket a Jira issue is linked to).
 - **What is never changed:** nothing. No issue, comment, status, or field in Jira is ever created, updated, or deleted.
 - **If you skip this step:** onboarding continues with Zendesk data alone. You can connect Jira later from Settings → Integrations with no loss of history — the 90-day backfill runs from whenever you connect it, not from your Zendesk connection date.
+
+> **If you are not the person who can approve Jira (or Linear):** an owner can create a **connect link** from the tracker step of onboarding and send it to the tracker's administrator. The link works for one organization and one provider (Jira or Linear), can be used once, and expires after 72 hours. The administrator opens it and approves the same read-only connection; they do not need an Elapsed account. Once the connection succeeds the link is consumed and the integration is recorded as connected through it.
 
 > **A note for whoever approves the Jira connection:** the scope requested is read-only, and this document states plainly what is and isn't read. If your organization requires a security review before granting API access, everything above is what that review needs to evaluate.
 
@@ -527,6 +529,7 @@ There are two notification channels, and only one is self-service today.
   - Breach: `🚨 First response SLA breached — #4821 for Acme Corp, over target by 1h 12m.`<br>`Policy: Urgent SLA · Target: 2h · Started: Sep 17, 2026, 09:00 UTC · Breached: Sep 17, 2026, 11:12 UTC`<br>`View ticket` (link)
   - At risk: `⚠️ Resolution SLA at risk — #4821 for Acme Corp, 80% of target used, 1h 36m remaining.`<br>`Policy: Standard SLA · Target: 8h · Started: Sep 17, 2026, 09:00 UTC`<br>`View ticket` (link)
 - **When notifications are sent:** the moment a first-response or resolution commitment crosses a warning threshold (50/80/95%) or breaches, checked on every sync cycle (at minimum every 5 minutes for open cases) and immediately on a Zendesk/Jira webhook delivery if configured.
+- **When the source data is stale:** if the integration a case comes from has not synced successfully for a while (see [Data freshness](#data-freshness)), an **at-risk** alert is still sent, marked with the time the data went stale. A **breach** alert is **held** until the source is fresh again; once it is, the case is re-evaluated and the breach alert is sent only if the breach is confirmed. A held alert is sent exactly once.
 - **Deduplication:** each commitment/threshold combination alerts at most once, ever — a poll that runs twice, or a webhook that fires alongside a scheduled poll, cannot double-alert.
 - **What happens when a notification fails:** the failure is recorded internally; it does not block the same alert from being attempted through the other configured channel (email), and it does not stop other cases from being evaluated or alerted.
 
@@ -554,7 +557,15 @@ A separate endpoint (`/api/reports/commitments`) generates a complete CSV of **e
 
 **Where to find it:** the **Export full report** button beside the _SLA Analytics_ heading on the dashboard. The file is built in one pass rather than streamed, so an organization with a very large commitment history may wait a few seconds for the download to start.
 
-**Not currently available:** PDF export. Do not expect a formatted, presentation-ready report — the current export is CSV only.
+### Monthly report
+
+Once a month Elapsed sends a report for the **previous calendar month** (in your organization's time zone).
+
+- **By email:** to every member of your organization, with the month's data attached as a **CSV**. It uses your organization's email settings, so email must be configured for it to arrive.
+- **In Slack:** a message in your connected alert channel, if Slack is connected.
+- **Once per month:** each channel gets the report at most once per organization and month. A month with no activity is skipped, and an organization created after the month ended is not sent a report for it.
+
+**Not currently available:** PDF export. Do not expect a formatted, presentation-ready report: exports are CSV only, and the monthly report is an email with a CSV attached.
 
 ---
 
@@ -604,6 +615,14 @@ Every setting that exists in the product today, in one place.
 
 ---
 
+### Data freshness
+
+Elapsed records when each integration last synced successfully. An integration is treated as **stale** once that is older than **three times its expected sync interval** (so about 15 minutes with the default 5-minute active polling), or if it has never synced. Staleness never changes how SLA time is calculated; it labels the data so you know how far to trust it.
+
+- **Where you see it:** a banner on the dashboard and on affected cases ("Data stale since …"), the case detail page, and the integration's status in Settings → Integrations, each with the time it went stale.
+- **Alerts:** at-risk alerts carry a stale-data marker and breach alerts are held until the data is fresh (see [Section 16](#16-notifications)).
+- **What to do:** check the integration's status for a reconnect or permission prompt (see Troubleshooting → Integration needs reauthentication).
+
 ## 21. Data Accuracy and Limitations
 
 This product's entire value depends on its numbers being trustworthy — so this section says plainly where the numbers can be incomplete, approximate, or simply not produced yet.
@@ -632,8 +651,8 @@ When the product cannot confidently determine something — a link, a leg bounda
 - **Organization isolation:** every customer, case, integration, and setting is scoped to your organization; a request for a case that doesn't belong to your organization is treated as not found.
 - **Assignee names:** the case header (Section 12) shows the currently-assigned agent's display name, resolved from Zendesk's `assignee_id` or Intercom's `admin_assignee_id`. Only the name is stored — never the provider's internal numeric id — and it is display only: never used for policy matching, routing, scoring, or any calculation. It updates on the next sync after a reassignment; there is no history of past assignees.
 - **Credential storage:** OAuth tokens for connected integrations, and the OAuth application credentials you configure for your organization, are stored encrypted. Disconnecting an integration clears its stored credentials.
-- **Multi-user access:** the data model supports multiple users per organization, but the current sign-up flow always creates a brand-new organization along with the new user — there is no self-service "invite a teammate" flow today. See the FAQ.
-- **Permissions/roles:** not currently implemented. Any signed-in user in an organization has the same access to every screen and setting.
+- **Team members and invitations:** an owner invites a teammate by email from Settings → Members. The invitation is valid for 7 days and can be revoked or resent. The invitee accepts it and joins your organization; they do not get a separate one. Owners can change a member's role and remove members, and an organization always keeps at least one owner.
+- **Roles:** there are two, **owner** and **member**. Owners can connect and disconnect integrations, change SLA policies, calendars and the engineering target, edit organization and email settings, manage members and invitations, and manage billing. Members cannot make those changes. There are no roles beyond these two, and no SSO/SAML.
 - **Compliance certifications, data residency, and retention policy:** not currently documented in the implementation. If these are requirements for your organization, raise them directly with your account contact rather than assuming a specific answer from this document.
 
 ---
@@ -711,6 +730,7 @@ When the product cannot confidently determine something — a link, a leg bounda
 
 - **Symptom:** a known recent change in Zendesk/Jira hasn't shown up yet.
 - **Expected behavior:** allow up to 5 minutes for an active case under normal polling, or up to 30 minutes in the worst case (reconciliation-only), unless a webhook is configured for that provider (Zendesk/Jira only).
+- **When it is flagged:** if an integration has not synced successfully for more than three times its expected interval, Elapsed marks its data as stale (see [Data freshness](#data-freshness)).
 
 ### Integration needs reauthentication
 
@@ -773,7 +793,7 @@ You can override a policy's first-response/resolution target minutes from Settin
 It's marked "Needs reconnect," a banner appears with a one-click fix, other integrations and organizations keep syncing normally, and no history is lost.
 
 **Can multiple users access the same organization?**
-The data model supports it, but the current sign-up flow always creates a new organization along with a new user — there is no self-service invite flow to add a teammate to an existing organization today.
+Yes. An owner invites teammates by email from Settings → Members. Invited users join the existing organization with the role **member** unless an owner makes them an owner. A user who signs up without an invitation gets a new, separate organization.
 
 **What data does SLA store?**
 The raw data returned by each connected system's API, a normalized (provider-independent) version of every event, the customers/cases/commitments derived from it, and point-in-time evaluation snapshots. No data beyond what's described in each integration's section is collected.
@@ -841,13 +861,16 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 - Case timeline with full activity history and "how this was calculated" disclosure
 - Statistical cycle-time anomaly detection on the dashboard
 - Slack alerts (one channel per organization) and email alerts (deployment-configured)
-- CSV export (in-page, and a full compliance report reachable by direct URL)
+- CSV export (in-page, and a full compliance report reachable by direct URL) and a monthly report by email and Slack
+- Team invitations with owner and member roles
+- Plans, a 14-day trial and owner-managed subscriptions (Section 29)
+- Data-freshness labelling of stale integrations, with held breach alerts
 - Real-time webhooks for Zendesk and Jira, supplementing the poll schedule
 
 ### Partially Supported
 
 - **Reports/export:** the full compliance CSV works but has no in-app button linking to it yet.
-- **Onboarding progress:** live counters cover Zendesk and Jira only; Intercom/Linear/GitHub backfill status is visible on the Integrations page instead.
+- **Onboarding progress:** the live counters count tickets from your connected ticket source (Zendesk or Intercom) and escalations and linked issues from Jira or Linear; GitHub backfill status is visible on the Integrations page instead.
 - **Tier-based SLA policy matching:** the engine supports it, but no current integration populates a tier value, so it has no practical effect today.
 - **Webhooks:** available for Zendesk and Jira only; Intercom, Linear, and GitHub are polling-only.
 
@@ -855,9 +878,9 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 
 - Manual case-link creation or confirmation of a "probable" match (the underlying data model reserves fields for this, but no path in the product creates or exposes it today)
 - Per-policy pause-state configuration or custom warning-threshold percentages
-- PDF export or scheduled/recurring report delivery
-- Single sign-on (SSO/SAML) or role-based permissions
-- Self-service team invites to an existing organization
+- PDF export (exports are CSV; the monthly report is emailed with a CSV attached)
+- Single sign-on (SSO/SAML), and roles beyond owner and member
+- Paying by card or wallet inside the product (no payment provider is integrated; invoices are direct, see Section 29)
 - Financial or service-credit calculations of any kind
 - AI-generated summaries, predictions, or recommendations
 - A public API
@@ -901,3 +924,23 @@ That case detail page — timeline, leg breakdown, calculation disclosure, and l
 - [ ] SLA policies and calendars reviewed and corrected where needed
 - [ ] Slack channel selected (and/or email confirmed with your account contact)
 - [ ] Dashboard reviewed by whoever owns the SLA number day to day
+
+---
+
+## 29. Plans, Trial and Billing
+
+**Plans.** Pricing is flat, monthly and in US dollars. Seats never change the price.
+
+| Plan | Price | Seats | Integrations | Native SLA policies |
+|---|---|---|---|---|
+| Starter | $49 / month | 5 | 1 support and 1 engineering | 3 |
+| Team | $149 / month | 20 | Unlimited | Unlimited |
+| Enterprise | Custom (talk to us) | Unlimited | Unlimited | Unlimited |
+
+- **Imported policies do not count** toward the policy limit; only policies you create in Elapsed do.
+- **Trial.** Every new organization starts with a 14-day trial.
+- **Limits are warnings.** Going over a plan's seat, integration or native-policy limit shows a warning with how to upgrade. It does not stop monitoring, alerts or access to your history.
+- **After a trial ends.** Cases, SLA monitoring, alerts, the dashboard and your history keep working, and the owner is emailed. Adding new members, integrations or native policies is blocked until you subscribe. This applies when plan enforcement is switched on for your deployment.
+- **Who can change the plan.** Only an organization owner can subscribe, change plans, change seats or cancel, from the Pricing page (which leads to Review & Subscribe) or the Billing page. Members can see the current plan and entitlements and read invoices.
+- **How changes take effect.** An upgrade applies immediately and is invoiced pro rata. A downgrade is scheduled for the end of the billing period and can be withdrawn before then. Cancellation takes effect at the end of the period and can be resumed until then. Enterprise is arranged with us, not self-served.
+- **Payment.** Invoices are issued directly, due in 14 days, and an operator records them as paid. Paying by card or wallet inside the product is not available yet, and invoice PDFs and invoice emails are not available yet.

@@ -9,7 +9,7 @@ The stack consists of:
 - Background worker
 - Prisma database migrations
 
-> **Important:** The production Compose file intentionally does **not** run Prisma migrations automatically. Migrations must be applied explicitly before starting the application containers.
+> **Important:** `docker-compose.yml` runs Prisma migrations automatically. A one-shot `migrate` service applies every pending migration and exits 0, and `web` and `worker` declare `depends_on: migrate: condition: service_completed_successfully`, so they cannot start against an unmigrated schema. The steps below that run `migrate` by hand are only for applying migrations on their own (for example before a risky deploy, or to see their output) and are otherwise optional. See [deployment.md](deployment.md).
 
 ---
 
@@ -24,7 +24,7 @@ pwd
 Make sure the repository contains:
 
 ```text
-docker-compose.prod.yml
+docker-compose.yml
 .env.prod
 apps/
 packages/
@@ -77,20 +77,20 @@ Use this only when existing local Docker database data can be deleted.
 Run:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   down -v --remove-orphans
 ```
 
 Verify that the project containers are gone:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps -a
+docker compose -f docker-compose.yml --env-file .env.prod ps -a
 ```
 
 Optionally verify the project volume:
 
 ```bash
-docker volume ls | grep sla
+docker volume ls | grep postgres-data
 ```
 
 A clean reset should not leave the previous PostgreSQL data volume in place.
@@ -102,20 +102,20 @@ A clean reset should not leave the previous PostgreSQL data volume in place.
 Start only PostgreSQL:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d postgres
 ```
 
 Verify:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.yml --env-file .env.prod ps
 ```
 
 Expected:
 
 ```text
-sla-postgres-1   postgres:16-alpine   ...   Up
+postgres   postgres:16-alpine   ...   Up
 ```
 
 The output may show:
@@ -130,23 +130,20 @@ PostgreSQL does not need to expose port `5432` to the host because the applicati
 
 ---
 
-# 4. Apply Prisma Migrations
+# 4. Apply Prisma Migrations (optional: `up` does it for you)
 
-## This step is mandatory
+## Migrations run automatically
 
-The application containers do not create the database schema automatically.
+The PostgreSQL database starts empty after a fresh Docker volume. The `migrate` service creates the schema when you run `up` (section 6), and `web` and `worker` wait for it to finish successfully.
 
-The PostgreSQL database starts empty after a fresh Docker volume.
-
-Run the migration using the project's `@sla/db` package:
+To apply migrations on their own, run the same service:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 ```
 
-### Why this command?
+### If you run Prisma yourself (rare)
 
 The repository is a pnpm monorepo.
 
@@ -207,13 +204,13 @@ P1001 Can't reach database server
 check that PostgreSQL is running:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.yml --env-file .env.prod ps
 ```
 
 Then check PostgreSQL logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs postgres
 ```
 
@@ -224,14 +221,14 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod \
 After migrations successfully complete:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d --build
 ```
 
 Check the complete stack:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.yml --env-file .env.prod ps
 ```
 
 Expected services:
@@ -249,28 +246,28 @@ worker
 ### Web
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 web
 ```
 
 ### Worker
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 worker
 ```
 
 ### PostgreSQL
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 postgres
 ```
 
 Follow worker logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs -f worker
 ```
 
@@ -281,22 +278,21 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod \
 For a normal deployment where the PostgreSQL data must be preserved:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d --build
 ```
 
-Then apply any new Prisma migrations:
+The `up` above runs the `migrate` service first, so any new Prisma migrations are applied before `web` and `worker` start. To apply them on their own first (for example before a risky deploy):
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 ```
 
-Then restart the application containers:
+Then (re)start the application containers if you ran `migrate` separately:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d
 ```
 
@@ -310,24 +306,23 @@ Use this procedure when intentionally starting with a completely new database.
 
 ```bash
 # 1. Remove containers, networks and database volume
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   down -v --remove-orphans
 
 # 2. Start PostgreSQL
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d postgres
 
-# 3. Apply Prisma migrations
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+# 3. (Optional) apply Prisma migrations on their own; `up` below also runs them
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 
 # 4. Build and start the application
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d --build
 
 # 5. Verify
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.yml --env-file .env.prod ps
 ```
 
 ---
@@ -385,22 +380,21 @@ instead of the Docker PostgreSQL service.
 Prefer:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 ```
 
 ---
 
-## Mistake 2 — Starting the worker before migrations
+## Mistake 2 — Bypassing the `migrate` service
 
-This can produce errors such as:
+`docker-compose.yml` blocks `web` and `worker` until `migrate` succeeds, so this only happens if you start the containers some other way (for example `docker run` or a different Compose file). It can produce errors such as:
 
 ```text
 The table `public.worker_settings` does not exist
 ```
 
-Always migrate first.
+Run `migrate` first, or start the stack with `docker compose up`, which does it for you.
 
 ---
 
@@ -450,21 +444,20 @@ do not repeatedly restart the worker.
 Check PostgreSQL:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+docker compose -f docker-compose.yml --env-file .env.prod ps
 ```
 
 Then run:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 ```
 
 After migration succeeds:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d
 ```
 
@@ -475,47 +468,45 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod \
 ### Fresh local environment
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   down -v --remove-orphans
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d postgres
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d --build
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   ps
 ```
 
 ### Normal deployment
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d --build
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  run --rm --user root worker \
-  pnpm --filter @sla/db exec prisma migrate deploy
+docker compose -f docker-compose.yml --env-file .env.prod \
+  run --rm migrate
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   up -d
 ```
 
 ### Logs
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 web
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 worker
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod \
+docker compose -f docker-compose.yml --env-file .env.prod \
   logs --tail=100 postgres
 ```
 

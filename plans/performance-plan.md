@@ -1,5 +1,7 @@
 # Performance plan — roadmap 7.7 (5k cases / 210k events)
 
+> **Closed (roadmap Rev 6, 2026-10-05).** Roadmap 7.7 was carried to H-7, which is done: the results and the documented capacity limits are in [`docs/capacity-limits.md`](../docs/capacity-limits.md). One follow-up was proposed there and not added to the roadmap: bound the dashboard's by-stage leg load (`/dashboard` is the one surface that still grows linearly). This file is kept as the plan and its method.
+
 ## Context
 With the perf-baseline seed (`pnpm db:seed:perf-baseline`), the dashboard, case list, case detail and worker are all slow. The root cause is the **amount of work**, not one bad query:
 - Almost every web path loads **all** open commitments plus **all** their events and re-runs `evaluateCommitment` in JS, several times per request (layout + page + analytics).

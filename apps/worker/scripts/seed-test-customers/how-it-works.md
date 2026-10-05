@@ -52,4 +52,4 @@ Useful options:
 ... cli.ts seed --anchor=now
 ```
 
-`--no-deps` assumes the Compose Postgres service is already running. The `postgres` hostname is correct only from inside the Compose network. The seed intentionally makes no Zendesk, Jira, Slack, SMTP, or other network calls, but it does write substantial database fixture data. [CLI behavior](/Users/yasseralnajjar/Workspace/ideas/SLA-breach-monitoring/apps/worker/scripts/seed-test-customers/cli.ts:1) · [seed scope](/Users/yasseralnajjar/Workspace/ideas/SLA-breach-monitoring/apps/worker/scripts/seed-test-customers/seed.ts:1)
+`--no-deps` assumes the Compose Postgres service is already running. The `postgres` hostname is correct only from inside the Compose network. The seed intentionally makes no Zendesk, Jira, Slack, SMTP, or other network calls, but it does write substantial database fixture data. [CLI behavior](cli.ts) · [seed scope](seed.ts)

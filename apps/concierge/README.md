@@ -1,5 +1,7 @@
 # Concierge analysis
 
+> **Superseded plan, tool still present.** The validation-first plan (`plans/05`) that this tool was built for was superseded when the product went live with customers (roadmap D11, Rev 5/6). The code remains as an internal export and analysis aid (for example the `/internal/concierge/*` export pages); it is not part of a current validation programme.
+
 Validation Week 3 (`plans/05`): turn a prospect's Zendesk and Jira CSV exports
 into a one-page findings report within 48 hours, with no OAuth, database or UI.
 

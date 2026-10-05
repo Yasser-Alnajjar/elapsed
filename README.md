@@ -22,20 +22,31 @@ App with read-only repository permissions; see the
 ```text
 apps/
   web/         Next.js app: sign-in, onboarding, dashboard, cases, settings,
-               webhook receivers, in-app /docs
-  worker/      Background poller: token refresh, ingestion, SLA evaluation,
-               notifications
+               billing and pricing, Platform Admin (/admin), webhook
+               receivers, in-app /docs
+  worker/      Background workers: per-organization scheduling with leases
+               (any number of workers can run side by side), token refresh,
+               ingestion, SLA evaluation, notifications, monthly reports
+  concierge/   CLI that turns Zendesk and Jira CSV exports into a one-page
+               findings report (an internal aid; its validation plan is
+               superseded)
 packages/
   core/        Pure SLA/OLA engine: business-hours calendars, elapsed time,
-               leg attribution, evaluation
+               leg attribution, evaluation, freshness
   commitments/ Commitment creation and evaluation pipelines
-  db/          Prisma schema, migrations, client, secret encryption
+  ingestion/   Provider adapter contract, shared projector and shared errors
+  db/          Prisma schema, migrations, client, secret encryption, plans,
+               entitlements and the internal billing domain
   zendesk/ intercom/ jira/ linear/ github/
                Provider adapters: OAuth, backfill, normalization
+  http-retry/  Shared retry and timeout handling for provider requests
+  logger/      Structured JSON logging
   slack/ email/ notifications/
-               Alert channels and delivery
-implementation-plans/  Build roadmap and production-readiness audit
-plans/                 Product research and strategy
+               Alert channels and delivery, and the monthly report
+implementation-plans/  Product roadmap (ROADMAP_Product.md), per-phase
+                       implementation plans and decision records
+plans/                 Product research and strategy (historical)
+docs/                  Customer guide, deployment, runbooks, capacity limits
 ```
 
 ## Running locally

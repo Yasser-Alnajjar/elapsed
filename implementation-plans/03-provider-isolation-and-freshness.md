@@ -61,19 +61,14 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
   - L1 replay with all integrations fresh shows 0 differences in status and `breachedAt`.
   - New `apps/web/test` real-DB test: a stale source sets `sourceStaleSince` and leaves status unchanged.
 
-### N3.4 — Decide D13 (owner) ⛔
-**Options:**
-- (a) Send at-risk and breach alerts marked "source data stale since …".
-- (b) Send at-risk alerts marked, and hold breach alerts until the source is fresh again, then send or drop them based on re-evaluation.
-- (c) Hold all alerts for stale-source cases.
+### N3.4 — D13 (decided: option b)
+**Decision (roadmap D13):** when a case's source integration is stale, send at-risk alerts with a clear stale-data marker ("data stale since …") and **hold breach alerts until the source is fresh again**. Once it is fresh, re-evaluate the case and send a breach alert only if the breach is confirmed.
 
-**Recommendation:** (b). A false "breached" message is the most trust-damaging outcome. At-risk alerts remain useful because they are actionable.
-
-Record the decision in the roadmap's Product Decisions.
+**Options considered:** (a) send both marked stale; (b) mark at-risk and hold breach; (c) hold everything. (b) was chosen because a false "breached" message is the most trust-damaging outcome, while at-risk alerts stay actionable.
 
 ### N3.5 — Freshness-aware notifications (per D13)
 - `packages/notifications`: add a staleness caveat in `format.ts` and `email-template.ts`, in neutral wording ("Zendesk data last refreshed at …"). The provider name comes from the integration row, not from code branches.
-- If D13 holds some alerts:
+- D13(b) holds breach alerts for stale sources:
   - A held alert must **not** consume its `(commitmentId, threshold)` claim.
   - `claimNotifications` skips held candidates, and they become eligible on the first fresh tick.
   - `canRaiseAlert`'s finalized-commitment rule still applies.
