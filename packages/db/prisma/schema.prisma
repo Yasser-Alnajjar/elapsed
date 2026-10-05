@@ -379,13 +379,12 @@ model Customer {
   /// per-org exactly as before. Must reference a `BusinessCalendar` in the
   /// same organization (enforced in `packages/commitments`, not the schema).
   calendarId        String?
-  /// The specific `BusinessCalendarVersion` frozen in at the moment
-  /// `setCustomerCalendar` last assigned `calendarId` (4d) — kept in lockstep
-  /// with `calendarId` (set/cleared together), so this override pins to a
-  /// calendar version exactly like a native policy's own explicit calendar
-  /// assignment does, instead of silently picking up a newer version on
-  /// every commitment-creation run. A later calendar edit only takes effect
-  /// once the override is explicitly re-set (even to the same calendar).
+  /// The `BusinessCalendarVersion` that was latest when `setCustomerCalendar`
+  /// last assigned `calendarId` (4d) — kept in lockstep with `calendarId`
+  /// (set/cleared together). It identifies *which calendar* overrides; a new
+  /// commitment anchors to that calendar's current latest version (D1b), so a
+  /// later calendar edit reaches this customer's new commitments. Existing
+  /// commitments stay frozen on their own `Commitment.calendarVersionId`.
   calendarVersionId String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -588,16 +587,17 @@ model SLAPolicyVersion {
   /// Whether a calendar was explicitly chosen for this version (4i) — a
   /// native policy version created/edited without picking a calendar has
   /// this `false`. `calendarVersionId` above always holds a usable version
-  /// either way (an explicit pin when this is `true`, otherwise a snapshot
-  /// resolved at save time purely for display/backward compatibility); only
-  /// when this is `true` does a *new* commitment freeze onto
-  /// `calendarVersionId` itself — otherwise commitment creation re-resolves
+  /// either way (when this is `true` it identifies the chosen calendar,
+  /// otherwise it is a snapshot resolved at save time purely for
+  /// display/backward compatibility). When `true`, a *new* commitment
+  /// anchors to the *current latest* version of that calendar (D1b), not
+  /// necessarily `calendarVersionId` itself — otherwise commitment creation re-resolves
   /// fresh to the organization's current default calendar, or the system
   /// Always Open calendar (`resolveEffectiveCalendarVersion`,
   /// packages/commitments). Defaults to `true` — at the database level, not
   /// just in Prisma Client — so every pre-4i version, and any row written
   /// without knowing this field exists at all (direct inserts, test
-  /// fixtures), keeps its calendar pinned exactly as before; only
+  /// fixtures), keeps naming its calendar explicitly; only
   /// `createNativePolicy`/`updateNativePolicy` ever write `false`, and only
   /// when the caller explicitly leaves the calendar unset.
   calendarIsExplicit Boolean                @default(true)
@@ -708,7 +708,7 @@ model BusinessCalendarVersion {
   calendar       BusinessCalendar   @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   commitments    Commitment[]
   policyVersions SLAPolicyVersion[]
-  /// Customers whose calendar override (4d) is frozen onto this exact
+  /// Customers whose calendar override (4d) was recorded against this exact
   /// version — the inverse of Customer.calendarVersionId.
   customerOverrides Customer[]      @relation("CustomerCalendarVersion")
 

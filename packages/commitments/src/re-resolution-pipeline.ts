@@ -10,7 +10,11 @@ import {
 import { RE_RESOLUTION_ELIGIBLE_WHERE } from "./active-commitment";
 import { latestVersionPerPolicy, resolveCommitmentCalendarVersion, toCaseAttributes } from "./pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
-import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import {
+  currentCalendarVersion,
+  resolveEffectiveCalendarVersion,
+  resolveOrganizationCalendarFallback,
+} from "./calendar-fallback";
 import { toPolicyVersionDomain } from "./policy-domain";
 import { loadPolicyContext, type PolicyContext } from "./tick-context";
 
@@ -133,7 +137,7 @@ export async function runCommitmentReResolutionPipeline(
     casesFailed: [],
   };
 
-  const { policyVersionRows, customersWithCalendarOverride } =
+  const { policyVersionRows, customersWithCalendarOverride, currentCalendarVersionById } =
     options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
@@ -155,11 +159,14 @@ export async function runCommitmentReResolutionPipeline(
     policyVersionRows.map((row) => [row.calendarVersion.id, toCalendarVersionDomain(row.calendarVersion)]),
   );
 
-  // 4d: frozen at the moment the override was set (`Customer.calendarVersionId`), never the calendar's latest version.
+  // `Customer.calendarVersionId` only identifies the overriding calendar; the commitment anchors to that calendar's current version (D1b).
   const customerCalendarVersionByCustomerId = new Map<string, BusinessCalendarVersion>();
   for (const customer of customersWithCalendarOverride) {
     if (!customer.calendarVersion) continue;
-    customerCalendarVersionByCustomerId.set(customer.id, toCalendarVersionDomain(customer.calendarVersion));
+    customerCalendarVersionByCustomerId.set(
+      customer.id,
+      currentCalendarVersion(toCalendarVersionDomain(customer.calendarVersion), currentCalendarVersionById),
+    );
   }
 
   const cases = await prisma.case.findMany({
@@ -249,7 +256,7 @@ export async function runCommitmentReResolutionPipeline(
       const policyHasExplicitCalendar =
         matched.policySource !== "native" || (matched.calendarIsExplicit ?? true);
       const matchedPolicyCalendarVersion = policyHasExplicitCalendar
-        ? frozenCalendarVersion
+        ? currentCalendarVersion(frozenCalendarVersion, currentCalendarVersionById)
         : await resolveEffectiveCalendarVersion(
             matched.calendarIsExplicit,
             frozenCalendarVersion,

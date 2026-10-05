@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@sla/db";
+import type { BusinessCalendarVersion } from "@sla/core";
+import { toCalendarVersionDomain } from "./calendar-domain";
 
 /**
  * The per-organization reads the commitment, re-resolution and next-reply
@@ -15,6 +17,15 @@ import type { PrismaClient } from "@sla/db";
 export interface PolicyContext {
   policyVersionRows: Awaited<ReturnType<typeof loadPolicyVersionRows>>;
   customersWithCalendarOverride: Awaited<ReturnType<typeof loadCustomerCalendarOverrides>>;
+  /**
+   * Calendar version id -> that calendar's *current* (latest) version, for
+   * every calendar version a policy version or customer override references.
+   * A policy/override only identifies *which calendar* applies; a new
+   * commitment anchors to that calendar's version at creation time (D1b), so
+   * a calendar edit reaches every commitment created after it. See
+   * `currentCalendarVersion` (calendar-fallback.ts).
+   */
+  currentCalendarVersionById: Map<string, BusinessCalendarVersion>;
 }
 
 /** The owning-policy columns `toPolicyVersionDomain` reads; every policy-version loader includes exactly these. */
@@ -31,12 +42,38 @@ function loadPolicyVersionRows(prisma: PrismaClient, organizationId: string) {
 }
 
 function loadCustomerCalendarOverrides(prisma: PrismaClient, organizationId: string) {
-  // 4d: frozen at the moment a customer's calendar override was set
-  // (`Customer.calendarVersionId`), never the calendar's latest version.
+  // `Customer.calendarVersionId` only identifies the overriding calendar; new
+  // commitments anchor to that calendar's current version (see
+  // `loadCurrentCalendarVersions`).
   return prisma.customer.findMany({
     where: { organizationId, calendarVersionId: { not: null } },
     select: { id: true, calendarVersion: true },
   });
+}
+
+/**
+ * Resolves every referenced calendar version to the latest version of the
+ * calendar it belongs to — one query, regardless of how many versions exist.
+ */
+async function loadCurrentCalendarVersions(
+  prisma: PrismaClient,
+  referenced: readonly { id: string; calendarId: string }[],
+): Promise<Map<string, BusinessCalendarVersion>> {
+  const calendarIds = [...new Set(referenced.map((v) => v.calendarId))];
+  const latestRows = calendarIds.length
+    ? await prisma.businessCalendarVersion.findMany({
+        where: { calendarId: { in: calendarIds } },
+        orderBy: [{ calendarId: "asc" }, { version: "desc" }],
+        distinct: ["calendarId"],
+      })
+    : [];
+  const latestByCalendarId = new Map(latestRows.map((row) => [row.calendarId, toCalendarVersionDomain(row)]));
+  const current = new Map<string, BusinessCalendarVersion>();
+  for (const { id, calendarId } of referenced) {
+    const latest = latestByCalendarId.get(calendarId);
+    if (latest) current.set(id, latest);
+  }
+  return current;
 }
 
 export async function loadPolicyContext(prisma: PrismaClient, organizationId: string): Promise<PolicyContext> {
@@ -44,7 +81,11 @@ export async function loadPolicyContext(prisma: PrismaClient, organizationId: st
     loadPolicyVersionRows(prisma, organizationId),
     loadCustomerCalendarOverrides(prisma, organizationId),
   ]);
-  return { policyVersionRows, customersWithCalendarOverride };
+  const currentCalendarVersionById = await loadCurrentCalendarVersions(prisma, [
+    ...policyVersionRows.map((row) => row.calendarVersion),
+    ...customersWithCalendarOverride.flatMap((customer) => (customer.calendarVersion ? [customer.calendarVersion] : [])),
+  ]);
+  return { policyVersionRows, customersWithCalendarOverride, currentCalendarVersionById };
 }
 
 /** Postgres/Prisma `IN` lists are chunked at this size so a large organization never sends one enormous parameter list. */
