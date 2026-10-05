@@ -1,5 +1,5 @@
 import { computeSourceHash } from "./hash";
-import type { IntercomAdmin, IntercomCompany, IntercomContact, IntercomConversation, IntercomConversationPart } from "./types";
+import type { IntercomAdmin, IntercomCompany, IntercomContact, IntercomConversation, IntercomConversationPart, IntercomTicketPart } from "./types";
 
 /** What gets written to one RawEvent row, minus the integrationId FK. */
 export interface RawEventInput {
@@ -33,6 +33,28 @@ export function mapConversationPartToRawEvent(
     providerEventId: `conversation_part:${conversationId}:${part.id}`,
     sourceHash: computeSourceHash(part),
     payload: part,
+  };
+}
+
+/**
+ * A ticket part that changed the ticket's state, from `GET /tickets/{id}`.
+ * Like conversation parts, immutable and unique by id, so no hash suffix.
+ * Only the state fields are kept — the part's body and author details are
+ * already stored with its conversation part.
+ */
+export function mapTicketStatePartToRawEvent(conversationId: string, part: IntercomTicketPart): RawEventInput {
+  const payload = {
+    id: part.id,
+    part_type: part.part_type,
+    created_at: part.created_at,
+    previous_ticket_state: part.previous_ticket_state ?? null,
+    ticket_state: part.ticket_state ?? null,
+    ...(part.author ? { author: { type: part.author.type, id: part.author.id } } : {}),
+  };
+  return {
+    providerEventId: `ticket_part:${conversationId}:${part.id}`,
+    sourceHash: computeSourceHash(payload),
+    payload,
   };
 }
 

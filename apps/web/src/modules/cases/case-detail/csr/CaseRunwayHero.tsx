@@ -9,7 +9,7 @@ import type { CommitmentDetail } from "@/lib/types/cases";
 import type { Leg } from "@sla/core";
 import { commitmentStatusStyle } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
-import { useLiveRemaining } from "./useLiveRemaining";
+import { useLiveRemaining } from "@/lib/use-live-remaining";
 
 const STATUS_PRECEDENCE = ["breached", "at_risk", "on_track"] as const;
 

@@ -6,6 +6,7 @@ export {
   extractIntercomMessageBody,
   isVisibleMessagePart,
   normalizeIntercomPriority,
+  normalizeIntercomEffectiveState,
   normalizeIntercomState,
   resolveIntercomActor,
   sortPartsChronologically,
@@ -14,6 +15,7 @@ export {
 export type {
   ConversationPartRecord,
   DerivedNormalizedEvent,
+  TicketStatePartRecord,
   IntercomMessageBody,
 } from "./normalize";
 export {
@@ -22,6 +24,7 @@ export {
   mapContactToRawEvent,
   mapConversationPartToRawEvent,
   mapConversationToRawEvent,
+  mapTicketStatePartToRawEvent,
 } from "./rawEvents";
 export type { RawEventInput } from "./rawEvents";
 export * from "./types";

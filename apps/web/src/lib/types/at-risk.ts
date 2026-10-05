@@ -1,4 +1,4 @@
-import { Leg, CommitmentKind, CommitmentStatus } from "@sla/core";
+import { Leg, CommitmentKind, CommitmentStatus, ClockState } from "@sla/core";
 import type { PriorityTier } from "../format";
 import type { IntegrationProvider } from "./integrations";
 
@@ -24,6 +24,12 @@ export interface AtRiskRowData {
   requesterName: string | null;
   kind: CommitmentKind;
   remainingMinutes: number;
+  /** Business-time seconds left on the commitment at `asOf`: what the countdown shows while the clock is paused. */
+  remainingSeconds: number;
+  /** Whether the clock is running or paused; a paused clock does not count down. */
+  clockState: ClockState;
+  /** When the commitment is due (or was crossed, if breached), as the case page shows it; null while paused. */
+  effectiveDueAt: string | null;
   status: CommitmentStatus;
   currentLeg: Leg;
   minutesInCurrentLeg: number;

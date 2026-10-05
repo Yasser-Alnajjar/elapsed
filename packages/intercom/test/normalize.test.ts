@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { deriveNextReplyCycles, findFirstResponseEvent, type NormalizedEvent } from "@sla/core";
+import {
+  computeElapsedWorkingMinutes,
+  deriveLegSpans,
+  deriveNextReplyCycles,
+  findFirstResponseEvent,
+  legAtTime,
+  type BusinessCalendarVersion,
+  type NormalizedEvent,
+} from "@sla/core";
 import {
   deriveCaseClosedAt,
   deriveIntercomSubject,
   deriveNormalizedEventsForConversation,
   extractIntercomMessageBody,
+  normalizeIntercomEffectiveState,
   normalizeIntercomPriority,
   normalizeIntercomState,
   resolveIntercomActor,
@@ -12,6 +21,7 @@ import {
   UnknownIntercomStateError,
   type ConversationPartRecord,
   type DerivedNormalizedEvent,
+  type TicketStatePartRecord,
 } from "../src/normalize";
 import type { IntercomConversationPart, IntercomConversationWithParts } from "../src/types";
 
@@ -541,5 +551,208 @@ describe("extractIntercomMessageBody", () => {
       part({ id: "p1", part_type: "assignment", body: null, author: { type: "admin", id: "a1" } }).part,
     );
     expect(message).toBeNull();
+  });
+});
+
+describe("normalizeIntercomEffectiveState", () => {
+  it("maps a ticket waiting on the customer to pending_customer while the conversation is open", () => {
+    expect(normalizeIntercomEffectiveState("open", "waiting_on_customer")).toBe("pending_customer");
+  });
+
+  it("keeps submitted, in-progress, unknown and absent ticket states as open", () => {
+    expect(normalizeIntercomEffectiveState("open", "submitted")).toBe("open");
+    expect(normalizeIntercomEffectiveState("open", "in_progress")).toBe("open");
+    expect(normalizeIntercomEffectiveState("open", "some_future_state")).toBe("open");
+    expect(normalizeIntercomEffectiveState("open", null)).toBe("open");
+    expect(normalizeIntercomEffectiveState("open", undefined)).toBe("open");
+  });
+
+  it("lets a customer-caused wait outrank a snooze, so the pause is not lost", () => {
+    expect(normalizeIntercomEffectiveState("snoozed", "waiting_on_customer")).toBe("pending_customer");
+    expect(normalizeIntercomEffectiveState("snoozed", "in_progress")).toBe("pending_internal");
+    expect(normalizeIntercomEffectiveState("snoozed", null)).toBe("pending_internal");
+  });
+
+  it("is resolved whenever the conversation is closed, whatever the ticket state says", () => {
+    expect(normalizeIntercomEffectiveState("closed", "waiting_on_customer")).toBe("resolved");
+    expect(normalizeIntercomEffectiveState("closed", "resolved")).toBe("resolved");
+    expect(normalizeIntercomEffectiveState("closed", null)).toBe("resolved");
+  });
+});
+
+/**
+ * Intercom ticket "Waiting on customer" (verified against GET /conversations/{id}
+ * and GET /tickets/{id}, Intercom-Version 2.11): the conversation stays `open`
+ * and its `ticket_state_updated_by_admin` part names no state; the state it
+ * moved to is on the matching `ticket_parts` entry.
+ */
+describe("deriveNormalizedEventsForConversation ticket state (Waiting on customer)", () => {
+  const openConversation: IntercomConversationWithParts = { ...conversation, state: "open" };
+  const at = (offset: number) => conversation.created_at + offset;
+  const iso = (offset: number) => new Date(at(offset) * 1000).toISOString();
+
+  const stateChangePart = (id: string, offset: number) =>
+    part({ id, part_type: "ticket_state_updated_by_admin", created_at: at(offset), body: null });
+  const ticketRecord = (id: string, offset: number, previous: string, state: string): TicketStatePartRecord => ({
+    rawEventId: `raw_ticket_${id}`,
+    part: { id, part_type: "ticket_state_updated_by_admin", created_at: at(offset), previous_ticket_state: previous, ticket_state: state },
+  });
+  const derive = (
+    parts: ConversationPartRecord[],
+    ticketParts: TicketStatePartRecord[] = [],
+    conv: IntercomConversationWithParts = openConversation,
+  ) => deriveNormalizedEventsForConversation(conv, parts, "raw_conversation_42", ticketParts);
+  const transitions = (events: DerivedNormalizedEvent[]) =>
+    events.filter((e) => e.fromState !== null).map((e) => [e.type, e.fromState, e.toState, e.occurredAt]);
+
+  it("emits state_changed open -> pending_customer when the ticket moves to waiting_on_customer", () => {
+    const events = derive(
+      [stateChangePart("t1", 100), stateChangePart("t2", 200)],
+      [ticketRecord("t1", 100, "submitted", "in_progress"), ticketRecord("t2", 200, "in_progress", "waiting_on_customer")],
+    );
+
+    // submitted -> in_progress is still `open`: no transition for it.
+    expect(transitions(events)).toEqual([["state_changed", "open", "pending_customer", iso(200)]]);
+    expect(events.at(-1)).toMatchObject({ actor: "agent", sourceRawEventId: "raw_ticket_t2" });
+  });
+
+  it("emits state_changed pending_customer -> open when the ticket leaves waiting_on_customer", () => {
+    const events = derive(
+      [stateChangePart("t1", 100), stateChangePart("t2", 200)],
+      [ticketRecord("t1", 100, "in_progress", "waiting_on_customer"), ticketRecord("t2", 200, "waiting_on_customer", "in_progress")],
+    );
+
+    expect(transitions(events)).toEqual([
+      ["state_changed", "open", "pending_customer", iso(100)],
+      ["state_changed", "pending_customer", "open", iso(200)],
+    ]);
+  });
+
+  it("does not emit a transition for a ticket change between two non-waiting states", () => {
+    const events = derive([stateChangePart("t1", 100)], [ticketRecord("t1", 100, "submitted", "in_progress")]);
+    expect(events.map((e) => e.type)).toEqual(["case_created"]);
+  });
+
+  it("closes from pending_customer: case_closed carries the effective state it left", () => {
+    const events = derive(
+      [stateChangePart("t1", 100), part({ id: "c1", part_type: "close", created_at: at(200), body: null })],
+      [ticketRecord("t1", 100, "in_progress", "waiting_on_customer")],
+    );
+
+    expect(transitions(events)).toEqual([
+      ["state_changed", "open", "pending_customer", iso(100)],
+      ["case_closed", "pending_customer", "resolved", iso(200)],
+    ]);
+  });
+
+  it("returns to pending_customer, not open, when a conversation is reopened while the ticket is still waiting", () => {
+    const events = derive(
+      [
+        stateChangePart("t1", 100),
+        part({ id: "c1", part_type: "close", created_at: at(200), body: null }),
+        part({ id: "c2", part_type: "open", created_at: at(300), body: null }),
+      ],
+      [ticketRecord("t1", 100, "in_progress", "waiting_on_customer")],
+    );
+
+    expect(transitions(events).map(([, from, to]) => `${from}>${to}`)).toEqual([
+      "open>pending_customer",
+      "pending_customer>resolved",
+      "resolved>pending_customer",
+    ]);
+  });
+
+  it("keeps a waiting ticket paused through a snooze and its end", () => {
+    const events = derive(
+      [
+        stateChangePart("t1", 100),
+        part({ id: "s1", part_type: "snoozed", created_at: at(200), body: null }),
+        part({ id: "o1", part_type: "open", created_at: at(300), body: null }),
+      ],
+      [ticketRecord("t1", 100, "in_progress", "waiting_on_customer")],
+    );
+    expect(transitions(events)).toEqual([["state_changed", "open", "pending_customer", iso(100)]]);
+  });
+
+  it("is unchanged for a plain conversation with no ticket state parts", () => {
+    const events = derive([part({ id: "1", part_type: "snoozed", created_at: at(100), body: null })]);
+    expect(transitions(events)).toEqual([["state_changed", "open", "pending_internal", iso(100)]]);
+  });
+
+  describe("without ticket-API data (older raw events, or the ticket fetch failed)", () => {
+    it("resolves the latest state-change part to the snapshot's current ticket.state", () => {
+      const waiting = { ...openConversation, ticket: { id: "42", state: "waiting_on_customer" } };
+      const events = derive([stateChangePart("t1", 100), stateChangePart("t2", 200)], [], waiting);
+
+      // t1's target is unknown and skipped; t2 is the latest, so it is the snapshot's state.
+      expect(transitions(events)).toEqual([["state_changed", "open", "pending_customer", iso(200)]]);
+      expect(events.at(-1)).toMatchObject({ sourceRawEventId: "raw_t2" });
+    });
+
+    it("does not guess when the snapshot has no ticket state, or the ticket is no longer waiting", () => {
+      expect(derive([stateChangePart("t1", 100)]).map((e) => e.type)).toEqual(["case_created"]);
+      const inProgress = { ...openConversation, ticket: { id: "42", state: "in_progress" } };
+      expect(derive([stateChangePart("t1", 100)], [], inProgress).map((e) => e.type)).toEqual(["case_created"]);
+    });
+
+    it("prefers the exact ticket part over the snapshot for the same part", () => {
+      const waiting = { ...openConversation, ticket: { id: "42", state: "waiting_on_customer" } };
+      const events = derive(
+        [stateChangePart("t1", 100)],
+        [ticketRecord("t1", 100, "waiting_on_customer", "in_progress")],
+        waiting,
+      );
+      expect(events.map((e) => e.type)).toEqual(["case_created"]);
+    });
+  });
+
+  describe("SLA pause and ownership, fed from the derived events", () => {
+    const alwaysOpen: BusinessCalendarVersion = {
+      id: "cal",
+      version: 1,
+      timezone: "UTC",
+      weekly: [],
+      holidays: [],
+      alwaysOpen: true,
+    };
+    const toCoreEvents = (derived: DerivedNormalizedEvent[]): NormalizedEvent[] =>
+      derived.map((event, i) => ({ ...event, id: `evt-${i}`, caseId: "case-42", system: "intercom", sourceRole: "ticket_source" as const }));
+    // Support 0-600 s, waiting on the customer 600-1800 s, back with support from 1800 s.
+    const events = toCoreEvents(
+      derive(
+        [stateChangePart("t1", 600), stateChangePart("t2", 1800)],
+        [ticketRecord("t1", 600, "in_progress", "waiting_on_customer"), ticketRecord("t2", 1800, "waiting_on_customer", "in_progress")],
+      ),
+    );
+    const window = (endOffset: number) => ({ start: iso(0), end: iso(endOffset) });
+    const pauseStates = ["pending_customer" as const]; // what native policies pause on
+
+    it("pauses the clock on entering the waiting state and counts nothing while it lasts", () => {
+      const result = computeElapsedWorkingMinutes(events, pauseStates, alwaysOpen, window(1200));
+      expect(result.elapsedWorkingMinutes).toBe(10); // only 0-600 s ran
+      expect(result.pausedIntervals).toEqual([{ start: iso(600), end: iso(1200), cause: "pending_customer" }]);
+    });
+
+    it("resumes the clock when the ticket leaves the waiting state", () => {
+      const result = computeElapsedWorkingMinutes(events, pauseStates, alwaysOpen, window(2400));
+      expect(result.elapsedWorkingMinutes).toBe(20); // 0-600 s and 1800-2400 s
+      expect(result.pausedIntervals).toEqual([{ start: iso(600), end: iso(1800), cause: "pending_customer" }]);
+    });
+
+    it("counts the whole window for a commitment that pauses on nothing (first response, next reply)", () => {
+      const result = computeElapsedWorkingMinutes(events, [], alwaysOpen, window(2400));
+      expect(result.elapsedWorkingMinutes).toBe(40);
+    });
+
+    it("attributes the waiting stretch to the customer, then back to support", () => {
+      const { spans } = deriveLegSpans(events, { caseOpenedAt: iso(0) });
+      expect(spans.map((s) => [s.leg, s.startedAt, s.endedAt])).toEqual([
+        ["support", iso(0), iso(600)],
+        ["waiting_customer", iso(600), iso(1800)],
+        ["support", iso(1800), null],
+      ]);
+      expect(legAtTime(spans, iso(1000))).toBe("waiting_customer");
+      expect(legAtTime(spans, iso(2000))).toBe("support");
+    });
   });
 });

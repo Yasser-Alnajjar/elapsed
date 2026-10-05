@@ -6,12 +6,22 @@ import {
   mapContactToRawEvent,
   mapConversationPartToRawEvent,
   mapConversationToRawEvent,
+  mapTicketStatePartToRawEvent,
   type RawEventInput,
 } from "./rawEvents";
 import { loadFreshIntercomCredentials, markReauthRequired, recordIntercomWorkspaceId } from "./tokenLifecycle";
-import type { IntercomCursor } from "./types";
+import { INTERCOM_TICKET_STATE_PART_TYPE_PREFIX, type IntercomConversationWithParts, type IntercomCursor } from "./types";
 
 const DEFAULT_BACKFILL_DAYS = 90;
+
+/**
+ * How far behind a run's start the next run's `updated_at` filter reaches.
+ * Intercom's conversation search can lag behind a change, so a watermark set
+ * to the run start skips an update the search had not indexed yet, for good.
+ * Re-fetching a conversation that has not changed is harmless: its raw event
+ * dedupes on the content hash.
+ */
+export const WATERMARK_LOOKBACK_SECONDS = 5 * 60;
 
 export interface BackfillResult {
   conversationsFetched: number;
@@ -101,6 +111,8 @@ export async function runIntercomBackfill(
         await writeRawEvents(parts.map((part) => mapConversationPartToRawEvent(full.id, part)));
         result.conversationPartsFetched += parts.length;
 
+        await backfillTicketStateParts(full);
+
         const primaryContactId = full.contacts?.contacts[0]?.id;
         if (primaryContactId && !contactIdsFetchedThisRun.has(primaryContactId)) {
           contactIdsFetchedThisRun.add(primaryContactId);
@@ -117,10 +129,38 @@ export async function runIntercomBackfill(
       if (!startingAfter) break;
     }
 
-    // The window just scanned is fully written; advance the watermark past it
-    // so the next run's filter doesn't re-walk it (mirrors @sla/linear).
-    cursor.conversations = { updatedSince: runStartedAt, startingAfter: undefined };
+    // The window just scanned is written; advance the watermark to the run
+    // start less the look-back (see WATERMARK_LOOKBACK_SECONDS), never past
+    // the filter this run already used.
+    cursor.conversations = {
+      updatedSince: Math.max(updatedSince, runStartedAt - WATERMARK_LOOKBACK_SECONDS),
+      startingAfter: undefined,
+    };
     await persistCursor();
+  }
+
+  /**
+   * A ticket's "Waiting on customer" is a ticket state, not a conversation
+   * state, and its conversation part names no target state — so a ticket
+   * whose thread has a state-change part is fetched once more from the ticket
+   * API for the state each such part moved it to. Best-effort: a failure
+   * (including a 403 if the app lacks ticket access) must not fail or flag the
+   * conversation sync, so it is skipped until the conversation next changes;
+   * normalization falls back to the snapshot's current `ticket.state`.
+   */
+  async function backfillTicketStateParts(full: IntercomConversationWithParts): Promise<void> {
+    const hasTicketStatePart = (full.conversation_parts?.conversation_parts ?? []).some((part) =>
+      part.part_type.startsWith(INTERCOM_TICKET_STATE_PART_TYPE_PREFIX),
+    );
+    if (!full.ticket || !hasTicketStatePart) return;
+
+    try {
+      const ticket = await client.fetchTicket(String(full.ticket.id ?? full.id));
+      const stateParts = (ticket.ticket_parts?.ticket_parts ?? []).filter((part) => typeof part.ticket_state === "string");
+      await writeRawEvents(stateParts.map((part) => mapTicketStatePartToRawEvent(full.id, part)));
+    } catch (error) {
+      if (!(error instanceof IntercomApiError)) throw error;
+    }
   }
 
   /** Small, full snapshot every run (like Zendesk's business hours schedules) — accounts have few companies. */

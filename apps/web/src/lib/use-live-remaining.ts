@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CommitmentDetail } from "@/lib/types/cases";
+import type { ClockState } from "@sla/core";
 
-type LiveClock = Pick<
-  CommitmentDetail,
-  "clockState" | "effectiveDueAt" | "remainingSeconds"
->;
+/** What the countdown needs from an evaluation: shared by case details and At-Risk so both show the same runway. */
+export interface LiveClock {
+  clockState: ClockState;
+  effectiveDueAt: string | null;
+  remainingSeconds: number;
+}
 
 function getLiveRemainingSeconds(c: LiveClock): number {
   if (c.clockState !== "running" || !c.effectiveDueAt)

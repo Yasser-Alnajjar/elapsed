@@ -6,7 +6,7 @@ import { caseCommitmentHref } from "@/lib/case-links";
 import { formatCommitmentKind, formatMinutes } from "@/lib/format";
 import { LEG_STYLES } from "@/lib/status-styles";
 import type { AtRiskRow } from "@/lib/types/dashboard";
-import { CountdownClock } from "@/components/shared/countdown-clock";
+import { DeadlineClock } from "@/components/shared/countdown-clock";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -149,8 +149,8 @@ export function AtRiskSnapshotTable({
                 </div>
               </TableCell>
               <TableCell align="end" nowrap>
-                <CountdownClock
-                  remainingMinutes={row.remainingMinutes}
+                <DeadlineClock
+                  clock={row}
                   className={`text-sm font-semibold ${overdue ? "text-error" : "text-on-surface"}`}
                 />
               </TableCell>

@@ -12,7 +12,7 @@ import {
   commitmentStatusStyle,
 } from "@/lib/status-styles";
 import type { CommitmentDetail } from "@/lib/types/cases";
-import { useLiveRemaining } from "./useLiveRemaining";
+import { useLiveRemaining } from "@/lib/use-live-remaining";
 
 export const CommitmentCard = ({
   commitment,

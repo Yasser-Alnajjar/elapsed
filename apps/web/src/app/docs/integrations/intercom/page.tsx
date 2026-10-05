@@ -251,6 +251,11 @@ export default function IntercomIntegrationPage() {
               • Conversation parts (the event/reply history within each
               conversation)
             </li>
+            <li>
+              • For Intercom tickets, the ticket&apos;s state history (which
+              state each status change moved it to — needed to see{" "}
+              <strong>Waiting on customer</strong>)
+            </li>
             <li>• Companies (become Customers)</li>
             <li>
               • Admins/teammates (workspace name list only — resolves{" "}
@@ -269,9 +274,44 @@ export default function IntercomIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Intercom&apos;s conversation lifecycle only has three states: open,
-            snoozed, and closed — there is no separate pending-customer /
-            pending-internal split the way Zendesk has.
+            A conversation has three states: open, snoozed, and closed. An
+            Intercom <strong>ticket</strong> also has its own state — Submitted,
+            In progress, <strong>Waiting on customer</strong>, or Resolved —
+            which is separate from the conversation&apos;s: a ticket waiting on
+            the customer is still an open conversation. Both are read, and
+            combined in this order:
+          </p>
+
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>
+              • Closed conversation (a resolved ticket closes it) →{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                resolved
+              </code>
+            </li>
+            <li>
+              • Ticket <strong>Waiting on customer</strong> →{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                pending_customer
+              </code>
+              , shown as waiting on the customer, and paused by Elapsed-created
+              policies. It outranks snoozed.
+            </li>
+            <li>
+              • Snoozed conversation →{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                pending_internal
+              </code>
+            </li>
+            <li>
+              • Anything else (including ticket Submitted and In progress) →{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">open</code>
+            </li>
+          </ul>
+
+          <p className="leading-7 text-muted-foreground">
+            A conversation that was never made a ticket has no waiting state;
+            only snoozing it is available, and snoozing does not pause.
           </p>
 
           <Alert variant="warning">
@@ -348,7 +388,9 @@ export default function IntercomIntegrationPage() {
           <p className="leading-7 text-muted-foreground">
             Poll only — the same 5-minute (active cases) / 60-minute
             (reconciliation) schedule as Zendesk and Jira, but with no real-time
-            webhook.
+            webhook. Each sync also re-checks conversations changed in the
+            previous 5 minutes, so an update Intercom&apos;s search had not
+            indexed yet is still picked up on the next poll.
           </p>
         </section>
 
@@ -356,6 +398,19 @@ export default function IntercomIntegrationPage() {
           <h2 className="text-2xl font-semibold tracking-tight">
             Known limitations
           </h2>
+
+          <Alert>
+            <AlertTitle>Waiting on customer needs ticket access</AlertTitle>
+            <AlertDescription>
+              The ticket&apos;s state history comes from Intercom&apos;s ticket
+              API. If the app you registered cannot read tickets, the sync still
+              succeeds, but only a ticket&apos;s latest status change is
+              recognized (from its current state): earlier changes, and a
+              ticket that changed status more than once between syncs, can be
+              missed or timed late. Allow the app to read tickets in the
+              Developer Hub to get the full history.
+            </AlertDescription>
+          </Alert>
 
           <Alert>
             <AlertTitle>No webhook support</AlertTitle>

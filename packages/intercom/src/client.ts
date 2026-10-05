@@ -7,6 +7,7 @@ import type {
   IntercomConversationWithParts,
   IntercomCredentials,
   IntercomMe,
+  IntercomTicket,
 } from "./types";
 import { PERMISSION_DENIED_BRAND } from "@sla/ingestion";
 
@@ -115,6 +116,15 @@ export class IntercomClient {
   /** https://developers.intercom.com/docs/references/rest-api/api.intercom.io/conversations/retrieveconversation — the only endpoint that returns the full conversation_parts thread. */
   fetchConversation(conversationId: string): Promise<IntercomConversationWithParts> {
     return this.request<IntercomConversationWithParts>(`/conversations/${conversationId}`);
+  }
+
+  /**
+   * https://developers.intercom.com/docs/references/rest-api/api.intercom.io/tickets/getticket — the only
+   * endpoint that says which state a `ticket_state_updated_by_admin` part moved the ticket to
+   * (`ticket_parts[].previous_ticket_state` / `ticket_state`).
+   */
+  fetchTicket(ticketId: string): Promise<IntercomTicket> {
+    return this.request<IntercomTicket>(`/tickets/${encodeURIComponent(ticketId)}`);
   }
 
   /** https://developers.intercom.com/docs/references/rest-api/api.intercom.io/companies/listcompanies — accounts have few companies, so pulled as a small full snapshot rather than incrementally. */

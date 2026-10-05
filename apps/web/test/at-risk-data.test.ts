@@ -242,6 +242,23 @@ describe("getAtRiskData pagination", () => {
     expect(data.rows[1]!.externalId).toBe(fixtures[1]!.commitment.case.externalId);
   });
 
+  it("carries the clock state and deadline the case page counts down to, not just business minutes", async () => {
+    const [fixture] = [
+      makeCommitment({
+        status: "on_track",
+        dueAt: new Date(AS_OF.getTime() + 60 * 60_000),
+      }),
+    ];
+
+    const data = await getAtRiskData(fakePrisma([fixture!]), ORG, {}, AS_OF);
+
+    const row = data.rows[0]!;
+    expect(row.clockState).toBe("running");
+    expect(row.remainingSeconds).toBe(Math.round(row.remainingMinutes * 60));
+    // Always-open calendar: the deadline is exactly the remaining business time away.
+    expect(new Date(row.effectiveDueAt!).getTime()).toBe(AS_OF.getTime() + row.remainingSeconds * 1000);
+  });
+
   it("page 2 returns the next slice in the same order", async () => {
     const fixtures = Array.from({ length: 5 }, (_, i) =>
       makeCommitment({

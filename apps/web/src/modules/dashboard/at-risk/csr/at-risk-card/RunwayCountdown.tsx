@@ -1,5 +1,5 @@
 import { Timer } from "lucide-react";
-import { CountdownClock } from "@/components/shared/countdown-clock";
+import { DeadlineClock } from "@/components/shared/countdown-clock";
 import { formatCommitmentKind, formatMinutes } from "@/lib/format";
 import type { CommitmentStatusStyle } from "@/lib/status-styles";
 import type { AtRiskRowData } from "@/lib/types/at-risk";
@@ -45,8 +45,8 @@ export function RunwayCountdown({
         </span>
       </div>
 
-      <CountdownClock
-        remainingMinutes={row.remainingMinutes}
+      <DeadlineClock
+        clock={row}
         className={cn(
           "font-mono text-2xl font-semibold leading-none",
           statusStyle.counter,

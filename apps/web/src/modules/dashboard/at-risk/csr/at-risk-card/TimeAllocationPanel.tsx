@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CircleAlert, Flame, Timer } from "lucide-react";
-import { CountdownClock } from "@/components/shared/countdown-clock";
+import { DeadlineClock } from "@/components/shared/countdown-clock";
 import { TimeAllocationBar } from "@/components/shared/time-allocation-bar";
 import {
   formatCommitmentKind,
@@ -101,8 +101,8 @@ export function TimeAllocationPanel({
           <span>
             Runway:{" "}
             <strong className={cn("font-mono", statusStyle.counter)}>
-              <CountdownClock
-                remainingMinutes={row.remainingMinutes}
+              <DeadlineClock
+                clock={row}
                 className="inline font-mono text-xs font-semibold"
               />
             </strong>

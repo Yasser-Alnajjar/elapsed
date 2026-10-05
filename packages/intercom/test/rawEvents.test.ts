@@ -5,6 +5,7 @@ import {
   mapContactToRawEvent,
   mapConversationPartToRawEvent,
   mapConversationToRawEvent,
+  mapTicketStatePartToRawEvent,
 } from "../src/rawEvents";
 import type {
   IntercomAdmin,
@@ -63,5 +64,28 @@ describe("mapAdminToRawEvent", () => {
       result.providerEventId,
     );
     expect(mapAdminToRawEvent({ ...admin, name: "Renamed" }).providerEventId).not.toBe(result.providerEventId);
+  });
+});
+
+describe("mapTicketStatePartToRawEvent", () => {
+  it("keys by conversation and part id with no hash suffix, and keeps only the state fields", () => {
+    const event = mapTicketStatePartToRawEvent("42", {
+      id: "part-9",
+      part_type: "ticket_state_updated_by_admin",
+      created_at: 5,
+      previous_ticket_state: "in_progress",
+      ticket_state: "waiting_on_customer",
+      author: { type: "admin", id: "a1", name: "Ada", email: "ada@example.com" } as { type: string; id: string },
+      body: "<p>ignored</p>",
+    });
+    expect(event.providerEventId).toBe("ticket_part:42:part-9");
+    expect(event.payload).toEqual({
+      id: "part-9",
+      part_type: "ticket_state_updated_by_admin",
+      created_at: 5,
+      previous_ticket_state: "in_progress",
+      ticket_state: "waiting_on_customer",
+      author: { type: "admin", id: "a1" },
+    });
   });
 });

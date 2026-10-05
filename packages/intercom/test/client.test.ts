@@ -68,3 +68,18 @@ describe("workspace links", () => {
     );
   });
 });
+
+describe("fetchTicket", () => {
+  it("reads GET /tickets/{id} with the pinned API version", async () => {
+    const body = { id: "42", ticket_state: "waiting_on_customer", ticket_parts: { ticket_parts: [] } };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, body));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const ticket = await new IntercomClient(baseCredentials).fetchTicket("42");
+
+    expect(ticket).toEqual(body);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.intercom.io/tickets/42");
+    expect((init.headers as Record<string, string>)["Intercom-Version"]).toBe("2.11");
+  });
+});

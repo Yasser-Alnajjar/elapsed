@@ -44,6 +44,16 @@ export interface IntercomConversationSource {
  */
 export type IntercomConversationState = "open" | "closed" | "snoozed";
 
+/**
+ * A second, independent axis that exists only on Intercom *tickets*: the
+ * ticket's own lifecycle, shown in the inbox as "Submitted / In progress /
+ * Waiting on customer / Resolved" (custom state labels all belong to one of
+ * these four categories). Changing it never changes `conversation.state` — a
+ * ticket "Waiting on customer" is still an `open` conversation — so
+ * `waiting_on_customer` is invisible to `IntercomConversationState`.
+ */
+export type IntercomTicketState = "submitted" | "in_progress" | "waiting_on_customer" | "resolved";
+
 export interface IntercomConversation {
   id: string;
   created_at: number; // epoch seconds
@@ -55,8 +65,15 @@ export interface IntercomConversation {
   contacts?: { contacts: IntercomConversationContactRef[] };
   source?: IntercomConversationSource;
   title?: string | null;
-  /** Present when the conversation is an Intercom ticket. Only the title attribute is read. */
+  /**
+   * Present when the conversation is an Intercom ticket. Read: the title
+   * attribute, `id` (the ticket-API id) and `state` (the ticket's current
+   * `IntercomTicketState`, as a string so an unknown future value never
+   * breaks a read).
+   */
   ticket?: {
+    id?: string | number;
+    state?: string | null;
     custom_attributes?: { _default_title_?: { value?: string | null } };
   } | null;
   /** Flat attributes (distinct from `ticket.custom_attributes`): `Ticket category`, `jira_issue_key`. Read by ./tracker and ./correlate. */
@@ -88,6 +105,39 @@ export interface IntercomConversationPart {
   /** HTML; null for parts that carry no message (assignments, state changes, ...). */
   body?: string | null;
   author?: { type: string; id: string; name?: string };
+  [key: string]: unknown;
+}
+
+/**
+ * `part_type` of the conversation parts that record a ticket-state change
+ * (`ticket_state_updated_by_admin`, and the workflow/bot equivalents). The
+ * part in `GET /conversations/{id}` names no state, only that one changed —
+ * see `IntercomTicketPart`.
+ */
+export const INTERCOM_TICKET_STATE_PART_TYPE_PREFIX = "ticket_state_updated";
+
+/**
+ * One entry in `GET /tickets/{id}`'s `ticket_parts`. Same ids and timestamps
+ * as the conversation's own parts, but a ticket-state change also names the
+ * state it left and entered (`previous_ticket_state` → `ticket_state`) — the
+ * only place Intercom exposes that history. Parts that don't change the
+ * state (comments, notes, assignments) carry neither field.
+ */
+export interface IntercomTicketPart {
+  id: string;
+  part_type: string;
+  created_at: number;
+  previous_ticket_state?: string | null;
+  ticket_state?: string | null;
+  author?: { type: string; id: string };
+  [key: string]: unknown;
+}
+
+/** `GET /tickets/{id}` — only the part list is read. */
+export interface IntercomTicket {
+  id: string;
+  ticket_state?: string | null;
+  ticket_parts?: { ticket_parts: IntercomTicketPart[] } | null;
   [key: string]: unknown;
 }
 

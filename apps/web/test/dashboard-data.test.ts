@@ -239,6 +239,19 @@ describe("getDashboardData health by kind", () => {
     // must stay decoupled from that live evaluation.
     expect(data.atRisk[0]?.status).toBe("breached");
   });
+
+  it("carries the clock state and deadline the case page counts down to", async () => {
+    const data = await getDashboardData(
+      fakePrisma([makeCase({ status: "on_track", dueAt: new Date("2026-09-17T10:00:00.000Z") })]),
+      ORG,
+      asOf,
+    );
+
+    const row = data.atRisk[0]!;
+    expect(row.clockState).toBe("running");
+    expect(typeof row.remainingSeconds).toBe("number");
+    expect(row.effectiveDueAt).not.toBeNull();
+  });
 });
 
 describe("getDashboardData at-risk overflow", () => {

@@ -5,7 +5,9 @@ import type {
   IntercomConversationPart,
   IntercomConversationState,
   IntercomConversationWithParts,
+  IntercomTicketPart,
 } from "./types";
+import { INTERCOM_TICKET_STATE_PART_TYPE_PREFIX } from "./types";
 import type { CanonicalBatch, CaseFacts, CustomerIdentityFact, EventGroup, ProjectionFailure } from "@sla/ingestion";
 import { intercomCompanyIdentity, intercomContactIdentity } from "./customer-identity";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
@@ -14,10 +16,10 @@ import { isIntercomTrackerTicket, linkedTrackerIds } from "./tracker";
 /**
  * Intercom's closed, three-value conversation lifecycle, mapped to the
  * provider-independent vocabulary. A flatter mapping than Zendesk's six
- * statuses: Intercom has no separate "new" (a conversation starts "open") and
- * no distinct pending-customer/pending-internal split, so "snoozed" — an
- * agent deliberately deferring it — is the closest analog to
- * `pending_internal`.
+ * statuses: Intercom has no separate "new" (a conversation starts "open"), so
+ * "snoozed" — an agent deliberately deferring it — is the closest analog to
+ * `pending_internal`. The customer-waiting state is not a conversation state
+ * at all but a *ticket* state; see `normalizeIntercomEffectiveState`.
  */
 const STATE_TO_NORMALIZED_STATE: Record<IntercomConversationState, NormalizedState> = {
   open: "open",
@@ -36,6 +38,30 @@ export function normalizeIntercomState(state: string): NormalizedState {
   const mapped = STATE_TO_NORMALIZED_STATE[state as IntercomConversationState];
   if (!mapped) throw new UnknownIntercomStateError(state);
   return mapped;
+}
+
+/**
+ * The state a case is in, given both Intercom axes — the conversation's
+ * lifecycle and, for a ticket, the ticket's own state. In precedence order:
+ *
+ * - conversation `closed` → `resolved` (Intercom closes the conversation when
+ *   a ticket is resolved, so closed always wins);
+ * - ticket `waiting_on_customer` → `pending_customer`, the state native SLA
+ *   policies pause on and the Case Details timeline shows as waiting on the
+ *   customer. It outranks `snoozed`: a snoozed ticket still owes the customer
+ *   nothing less, so the customer-caused pause must not be lost;
+ * - conversation `snoozed` → `pending_internal` (never pauses);
+ * - otherwise `open`. Ticket `submitted`/`in_progress` stay `open`, as before,
+ *   and an unrecognized ticket state is treated the same way rather than
+ *   failing the conversation.
+ */
+export function normalizeIntercomEffectiveState(
+  conversationState: IntercomConversationState,
+  ticketState: string | null | undefined,
+): NormalizedState {
+  if (conversationState === "closed") return normalizeIntercomState("closed");
+  if (ticketState === "waiting_on_customer") return "pending_customer";
+  return normalizeIntercomState(conversationState);
 }
 
 /**
@@ -127,6 +153,17 @@ export interface ConversationPartRecord {
   part: IntercomConversationPart;
 }
 
+/**
+ * A conversation part's ticket-state change, read from `GET /tickets/{id}`
+ * (the conversation part itself names no state). Matched to its conversation
+ * part by `part.id`.
+ */
+export interface TicketStatePartRecord {
+  /** The RawEvent row id this ticket part was read from. */
+  rawEventId: string;
+  part: IntercomTicketPart;
+}
+
 export interface DerivedNormalizedEvent {
   type: NormalizedEventType;
   occurredAt: string;
@@ -162,6 +199,15 @@ export function sortPartsChronologically(parts: ConversationPartRecord[]): Conve
  * A transition part whose target state matches the currently-tracked state
  * (a redundant re-close, say) is skipped rather than emitted as a no-op.
  *
+ * A ticket's "Waiting on customer" is not a conversation state, so state is
+ * tracked on both axes and each transition is the change in
+ * `normalizeIntercomEffectiveState`. The ticket axis comes from
+ * `ticketStateParts` (matched to a part by id). A state-change part with no
+ * such record — a ticket not yet re-fetched from the ticket API, or that fetch
+ * having failed — is resolved only when it is the ticket's latest state
+ * change, to the snapshot's own `ticket.state`; an earlier one names no state
+ * and is skipped.
+ *
  * Admin replies (`isAgentReplyPart`) additionally become `agent_replied`
  * events, and customer messages (`isCustomerReplyPart`) `customer_replied`,
  * independently of any transition the same part carries. Events
@@ -173,8 +219,20 @@ export function deriveNormalizedEventsForConversation(
   conversation: IntercomConversationWithParts,
   partsForConversation: ConversationPartRecord[],
   conversationRawEventId: string,
+  ticketStateParts: TicketStatePartRecord[] = [],
 ): DerivedNormalizedEvent[] {
   const sorted = sortPartsChronologically(partsForConversation);
+  const ticketStateByPartId = new Map(
+    ticketStateParts.filter(({ part }) => typeof part.ticket_state === "string").map((record) => [record.part.id, record]),
+  );
+  const latestTicketStatePart = [...sorted]
+    .reverse()
+    .find(({ part }) => part.part_type.startsWith(INTERCOM_TICKET_STATE_PART_TYPE_PREFIX));
+  const snapshotTicketState = conversation.ticket?.state;
+  const inferred =
+    latestTicketStatePart && !ticketStateByPartId.has(latestTicketStatePart.part.id) && typeof snapshotTicketState === "string"
+      ? { partId: latestTicketStatePart.part.id, state: snapshotTicketState }
+      : null;
 
   const events: DerivedNormalizedEvent[] = [
     {
@@ -189,14 +247,23 @@ export function deriveNormalizedEventsForConversation(
   ];
 
   let currentState: IntercomConversationState = "open";
+  let currentTicketState: string | null = null;
+  let currentNormalizedState = normalizeIntercomEffectiveState(currentState, currentTicketState);
   let sourceSequence = 0;
   for (const { rawEventId, part } of sorted) {
     const occurredAt = new Date(part.created_at * 1000).toISOString();
 
     sourceSequence += 1;
-    const targetState = TRANSITION_PART_TYPE_TO_STATE[part.part_type];
-    if (targetState !== undefined && targetState !== currentState) {
-      const toState = normalizeIntercomState(targetState);
+    const transitionState = TRANSITION_PART_TYPE_TO_STATE[part.part_type];
+    const conversationChanged = transitionState !== undefined && transitionState !== currentState;
+    if (transitionState !== undefined) currentState = transitionState;
+
+    const ticketStateRecord = ticketStateByPartId.get(part.id);
+    const nextTicketState = ticketStateRecord?.part.ticket_state ?? (inferred?.partId === part.id ? inferred.state : null);
+    if (nextTicketState !== null) currentTicketState = nextTicketState;
+
+    const toState = normalizeIntercomEffectiveState(currentState, currentTicketState);
+    if (toState !== currentNormalizedState) {
       events.push({
         // Intercom's only terminal state is "closed" — a conversation reopened
         // after that (targetState "open") is a plain state_changed, same as
@@ -204,12 +271,14 @@ export function deriveNormalizedEventsForConversation(
         type: toState === "resolved" ? "case_closed" : "state_changed",
         occurredAt,
         actor: resolveIntercomActor(part.author),
-        fromState: normalizeIntercomState(currentState),
+        fromState: currentNormalizedState,
         toState,
-        sourceRawEventId: rawEventId,
+        // A change only the ticket axis made is sourced from the ticket part
+        // that names the state, so the raw evidence for it is traceable.
+        sourceRawEventId: !conversationChanged && ticketStateRecord ? ticketStateRecord.rawEventId : rawEventId,
         sourceSequence,
       });
-      currentState = targetState;
+      currentNormalizedState = toState;
     }
 
     sourceSequence += 1;
@@ -341,15 +410,15 @@ function latestSnapshotById<T extends { id: string }>(
   return byId;
 }
 
-/** `conversation_part:{conversationId}:{partId}` — parts carry no conversation id of their own. */
-function groupPartsByConversationId(
+/** `conversation_part:{conversationId}:{partId}` (and `ticket_part:…`) — parts carry no conversation id of their own. */
+function groupPartsByConversationId<P>(
   rows: { id: string; providerEventId: string; payload: unknown }[],
-): Map<string, ConversationPartRecord[]> {
-  const byConversationId = new Map<string, ConversationPartRecord[]>();
+): Map<string, { rawEventId: string; part: P }[]> {
+  const byConversationId = new Map<string, { rawEventId: string; part: P }[]>();
   for (const row of rows) {
     const conversationId = row.providerEventId.split(":")[1];
     if (!conversationId) continue;
-    const record: ConversationPartRecord = { rawEventId: row.id, part: row.payload as IntercomConversationPart };
+    const record = { rawEventId: row.id, part: row.payload as P };
     const group = byConversationId.get(conversationId);
     if (group) group.push(record);
     else byConversationId.set(conversationId, [record]);
@@ -371,7 +440,7 @@ function groupPartsByConversationId(
  * case with no customer.
  */
 export async function buildIntercomBatch(prisma: PrismaClient, integrationId: string): Promise<CanonicalBatch> {
-  const [companyRows, contactRows, conversationRows, partRows, adminRows] = await Promise.all([
+  const [companyRows, contactRows, conversationRows, partRows, ticketPartRows, adminRows] = await Promise.all([
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "company:" } },
       select: { id: true, payload: true, fetchedAt: true },
@@ -389,6 +458,10 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
     }),
     prisma.rawEvent.findMany({
       where: { integrationId, providerEventId: { startsWith: "conversation_part:" } },
+      select: { id: true, providerEventId: true, payload: true },
+    }),
+    prisma.rawEvent.findMany({
+      where: { integrationId, providerEventId: { startsWith: "ticket_part:" } },
       select: { id: true, providerEventId: true, payload: true },
     }),
     prisma.rawEvent.findMany({
@@ -418,7 +491,8 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
 
   const latestContacts = latestSnapshotById<IntercomContact>(contactRows);
   const latestConversations = latestSnapshotById<IntercomConversationWithParts>(conversationRows);
-  const partsByConversationId = groupPartsByConversationId(partRows);
+  const partsByConversationId = groupPartsByConversationId<IntercomConversationPart>(partRows);
+  const ticketPartsByConversationId = groupPartsByConversationId<IntercomTicketPart>(ticketPartRows);
 
   // A Tracker ticket is the link between customer conversations and an
   // engineering issue, not a customer's work: no Case. Any Case an earlier
@@ -466,7 +540,13 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
 
       const partsForConversation = partsByConversationId.get(conversation.id) ?? [];
       const subject = deriveIntercomSubject(conversation, partsForConversation);
-      const derived = deriveNormalizedEventsForConversation(conversation, partsForConversation, conversationRawEventId);
+      const ticketPartsForConversation = ticketPartsByConversationId.get(conversation.id) ?? [];
+      const derived = deriveNormalizedEventsForConversation(
+        conversation,
+        partsForConversation,
+        conversationRawEventId,
+        ticketPartsForConversation,
+      );
       const closedAt = deriveCaseClosedAt(conversation, derived);
 
       cases.push({
@@ -487,7 +567,11 @@ export async function buildIntercomBatch(prisma: PrismaClient, integrationId: st
         // linger as a duplicate) plus its parts. Scoping the reconcile to just
         // these keeps it from touching events another provider wrote onto the
         // same case.
-        ownRawEventIds: [...conversationSnapshotRawEventIds, ...partsForConversation.map((p) => p.rawEventId)],
+        ownRawEventIds: [
+          ...conversationSnapshotRawEventIds,
+          ...partsForConversation.map((p) => p.rawEventId),
+          ...ticketPartsForConversation.map((p) => p.rawEventId),
+        ],
         events: derived.map((event) => ({
           type: event.type,
           occurredAt: new Date(event.occurredAt),

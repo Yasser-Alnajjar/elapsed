@@ -16,6 +16,7 @@ const realDatabaseSuites = [
   "apps/web/test/provider-matrix-smoke.test.ts",
   "apps/web/test/projector.test.ts",
   "apps/web/test/intercom-normalization.test.ts",
+  "apps/web/test/intercom-waiting-on-customer.test.ts",
   "apps/web/test/report-data.test.ts",
   "apps/web/test/anomaly-data.test.ts",
   "apps/web/test/breached-at-data.test.ts",

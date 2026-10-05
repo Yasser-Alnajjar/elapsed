@@ -5,7 +5,7 @@ import { Calculator } from "lucide-react";
 import { formatMinutes, formatPolicyMatch } from "@/lib/format";
 import type { CaseDetailData, CommitmentDetail } from "@/lib/types/cases";
 import { pickHeroCommitment } from "./CaseRunwayHero";
-import { useLiveRemaining } from "./useLiveRemaining";
+import { useLiveRemaining } from "@/lib/use-live-remaining";
 import { LedgerTable } from "./ledger/LedgerTable";
 import { computeLedger } from "./ledger/ledger-math";
 import { AppliedClauses, PolicyCalendarCards } from "./ledger/PolicyTerms";

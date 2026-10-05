@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { formatSeconds } from "@/lib/format";
+import { useLiveRemaining, type LiveClock } from "@/lib/use-live-remaining";
 import { cn } from "@/lib/utils";
 
 // A page like /at-risk can render dozens of these clocks at once — one
@@ -55,6 +56,20 @@ export function CountdownClock({
   return (
     <span className={cn("font-mono tabular-nums", className)}>
       {overdue ? `${formatSeconds(-seconds)} over` : formatSeconds(seconds)}
+    </span>
+  );
+}
+
+/**
+ * The same runway the case page shows: wall-clock time to the commitment's
+ * deadline while its clock runs (so it spans closed business hours), frozen at
+ * the business-time remainder while it is paused.
+ */
+export function DeadlineClock({ clock, className }: { clock: LiveClock; className?: string }) {
+  const seconds = useLiveRemaining(clock);
+  return (
+    <span className={cn("font-mono tabular-nums", className)}>
+      {seconds < 0 ? `${formatSeconds(-seconds)} over` : formatSeconds(seconds)}
     </span>
   );
 }
