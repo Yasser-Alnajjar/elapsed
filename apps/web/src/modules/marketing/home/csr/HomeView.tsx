@@ -19,6 +19,12 @@ import {
   SectionHeading,
 } from "@/components/marketing/marketing-ui";
 import { Reveal } from "@/components/shared/reveal";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
 const TRIAL = `${TRIAL_LENGTH_DAYS}-day trial`;
@@ -968,26 +974,34 @@ export const HomeView = () => {
           />
         </Reveal>
 
-        <div className="flex flex-col gap-3">
+        <Accordion type="multiple" className="gap-3">
           {FAQS.map((faq, index) => (
             <Reveal key={faq.question} variant="up" delay={0.05 + index * 0.06}>
-              <details className="group bg-card open:bg-surface-raised rounded-lg p-4 transition-colors">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+              <AccordionItem
+                value={faq.question}
+                className="bg-card data-[state=open]:bg-surface-raised rounded-lg p-4 transition-colors not-last:border-b-0"
+              >
+                <AccordionTrigger
+                  icon={null}
+                  className="text-foreground items-center gap-4 rounded-none border-0 py-0 text-lg font-semibold hover:no-underline"
+                >
                   <span>{faq.question}</span>
 
                   <Plus
                     aria-hidden
-                    className="text-primary size-4 shrink-0 transition-transform group-open:rotate-45"
+                    className="text-primary size-4 shrink-0 transition-transform group-data-[state=open]/accordion-trigger:rotate-45"
                   />
-                </summary>
+                </AccordionTrigger>
 
-                <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                  {faq.answer}
-                </p>
-              </details>
+                <AccordionContent className="pb-0">
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
             </Reveal>
           ))}
-        </div>
+        </Accordion>
 
         <Reveal variant="up" delay={0.12} className="mt-6 text-center">
           <ArrowLink href="/docs/faq">More questions in the docs</ArrowLink>

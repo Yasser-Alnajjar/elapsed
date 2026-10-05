@@ -4,6 +4,7 @@ import { CalendarDays, ChevronDown, Download, Eye, History, Info, Network, Shiel
 import { TRIAL_LENGTH_DAYS } from "@sla/db/plans";
 import { ArrowLink, MarketingContainer, MarketingCta, MONO_LABEL } from "@/components/marketing/marketing-ui";
 import { Reveal } from "@/components/shared/reveal";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { getUpgradeCta } from "@/lib/upgrade-cta";
 import type { PricingViewer } from "@/lib/types/pricing";
@@ -203,17 +204,30 @@ export const PricingView = ({ viewer }: { viewer: PricingViewer }) => {
               More answers in the docs
             </ArrowLink>
           </div>
-          <div className="col-span-12 flex flex-col gap-1 lg:col-span-8">
-            {FAQS.map((faq, i) => (
-              <details key={faq.question} open={i === 0} className="group bg-card rounded border border-border p-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+          <Accordion
+            type="multiple"
+            defaultValue={FAQS.slice(0, 1).map((faq) => faq.question)}
+            className="col-span-12 gap-1 lg:col-span-8"
+          >
+            {FAQS.map((faq) => (
+              <AccordionItem
+                key={faq.question}
+                value={faq.question}
+                className="bg-card rounded border border-border p-4"
+              >
+                <AccordionTrigger
+                  icon={null}
+                  className="items-center gap-4 rounded-none border-0 py-0 text-[length:inherit] font-semibold text-foreground hover:no-underline"
+                >
                   <span>{faq.question}</span>
-                  <ChevronDown aria-hidden className="text-primary size-5 shrink-0 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="text-muted-foreground mt-2 border-t border-border pt-1 text-xs leading-relaxed">{faq.answer}</div>
-              </details>
+                  <ChevronDown aria-hidden className="text-primary size-5 shrink-0 transition-transform group-data-[state=open]/accordion-trigger:rotate-180" />
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground mt-2 border-t border-border pt-1 pb-0 text-xs leading-relaxed">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </section>
 
         {/* Enterprise band */}
