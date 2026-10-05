@@ -22,13 +22,11 @@ export class CalendarNotFoundError extends Error {
  * commitments created after the change — `Commitment.calendarVersionId`
  * stays frozen at creation like everywhere else in this pipeline.
  *
- * Also freezes `calendarVersionId` to that calendar's current latest version
- * (4d) — consistent with how a native policy's own explicit calendar
- * assignment pins to a specific version instead of silently following the
- * calendar's later edits. A subsequent edit to the calendar's hours only
- * reaches this customer's *new* commitments once the override is explicitly
- * re-set (even to the same calendar) — same as re-picking a policy's
- * calendar refreshes it to the latest version.
+ * `calendarVersionId` records the calendar's latest version at assignment,
+ * but it only identifies *which calendar* overrides: a new commitment anchors
+ * to that calendar's current version at creation (D1b), so a later edit to
+ * the calendar's hours reaches this customer's new commitments without
+ * re-setting the override. Existing commitments never move.
  */
 export async function setCustomerCalendar(
   prisma: PrismaClient,

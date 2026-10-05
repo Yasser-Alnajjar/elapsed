@@ -3,6 +3,22 @@ import type { BusinessCalendarVersion } from "@sla/core";
 import { toCalendarVersionDomain } from "./calendar-domain";
 import { ensureDefaultCalendarVersion } from "./default-calendar";
 
+/**
+ * The version a *new* commitment should anchor to when a policy version or a
+ * customer override references `referenced`: that calendar's current latest
+ * version (D1b — a calendar edit applies to new commitments only), not the
+ * version that happened to be latest when the policy/override was saved.
+ * `referenced` itself is returned when no newer lookup exists. Never touches
+ * an existing commitment — `Commitment.calendarVersionId` stays frozen at
+ * creation.
+ */
+export function currentCalendarVersion(
+  referenced: BusinessCalendarVersion,
+  currentById: ReadonlyMap<string, BusinessCalendarVersion>,
+): BusinessCalendarVersion {
+  return currentById.get(referenced.id) ?? referenced;
+}
+
 export interface OrganizationCalendarFallback {
   /** The organization's current default calendar's latest version, or null when it has none set (or the setting points at a calendar with no version). */
   organizationDefault: BusinessCalendarVersion | null;
@@ -56,9 +72,10 @@ export async function resolveOrganizationCalendarFallback(
  * fix.
  *
  * `calendarIsExplicit` (true/absent, the database default) means the policy
- * stays pinned to the specific version already frozen onto it — unchanged,
- * append-only contract, same as every other versioned reference in this
- * schema. `false` — only ever set by `createNativePolicy`/`updateNativePolicy`
+ * names a specific calendar: `frozenCalendarVersion` here is whatever
+ * version the caller already resolved for that calendar (callers pass
+ * `currentCalendarVersion(...)`, i.e. the calendar's latest version, so a
+ * calendar edit reaches new commitments — D1b). `false` — only ever set by `createNativePolicy`/`updateNativePolicy`
  * when the caller explicitly left the calendar unset — resolves fresh, every
  * time, to the organization's current default calendar, or the system
  * Always Open calendar when the organization has none, rather than the

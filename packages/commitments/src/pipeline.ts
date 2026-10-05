@@ -13,7 +13,11 @@ import {
 } from "@sla/core";
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
 import { toCalendarVersionDomain } from "./calendar-domain";
-import { resolveEffectiveCalendarVersion, resolveOrganizationCalendarFallback } from "./calendar-fallback";
+import {
+  currentCalendarVersion,
+  resolveEffectiveCalendarVersion,
+  resolveOrganizationCalendarFallback,
+} from "./calendar-fallback";
 import { toPolicyVersionDomain } from "./policy-domain";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 
@@ -190,7 +194,7 @@ export async function runCommitmentPipeline(
     casesFailed: [],
   };
 
-  const { policyVersionRows, customersWithCalendarOverride } =
+  const { policyVersionRows, customersWithCalendarOverride, currentCalendarVersionById } =
     options.context ?? (await loadPolicyContext(prisma, organizationId));
   if (policyVersionRows.length === 0) return result;
 
@@ -214,9 +218,9 @@ export async function runCommitmentPipeline(
   const getOrganizationCalendarFallback = () =>
     (fallbackPromise ??= resolveOrganizationCalendarFallback(prisma, organizationId));
 
-  // 4d: frozen at the moment a customer's calendar override was set
-  // (`Customer.calendarVersionId`), never the calendar's latest version —
-  // consistent with how a policy pins to a specific calendar version.
+  // `Customer.calendarVersionId` only identifies the overriding calendar; a
+  // new commitment anchors to that calendar's *current* version (D1b), the
+  // same as a policy's explicit calendar below.
   const customerCalendarVersionByCustomerId = new Map<
     string,
     BusinessCalendarVersion
@@ -225,7 +229,7 @@ export async function runCommitmentPipeline(
     if (!customer.calendarVersion) continue;
     customerCalendarVersionByCustomerId.set(
       customer.id,
-      toCalendarVersionDomain(customer.calendarVersion),
+      currentCalendarVersion(toCalendarVersionDomain(customer.calendarVersion), currentCalendarVersionById),
     );
   }
 
@@ -360,13 +364,15 @@ export async function runCommitmentPipeline(
         // 4i: only a *native* policy can have no explicit calendar at all
         // (an imported one always resolves a concrete schedule or the
         // Always Open default at import time — untouched, D12/E-18). Such a
-        // policy stays pinned to its frozen version; a native policy with no
+        // policy names a specific calendar, and the new commitment anchors to
+        // that calendar's *current* version (D1b), not the version frozen on
+        // the policy version when it was saved; a native policy with no
         // explicit calendar re-resolves fresh to the organization's current
         // default calendar, or Always Open when it has none.
         const policyHasExplicitCalendar =
           matched.policySource !== "native" || (matched.calendarIsExplicit ?? true);
         const policyCalendarVersion = policyHasExplicitCalendar
-          ? frozenCalendarVersion
+          ? currentCalendarVersion(frozenCalendarVersion, currentCalendarVersionById)
           : await resolveEffectiveCalendarVersion(
               matched.calendarIsExplicit,
               frozenCalendarVersion,

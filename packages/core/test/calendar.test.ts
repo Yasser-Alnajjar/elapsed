@@ -357,3 +357,85 @@ describe("workingMinutesBetween in a non-UTC timezone", () => {
     ).toBe(25 * 60);
   });
 });
+
+describe("Sun-Thu 09:00-18:00 vs 24/7 calendars in Africa/Cairo (new-commitment regression)", () => {
+  const cairoBusinessHours: BusinessCalendarVersion = {
+    id: "cairo-v2",
+    version: 2,
+    timezone: "Africa/Cairo",
+    weekly: [0, 1, 2, 3, 4].map((day) => ({
+      day: day as 0 | 1 | 2 | 3 | 4,
+      openMinute: 9 * 60,
+      closeMinute: 18 * 60,
+    })),
+    holidays: [],
+    alwaysOpen: false,
+  };
+  // The calendar editor saves "24/7" as seven full-day windows with alwaysOpen false.
+  const cairoFullWeekWindows: BusinessCalendarVersion = {
+    id: "cairo-v4",
+    version: 4,
+    timezone: "Africa/Cairo",
+    weekly: [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day: day as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+      openMinute: 0,
+      closeMinute: 1440,
+    })),
+    holidays: [],
+    alwaysOpen: false,
+  };
+  const cairoAlwaysOpen: BusinessCalendarVersion = {
+    ...cairoFullWeekWindows,
+    id: "cairo-always-open",
+    weekly: [],
+    alwaysOpen: true,
+  };
+
+  // Monday 2026-10-05 17:58 Cairo (UTC+3) = 14:58Z, two minutes before close.
+  const nearClose = "2026-10-05T14:58:00.000Z";
+
+  it("a 1h target created near closing time crosses to the next working day (wall-clock runway ~16h)", () => {
+    const deadline = computeDeadline(nearClose, 60, cairoBusinessHours);
+    // 2 minutes left today, 58 more from 09:00 Cairo on Tuesday -> 09:58 Cairo = 06:58Z.
+    expect(deadline.toISOString()).toBe("2026-10-06T06:58:00.000Z");
+    const runwayHours = (deadline.getTime() - new Date(nearClose).getTime()) / 3_600_000;
+    expect(runwayHours).toBeCloseTo(16, 0);
+  });
+
+  it("a 40m target created near closing time crosses to the next working day", () => {
+    expect(computeDeadline(nearClose, 40, cairoBusinessHours).toISOString()).toBe("2026-10-06T06:38:00.000Z");
+  });
+
+  it("skips the Friday/Saturday closed days when the target crosses Thursday's close", () => {
+    // Thursday 2026-10-08 17:58 Cairo = 14:58Z -> Sunday 2026-10-11 09:58 Cairo = 06:58Z.
+    expect(computeDeadline("2026-10-08T14:58:00.000Z", 60, cairoBusinessHours).toISOString()).toBe(
+      "2026-10-11T06:58:00.000Z",
+    );
+  });
+
+  it.each([
+    ["seven full-day windows", cairoFullWeekWindows],
+    ["alwaysOpen", cairoAlwaysOpen],
+  ])("a 1h target on a 24/7 calendar (%s) lands exactly 1 real hour later", (_label, calendar) => {
+    const deadline = computeDeadline(nearClose, 60, calendar);
+    expect(deadline.getTime() - new Date(nearClose).getTime()).toBe(60 * 60_000);
+  });
+
+  it("first-response and resolution targets share the same calendar semantics", () => {
+    for (const calendar of [cairoFullWeekWindows, cairoAlwaysOpen]) {
+      const firstResponse = computeDeadline(nearClose, 40, calendar);
+      const resolution = computeDeadline(nearClose, 60, calendar);
+      expect(firstResponse.getTime() - new Date(nearClose).getTime()).toBe(40 * 60_000);
+      expect(resolution.getTime() - new Date(nearClose).getTime()).toBe(60 * 60_000);
+    }
+    const firstResponse = computeDeadline(nearClose, 40, cairoBusinessHours);
+    const resolution = computeDeadline(nearClose, 60, cairoBusinessHours);
+    expect(resolution.getTime() - firstResponse.getTime()).toBe(20 * 60_000);
+  });
+
+  it("business time equals wall-clock time on a 24/7 calendar, but not on a closed-hours calendar", () => {
+    const end = new Date("2026-10-06T06:58:00.000Z");
+    expect(workingMinutesBetween(new Date(nearClose), end, cairoFullWeekWindows)).toBe(16 * 60);
+    expect(workingMinutesBetween(new Date(nearClose), end, cairoBusinessHours)).toBe(60);
+  });
+});

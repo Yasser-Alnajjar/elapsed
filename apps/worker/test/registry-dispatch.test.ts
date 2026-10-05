@@ -18,7 +18,7 @@ vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
   buildCaseRefResolver: vi.fn().mockResolvedValue(null),
   ensureDefaultCalendarVersion: vi.fn().mockResolvedValue({ id: "cal" }),
-  loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [] }),
+  loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [], currentCalendarVersionById: new Map() }),
   runCommitmentPipeline: vi.fn().mockResolvedValue({ commitmentsCreated: 0, casesWithNoMatchingPolicy: 0 }),
   runCommitmentReResolutionPipeline: vi.fn().mockResolvedValue({ commitmentsUpdated: 0 }),
   runNextReplyCyclePipeline: vi.fn().mockResolvedValue({ cyclesCreated: 0, cyclesCancelled: 0, cyclesRestored: 0 }),

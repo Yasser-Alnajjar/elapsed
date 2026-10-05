@@ -13,7 +13,7 @@ import type { WorkerConfig } from "../src/config";
 vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
   buildCaseRefResolver: vi.fn().mockResolvedValue(null),
-  loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [] }),
+  loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [], currentCalendarVersionById: new Map() }),
   runCommitmentPipeline: vi.fn().mockResolvedValue({ commitmentsCreated: 0 }),
   runCommitmentReResolutionPipeline: vi.fn().mockResolvedValue({
     casesConsidered: 0,
@@ -349,7 +349,7 @@ describe("runCycle — Next Reply cycle pipeline wiring (Step 7)", () => {
     const result = await runCycle(prisma, config, "active_set_poll");
 
     expect(runCommitmentPipeline).toHaveBeenCalledWith(prisma, "org_1", {
-      context: { policyVersionRows: [], customersWithCalendarOverride: [] },
+      context: { policyVersionRows: [], customersWithCalendarOverride: [], currentCalendarVersionById: new Map() },
     });
     expect(runNextReplyCyclePipeline).toHaveBeenCalledTimes(1);
     expect(runEvaluationPipeline).toHaveBeenCalledTimes(1);

@@ -202,10 +202,11 @@ describe.skipIf(!TEST_DATABASE_URL)("native policy calendar resolution (real Pos
     expect(newCalendarVersion.calendarId).toBe(secondDefaultId);
   });
 
-  // 4d: a customer's calendar override pins to the specific version current
-  // when it was assigned — editing that calendar's hours afterward doesn't
-  // reach a *new* commitment until the override is explicitly re-set.
-  it("a customer calendar override stays pinned to its assigned version after the calendar is edited", async () => {
+  // D1b: a customer's calendar override identifies *which calendar* applies;
+  // a commitment created after the calendar was edited anchors to its current
+  // version, while the one created before stays on the version it was frozen
+  // to.
+  it("a customer calendar override resolves to the calendar's current version after it is edited", async () => {
     const calendarId = await createCalendar("Customer Calendar", FULL_WEEK);
     const customer = await prisma.customer.create({ data: { organizationId, name: "Acme" } });
     await commitments.setCustomerCalendar(prisma, organizationId, customer.id, calendarId);
@@ -213,11 +214,6 @@ describe.skipIf(!TEST_DATABASE_URL)("native policy calendar resolution (real Pos
     const assignedVersion = await prisma.businessCalendarVersion.findFirstOrThrow({
       where: { calendarId },
       orderBy: { version: "desc" },
-    });
-
-    // Edit the calendar's hours after the override was assigned.
-    await commitments.updateCalendar(prisma, organizationId, calendarId, {
-      weekly: [{ day: 1, openMinute: 540, closeMinute: 1020 }],
     });
 
     const explicitCalendarId = await createCalendar("Policy Calendar", FULL_WEEK);
@@ -228,13 +224,33 @@ describe.skipIf(!TEST_DATABASE_URL)("native policy calendar resolution (real Pos
       warnAtPercent: [],
     });
 
-    await createCase("case-1", { customerId: customer.id });
+    await createCase("case-before-edit", { customerId: customer.id });
+    await commitments.runCommitmentPipeline(prisma, organizationId);
+    const before = await prisma.commitment.findFirstOrThrow({ where: { kind: "resolution" } });
+    expect(before.calendarVersionId).toBe(assignedVersion.id);
+
+    // Edit the calendar's hours after the override was assigned.
+    await commitments.updateCalendar(prisma, organizationId, calendarId, {
+      weekly: [{ day: 1, openMinute: 540, closeMinute: 1020 }],
+    });
+    const editedVersion = await prisma.businessCalendarVersion.findFirstOrThrow({
+      where: { calendarId },
+      orderBy: { version: "desc" },
+    });
+    expect(editedVersion.version).toBe(assignedVersion.version + 1);
+
+    await createCase("case-after-edit", { customerId: customer.id });
     await commitments.runCommitmentPipeline(prisma, organizationId);
 
-    const commitment = await prisma.commitment.findFirstOrThrow({ where: { kind: "resolution" } });
-    // Still the version frozen at assignment time, not the edited one, and
-    // still wins over the policy's own explicit calendar.
-    expect(commitment.calendarVersionId).toBe(assignedVersion.id);
+    expect((await prisma.commitment.findUniqueOrThrow({ where: { id: before.id } })).calendarVersionId).toBe(
+      assignedVersion.id,
+    );
+    const after = await prisma.commitment.findFirstOrThrow({
+      where: { kind: "resolution", id: { not: before.id } },
+    });
+    // The override still wins over the policy's own explicit calendar, and
+    // follows the edited calendar.
+    expect(after.calendarVersionId).toBe(editedVersion.id);
   });
 
   it("customer calendar override wins over a native policy's own organization-default resolution", async () => {
@@ -302,5 +318,126 @@ describe.skipIf(!TEST_DATABASE_URL)("native policy calendar resolution (real Pos
     // Matched the imported policy (D12), not the native one.
     expect(commitment.targetMinutes).toBe(30);
     expect(commitment.calendarVersionId).toBe(importedCalendarVersion.id);
+  });
+
+  // The reported bug: an explicit-calendar policy used to freeze the
+  // calendar version that was latest when the policy was saved, so editing the
+  // calendar to 24/7 afterwards never reached new commitments — a 1h
+  // Resolution created at 17:58 local still got a ~16h runway.
+  describe("explicit-calendar policy follows the calendar's current version (D1b)", () => {
+    const CAIRO_BUSINESS_HOURS: WeeklyWindow[] = [0, 1, 2, 3, 4].map((day) => ({
+      day: day as WeeklyWindow["day"],
+      openMinute: 9 * 60,
+      closeMinute: 18 * 60,
+    }));
+    // Monday 2026-10-05 17:58 Cairo (UTC+3), two minutes before close.
+    const NEAR_CLOSE = new Date("2026-10-05T14:58:00.000Z");
+    const MIN = 60_000;
+
+    async function setUp() {
+      const { calendarId } = await commitments.createNativeCalendar(prisma, organizationId, "SLA-Calendar", {
+        timezone: "Africa/Cairo",
+        weekly: CAIRO_BUSINESS_HOURS,
+        holidays: [],
+      });
+      await commitments.createNativePolicy(prisma, organizationId, "Premium Support", {
+        match: {},
+        targets: [
+          { kind: "first_response", minutes: 40 },
+          { kind: "resolution", minutes: 60 },
+        ],
+        calendarId,
+        warnAtPercent: [],
+      });
+      return calendarId;
+    }
+
+    const commitmentsOf = (caseId: string) =>
+      prisma.commitment.findMany({ where: { caseId, kind: { in: ["first_response", "resolution"] } } });
+
+    it("a new case after a 24/7 edit gets a ~+1h resolution deadline; the pre-edit case stays on the business-hours version", async () => {
+      const calendarId = await setUp();
+
+      const oldCase = await createCase("case-before-edit", { openedAt: NEAR_CLOSE });
+      await commitments.runCommitmentPipeline(prisma, organizationId);
+      const oldCommitments = await commitmentsOf(oldCase.id);
+      expect(oldCommitments).toHaveLength(2);
+      const oldResolution = oldCommitments.find((c) => c.kind === "resolution")!;
+      // Business time: 2 min today + 58 min from Tuesday 09:00 Cairo.
+      expect(oldResolution.dueAt.toISOString()).toBe("2026-10-06T06:58:00.000Z");
+      const v1 = await prisma.businessCalendarVersion.findFirstOrThrow({ where: { calendarId, version: 1 } });
+      expect(oldResolution.calendarVersionId).toBe(v1.id);
+
+      // Edit the calendar to 24/7 (seven full-day windows, as the editor saves it).
+      const edit = await commitments.updateCalendar(prisma, organizationId, calendarId, { weekly: FULL_WEEK });
+      expect(edit).toMatchObject({ created: true, version: { version: 2 } });
+
+      const newCase = await createCase("case-after-edit", { openedAt: NEAR_CLOSE });
+      await commitments.runCommitmentPipeline(prisma, organizationId);
+      // Re-resolution is not a trigger for a calendar change alone (D1b).
+      await commitments.runCommitmentReResolutionPipeline(prisma, organizationId);
+
+      const newCommitments = await commitmentsOf(newCase.id);
+      expect(newCommitments).toHaveLength(2);
+      for (const commitment of newCommitments) {
+        // First Response and Resolution share one calendar version…
+        expect(commitment.calendarVersionId).toBe(edit.version.id);
+        // …and 24/7 means business time == wall-clock time.
+        expect(commitment.dueAt.getTime() - commitment.startedAt.getTime()).toBe(commitment.targetMinutes * MIN);
+      }
+      expect(newCommitments.find((c) => c.kind === "first_response")!.dueAt.toISOString()).toBe(
+        "2026-10-05T15:38:00.000Z",
+      );
+      expect(newCommitments.find((c) => c.kind === "resolution")!.dueAt.toISOString()).toBe(
+        "2026-10-05T15:58:00.000Z",
+      );
+
+      // D1b: the pre-edit commitments are untouched.
+      const oldAfter = await commitmentsOf(oldCase.id);
+      for (const commitment of oldAfter) {
+        const before = oldCommitments.find((c) => c.id === commitment.id)!;
+        expect(commitment.calendarVersionId).toBe(v1.id);
+        expect(commitment.dueAt.toISOString()).toBe(before.dueAt.toISOString());
+      }
+    });
+
+    it("a policy re-saved after the calendar edit resolves to the same current calendar version", async () => {
+      const calendarId = await setUp();
+      const edit = await commitments.updateCalendar(prisma, organizationId, calendarId, { weekly: FULL_WEEK });
+      const policy = await prisma.sLAPolicy.findFirstOrThrow({ where: { organizationId } });
+      await commitments.updateNativePolicy(prisma, organizationId, policy.id, {
+        targets: [{ kind: "resolution", minutes: 60 }],
+      });
+
+      const caseRow = await createCase("case-1", { openedAt: NEAR_CLOSE });
+      await commitments.runCommitmentPipeline(prisma, organizationId);
+
+      const resolution = (await commitmentsOf(caseRow.id)).find((c) => c.kind === "resolution")!;
+      expect(resolution.calendarVersionId).toBe(edit.version.id);
+      expect(resolution.dueAt.toISOString()).toBe("2026-10-05T15:58:00.000Z");
+    });
+
+    it("keeps closed days and multi-window days working for new commitments on the edited calendar", async () => {
+      const calendarId = await setUp();
+      await commitments.updateCalendar(prisma, organizationId, calendarId, {
+        weekly: [
+          { day: 4, openMinute: 9 * 60, closeMinute: 12 * 60 },
+          { day: 4, openMinute: 13 * 60, closeMinute: 18 * 60 },
+          { day: 0, openMinute: 9 * 60, closeMinute: 18 * 60 },
+        ],
+      });
+
+      // Thursday 2026-10-08 17:58 Cairo: 2 min left, Fri/Sat closed, 58 more Sunday from 09:00 Cairo.
+      const caseRow = await createCase("case-1", { openedAt: new Date("2026-10-08T14:58:00.000Z") });
+      await commitments.runCommitmentPipeline(prisma, organizationId);
+      const resolution = (await commitmentsOf(caseRow.id)).find((c) => c.kind === "resolution")!;
+      expect(resolution.dueAt.toISOString()).toBe("2026-10-11T06:58:00.000Z");
+
+      // Thursday 11:30 Cairo: 30 min before the lunch gap, 30 after it reopens at 13:00.
+      const lunchCase = await createCase("case-2", { openedAt: new Date("2026-10-08T08:30:00.000Z") });
+      await commitments.runCommitmentPipeline(prisma, organizationId);
+      const lunchResolution = (await commitmentsOf(lunchCase.id)).find((c) => c.kind === "resolution")!;
+      expect(lunchResolution.dueAt.toISOString()).toBe("2026-10-08T10:30:00.000Z");
+    });
   });
 });
