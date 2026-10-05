@@ -59,6 +59,7 @@ export default async function RootLayout({
       lang="en"
       className={`${hankenGrotesk.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
     >
       <body suppressHydrationWarning>
         <SessionProvider>

@@ -5,7 +5,8 @@ import { TRIAL_LENGTH_DAYS } from "@sla/db/plans";
 import { BrandMark } from "@/components/shared/brand-mark";
 import { authOptions } from "@/lib/auth";
 import { UserMenu } from "../layout/user-menu";
-import { MarketingCta, MONO_LABEL } from "./marketing-ui";
+import { MarketingCta } from "./marketing-ui";
+import { SiteMobileNav } from "./site-mobile-nav";
 import { SiteNav } from "./site-nav";
 
 export async function SiteHeader() {
@@ -52,6 +53,7 @@ export async function SiteHeader() {
               </MarketingCta>
             </>
           )}
+          <SiteMobileNav links={LINKS} />
         </div>
       </div>
     </header>
