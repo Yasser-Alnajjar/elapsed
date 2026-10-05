@@ -48,7 +48,7 @@ _Update this section every time a task or phase changes state._
 | [N3](#phase-n3--provider-isolation--freshness)       | Provider outages isolated; stale data labelled on evaluations, alerts and UI                         | [03](03-provider-isolation-and-freshness.md)  | N2, D13              | 2–3 wk   | P0       | ⬜ Not started                    |
 | [N4](#phase-n4--platform-admin--plan-records)        | Platform Admin: tenants, plans, health, audit log                                                    | [04](04-platform-admin-and-plan-records.md)   | N3, D14 (plan names) | 3 wk     | P1       | 🔄 In progress (N4.1–N4.6 built 2026-10-02; N4.7 is data entry) |
 | [N5](#phase-n5--customer-onboarding--retention)      | Any supported pair onboards unaided; monthly report; usage measured                                  | [05](05-customer-onboarding-and-retention.md) | N2, N4, D26          | 3–4 wk   | P1       | 🟡 7/8 code-complete; N5.8 open    |
-| [N6](#phase-n6--entitlements--billing)               | Current pricing represented once in code; soft limits; billing provider                              | [06](06-entitlements-and-billing.md)          | N4, N5, D14, trigger | 2–3 wk   | P2       | 🔄 N6.1–N6.4, N6.6 built 2026-10-02; N6.5 blocked on D28 |
+| [N6](#phase-n6--entitlements--billing)               | Current pricing represented once in code; soft limits; billing provider                              | [06](06-entitlements-and-billing.md)          | N4, N5, D14, trigger | 2–3 wk   | P2       | 🔄 N6.1–N6.4, N6.6 built 2026-10-02; N6.5 not started (D28 closed: Paymob sandbox only, production provider open) |
 | [N7](#phase-n7--third-ticket-source)                 | Third ticket source with zero core changes (contract test)                                           | [07](07-third-ticket-source.md)               | N2, N3, D29          | 3–4 wk   | P2       | ⏸ Demand-based                    |
 | [N8](#phase-n8--scale)                               | Fix the scale limit that is measured to bite next                                                    | [08](08-scale.md)                             | N3 metrics, triggers | per item | P3       | ⏸ Trigger-based                   |
 
@@ -278,7 +278,7 @@ Decisions that change product behavior. Tick one when it is decided and write th
 - [x] **D25** — Imported policies **do not count toward plan policy limits**. Plan policy limits apply only to policies created and managed natively in Elapsed; imported policies represent existing customer configuration and remain outside the limit. → **Unblocks N6.2**
 - [x] **D26** — A tracker admin who is not an Elapsed member can connect the tracker through a **signed, single-use, organization- and provider-scoped connect link**. The link is short-lived and consumed after successful use; the tracker admin does not need an Elapsed membership. → **Unblocks N5.3**
 - [x] **D27** — When a trial expires, the account enters a **restricted state**. Existing cases, SLA monitoring, alerts, dashboard/history access, and existing data remain active. Creation of new cases and new configuration is blocked until the customer upgrades. The customer receives an in-app banner, the owner receives an email, and the account is marked as trial-expired. → **Unblocks N6.4**
-- [ ] **D28** — **Billing and payment provider strategy:** Elapsed targets both **Egyptian and international customers**, so billing must not be coupled to a single payment provider.
+- [x] **D28** — **Billing and payment provider strategy:** Elapsed targets both **Egyptian and international customers**, so billing must not be coupled to a single payment provider.
 
   **Decision:** Use a **provider-agnostic billing/payment abstraction** that supports multiple payment providers and selects the appropriate provider based on market, currency, and supported payment method.
 
@@ -315,11 +315,13 @@ Decisions that change product behavior. Tick one when it is decided and write th
                 └── Provider-independent
   ```
 
-  **Not yet decided:** the exact initial payment providers. Provider selection must be finalized before implementing N6.5, based on Egypt support, international availability, recurring billing, supported currencies, fees, settlement, webhook reliability, and business/legal requirements.
+  **Provider selection (closed 2026-10-05):** **Paymob is selected as the initial sandbox/testing payment provider only.** This is **not** a production-provider commitment. The billing architecture stays provider-neutral so the provider can be replaced or supplemented later.
+
+  **Production provider selection remains explicitly open.** It must be decided separately, before any production billing go-live, based on Egypt support, international availability, recurring billing, supported currencies, fees, settlement, webhook reliability, and business/legal requirements.
 
   The obsolete `$299/$699` pilot pricing remains excluded; pricing is governed by D14.
 
-  → **Billing architecture direction decided; N6.5 remains blocked only on final provider selection.**
+  → **D28 closed 2026-10-05: provider-agnostic billing architecture; Paymob is the sandbox/testing provider only; the production provider is still open. Closing D28 does not start N6.5: no Paymob code, SDK, credentials, adapter, webhook or UI exists, and none is added by this decision.**
 
 - [x] **D29** — Adopt **Zoho Desk** as Elapsed's **ticket provider for the Egyptian market**. Zoho Desk is technically compatible with the existing provider contract and shared projector, with no required changes to the Elapsed core domain model. Integration will use Zoho's API for initial/backfill synchronization and incremental reconciliation, with webhooks used where the customer's Zoho edition supports them and polling/reconciliation retained as the correctness mechanism.
 
@@ -581,7 +583,7 @@ Phase N8 — Scale                         (each item starts on its trigger)
 
 ### Phase N6 — Entitlements + billing
 
-**Status:** 🔄 N6.1–N6.4 and N6.6 built (not deployed); N6.5 blocked on D28. Started before its D20 trigger fired, at the owner's request · **Estimate:** 2–3 weeks once triggered · **Priority:** P2 · **Plan:** [`06-entitlements-and-billing.md`](06-entitlements-and-billing.md) · **Needs:** N4, N5, D14, D25, D27, D28 · **Branch:** `phase/n6-entitlements-and-billing`
+**Status:** 🔄 N6.1–N6.4 and N6.6 built (not deployed); N6.5 not started (D28 closed 2026-10-05: Paymob as sandbox/testing provider only, production provider still open). Started before its D20 trigger fired, at the owner's request · **Estimate:** 2–3 weeks once triggered · **Priority:** P2 · **Plan:** [`06-entitlements-and-billing.md`](06-entitlements-and-billing.md) · **Needs:** N4, N5, D14, D25, D27, D28 · **Branch:** `phase/n6-entitlements-and-billing`
 **Trigger:** ≥15 paying tenants, **or** manual plan/invoice work costs more than ~2 h per month, **or** a customer asks for self-serve plan changes. The trigger counts only once D14 is resolved.
 **Goal:** the current, intentional pricing is represented once in code; limits are soft; monitoring is never gated by plan state.
 
@@ -590,7 +592,7 @@ Phase N8 — Scale                         (each item starts on its trigger)
 - [x] **N6.3** Soft enforcement at invite, integration connect and native policy creation. **Done 2026-10-02, not deployed.** Over a limit it warns (response field, in-app banner, `EntitlementEvent` on the admin tenant page); it never blocks on a limit. Behind `WorkerSettings.entitlementsEnforced`, **off by default**, set in SQL. A test shows a tenant over every limit still gets evaluated and alerted.
 - [x] **N6.4** Trial lifecycle (D27). **Done 2026-10-02, not deployed.** Sign-up now sets `trialEndsAt` to +14 days (it was never set before). When enforced and the trial has ended: new members, integrations and native policies are blocked (402); monitoring, alerts and history are untouched; in-app banner; owner email from the worker's reconciliation tick, once per org and trial end date; event on the admin tenant page. Existing organizations have no `trialEndsAt` and so never lapse until an operator sets one. **UX follow-up 2026-10-02:** the expired-trial banner states that cases, SLA monitoring, alerts and history keep working and offers a contact CTA (`lib/upgrade-cta.ts`, `NEXT_PUBLIC_SUPPORT_EMAIL`; no link when unset) instead of `/pricing` and `/sign-up`. A blocked connect lands on `/settings/integrations?entitlement=trial_expired&action=connect&provider=…` with a notice naming what was blocked. The invite form and native-policy dialog show the soft-limit warning when a creation reaches or passes the plan limit (it never blocks). When N6.5 ships, change only `getUpgradeCta()` to return `/upgrade`.
   - ⚠️ **Open decision (D27 vs continuous monitoring):** D27 says creation of *new cases* is blocked after the trial. Cases are created by provider sync, so blocking them would stop monitoring for a lapsed tenant, which this phase's goal and plan §1 forbid ("monitoring is never stopped or degraded because of plan state"). **Not implemented**: only new configuration (members, integrations, native policies) is blocked; provider-ingested cases keep being created and evaluated. Owner to confirm that D27's "new cases" means manually created cases (none exist today) or to amend D27. Until then ingestion is untouched.
-- [ ] **N6.5** Billing provider integration (⛔ D28, provider not chosen). Not started.
+- [ ] **N6.5** Billing provider integration. **Not started.** D28 is closed (2026-10-05): Paymob is the initial **sandbox/testing** provider only; the **production provider is still open** and must be chosen separately before any production billing go-live. The provider-neutral boundary already exists (`getBillingProvider()` returns `null`); no Paymob code, SDK, credentials, adapter, webhook or UI has been added.
 - [~] **N6.6** Public claims match the code. **Done 2026-10-02 except the change-plan FAQ, which stays "talk to us" until N6.5.** The plan bullets are generated from `PLANS`; the trial FAQ now states what happens at expiry; a test fails if the page names SSO/SAML, retention, proration or "case history".
 
 ### Phase N7 — Third ticket source
