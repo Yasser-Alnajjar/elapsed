@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  Blocks,
   Book,
   Building2,
   CreditCard,
@@ -8,7 +9,6 @@ import {
   LayoutDashboard,
   ListChecks,
   Radar,
-  Settings2,
   Timer,
   TriangleAlert,
   UserRound,
@@ -49,7 +49,7 @@ export const SETTINGS_NAV_ITEMS: NavLink[] = [
   {
     href: "/settings/integrations",
     label: "Integrations",
-    icon: Settings2,
+    icon: Blocks,
     description: "Connect and manage third-party services like Zendesk.",
   },
   {
