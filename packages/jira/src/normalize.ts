@@ -290,6 +290,9 @@ export async function buildJiraBatch(
       where: {
         system: "jira",
         confidence: "certain",
+        // An ended link no longer routes the issue's events: `issue_unlinked` closed the
+        // engineering span, and the events already derived stay on that case.
+        unlinkedAt: null,
         case: { organizationId },
         ...(issueKeys ? { externalId: { in: issueKeys } } : {}),
       },
@@ -300,14 +303,21 @@ export async function buildJiraBatch(
   const statusById = buildStatusLookup(latestStatusSnapshots(statusRows));
   const latestIssues = latestIssueSnapshots(issueRows);
   const historiesByIssueKey = groupHistoriesByIssueKey(historyRows);
-  const caseIdByIssueKey = new Map(caseLinks.map((link) => [link.externalId, link.caseId]));
+  // One issue can be linked to several cases (Intercom conversations sharing a Tracker, tickets
+  // reporting the same bug): each gets the issue's events.
+  const caseIdsByIssueKey = new Map<string, string[]>();
+  for (const link of caseLinks) {
+    const caseIds = caseIdsByIssueKey.get(link.externalId);
+    if (caseIds) caseIds.push(link.caseId);
+    else caseIdsByIssueKey.set(link.externalId, [link.caseId]);
+  }
 
   const eventGroups: EventGroup[] = [];
   const failures: ProjectionFailure[] = [];
 
   for (const { rawEventId: issueRawEventId, value: issue } of latestIssues.values()) {
-    const caseId = caseIdByIssueKey.get(issue.key);
-    if (!caseId) continue;
+    const caseIds = caseIdsByIssueKey.get(issue.key);
+    if (!caseIds) continue;
 
     try {
       const derived = deriveNormalizedEventsForIssue(
@@ -328,25 +338,27 @@ export async function buildJiraBatch(
         select: { id: true },
       });
 
-      eventGroups.push({
-        target: { caseId },
-        ownRawEventIds: ownRawEvents.map((row) => row.id),
-        // `derived` is emitted in source order, so its index is the source sequence.
-        events: derived.map((event, sourceSequence) => ({
-          type: "state_changed" as const,
-          occurredAt: new Date(event.occurredAt),
-          actor: event.actor,
-          sourceRole: JIRA_SOURCE_ROLE,
-          fromState: event.fromState,
-          toState: event.toState,
-          sourceRawEventId: event.sourceRawEventId,
-          sourceSequence,
-        })),
-        // The timeline carries only the coarse new/in_progress/resolved
-        // category; the live name ("In Progress") rides on the link's evidence.
-        linkEvidencePatch: { externalId: issue.key, patch: { statusName: issue.fields.status.name } },
-        recordId: issue.key,
-      });
+      for (const caseId of caseIds) {
+        eventGroups.push({
+          target: { caseId },
+          ownRawEventIds: ownRawEvents.map((row) => row.id),
+          // `derived` is emitted in source order, so its index is the source sequence.
+          events: derived.map((event, sourceSequence) => ({
+            type: "state_changed" as const,
+            occurredAt: new Date(event.occurredAt),
+            actor: event.actor,
+            sourceRole: JIRA_SOURCE_ROLE,
+            fromState: event.fromState,
+            toState: event.toState,
+            sourceRawEventId: event.sourceRawEventId,
+            sourceSequence,
+          })),
+          // The timeline carries only the coarse new/in_progress/resolved
+          // category; the live name ("In Progress") rides on the link's evidence.
+          linkEvidencePatch: { externalId: issue.key, patch: { statusName: issue.fields.status.name } },
+          recordId: issue.key,
+        });
+      }
     } catch (error) {
       failures.push({ id: issue.key, error: error instanceof Error ? error.message : String(error) });
     }

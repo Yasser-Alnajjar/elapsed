@@ -44,6 +44,8 @@ export {
   recordIntercomWorkspaceId,
   IntercomReauthRequiredError,
 } from "./tokenLifecycle";
-export { INTERCOM_SOURCE_ROLE } from "./source-role";
+export { INTERCOM_JIRA_LINK_EVENT_SOURCE_ROLE, INTERCOM_SOURCE_ROLE } from "./source-role";
+export { INTERCOM_TRACKER_CATEGORY, INTERCOM_TRACKER_TICKET_CATEGORY, isIntercomTrackerTicket, linkedTrackerIds } from "./tracker";
+export { correlateIntercomJiraKeys, INTERCOM_JIRA_EVIDENCE_KEY, INTERCOM_JIRA_KEY_ATTRIBUTE } from "./correlate";
 export { intercomAdapter, intercomWebAdapter } from "./adapter";
 export { renderIntercomConversation } from "./conversation";

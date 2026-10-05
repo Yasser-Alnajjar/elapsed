@@ -2,6 +2,7 @@ import type { ProviderAdapter, ProviderWebAdapter } from "@sla/ingestion";
 import { runIntercomBackfill } from "./backfill";
 import { buildIntercomConversationUrl } from "./client";
 import { intercomConversationContext, renderIntercomConversation } from "./conversation";
+import { correlateIntercomJiraKeys } from "./correlate";
 import { buildIntercomBatch } from "./normalize";
 import { INTERCOM_ACCESS_NOTE } from "./oauth";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
@@ -10,7 +11,8 @@ import { recognizeIntercomConversationUrl } from "./ticket-url";
 const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, n) => sum + n, 0);
 
 /**
- * Intercom: a ticket source with no importable policies and no webhook. Its
+ * Intercom: a ticket source with no importable policies and no webhook. It also
+ * correlates the Jira issues its own Jira integration creates (`jira_issue_key`). Its
  * backfill needs no OAuth client config (the tokens carry no refresh dance);
  * only the connect/callback routes need the app's client id and secret.
  */
@@ -31,6 +33,7 @@ export const intercomAdapter: ProviderAdapter = {
     return { recordsFetched: total(counts), counts };
   },
   normalize: (ctx) => buildIntercomBatch(ctx.prisma, ctx.integration.id),
+  correlate: (ctx) => correlateIntercomJiraKeys(ctx.prisma, ctx.integration.id),
   recognizeCaseUrl: recognizeIntercomConversationUrl,
 };
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCaseKey,
+  formatCaseLinkMethod,
   formatCommitmentKind,
   formatNextCycle,
   formatTicketSourceShort,
@@ -90,5 +91,12 @@ describe("formatTicketSourceShort", () => {
   it("labels the case's own source in the list's state chip", () => {
     expect(formatTicketSourceShort("zendesk")).toBe("ZD");
     expect(formatTicketSourceShort("intercom")).toBe("IC");
+  });
+});
+
+describe("formatCaseLinkMethod", () => {
+  it("names no provider: an official link is a ticket source's own record (Zendesk's registry, Intercom's jira_issue_key)", () => {
+    expect(formatCaseLinkMethod("official_link")).toBe("Official link");
+    expect(formatCaseLinkMethod("remote_link")).toBe("Remote link");
   });
 });

@@ -162,4 +162,32 @@ describe.skipIf(!TEST_DATABASE_URL)("Jira normalization issue scoping (real Post
     expect(eventsA).toBeGreaterThan(0);
     expect(eventsB).toBeGreaterThan(0);
   });
+
+  it("an issue linked to several cases derives its events onto every one of them", async () => {
+    // PROJ-1 is also what case B reports (e.g. two conversations sharing one tracker).
+    await prisma.caseLink.create({
+      data: { caseId: caseBId, system: "jira", externalId: "PROJ-1", method: "official_link", confidence: "certain" },
+    });
+    await seedIssue("PROJ-1", "issue:PROJ-1:hash-1");
+
+    await normalizeJira(prisma, integrationId);
+
+    for (const caseId of [caseAId, caseBId]) {
+      const jiraEvents = await prisma.normalizedEvent.findMany({ where: { caseId, system: "jira" } });
+      expect(jiraEvents.length).toBeGreaterThan(0);
+    }
+    const linkA = await prisma.caseLink.findFirstOrThrow({ where: { caseId: caseAId, externalId: "PROJ-1" } });
+    const linkB = await prisma.caseLink.findFirstOrThrow({ where: { caseId: caseBId, externalId: "PROJ-1" } });
+    expect((linkA.evidence as { statusName?: string }).statusName).toBe("To Do");
+    expect((linkB.evidence as { statusName?: string }).statusName).toBe("To Do");
+  });
+
+  it("an ended (unlinked) link no longer routes the issue's events to its case", async () => {
+    await prisma.caseLink.updateMany({ where: { caseId: caseAId }, data: { unlinkedAt: new Date("2026-03-02") } });
+    await seedIssue("PROJ-1", "issue:PROJ-1:hash-1");
+
+    await normalizeJira(prisma, integrationId);
+
+    expect(await prisma.normalizedEvent.count({ where: { caseId: caseAId } })).toBe(0);
+  });
 });

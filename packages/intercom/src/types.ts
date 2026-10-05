@@ -59,7 +59,18 @@ export interface IntercomConversation {
   ticket?: {
     custom_attributes?: { _default_title_?: { value?: string | null } };
   } | null;
+  /** Flat attributes (distinct from `ticket.custom_attributes`): `Ticket category`, `jira_issue_key`. Read by ./tracker and ./correlate. */
+  custom_attributes?: Record<string, unknown> | null;
+  /** The other side of Intercom's conversation <-> ticket links; see ./tracker. */
+  linked_objects?: { data?: IntercomLinkedObject[] | null } | null;
   [key: string]: unknown;
+}
+
+/** One `linked_objects.data` entry: `category` is `"Tracker"` on a conversation's reference to a Tracker ticket, `null` on a tracker's reference back. */
+export interface IntercomLinkedObject {
+  id: string | number;
+  type: string;
+  category?: string | null;
 }
 
 /**

@@ -169,7 +169,10 @@ async function reconcileEvents(
     group.ownRawEventIds.length === 0
       ? []
       : await prisma.normalizedEvent.findMany({
-          where: { caseId, sourceRawEventId: { in: group.ownRawEventIds } },
+          // `issue_linked` / `issue_unlinked` belong to the link projector, never to a
+          // batch: a ticket source's own correlator cites its own snapshots (Intercom's
+          // `jira_issue_key`), which are in `ownRawEventIds`, and must not be reconciled away.
+          where: { caseId, sourceRawEventId: { in: group.ownRawEventIds }, type: { notIn: ["issue_linked", "issue_unlinked"] } },
           select: {
             id: true,
             sourceRawEventId: true,

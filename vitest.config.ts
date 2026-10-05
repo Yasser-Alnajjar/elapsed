@@ -21,6 +21,7 @@ const realDatabaseSuites = [
   "apps/web/test/breached-at-data.test.ts",
   "apps/web/test/source-sync-evaluation.test.ts",
   "apps/web/test/official-link-correlation.test.ts",
+  "apps/web/test/intercom-jira-correlation.test.ts",
   "apps/web/test/evaluation-persistence.test.ts",
   "apps/web/test/multi-commitment-pipeline.test.ts",
   "apps/web/test/event-ordering-persistence.test.ts",
