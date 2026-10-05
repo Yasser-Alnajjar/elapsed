@@ -158,6 +158,11 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/zendesk/[integrationId] 
 
   it("processes a ticket end-to-end: ingests, normalizes, and creates the Case", async () => {
     stubFetchForTicket(1, "Cannot log in");
+    // An integration that has been failing: one processed delivery is a success (N3.1).
+    await prisma.integration.update({
+      where: { id: integrationId },
+      data: { lastSyncError: "boom", consecutiveFailures: 3, failingSince: new Date("2026-03-01T00:00:00Z") },
+    });
     const { POST } = await import("../src/app/api/webhooks/zendesk/[integrationId]/route");
 
     const response = await POST(webhookRequest(payload(1)), { params: Promise.resolve({ integrationId }) });
@@ -173,6 +178,9 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/zendesk/[integrationId] 
     const updated = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
     expect(updated.lastSyncAt).not.toBeNull();
     expect(updated.lastSyncError).toBeNull();
+    // N3.1: a processed delivery records a successful sync and clears the failure streak.
+    expect(updated.lastSuccessfulSyncAt).not.toBeNull();
+    expect(updated).toMatchObject({ consecutiveFailures: 0, failingSince: null });
   });
 
   it("soft-deletes the Case when the ticket 404s on refetch", async () => {

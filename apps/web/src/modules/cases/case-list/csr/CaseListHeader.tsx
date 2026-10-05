@@ -25,8 +25,8 @@ export function CaseListHeader({
         </div>
 
         <p className="text-sm text-on-surface-variant">
-          Continuous SLA ledger across Zendesk customer touches and Jira
-          engineering handoffs
+          Continuous SLA ledger across customer touches in your ticket source
+          and engineering handoffs in your tracker
         </p>
       </div>
 

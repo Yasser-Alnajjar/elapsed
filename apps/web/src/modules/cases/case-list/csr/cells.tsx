@@ -32,13 +32,15 @@ import {
   formatCommitmentStatus,
   formatLinkedSystemShort,
   formatMinutes,
+  formatTicketSource,
+  formatTicketSourceShort,
 } from "@/lib/format";
 import { commitmentStatusStyle } from "@/lib/status-styles";
 import type { CaseListRow } from "@/lib/types/cases";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-/** "Priority & Dual-Key" — severity chip over the Zendesk⇄Jira id pairing. */
+/** "Priority & Dual-Key" — severity chip over the ticket-source⇄tracker id pairing. */
 export function PriorityDualKeyCell({ row }: { row: CaseListRow }) {
   const link = row.primaryLink;
 
@@ -94,7 +96,7 @@ export function CustomerSubjectCell({ row }: { row: CaseListRow }) {
       <div className="mt-1 flex items-center gap-2">
         <span className="flex items-center gap-1 font-mono text-xxs text-outline">
           <Inbox aria-hidden className="size-2.75 shrink-0 text-outline" />
-          Zendesk #{row.externalId}
+          {formatTicketSource(row.system)} #{row.externalId}
         </span>
       </div>
     </div>
@@ -278,7 +280,7 @@ export function CurrentStateAssigneeCell({ row }: { row: CaseListRow }) {
             closed ? "text-outline" : "text-on-surface",
           )}
         >
-          ZD: {closed ? "Closed" : "Open"}
+          {formatTicketSourceShort(row.system)}: {closed ? "Closed" : "Open"}
         </span>
         {row.primaryLink?.statusName && (
           <span

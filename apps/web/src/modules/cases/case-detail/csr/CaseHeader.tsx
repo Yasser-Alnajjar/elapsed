@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PriorityTierChip } from "@/components/shared/priority-tier-chip";
 import { Reveal } from "@/components/shared/reveal";
 import {
+  formatCaseKey,
   formatDateTime,
   formatLeg,
   formatPriorityTier,
@@ -33,7 +34,7 @@ export function formatCaseIdentity(
   return "—";
 }
 
-/** Copyable dual-key chip — "#ZD-8921" or "#ZD-8921 ↔ ENG-4102" */
+/** Copyable dual-key chip — "ZD-8921" or "ZD-8921 / ENG-4102" (the case key carries its own ticket source's prefix) */
 function CopyKeysButton({ reference }: { reference: string }) {
   const { copied, copy } = useCopyToClipboard();
 
@@ -60,9 +61,9 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
   const router = useRouter();
 
   const primaryLink = data.links[0] ?? null;
-  const zdKey = `ZD-${c.externalId}`;
+  const caseKey = formatCaseKey(c.system, c.externalId);
   const engKey = primaryLink?.externalId ?? null;
-  const caseReference = engKey ? `${zdKey} / ${engKey}` : zdKey;
+  const caseReference = engKey ? `${caseKey} / ${engKey}` : caseKey;
 
   const heroCommitment = pickHeroCommitment(data.commitments);
 
@@ -84,7 +85,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
             </>
           )}
           <span className="font-medium text-primary">
-            {zdKey}
+            {caseKey}
             {engKey && (
               <>
                 {" ↔ "}
@@ -137,7 +138,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
             )}
 
             <span className="rounded bg-surface-container-highest px-2 py-0.5 font-mono text-xs text-primary">
-              {zdKey}
+              {caseKey}
             </span>
 
             {engKey && (

@@ -43,7 +43,7 @@ export const AtRiskHeader = ({
         </div>
 
         <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
-          Active SLA countdowns burning runway across Zendesk and Jira handoffs.
+          Active SLA countdowns burning runway across ticket and engineering handoffs.
           Queue latency and transit bottlenecks are unpaused and incurring
           real-time penalty.
         </p>

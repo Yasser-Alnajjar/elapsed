@@ -155,8 +155,8 @@ export const AtRiskView = ({ data }: { data: AtRiskPageData }) => {
                 </span>
                 <p className="text-sm text-on-surface-variant max-w-4xl">
                   Calculations are strictly continuous and deterministic.
-                  Elapsed ingests raw immutable timestamp events from Zendesk
-                  tickets and Jira webhooks. Transit between queues does{" "}
+                  Elapsed ingests raw immutable timestamp events from your
+                  ticket source and your work tracker. Transit between queues does{" "}
                   <strong>NOT pause</strong> the SLA clock. Pauses are applied
                   solely if explicitly contracted scheduled maintenance windows
                   are active.

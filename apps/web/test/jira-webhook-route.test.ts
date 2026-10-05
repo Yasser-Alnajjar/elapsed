@@ -184,6 +184,11 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/jira/[integrationId] (re
 
   it("processes jira:issue_updated end-to-end: ingests the issue and its status/changelog/remote-link manifest", async () => {
     stubFetchForIssue("ENG-1");
+    // An integration that has been failing: one processed delivery is a success (N3.1).
+    await prisma.integration.update({
+      where: { id: integrationId },
+      data: { lastSyncError: "boom", consecutiveFailures: 3, failingSince: new Date("2026-03-01T00:00:00Z") },
+    });
     const { POST } = await import("../src/app/api/webhooks/jira/[integrationId]/route");
 
     const response = await POST(signedRequest(eventPayload("jira:issue_updated", "ENG-1")), {
@@ -201,6 +206,9 @@ describe.skipIf(!TEST_DATABASE_URL)("POST /api/webhooks/jira/[integrationId] (re
     const updated = await prisma.integration.findUniqueOrThrow({ where: { id: integrationId } });
     expect(updated.lastSyncAt).not.toBeNull();
     expect(updated.lastSyncError).toBeNull();
+    // N3.1: a processed delivery records a successful sync and clears the failure streak.
+    expect(updated.lastSuccessfulSyncAt).not.toBeNull();
+    expect(updated).toMatchObject({ consecutiveFailures: 0, failingSince: null });
   });
 
   it("jira:issue_deleted unlinks every active CaseLink for that issue, without attempting a refetch", async () => {

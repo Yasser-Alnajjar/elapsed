@@ -103,14 +103,17 @@ function fakePrisma(options: {
   rawEvents: ReturnType<typeof auditRawEvent>[];
   ticket?: ReturnType<typeof ticketRawEvent> | null;
   requesterName?: string | null;
+  /** The ticket source the case came from; Zendesk unless a test says otherwise. */
+  provider?: "zendesk" | "intercom";
 }): PrismaClient {
+  const provider = options.provider ?? "zendesk";
   return {
     case: {
       findFirst: async () => ({
         id: "case-1",
         organizationId: "org-1",
         externalId: "1",
-        system: "zendesk",
+        system: provider,
         subject: "Login trouble",
         priority: "high",
         tier: null,
@@ -130,7 +133,7 @@ function fakePrisma(options: {
       findFirst: async () => (options.ticket === null ? null : options.ticket ?? ticketRawEvent()),
     },
     workerSettings: { findUnique: async () => null },
-    integration: { findMany: async () => [{ id: "int-zendesk-1", provider: "zendesk", credentials: null }] },
+    integration: { findMany: async () => [{ id: `int-${provider}-1`, provider, credentials: null }] },
     organization: { findUnique: async () => ({ engineeringLegTargetMinutes: null }) },
     sLAPolicyVersion: { findMany: async () => [] },
     businessCalendarVersion: { findMany: async () => [] },
@@ -505,5 +508,46 @@ describe("getCaseDetailData: conversation — email-created ticket's initial des
     // trivially empty either way — the point is that conversation-building
     // has no path that could add or remove one.
     expect(data!.commitments).toEqual([]);
+  });
+});
+
+describe("getCaseDetailData: Intercom conversation", () => {
+  it("shows the conversation's opening message before the replies, like a Zendesk ticket's description", async () => {
+    const events = [
+      normalizedEvent({ id: "ev-created", type: "case_created", occurredAt: OPENED, actor: "customer", sourceRawEventId: "raw-conversation" }),
+      normalizedEvent({
+        id: "ev-1",
+        type: "agent_replied",
+        occurredAt: new Date("2026-09-17T09:15:00.000Z"),
+        actor: "agent",
+        sourceRawEventId: "raw-part-1",
+      }),
+    ];
+    const rawEvents = [
+      {
+        id: "raw-part-1",
+        payload: { id: "p1", part_type: "comment", created_at: 1, body: "<p>Looking now.</p>", author: { type: "admin", id: "a1", name: "Sam Agent" } },
+      },
+    ];
+    const ticket = {
+      id: "raw-conversation",
+      payload: {
+        id: "1",
+        created_at: 1,
+        updated_at: 1,
+        state: "open",
+        source: { type: "conversation", body: "<p>Cannot log in.</p>", author: { type: "user", id: "u1", name: "Jane Requester" } },
+      },
+    };
+    const data = await getCaseDetailData(
+      fakePrisma({ events, rawEvents: rawEvents as never, ticket: ticket as never, provider: "intercom" }),
+      "org-1",
+      "case-1",
+      AS_OF,
+    );
+    expect(data!.conversation.map((m) => [m.authorName, m.body])).toEqual([
+      ["Jane Requester", "Cannot log in."],
+      ["Sam Agent", "Looking now."],
+    ]);
   });
 });

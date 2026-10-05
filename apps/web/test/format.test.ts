@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatCaseKey,
   formatCommitmentKind,
   formatNextCycle,
+  formatTicketSourceShort,
   nextReplyCycleNumbers,
 } from "../src/lib/format";
 
@@ -70,5 +72,23 @@ describe("formatNextCycle", () => {
 
   it("reads due now once the time has passed", () => {
     expect(formatNextCycle(at(-5_000), now)).toBe("Next cycle due now");
+  });
+});
+
+describe("formatCaseKey", () => {
+  it("keeps each ticket source's own prefix, so an Intercom case is never labelled as Zendesk", () => {
+    expect(formatCaseKey("zendesk", "8921")).toBe("ZD-8921");
+    expect(formatCaseKey("intercom", "7001")).toBe("IC-7001");
+  });
+
+  it("falls back to a bare id for a source with no prefix", () => {
+    expect(formatCaseKey("zoho_desk", "12")).toBe("#12");
+  });
+});
+
+describe("formatTicketSourceShort", () => {
+  it("labels the case's own source in the list's state chip", () => {
+    expect(formatTicketSourceShort("zendesk")).toBe("ZD");
+    expect(formatTicketSourceShort("intercom")).toBe("IC");
   });
 });

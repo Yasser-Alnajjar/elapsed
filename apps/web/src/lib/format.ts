@@ -429,6 +429,22 @@ export function formatTicketSource(system: IntegrationProvider): string {
   return INTEGRATION_PROVIDER_LABELS[system];
 }
 
+const TICKET_SOURCE_KEY_PREFIXES: Record<string, string> = {
+  zendesk: "ZD",
+  intercom: "IC",
+};
+
+/** The short label of a ticket source, e.g. "ZD" in "ZD: Open"; its display name when it has no short one. */
+export function formatTicketSourceShort(system: IntegrationProvider): string {
+  return TICKET_SOURCE_KEY_PREFIXES[system] ?? formatTicketSource(system);
+}
+
+/** The key a Case is shown with, in its own ticket source's prefix: "ZD-8921" for Zendesk, "IC-7001" for Intercom; a bare "#id" for a source with none. */
+export function formatCaseKey(system: string, externalId: string): string {
+  const prefix = TICKET_SOURCE_KEY_PREFIXES[system];
+  return prefix ? `${prefix}-${externalId}` : `#${externalId}`;
+}
+
 const LINKED_SYSTEM_SHORT_LABELS: Record<string, string> = {
   jira: "ENG",
   linear: "LIN",

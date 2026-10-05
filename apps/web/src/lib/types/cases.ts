@@ -198,6 +198,8 @@ export interface LegTotal {
 
 export interface CaseListRow {
   caseId: string;
+  /** The ticket source the case came from (`Case.system`). */
+  system: IntegrationProvider;
   externalId: string;
   subject: string | null;
   /** The case's account/company (Zendesk Organization / Intercom Company), or null when the ticket has none. Never falls back to `requesterName` — a requester is not a customer. */

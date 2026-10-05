@@ -1,7 +1,7 @@
 import type { ProviderAdapter, ProviderWebAdapter } from "@sla/ingestion";
 import { runIntercomBackfill } from "./backfill";
 import { buildIntercomConversationUrl } from "./client";
-import { renderIntercomConversation } from "./conversation";
+import { intercomConversationContext, renderIntercomConversation } from "./conversation";
 import { buildIntercomBatch } from "./normalize";
 import { INTERCOM_ACCESS_NOTE } from "./oauth";
 import { INTERCOM_SOURCE_ROLE } from "./source-role";
@@ -43,5 +43,6 @@ export const intercomWebAdapter: ProviderWebAdapter = {
     const workspaceId = (credentials as { workspaceId?: unknown } | null | undefined)?.workspaceId;
     return typeof workspaceId === "string" && workspaceId !== "" ? buildIntercomConversationUrl(workspaceId, externalId) : null;
   },
+  conversationContext: intercomConversationContext,
   renderConversation: renderIntercomConversation,
 };

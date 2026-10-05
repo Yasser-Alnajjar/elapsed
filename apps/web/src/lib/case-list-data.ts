@@ -352,6 +352,7 @@ async function getCaseListDataInner(
 
     return {
       caseId: row.id,
+      system: row.system,
       externalId: row.externalId,
       subject: row.subject,
       customerName: row.customer?.name ?? null,

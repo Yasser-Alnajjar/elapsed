@@ -1,6 +1,6 @@
 import type { ConversationInput, ConversationMessage } from "@sla/ingestion";
 import { extractIntercomMessageBody } from "./normalize";
-import type { IntercomConversationPart } from "./types";
+import type { IntercomConversation, IntercomConversationPart } from "./types";
 
 /**
  * Intercom message bodies are HTML. This strips markup down to plain text
@@ -22,17 +22,27 @@ function htmlToPlainText(html: string): string {
     .trim();
 }
 
+/** `providerEventId` prefix of the conversation's snapshots, the raw events `renderIntercomConversation` reads for the opening message. */
+export const intercomConversationContext = (externalId: string): string[] => [`conversation:${externalId}:`];
+
 /**
  * The case's public conversation: every `agent_replied`/`customer_replied`
  * event paired with the text of the conversation part it was derived from.
  * Each such event's raw event is one Intercom part. Notes and transitions
  * never became events, so they never appear here.
+ *
+ * Prepended with the conversation's own opening message (`source.body`), which
+ * Intercom does not repeat as a part. Like Zendesk's ticket description, this
+ * is display only: it never becomes an `agent_replied`/`customer_replied`
+ * event, so it cannot reach first-response or next-reply math.
  */
-export function renderIntercomConversation({ events, payloads }: ConversationInput): ConversationMessage[] {
+export function renderIntercomConversation({ case: caseRow, events, payloads, context }: ConversationInput): ConversationMessage[] {
+  const opening = openingMessage(caseRow, events, context[0] as IntercomConversation | undefined);
+
   // Explicit dedupe by source part id (3.7/C-5), on top of — not instead of —
   // normalization's own uniqueness (each RawEvent is one Intercom part).
   const seenParts = new Set<string>();
-  return events.flatMap((event): ConversationMessage[] => {
+  const replies = events.flatMap((event): ConversationMessage[] => {
     if (event.type !== "agent_replied" && event.type !== "customer_replied") return [];
     if (seenParts.has(event.sourceRawEventId)) return [];
     const part = payloads.get(event.sourceRawEventId) as IntercomConversationPart | undefined;
@@ -51,4 +61,31 @@ export function renderIntercomConversation({ events, payloads }: ConversationInp
       },
     ];
   });
+  return opening ? [opening, ...replies] : replies;
+}
+
+/**
+ * The conversation's first message, from its snapshot's `source`. Needs the
+ * `case_created` event (for its id, time and actor) and a non-empty body; an
+ * empty or missing one shows nothing rather than a blank bubble.
+ */
+function openingMessage(
+  caseRow: ConversationInput["case"],
+  events: ConversationInput["events"],
+  conversation: IntercomConversation | undefined,
+): ConversationMessage | null {
+  const source = conversation?.source;
+  const caseCreated = events.find((event) => event.type === "case_created");
+  const body = source?.body ? htmlToPlainText(source.body) : "";
+  if (!caseCreated || body === "") return null;
+  const actor = caseCreated.actor;
+  return {
+    // Namespaced off the case_created event's own id, so it can never collide with a part-derived message.
+    id: `${caseCreated.id}:opening`,
+    occurredAt: caseCreated.occurredAt,
+    actor,
+    type: actor === "agent" ? "agent_replied" : actor === "customer" ? "customer_replied" : "case_created",
+    authorName: source?.author?.name?.trim() || (actor === "customer" ? caseRow.requesterName : null),
+    body,
+  };
 }
