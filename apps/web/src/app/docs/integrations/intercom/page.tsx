@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getIntercomRedirectUri } from "@/lib/intercom-redirect";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -36,6 +37,10 @@ const toc = [
   { id: "sync", title: "Sync behavior", level: 2 as const },
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
+
+// The callback URL shown below comes from NEXTAUTH_URL at request time; a
+// static render would freeze the build placeholder (http://localhost:3000).
+export const dynamic = "force-dynamic";
 
 export default function IntercomIntegrationPage() {
   return (
@@ -119,13 +124,13 @@ export default function IntercomIntegrationPage() {
           <Alert>
             <Info className="size-4" />
             <AlertTitle>
-              The redirect URL is registered once, on the app itself
+              The redirect URL must be registered on the app itself
             </AlertTitle>
             <AlertDescription>
-              Unlike Zendesk, Jira, and Linear, Intercom does not take a
-              redirect URI as part of each authorization request — it uses
-              whatever Redirect URL is saved on the app in the Developer Hub.
-              Make sure it is saved there before connecting.
+              Elapsed sends its own callback URL (built from your application
+              URL) with each authorization request, but Intercom only accepts a
+              URL that is already saved on the app in the Developer Hub, and
+              falls back to the first saved one if none is sent. Make sure it is saved there before connecting.
             </AlertDescription>
           </Alert>
         </section>
@@ -142,15 +147,20 @@ export default function IntercomIntegrationPage() {
           <ol className="space-y-3">
             {[
               <>
-                Open the Intercom Developer Hub OAuth configuration page:{" "}
+                Open the Intercom Developer Hub:{" "}
                 <a
-                  href="https://app.intercom.com/a/apps/v9jrtlg9/developer-hub/app-packages/206109/oauth"
+                  href="https://app.intercom.com/a/apps/<your-app-id>/developer-hub"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="break-all underline underline-offset-4"
                 >
-                  https://app.intercom.com/a/apps/v9jrtlg9/developer-hub/app-packages/206109/oauth
+                  {`https://app.intercom.com/a/apps/<your-app-id>/developer-hub`}
                 </a>
+              </>,
+              <>Choose an existing app, or create a new one.</>,
+              <>
+                In the app&apos;s left-hand menu, go to{" "}
+                <strong>Authentication</strong>.
               </>,
               <>
                 Click <strong>Edit</strong> to modify the OAuth configuration.
@@ -162,9 +172,7 @@ export default function IntercomIntegrationPage() {
                 Under <strong>Redirect URLs</strong>, add the callback URL used
                 by the application:
                 <pre className="mt-2 overflow-x-auto rounded bg-muted px-3 py-2 text-xs">
-                  <code>
-                    http://localhost:3000/api/integrations/intercom/callback
-                  </code>
+                  <code>{getIntercomRedirectUri()}</code>
                 </pre>
               </>,
               <>
@@ -195,7 +203,7 @@ export default function IntercomIntegrationPage() {
             <AlertTitle>Important</AlertTitle>
             <AlertDescription>
               The Redirect URL configured in Intercom must match the callback
-              endpoint implemented by the application. If the URL is missing or
+              URL shown above. If the URL is missing or
               incorrect, Intercom may complete the authorization but fail to
               redirect the user back to the application with the authorization
               code.
@@ -405,10 +413,10 @@ export default function IntercomIntegrationPage() {
               The ticket&apos;s state history comes from Intercom&apos;s ticket
               API. If the app you registered cannot read tickets, the sync still
               succeeds, but only a ticket&apos;s latest status change is
-              recognized (from its current state): earlier changes, and a
-              ticket that changed status more than once between syncs, can be
-              missed or timed late. Allow the app to read tickets in the
-              Developer Hub to get the full history.
+              recognized (from its current state): earlier changes, and a ticket
+              that changed status more than once between syncs, can be missed or
+              timed late. Allow the app to read tickets in the Developer Hub to
+              get the full history.
             </AlertDescription>
           </Alert>
 

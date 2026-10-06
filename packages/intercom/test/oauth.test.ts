@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe("buildAuthorizeUrl", () => {
-  it("targets Intercom's authorize endpoint with no redirect_uri or scope param", () => {
+  it("targets Intercom's authorize endpoint with no scope param, and no redirect_uri unless one is given", () => {
     const url = new URL(buildAuthorizeUrl({ clientId: "client-123" }, "state-abc"));
 
     expect(url.origin).toBe("https://app.intercom.com");
@@ -21,6 +21,13 @@ describe("buildAuthorizeUrl", () => {
     expect(url.searchParams.get("state")).toBe("state-abc");
     expect(url.searchParams.get("redirect_uri")).toBeNull();
     expect(url.searchParams.get("scope")).toBeNull();
+  });
+
+  it("sends redirect_uri when the config carries one", () => {
+    const redirectUri = "https://app.example.com/api/integrations/intercom/callback";
+    const url = new URL(buildAuthorizeUrl({ clientId: "client-123", redirectUri }, "state-abc"));
+
+    expect(url.searchParams.get("redirect_uri")).toBe(redirectUri);
   });
 });
 
