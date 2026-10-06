@@ -363,6 +363,17 @@ async function seedExtras(
   });
   // Worker scheduling state (multi-worker leases): never served to a tenant, but keyed per organization.
   await prisma.organizationWorkState.create({ data: { organizationId: org.organizationId } });
+  // Backup / cleanup audit trail (Settings → Data): per organization, never served to another.
+  await prisma.integrationDataOperation.create({
+    data: {
+      organizationId: org.organizationId,
+      integrationId: "integration-x",
+      provider: "zendesk",
+      kind: "backup",
+      status: "completed",
+      actorEmail: `owner@${label}.test`,
+    },
+  });
   // Entitlement events (N6.3, N6.4): per organization, never served to another.
   await prisma.entitlementEvent.create({
     data: { organizationId: org.organizationId, kind: "limit_warned", resource: "seats", dedupeKey: "seats:2026-10-02", used: 6, limit: 5 },

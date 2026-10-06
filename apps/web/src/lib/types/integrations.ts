@@ -1,6 +1,7 @@
 import type {
   ConfigurableIntegrationProvider,
   IntegrationConfigStatus,
+  IntegrationDataCounts,
 } from "@sla/db";
 import type { SourceRole } from "@sla/core";
 import type { SlackChannel } from "@sla/slack";
@@ -104,9 +105,11 @@ export const INTEGRATION_PROVIDER_LABELS: Record<IntegrationProvider, string> =
 
 /**
  * Read model for `/settings/integrations/[provider]` (roadmap step 20
- * follow-up): everything beyond connect/disconnect for one already-connected
- * integration — backfill and, for a provider with the `webhooks` capability,
- * the real-time webhook setup.
+ * follow-up): everything beyond connect/disconnect for one integration that
+ * exists — backfill and, for a provider with the `webhooks` capability, the
+ * real-time webhook setup. A disconnected integration has a read model too:
+ * disconnect keeps the row and its data, so the page stays reachable (to see
+ * what was imported, and to clean it up).
  * Display-only scalars derived server-side from the `Integration` row and its
  * JSON `credentials`/`cursor` — neither ever reaches the client directly.
  * `webhookSecret` is the one exception to "no secrets to the client": it's
@@ -116,6 +119,11 @@ export interface IntegrationDetailData {
   provider: IntegrationProvider;
   integrationId: string;
   connectedAt: Date;
+  /** Disconnected: credentials cleared and sync stopped, but the row and its imported data remain. */
+  disconnected: boolean;
+  disconnectedAt: Date | null;
+  /** What this integration has imported and still holds — what "Clean up data" would remove. */
+  importedData: IntegrationDataCounts;
   reauthRequired: boolean;
   /** The token works, but the connecting user lost provider-side access (roadmap step 32). */
   permissionDenied: boolean;

@@ -19,10 +19,14 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
-export function crc32(data: Uint8Array): number {
-  let crc = 0xffffffff;
+/** Advances a running CRC-32 over `data`. Start from `0xffffffff`; finish with `(crc ^ 0xffffffff) >>> 0`. For streaming writers. */
+export function crc32Update(crc: number, data: Uint8Array): number {
   for (let i = 0; i < data.length; i++) crc = CRC_TABLE[(crc ^ data[i]!) & 0xff]! ^ (crc >>> 8);
-  return (crc ^ 0xffffffff) >>> 0;
+  return crc;
+}
+
+export function crc32(data: Uint8Array): number {
+  return (crc32Update(0xffffffff, data) ^ 0xffffffff) >>> 0;
 }
 
 function dosDateTime(date: Date): { time: number; date: number } {
@@ -95,22 +99,39 @@ export function createZip(entries: ZipEntry[], modifiedAt: Date = new Date()): U
   return out;
 }
 
-/** Reads back a stored-only archive written by `createZip`. Used by tests. */
+/**
+ * Reads back a stored-only archive written by `createZip` or the streaming
+ * `zipStream`. Goes by the central directory (the only place a streamed entry's
+ * sizes are reliably recorded). Used by tests.
+ */
 export function readStoredZip(zip: Uint8Array): Map<string, Uint8Array> {
   const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
   const decoder = new TextDecoder();
   const files = new Map<string, Uint8Array>();
-  let position = 0;
-  while (position + 4 <= zip.length && view.getUint32(position, true) === 0x04034b50) {
-    const size = view.getUint32(position + 18, true);
-    const nameLength = view.getUint16(position + 26, true);
-    const extraLength = view.getUint16(position + 28, true);
-    const nameStart = position + 30;
-    const dataStart = nameStart + nameLength + extraLength;
+
+  let end = zip.length - 22;
+  while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+  if (end < 0) throw new Error("Not a ZIP archive");
+
+  const count = view.getUint16(end + 10, true);
+  let position = view.getUint32(end + 16, true);
+  for (let i = 0; i < count; i++) {
+    if (view.getUint32(position, true) !== 0x02014b50) throw new Error("Bad ZIP central directory");
+    const crc = view.getUint32(position + 16, true);
+    const size = view.getUint32(position + 24, true);
+    const nameLength = view.getUint16(position + 28, true);
+    const extraLength = view.getUint16(position + 30, true);
+    const commentLength = view.getUint16(position + 32, true);
+    const localOffset = view.getUint32(position + 42, true);
+    const name = decoder.decode(zip.slice(position + 46, position + 46 + nameLength));
+
+    const localNameLength = view.getUint16(localOffset + 26, true);
+    const localExtraLength = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
     const data = zip.slice(dataStart, dataStart + size);
-    if (crc32(data) !== view.getUint32(position + 14, true)) throw new Error("ZIP CRC mismatch");
-    files.set(decoder.decode(zip.slice(nameStart, nameStart + nameLength)), data);
-    position = dataStart + size;
+    if (crc32(data) !== crc) throw new Error("ZIP CRC mismatch");
+    files.set(name, data);
+    position += 46 + nameLength + extraLength + commentLength;
   }
   return files;
 }

@@ -16,6 +16,9 @@ const auth = vi.hoisted(() => ({ session: null as Session | null }));
 const db = vi.hoisted(() => ({
   findUnique: vi.fn(),
   update: vi.fn(),
+  /** Imported-data deletes: disconnect must never reach any of them (cleanup is its own action). */
+  deleteMany: vi.fn(),
+  delete: vi.fn(),
 }));
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
@@ -25,7 +28,15 @@ vi.mock("@sla/db", () => ({
     integration: {
       findUnique: db.findUnique,
       update: db.update,
+      delete: db.delete,
+      deleteMany: db.deleteMany,
     },
+    case: { deleteMany: db.deleteMany },
+    rawEvent: { deleteMany: db.deleteMany },
+    normalizedEvent: { deleteMany: db.deleteMany },
+    caseLink: { deleteMany: db.deleteMany },
+    customer: { deleteMany: db.deleteMany },
+    customerIdentity: { deleteMany: db.deleteMany },
   })),
   Prisma: { JsonNull: Symbol("Prisma.JsonNull") },
 }));
@@ -50,6 +61,8 @@ describe.each(PROVIDERS)("POST /api/integrations/$provider/disconnect", ({ provi
     vi.resetModules();
     db.findUnique.mockReset();
     db.update.mockReset();
+    db.deleteMany.mockReset();
+    db.delete.mockReset();
     auth.session = null;
   });
 
@@ -92,6 +105,20 @@ describe.each(PROVIDERS)("POST /api/integrations/$provider/disconnect", ({ provi
     expect(call.where).toEqual({ id: "int-1" });
     expect(call.data).toMatchObject({ status: "disconnected" });
     expect(call.data.disconnectedAt).toBeInstanceOf(Date);
+  });
+
+  it("never deletes or resets any imported data — the row, its cursor and its history stay for the details page", async () => {
+    auth.session = sessionFor("org-1");
+    db.findUnique.mockResolvedValue({ id: "int-1", organizationId: "org-1", provider });
+    db.update.mockResolvedValue({});
+
+    const { POST } = await import(`../src/app/api/integrations/${provider}/disconnect/route`);
+    await POST();
+
+    expect(db.deleteMany).not.toHaveBeenCalled();
+    expect(db.delete).not.toHaveBeenCalled();
+    // Only the connection is switched off: nothing that describes imported data (cursor, watermark, sync history) is written.
+    expect(Object.keys(db.update.mock.calls[0]![0].data).sort()).toEqual(["credentials", "disconnectedAt", "lastSyncError", "status"]);
   });
 
   it("only ever disconnects the signed-in user's own organization's integration", async () => {
