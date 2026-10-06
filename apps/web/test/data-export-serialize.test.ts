@@ -6,7 +6,7 @@
  */
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -246,20 +246,37 @@ describe("buildIntegrationReportPdf", () => {
     recentOperations: Array.from({ length: 10 }, (_, i) => ({ kind: "backup", status: "completed", actorEmail: "owner@tenant.test", startedAt: new Date("2026-10-02T10:00:00Z"), format: i % 2 ? "pdf" : "csv" })),
   });
 
-  function render(data: IntegrationReportData): { bytes: Uint8Array; text: string } {
+  /**
+   * The text of each page, read from the PDF's own content streams: every
+   * `(…) Tj` string, unescaped, one per line. Needs no PDF tool, so the tests
+   * give the same answer on every machine (poppler's `pdftotext` is only used by
+   * the optional compatibility check below).
+   */
+  function pagesOf(bytes: Uint8Array): string[] {
+    const pdf = Buffer.from(bytes).toString("latin1");
+    return [...pdf.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(([, content]) =>
+      [...content!.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)]
+        .map(([, text]) => text!.replace(/\\(.)/g, "$1"))
+        .join("\n"),
+    );
+  }
+
+  function render(data: IntegrationReportData): { bytes: Uint8Array; pages: string[]; text: string } {
     const bytes = buildIntegrationReportPdf(data);
+    const pages = pagesOf(bytes);
+    return { bytes, pages, text: pages.join("\n") };
+  }
+
+  const hasPoppler = spawnSync("pdftotext", ["-v"]).error === undefined;
+
+  it.skipIf(!hasPoppler)("is a PDF that poppler accepts and reads back", () => {
     const dir = mkdtempSync(join(tmpdir(), "pdf-"));
     const file = join(dir, "r.pdf");
-    writeFileSync(file, bytes);
-    let text = "";
-    try {
-      text = execFileSync("pdftotext", ["-layout", file, "-"], { encoding: "utf8" });
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      text = Buffer.from(bytes).toString("latin1"); // no poppler here: fall back to the raw operators
-    }
-    return { bytes, text };
-  }
+    writeFileSync(file, buildIntegrationReportPdf(base()));
+    const text = execFileSync("pdftotext", ["-layout", file, "-"], { encoding: "utf8" });
+    expect(text).toContain("Integration data report");
+    expect(text).toContain("Page 2 of 2");
+  });
 
   it("lays out every section with the real numbers and names", () => {
     const { text } = render(base());
@@ -273,11 +290,10 @@ describe("buildIntegrationReportPdf", () => {
   });
 
   it("flows long tables across pages with numbered footers and a repeated header", () => {
-    const { text } = render(base());
-    const pages = text.split("\f").filter((p) => p.trim());
+    const { pages } = render(base());
     expect(pages.length).toBeGreaterThan(1);
     pages.forEach((page, i) => expect(page).toContain(`Page ${i + 1} of ${pages.length}`));
-    expect(pages.slice(1).join("\n")).toMatch(/CASE\s+OPENED/i); // header repeated after a page break
+    expect(pages.slice(1).join("\n")).toMatch(/CASE\s+OPENED/); // header repeated after a page break
   });
 
   it("handles an integration with no cases, no commitments and nothing recorded", () => {
