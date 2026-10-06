@@ -66,14 +66,12 @@ const glossary = [
 ];
 
 const flowSteps = [
-  "Provider API",
-  "Adapter",
-  "Raw events",
-  "Normalizer",
-  "Normalized events",
-  "Correlator",
-  "Case + Case Link",
-  "SLA / leg engine",
+  "Your connected systems",
+  "Events collected as recorded",
+  "Events standardized",
+  "Related records linked",
+  "Case",
+  "Clocks and ownership calculated",
   "Evaluation",
   "Dashboard + notifications",
 ];
@@ -252,9 +250,9 @@ export default function HowItWorksPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            The provider-specific adapter is kept separate from the SLA
-            calculation layer, so the calculation model never depends on
-            Zendesk-specific or Jira-specific status strings.
+            Each connected system's data is translated into one common set of
+            events before any SLA calculation happens, so the numbers never
+            depend on Zendesk-specific or Jira-specific status names.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/30 p-5">

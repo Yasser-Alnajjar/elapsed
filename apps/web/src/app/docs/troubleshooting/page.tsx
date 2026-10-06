@@ -192,7 +192,7 @@ const issues: Issue[] = [
     title: "Integration needs reauthentication",
     symptom:
       'An integration shows "Needs reconnect" on the Integrations page, or a reconnect banner appears elsewhere.',
-    cause: "The stored access/refresh token was rejected or has expired.",
+    cause: "The saved connection credential was rejected or has expired.",
     resolution:
       "Click the reconnect link/button for that provider and re-approve the OAuth prompt. No history is lost — only the credential is refreshed.",
   },
