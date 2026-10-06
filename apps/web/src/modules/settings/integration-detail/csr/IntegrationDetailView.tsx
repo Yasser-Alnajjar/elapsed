@@ -27,7 +27,6 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
         label={label}
         integrationId={data.integrationId}
         connectedAt={data.connectedAt}
-        disconnectedAt={data.disconnected ? data.disconnectedAt : null}
         reauthRequired={data.reauthRequired}
         permissionDenied={data.permissionDenied}
       />
@@ -42,20 +41,19 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
           subdomain={subdomain}
           repo={repo}
           backfillCompletedAt={data.backfillCompletedAt}
-          disconnected={data.disconnected}
         />
       </Reveal>
       <Reveal delay={0.1}>
         <SyncHealthSection data={data} label={label} />
       </Reveal>
 
-      {data.webhooks && !data.disconnected && (
+      {data.webhooks && (
         <Reveal delay={0.15}>
           <ConciergeExportSection provider={provider} label={label} />
         </Reveal>
       )}
 
-      {data.webhooks && !data.disconnected && (
+      {data.webhooks && (
         <Reveal delay={0.2}>
           <WebhooksSection
             provider={provider}
@@ -71,8 +69,6 @@ export function IntegrationDetailView({ data }: IntegrationDetailViewProps) {
           label={label}
           subdomain={subdomain}
           repo={repo}
-          disconnected={data.disconnected}
-          importedData={data.importedData}
         />
       </Reveal>
     </div>

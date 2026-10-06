@@ -33,7 +33,6 @@ export function IntegrationDetailHeader({
   label,
   integrationId,
   connectedAt,
-  disconnectedAt,
   reauthRequired,
   permissionDenied,
 }: {
@@ -41,8 +40,6 @@ export function IntegrationDetailHeader({
   label: string;
   integrationId: string;
   connectedAt: Date;
-  /** Set while disconnected: the page stays reachable, with its imported data retained. */
-  disconnectedAt: Date | null;
   reauthRequired: boolean;
   permissionDenied: boolean;
 }) {
@@ -75,30 +72,21 @@ export function IntegrationDetailHeader({
               </h1>
             </div>
             <p className={descriptionClass}>
-              {disconnectedAt
-                ? `Disconnected ${formatLongDateTime(disconnectedAt)} — imported data is retained`
-                : `Connected ${formatLongDateTime(connectedAt)} via read-only access`}
+              Connected {formatLongDateTime(connectedAt)} via read-only
+              access
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill
-              tone={
-                disconnectedAt
-                  ? "neutral"
-                  : reauthRequired || permissionDenied
-                    ? "warning"
-                    : "success"
-              }
-              pulse={!disconnectedAt && !reauthRequired && !permissionDenied}
+              tone={reauthRequired || permissionDenied ? "warning" : "success"}
+              pulse={!reauthRequired && !permissionDenied}
             >
-              {disconnectedAt
-                ? "Disconnected"
-                : reauthRequired
-                  ? "Needs reconnect"
-                  : permissionDenied
-                    ? "Access restricted"
-                    : "Connected"}
+              {reauthRequired
+                ? "Needs reconnect"
+                : permissionDenied
+                  ? "Access restricted"
+                  : "Connected"}
             </StatusPill>
             <span className="bg-surface-container text-on-surface-variant inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-xxs font-semibold uppercase tracking-wider shadow-sm">
               <ShieldCheck className="size-3.5" />

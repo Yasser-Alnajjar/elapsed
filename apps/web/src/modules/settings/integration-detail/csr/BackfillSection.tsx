@@ -53,13 +53,8 @@ function ProviderBackfillButton({
 
 export function BackfillSection({
   backfillCompletedAt,
-  disconnected,
   ...backfill
-}: BackfillProps & {
-  backfillCompletedAt: Date | null;
-  /** A disconnected integration has no credentials to backfill with. */
-  disconnected: boolean;
-}) {
+}: BackfillProps & { backfillCompletedAt: Date | null }) {
   return (
     <SectionCard
       icon={<History className="size-4" />}
@@ -100,13 +95,7 @@ export function BackfillSection({
         </div>
 
         <div className="min-w-0 shrink-0">
-          {disconnected ? (
-            <span className="text-xs text-on-surface-variant">
-              Reconnect to run a backfill.
-            </span>
-          ) : (
-            <ProviderBackfillButton {...backfill} />
-          )}
+          <ProviderBackfillButton {...backfill} />
         </div>
       </div>
     </SectionCard>

@@ -20,7 +20,6 @@ Each statement is one of:
 | `Case`, `Customer`, policies, calendars | Kept until the organization is removed. | Verified |
 | `PasswordResetToken`, `EmailVerificationToken` | Rows are not deleted on use or expiry. Only unused tokens for the same user are removed when a new one is issued. They go with the user. | Verified |
 | `OrganizationInvitation` | No expiry cleanup found. | Verified |
-| `IntegrationDataOperation` (who backed up or cleaned up which integration's data) | No expiry. Never edited or deleted after it is finished; removed with the organization. | Verified |
 | Sign-in sessions | Signed JWTs, not database rows. `User.sessionVersion` revokes them. Nothing is stored server-side. | Verified |
 | Container logs | No `logging:` options in any compose file in the repo, so Docker's default applies. No rotation is configured by the repo. | Verified for the repo; host `daemon.json` **not verified** |
 | Database dumps | `scripts/backup.sh` deletes dumps older than `RETENTION_DAYS` (default 14) after a successful, readable dump. Off-site copies are only made if `OFFSITE_COPY_CMD` is set, and their retention is set on the bucket. | Script verified; whether cron and off-site copy are actually installed on the host **not verified** |
@@ -57,65 +56,6 @@ under H-3 for this reason.
   the provider if they want the grant gone.
 - The organization's OAuth app config (`IntegrationConfig`) is not cleared by
   a disconnect. Verified: no disconnect route touches it.
-- A disconnected integration's detail page stays reachable (it needs the
-  `Integration` row, not live credentials), so its data can be seen and cleaned
-  up. Verified: `getIntegrationDetailData`.
-
-**Cleaning up one integration's data** (owner, explicit, never part of
-disconnect): `POST /api/integrations/{provider}/cleanup`, implemented by
-`cleanupIntegrationData` (`packages/db/src/integration-data-cleanup.ts`).
-Refused with 409 unless the integration is `disconnected`; the request must name
-the provider. Runs in one transaction under the organization lock.
-- Deleted: the integration's `RawEvent` rows and every `NormalizedEvent` derived
-  from them (on any case); the `Case` rows it created, with what the schema
-  cascades from a case (links, commitments, evaluations, notifications, policy
-  changes, leg spans, and events other sources attached to that case); its
-  `CustomerIdentity` rows and the customers they named, but only customers with
-  no remaining case, no other identity, no calendar override and no SLA policy
-  referencing them; its own evidence on `CaseLink` rows of other integrations'
-  cases (the link is deleted only if no other producer's evidence, `officialLink`
-  or `intercomJiraKey`, remains). The integration's `cursor`, normalization
-  watermark and pending renormalize request are reset, so a reconnect backfills
-  from scratch.
-- Kept: the `Integration` row (status stays `disconnected`, `webhookSecret`,
-  `connectedAt`, `disconnectedAt` and last-sync history), `IntegrationConfig`,
-  every other integration's raw and normalized events and cases, SLA policies
-  (including those a Zendesk import created), calendars and `SlaImportSummary`
-  (organization configuration, not imported ticket data).
-- Recorded in `IntegrationDataOperation` (started, then completed or failed, with
-  who ran it and the counts), shown in the Activity list on Settings → Data. Not
-  in `AdminAuditLog`: that log is platform-operator only and has no tenant
-  path. Other owner actions (disconnect, config delete) still have no audit trail.
-- Database backups keep the deleted data until they age out.
-
-**Exporting one integration's data** (owner, read-only): `POST
-/api/integrations/{provider}/export` with a `format` form field, implemented by
-`startIntegrationExport` (`packages/db/src/integration-data-export.ts`) and the
-serializers in `apps/web/src/lib/data-export/`. There was no existing mechanism
-to reuse: `scripts/backup.sh` is the operator's whole-database `pg_dump` and
-stays the only disaster-recovery backup, and the Concierge export pulls live from
-the provider with its credentials, so it neither reads stored data nor works
-for a disconnected integration.
-- Formats: `ndjson` (gzip JSON Lines, default), `json` (one document), `csv` (a
-  zip, one CSV per record type), all complete copies; and `pdf`, a summary report
-  (`startIntegrationReport`: counts, period covered, commitments by status, the 25
-  most recent cases, recent activity), which is not a backup.
-- The complete formats are one record stream (the same scope cleanup deletes, one
-  shared definition `integrationDataWhere`) serialized as it is read, in keyset
-  pages, so memory stays flat on large raw-event sets. The CSV zip is written by a
-  small streaming writer without ZIP64: past 4 GiB it fails and the operation is
-  recorded as failed, and JSON Lines has no such limit. CSV goes through the same
-  formula-injection guard as the other CSV exports, so it is not byte-lossless.
-  The PDF is built with a small dependency-free writer (standard fonts, WinAnsi
-  text: characters outside it print as `?`).
-- Not a point-in-time snapshot; never contains `Integration.credentials` or
-  `webhookSecret`. It is a copy for the customer, not a restore tool: no restore
-  procedure exists.
-- Recorded in `IntegrationDataOperation` like a cleanup: kind `backup` with
-  `details.format` for every format (the PDF included, shown as "Report" in
-  Activity); a download the client abandons, even before its first record, is
-  recorded as failed (`Download interrupted`).
-- Export and cleanup are independent: cleanup never creates or requires an export.
 
 **Removing a team member**: `removeMember` deletes the `User` row
 (`packages/db/src/members.ts`); their tokens go with it (cascade). Verified.
@@ -148,9 +88,7 @@ this was reproduced, with a caveat:
 
 1. A retention period for `RawEvent`, and whether anything prunes or archives it.
 2. A supported tenant-deletion procedure: a script (the index above is now in place),
-   a rehearsed run, and a check that no tenant-owned data is left behind. (A
-   self-service per-integration cleanup exists, see above; whole-organization
-   deletion does not.)
+   a rehearsed run, and a check that no tenant-owned data is left behind.
 3. Whether a customer deletion request carries a time promise.
 4. Whether disconnect should also clear `IntegrationConfig`, and whether
    provider-side revocation should be attempted.
@@ -158,9 +96,8 @@ this was reproduced, with a caveat:
 6. Expiry cleanup for used or expired tokens and invitations.
 
 Until these are decided, the accurate customer answer is: data is retained
-until it is removed; an owner can remove one disconnected integration's imported
-data themselves; removing a whole organization is a manual operator action that
-has a known performance problem; backups age out on the schedule above.
+until you ask us to remove it; removal is a manual operator action that has a
+known performance problem; backups age out on the schedule above.
 
 ## On-call note
 

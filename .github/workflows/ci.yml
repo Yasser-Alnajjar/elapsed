@@ -38,10 +38,6 @@ jobs:
       NEXTAUTH_URL: "http://localhost:3000"
       INTEGRATION_CONFIG_ENCRYPTION_KEY: "ci-integration-config-encryption-key"
       SMTP_ENCRYPTION_KEY: "ci-smtp-encryption-key"
-      DEPLOYMENT_SMTP_HOST: "ci-smtp-host"
-      DEPLOYMENT_SMTP_USER: "ci-smtp-user"
-      DEPLOYMENT_SMTP_PASSWORD: "ci-smtp-password"
-      DEPLOYMENT_SMTP_FROM: "ci-smtp-from"
     steps:
       - uses: actions/checkout@v4
 

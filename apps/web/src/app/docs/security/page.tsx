@@ -119,9 +119,8 @@ export default function SecuritySummaryPage() {
         <section id="retention" className="space-y-3">
           <h2 className="text-2xl font-semibold">Retention and deletion</h2>
           <p className="text-muted-foreground">
-            There is no automatic expiry: data is kept until it is removed. Disconnecting an integration never deletes data; an
-            owner can separately back up an integration&apos;s stored data and clean up a disconnected integration&apos;s imported data from Settings → Data. Removal of
-            an organization is a manual operator action. Backups age out on a fixed schedule. Provider tokens are cleared on disconnect, but we do not
+            There is no automatic expiry: data is kept until you ask us to remove it. Removal of an organization is a manual
+            operator action. Backups age out on a fixed schedule. Provider tokens are cleared on disconnect, but we do not
             call the provider to revoke them, so revoke the app in the provider as well if you want the grant gone. Compliance
             certifications and data-residency commitments are not offered today; ask us rather than assuming.
           </p>

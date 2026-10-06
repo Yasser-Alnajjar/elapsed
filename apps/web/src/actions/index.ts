@@ -1,6 +1,5 @@
 import "server-only";
 import { DashboardActions } from "./dashboard";
-import { DataActions } from "./data";
 import { CasesActions } from "./cases";
 import { OnboardingActions } from "./onboarding";
 import { IntegrationsActions } from "./integrations";
@@ -27,7 +26,6 @@ import { BillingActions } from "./billing";
 export const Actions = {
   AtRisk: AtRiskActions,
   Dashboard: DashboardActions,
-  Data: DataActions,
   Cases: CasesActions,
   Onboarding: OnboardingActions,
   Integrations: IntegrationsActions,
