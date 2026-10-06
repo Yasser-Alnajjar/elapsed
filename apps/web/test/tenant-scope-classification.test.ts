@@ -45,7 +45,6 @@ const SCOPES: Record<string, Scope> = {
   OrganizationEmailSettings: { kind: "direct" },
   OrganizationWorkState: { kind: "direct" },
   EntitlementEvent: { kind: "direct" },
-  IntegrationDataOperation: { kind: "direct" },
   BillingAccount: { kind: "direct" },
   BillingSubscription: { kind: "direct" },
   BillingInvoice: { kind: "direct" },

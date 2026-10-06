@@ -13,7 +13,6 @@ import {
   TriangleAlert,
   UserRound,
   Users,
-  Database,
 } from "lucide-react";
 
 export interface NavLink {
@@ -52,12 +51,6 @@ export const SETTINGS_NAV_ITEMS: NavLink[] = [
     label: "Integrations",
     icon: Blocks,
     description: "Connect and manage third-party services like Zendesk.",
-  },
-  {
-    href: "/settings/data",
-    label: "Data",
-    icon: Database,
-    description: "Back up and clean up the data your integrations have stored.",
   },
   {
     href: "/settings/notifications",

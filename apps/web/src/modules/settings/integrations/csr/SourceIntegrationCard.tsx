@@ -76,9 +76,6 @@ export function SourceIntegrationCard({
           <ConnectPrompt
             description={spec.connectDescription}
             disconnectedAt={view.disconnectedAt}
-            detailsHref={
-              view.disconnectedAt ? `/settings/integrations/${provider}` : undefined
-            }
           >
             <Connect />
           </ConnectPrompt>
