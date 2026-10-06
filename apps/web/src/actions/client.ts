@@ -189,6 +189,20 @@ export const Actions = {
         error: (body?.error as string | undefined) ?? "Failed to disconnect",
       };
     },
+    /** Permanently removes the data a disconnected integration imported. Never called by `disconnect`. */
+    async cleanupData(provider: IntegrationProvider) {
+      const response = await fetch(`/api/integrations/${provider}/cleanup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: provider }),
+      });
+      if (response.ok) return { ok: true as const };
+      const body = await response.json().catch(() => null);
+      return {
+        ok: false as const,
+        error: (body?.error as string | undefined) ?? "Failed to clean up data",
+      };
+    },
   },
 
   Email: {

@@ -21,7 +21,7 @@ export function StatusPill({
   children,
   pulse,
 }: {
-  tone: "success" | "warning";
+  tone: "success" | "warning" | "neutral";
   children: ReactNode;
   pulse?: boolean;
 }) {
@@ -115,7 +115,7 @@ export function SectionBadge({
   icon,
   children,
 }: {
-  tone?: "success" | "warning" | "primary";
+  tone?: "success" | "warning" | "primary" | "neutral";
   icon?: ReactNode;
   children: ReactNode;
 }) {
@@ -137,7 +137,7 @@ export function BadgeDot({
   tone,
   pulse,
 }: {
-  tone: "success" | "warning";
+  tone: "success" | "warning" | "neutral";
   pulse?: boolean;
 }) {
   return (

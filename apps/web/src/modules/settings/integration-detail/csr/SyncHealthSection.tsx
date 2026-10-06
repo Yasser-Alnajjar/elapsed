@@ -32,6 +32,7 @@ export function SyncHealthSection({
     reauthRequired,
     permissionDenied,
     pollingPaused,
+    disconnected,
     lastSyncAt,
     lastSyncError,
     backfillCompletedAt,
@@ -44,9 +45,17 @@ export function SyncHealthSection({
       title="Sync health & connection state"
       description="Continuous polling and token lifecycle verification"
       badge={
-        <SectionBadge tone={unhealthy ? "warning" : "success"}>
-          <BadgeDot tone={unhealthy ? "warning" : "success"} />
-          {unhealthy ? "Needs attention" : "Healthy"}
+        <SectionBadge
+          tone={disconnected ? "neutral" : unhealthy ? "warning" : "success"}
+        >
+          <BadgeDot
+            tone={disconnected ? "neutral" : unhealthy ? "warning" : "success"}
+          />
+          {disconnected
+            ? "Disconnected"
+            : unhealthy
+              ? "Needs attention"
+              : "Healthy"}
         </SectionBadge>
       }
     >
@@ -109,11 +118,13 @@ export function SyncHealthSection({
             )}
           />
           <span className={descriptionClass}>
-            {reauthRequired
-              ? "Authorization expired or was revoked — reconnect to resume syncing."
-              : permissionDenied
-                ? "The token works, but the connecting user lost access on the provider side."
-                : "Authorization healthy. No re-authentication needed."}
+            {disconnected
+              ? "Disconnected — credentials were cleared and syncing is stopped. Reconnect from Integrations to resume."
+              : reauthRequired
+                ? "Authorization expired or was revoked — reconnect to resume syncing."
+                : permissionDenied
+                  ? "The token works, but the connecting user lost access on the provider side."
+                  : "Authorization healthy. No re-authentication needed."}
           </span>
         </div>
       </div>

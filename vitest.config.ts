@@ -7,6 +7,7 @@ import { defineConfig } from "vitest/config";
 const realDatabaseSuites = [
   "apps/web/test/tenant-isolation.test.ts",
   "apps/web/test/connect-links.test.ts",
+  "apps/web/test/integration-data-cleanup.test.ts",
   "apps/web/test/monthly-report-delivery.test.ts",
   "apps/web/test/onboarding-intercom.test.ts",
   "apps/web/test/onboarding-status-matrix.test.ts",

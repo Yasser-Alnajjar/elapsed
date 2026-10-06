@@ -50,6 +50,7 @@ model Organization {
   invitations       OrganizationInvitation[]
   workState         OrganizationWorkState?
   reportDeliveries  ReportDelivery[]
+  integrationDataOperations IntegrationDataOperation[]
   connectLinks      IntegrationConnectLink[]
   entitlementEvents EntitlementEvent[]
   /// Time to first value (N5.7): the first time any member saw the findings, on
@@ -1383,4 +1384,51 @@ model IntegrationConnectLink {
 
   @@index([organizationId, provider, createdAt])
   @@map("integration_connect_links")
+}
+
+enum IntegrationDataOperationKind {
+  /// A read-only download of an integration's stored data, in any format
+  /// (`details.format`: JSON Lines, JSON, CSV or the PDF summary report).
+  backup
+  cleanup
+}
+
+enum IntegrationDataOperationStatus {
+  started
+  completed
+  failed
+}
+
+/// Tenant-visible record of an explicit Settings → Data operation on one
+/// integration's stored data: a backup (read-only download, whatever the format)
+/// or a cleanup (permanent delete). Written by the operation itself — `started` when it
+/// begins, `completed`/`failed` when it ends — and shown on the Data page, so an
+/// owner can see who backed up or deleted what, and when. Append-only in
+/// practice: rows are only ever created and then finished, never edited
+/// afterwards or deleted (except with the organization). Separate from
+/// `AdminAuditLog`, which is platform-operator-only and has no tenant path.
+/// `integrationId` is a plain string, not a relation, so a record survives
+/// whatever happens to the integration row.
+model IntegrationDataOperation {
+  id             String                         @id @default(cuid())
+  organizationId String
+  integrationId  String
+  provider       IntegrationProvider
+  kind           IntegrationDataOperationKind
+  status         IntegrationDataOperationStatus @default(started)
+  /// The owner who ran it; null if that user was removed since.
+  actorUserId    String?
+  /// Kept as text so the record still names who ran it after they are removed.
+  actorEmail     String
+  /// What the operation covered, and for a finished one what it did: record
+  /// counts per type, and for a backup the size of the export. Never a secret
+  /// or any record content.
+  details        Json?
+  error          String?
+  startedAt      DateTime                       @default(now())
+  finishedAt     DateTime?
+  organization   Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt])
+  @@map("integration_data_operations")
 }
