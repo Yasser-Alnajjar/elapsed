@@ -69,9 +69,10 @@ describe("POST /api/email-verification/resend", () => {
     expect(await response.json()).toEqual({ ok: true });
     expect(db.createEmailVerificationToken).toHaveBeenCalledWith(expect.anything(), "u1");
     expect(transactionalEmail.sendTransactionalEmail).toHaveBeenCalledTimes(1);
-    const message = (transactionalEmail.sendTransactionalEmail.mock.calls[0] as unknown as [{ to: string[]; text: string }])[0];
-    expect(message.to).toEqual(["new@example.com"]);
-    expect(message.text).toContain("https://sla.example.com/verify-email?token=fresh-token");
+    const request = (transactionalEmail.sendTransactionalEmail.mock.calls[0] as unknown as [{ to: string[]; template: string; data: { verifyUrl: string } }])[0];
+    expect(request.to).toEqual(["new@example.com"]);
+    expect(request.template).toBe("email-verification");
+    expect(request.data.verifyUrl).toBe("https://sla.example.com/verify-email?token=fresh-token");
   });
 
   it("normalizes the address (case/whitespace) before looking it up", async () => {

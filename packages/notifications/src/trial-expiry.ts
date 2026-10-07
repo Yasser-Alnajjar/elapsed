@@ -1,5 +1,5 @@
 import { markTrialExpiry, settleTrialExpiryNotice, type PrismaClient } from "@sla/db";
-import { loadDeploymentSmtpConfig, sendEmail, type EmailConfig, type EmailMessage } from "@sla/email";
+import { loadDeploymentSmtpConfig, sendEmail, type EmailConfig, type EmailRequest } from "@sla/email";
 
 /**
  * The owner email for a lapsed trial (N6.4, D27), sent at most once per
@@ -22,23 +22,17 @@ export interface TrialExpiryNoticeOptions {
   /** Awaited after the claim and before sending: the worker confirms it still owns the organization. */
   beforeSend?: () => Promise<void>;
   loadConfig?: () => EmailConfig;
-  send?: (config: EmailConfig, message: EmailMessage) => Promise<void>;
+  send?: (config: EmailConfig, request: EmailRequest<"trial-ended">) => Promise<void>;
 }
 
-export function buildTrialExpiryEmail(input: { to: string; organizationName: string; appUrl: string | null }): EmailMessage {
-  const pricing = input.appUrl ? new URL("/pricing", input.appUrl).toString() : null;
+export function buildTrialExpiryEmail(input: { to: string; organizationName: string; appUrl: string | null }): EmailRequest<"trial-ended"> {
   return {
     to: [input.to],
-    subject: `Your Elapsed trial for ${input.organizationName} has ended`,
-    text: [
-      `The trial for ${input.organizationName} on Elapsed has ended.`,
-      "",
-      "Nothing is switched off: your cases, SLA monitoring, alerts, dashboard and history keep working.",
-      "Until you upgrade, adding new configuration (members, integrations and SLA policies) is paused.",
-      ...(pricing ? ["", `See plans: ${pricing}`] : []),
-      "",
-      "Reply to this email if you want to talk to us.",
-    ].join("\n"),
+    template: "trial-ended",
+    data: {
+      organizationName: input.organizationName,
+      pricingUrl: input.appUrl ? new URL("/pricing", input.appUrl).toString() : null,
+    },
   };
 }
 
@@ -61,7 +55,7 @@ export async function deliverTrialExpiryNotice(
 
     const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
     const config = (options.loadConfig ?? loadDeploymentSmtpConfig)();
-    const send = options.send ?? ((c, m) => sendEmail(c, m));
+    const send = options.send ?? ((smtp, request) => sendEmail({ ...request, smtp, appUrl: options.appUrl }));
 
     // One message per owner, so no owner sees who else got it. One delivered is enough to settle.
     let delivered = 0;

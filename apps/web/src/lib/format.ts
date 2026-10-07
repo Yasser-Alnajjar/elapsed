@@ -1,5 +1,12 @@
-import type { CommitmentKind, PolicyCondition, SLAPolicyMatch } from "@sla/core";
-import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
+import type {
+  CommitmentKind,
+  PolicyCondition,
+  SLAPolicyMatch,
+} from "@sla/core";
+import {
+  INTEGRATION_PROVIDER_LABELS,
+  type IntegrationProvider,
+} from "./types/integrations";
 
 /** Formats a signed minute count as "1d 2h 3m", dropping leading zero units. */
 export function formatMinutes(totalMinutes: number): string {
@@ -90,7 +97,9 @@ const PRIORITY_TIER_LABELS: Record<string, PriorityTier> = {
   low: "P4",
 };
 
-export function formatPriorityTier(priority: string | null): PriorityTier | null {
+export function formatPriorityTier(
+  priority: string | null,
+): PriorityTier | null {
   if (!priority) return null;
   return PRIORITY_TIER_LABELS[priority] ?? null;
 }
@@ -193,14 +202,20 @@ const CONDITION_OPERATOR_LABELS: Record<string, string> = {
 /** One generic condition in plain language, e.g. "Priority is Urgent" or "Group is set". */
 function describeCondition(condition: PolicyCondition): string {
   const field = humanizeConditionField(condition.field);
-  const operator = CONDITION_OPERATOR_LABELS[condition.operator] ?? condition.operator;
-  if (condition.operator === "present" || condition.operator === "not_present") {
+  const operator =
+    CONDITION_OPERATOR_LABELS[condition.operator] ?? condition.operator;
+  if (
+    condition.operator === "present" ||
+    condition.operator === "not_present"
+  ) {
     return `${field} ${operator}`;
   }
   return `${field} ${operator} ${String(condition.value)}`;
 }
 
-function describeConditionGroup(conditions: SLAPolicyMatch["conditions"]): string[] {
+function describeConditionGroup(
+  conditions: SLAPolicyMatch["conditions"],
+): string[] {
   if (!conditions) return [];
   const parts: string[] = [];
   if (conditions.all && conditions.all.length > 0) {
@@ -299,9 +314,11 @@ export function formatNextCycle(nextIso: string | null, nowMs: number): string {
   const diffMs = new Date(nextIso).getTime() - nowMs;
   if (diffMs <= 0) return "Next cycle due now";
 
-  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  const plural = (n: number, unit: string) =>
+    `${n} ${unit}${n === 1 ? "" : "s"}`;
   const seconds = Math.round(diffMs / 1_000);
-  if (seconds < 60) return `Next cycle in ~${plural(Math.max(seconds, 1), "second")}`;
+  if (seconds < 60)
+    return `Next cycle in ~${plural(Math.max(seconds, 1), "second")}`;
   const minutes = Math.round(diffMs / 60_000);
   if (minutes < 60) return `Next cycle in ~${plural(minutes, "minute")}`;
   return `Next cycle in ~${plural(Math.round(diffMs / 3_600_000), "hour")}`;
@@ -449,12 +466,19 @@ export function formatCaseKey(system: string, externalId: string): string {
 const CASE_TITLE_SUBJECT_MAX = 70;
 
 /** The browser-tab title for a case: its key and subject ("ZD-8921 · Login fails after SSO"), the key alone when the ticket has no subject. */
-export function formatCaseTitle(system: string, externalId: string, subject: string | null): string {
+export function formatCaseTitle(
+  system: string,
+  externalId: string,
+  subject: string | null,
+): string {
   const key = formatCaseKey(system, externalId);
   const text = subject?.replace(/\s+/g, " ").trim();
   if (!text) return key;
-  const short = text.length > CASE_TITLE_SUBJECT_MAX ? `${text.slice(0, CASE_TITLE_SUBJECT_MAX - 1).trimEnd()}…` : text;
-  return `${key} · ${short}`;
+  const short =
+    text.length > CASE_TITLE_SUBJECT_MAX
+      ? `${text.slice(0, CASE_TITLE_SUBJECT_MAX - 1).trimEnd()}…`
+      : text;
+  return short ?? key;
 }
 
 const LINKED_SYSTEM_SHORT_LABELS: Record<string, string> = {

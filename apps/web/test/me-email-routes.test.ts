@@ -139,8 +139,10 @@ describe("POST /api/me/email", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
     expect(email.sendTransactionalEmail).toHaveBeenCalledTimes(1);
-    const sentMessage = email.sendTransactionalEmail.mock.calls[0]![0];
-    expect(sentMessage.to).toEqual(["b@x.com"]);
+    const sentRequest = email.sendTransactionalEmail.mock.calls[0]![0];
+    expect(sentRequest.to).toEqual(["b@x.com"]);
+    expect(sentRequest.template).toBe("email-change-verification");
+    expect(sentRequest.data.confirmUrl).toContain("raw-token");
   });
 
   it("returns 502 when the confirmation email fails to send", async () => {

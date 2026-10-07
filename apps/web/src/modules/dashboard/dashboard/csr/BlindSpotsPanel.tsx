@@ -73,7 +73,7 @@ export function BlindSpotsPanel({
 
       <SubSection
         icon={Ticket}
-        title="Open cases with no matching SLA policy"
+        title="Cases with no matching SLA policy"
         description="No active policy version matched this case's attributes — it has no SLA commitment at all"
         badge={
           unmatchedCases.length > 0 && (
@@ -86,7 +86,7 @@ export function BlindSpotsPanel({
         {unmatchedCases.length === 0 ? (
           <p className="text-outline flex items-center gap-1.5 text-xs">
             <CheckCircle2 className="text-tertiary size-3.5" />
-            Every open case matches a policy.
+            Every open or recently closed case matches a policy.
           </p>
         ) : (
           <ul className="flex flex-col gap-1.5">

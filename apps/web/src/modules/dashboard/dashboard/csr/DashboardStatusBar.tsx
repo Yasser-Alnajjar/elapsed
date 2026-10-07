@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { Fragment, useTransition } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import type { DashboardSourceStatus } from "@/lib/types/dashboard";
 
@@ -68,15 +68,16 @@ export function DashboardStatusBar({
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-outline">Read-only sync active:</span>
-          <SourceConnection
-            {...sourceStatus.ticketSource}
-            connectedClass="text-tertiary"
-          />
-          <span className="text-muted-foreground text-xxs">•</span>
-          <SourceConnection
-            {...sourceStatus.tracker}
-            connectedClass="text-primary"
-          />
+          {sourceStatus.map((source, i) => (
+            <Fragment key={`${source.role}-${source.label}`}>
+              {i > 0 && <span className="text-muted-foreground text-xxs">•</span>}
+              <SourceConnection
+                label={source.label}
+                connected={source.connected}
+                connectedClass={source.role === "ticket_source" ? "text-tertiary" : "text-primary"}
+              />
+            </Fragment>
+          ))}
         </div>
       </div>
       <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">

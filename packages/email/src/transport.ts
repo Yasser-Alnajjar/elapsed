@@ -1,11 +1,17 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { privateSmtpHostsAllowed, resolvePublicSmtpAddress } from "./destination";
-import type { EmailConfig, EmailMessage } from "./types";
+import { assertRendered, type RenderedEmail } from "./rendered";
+import type { EmailAttachment, EmailConfig } from "./types";
 
 /** Generous enough for a slow SMTP relay, short enough that a settings-form "Test Connection" click (or a misconfigured/unreachable host) fails fast instead of hanging the request. */
 const CONNECTION_TIMEOUT_MS = 10_000;
 
 /**
+ * The SMTP transport: delivery only. It is private to this package (nothing
+ * here is re-exported except `verifyEmailConfig`, which sends nothing) and
+ * accepts only a `RenderedEmail`, so presentation is never its concern and
+ * every message that reaches it has been through the Elapsed layout.
+ *
  * Every other integration in this monorepo is a zero-dependency `fetch`
  * client (see `@sla/slack`), but SMTP is a stateful line-based protocol
  * `fetch` cannot speak — nodemailer is the one external dependency this
@@ -76,17 +82,35 @@ export async function verifyEmailConfig(config: EmailConfig, options: SendOption
   await transporter.verify();
 }
 
-export async function sendEmail(config: EmailConfig, message: EmailMessage, options: SendOptions = {}): Promise<void> {
+export interface Delivery {
+  to: readonly string[];
+  email: RenderedEmail;
+  attachments?: readonly EmailAttachment[] | undefined;
+}
+
+export async function deliver(config: EmailConfig, delivery: Delivery, options: SendOptions = {}): Promise<void> {
+  assertRendered(delivery.email);
+  const { email, attachments } = delivery;
   const transporter = createTransporter(config, await connectHostFor(config, options));
+
+  const files = [
+    ...(attachments ?? []).map(({ filename, content, contentType }) => ({ filename, content, contentType })),
+    // Inline images ride along as related parts the HTML references by \`cid:\`.
+    ...email.inlineImages.map(({ cid, filename, contentType, base64 }) => ({
+      cid,
+      filename,
+      contentType,
+      content: Buffer.from(base64, "base64"),
+      contentDisposition: "inline" as const,
+    })),
+  ];
 
   await transporter.sendMail({
     from: fromHeader(config),
-    to: message.to,
-    subject: message.subject,
-    text: message.text,
-    ...(message.html ? { html: message.html } : {}),
-    ...(message.attachments?.length
-      ? { attachments: message.attachments.map(({ filename, content, contentType }) => ({ filename, content, contentType })) }
-      : {}),
+    to: [...delivery.to],
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    attachments: files,
   });
 }

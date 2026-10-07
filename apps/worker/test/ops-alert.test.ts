@@ -112,11 +112,34 @@ describe("sendOpsAlert", () => {
 
     await sendOpsAlert(config, { subject: "Worker stalled", message: "No successful cycle in 15 minutes." });
 
-    expect(sendEmailMock).toHaveBeenCalledWith(CONFIGURED_SMTP, {
+    // A template request, not a hand-written message: the layout renders subject, text and HTML.
+    expect(sendEmailMock).toHaveBeenCalledWith({
+      smtp: CONFIGURED_SMTP,
       to: ["ops@example.com"],
-      subject: "Worker stalled",
-      text: "No successful cycle in 15 minutes.",
+      template: "ops-alert",
+      data: { subject: "Worker stalled", message: "No successful cycle in 15 minutes." },
     });
+  });
+
+  it("marks a recovery alert as such", async () => {
+    process.env.OPS_ALERT_EMAIL = "ops@example.com";
+    loadDeploymentSmtpConfigMock.mockReturnValue(CONFIGURED_SMTP);
+    sendEmailMock.mockResolvedValue(undefined);
+
+    await sendOpsAlert(loadOpsAlertConfig(), { subject: "Worker recovered", message: "Serviced again.", kind: "recovered" });
+
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ template: "ops-alert", data: expect.objectContaining({ kind: "recovered" }) }));
+  });
+
+  it("logs, rather than throws, when the email send fails, so the watchdog loop survives", async () => {
+    process.env.OPS_ALERT_EMAIL = "ops@example.com";
+    loadDeploymentSmtpConfigMock.mockReturnValue(CONFIGURED_SMTP);
+    sendEmailMock.mockRejectedValue(new Error("smtp down"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(sendOpsAlert(loadOpsAlertConfig(), { subject: "Worker stalled", message: "m" })).resolves.toBeUndefined();
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining("ops_alert_email_failed"));
+    logged.mockRestore();
   });
 
   it("does nothing when config is null", async () => {

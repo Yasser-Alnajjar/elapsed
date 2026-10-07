@@ -11,11 +11,19 @@ export const dynamic = "force-dynamic";
  * the page itself still does its own `notFound()` and error handling, a
  * missing title must never be what breaks it.
  */
-export async function generateMetadata({ params }: { params: Promise<{ caseId: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ caseId: string }>;
+}) {
   const { caseId } = await params;
   try {
     const found = await Actions.Cases.getTitle(caseId);
-    return noIndexMetadata(found ? formatCaseTitle(found.system, found.externalId, found.subject) : "Case details");
+    return noIndexMetadata(
+      found
+        ? formatCaseTitle(found.system, found.externalId, found.subject)
+        : "Case details",
+    );
   } catch {
     return noIndexMetadata("Case details");
   }
@@ -26,7 +34,11 @@ export default async function CaseDetailPage({
   searchParams,
 }: {
   params: Promise<{ caseId: string }>;
-  searchParams: Promise<{ commitmentId?: string | string[]; ref?: string | string[]; n?: string | string[] }>;
+  searchParams: Promise<{
+    commitmentId?: string | string[];
+    ref?: string | string[];
+    n?: string | string[];
+  }>;
 }) {
   const { caseId } = await params;
   const { commitmentId, ref, n } = await searchParams;
@@ -34,7 +46,9 @@ export default async function CaseDetailPage({
     <CaseDetail
       caseId={caseId}
       commitmentId={typeof commitmentId === "string" ? commitmentId : undefined}
-      alertNotificationId={ref === "alert" && typeof n === "string" ? n : undefined}
+      alertNotificationId={
+        ref === "alert" && typeof n === "string" ? n : undefined
+      }
     />
   );
 }

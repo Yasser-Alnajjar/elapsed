@@ -1,4 +1,4 @@
-import { sendEmail, loadDeploymentSmtpConfig, type EmailConfig, type EmailMessage } from "@sla/email";
+import { sendEmail, loadDeploymentSmtpConfig, type EmailConfig, type EmailRequest } from "@sla/email";
 import { errorMessage } from "./utils";
 
 /**
@@ -15,8 +15,11 @@ import { errorMessage } from "./utils";
  * and rethrown — never swallowed — so the caller (an invite/reset/
  * verification API route) can surface a real failure instead of reporting
  * success for an email that was never sent.
+ *
+ * Callers pass a template request (`{ to, template, data }`), never a subject
+ * or a body: `@sla/email` renders every message inside the Elapsed layout.
  */
-export async function sendTransactionalEmail(message: EmailMessage): Promise<void> {
+export async function sendTransactionalEmail(request: EmailRequest): Promise<void> {
   let config: EmailConfig;
   try {
     config = loadDeploymentSmtpConfig();
@@ -31,7 +34,7 @@ export async function sendTransactionalEmail(message: EmailMessage): Promise<voi
   }
 
   try {
-    await sendEmail(config, message);
+    await sendEmail({ ...request, smtp: config });
   } catch (error) {
     console.error(
       JSON.stringify({

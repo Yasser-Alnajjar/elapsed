@@ -1,9 +1,7 @@
 export { claimNotifications, deliverClaimedNotifications, runNotificationPipeline, STALE_CLAIM_MS } from "./dispatch";
 export type { NotificationClaims, NotificationPipelineResult, NotificationPipelineOptions } from "./dispatch";
-export { formatSlackMessage, formatEmailMessage, DEFAULT_EMAIL_BRAND_NAME } from "./format";
-export type { NotificationContext, EmailContent, EmailBrand } from "./format";
-export { renderNotificationEmailHtml } from "./email-template";
-export type { EmailTemplateInput, EmailSeverity } from "./email-template";
+export { formatSlackMessage, buildSlaAlertEmail } from "./format";
+export type { NotificationContext, EmailBrand } from "./format";
 export {
   buildMonthlyReport,
   hasActivity,
@@ -19,13 +17,12 @@ export type {
   MonthlyStageRow,
 } from "./monthly-report";
 export {
+  buildMonthlyReportEmail,
   formatPeriod,
+  monthlyReportCsvAttachment,
   monthlyReportCsvFilename,
-  monthlyReportSubject,
   renderMonthlyReportCsv,
-  renderMonthlyReportHtml,
   renderMonthlyReportSlack,
-  renderMonthlyReportText,
 } from "./monthly-report-render";
 export {
   deliverMonthlyReport,

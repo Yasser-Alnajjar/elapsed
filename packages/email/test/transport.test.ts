@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderEmail } from "../src/render";
+import { UnrenderedEmailError } from "../src/rendered";
 import type { EmailConfig } from "../src/types";
 
 const verifyMock = vi.fn();
@@ -9,7 +11,9 @@ vi.mock("nodemailer", () => ({
   default: { createTransport: (...args: unknown[]) => createTransportMock(...args) },
 }));
 
-const { sendEmail, verifyEmailConfig } = await import("../src/client");
+const { deliver, verifyEmailConfig } = await import("../src/transport");
+
+const rendered = renderEmail({ template: "password-reset", data: { resetUrl: "https://app.example.com/reset-password?token=t", ttlMinutes: 60 } }, { appUrl: null });
 
 const baseConfig: EmailConfig = {
   host: "smtp.example.com",
@@ -27,7 +31,7 @@ beforeEach(() => {
   sendMailMock.mockReset().mockResolvedValue({ messageId: "1" });
 });
 
-describe("createTransporter security mapping (via verifyEmailConfig/sendEmail)", () => {
+describe("createTransporter security mapping (via verifyEmailConfig)", () => {
   it("maps starttls to secure:false without ignoring TLS", async () => {
     await verifyEmailConfig(baseConfig);
     const options = createTransportMock.mock.calls[0][0] as Record<string, unknown>;
@@ -90,40 +94,47 @@ describe("verifyEmailConfig", () => {
   });
 });
 
-describe("sendEmail", () => {
-  it("sends with the from address when no fromName is set", async () => {
-    await sendEmail(baseConfig, { to: ["a@example.com"], subject: "Subject", text: "Body" });
-    expect(sendMailMock).toHaveBeenCalledWith({
-      from: "sla@example.com",
-      to: ["a@example.com"],
-      subject: "Subject",
-      text: "Body",
-    });
+describe("deliver", () => {
+  it("sends the rendered subject, text and html from the configured address", async () => {
+    await deliver(baseConfig, { to: ["a@example.com"], email: rendered });
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ from: "sla@example.com", to: ["a@example.com"], subject: rendered.subject, text: rendered.text, html: rendered.html }),
+    );
   });
 
   it("formats a quoted display name into the From header when fromName is set", async () => {
-    await sendEmail({ ...baseConfig, fromName: "SLA Alerts" }, { to: ["a@example.com"], subject: "S", text: "B" });
-    expect(sendMailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ from: '"SLA Alerts" <sla@example.com>' }),
-    );
+    await deliver({ ...baseConfig, fromName: "SLA Alerts" }, { to: ["a@example.com"], email: rendered });
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({ from: '"SLA Alerts" <sla@example.com>' }));
   });
 
-  it("includes the html body when the message has one", async () => {
-    await sendEmail(baseConfig, { to: ["a@example.com"], subject: "S", text: "B", html: "<p>B</p>" });
-    expect(sendMailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "B", html: "<p>B</p>" }),
-    );
+  it("sends the logo as an inline, cid-referenced image the html points at", async () => {
+    await deliver(baseConfig, { to: ["a@example.com"], email: rendered });
+    const { attachments, html } = sendMailMock.mock.calls[0][0] as { attachments: { cid?: string; contentDisposition?: string; content: Buffer }[]; html: string };
+    const logo = attachments.find((file) => file.cid === "elapsed-logo");
+    expect(logo?.contentDisposition).toBe("inline");
+    expect(Buffer.isBuffer(logo?.content)).toBe(true);
+    expect(html).toContain("cid:elapsed-logo");
   });
 
-  it("omits the html field entirely when the message has no html body", async () => {
-    await sendEmail(baseConfig, { to: ["a@example.com"], subject: "S", text: "B" });
-    expect(sendMailMock.mock.calls[0][0]).not.toHaveProperty("html");
+  it("sends caller attachments (a CSV) alongside the inline logo", async () => {
+    await deliver(baseConfig, {
+      to: ["a@example.com"],
+      email: rendered,
+      attachments: [{ filename: "report.csv", content: "a,b", contentType: "text/csv" }],
+    });
+    const { attachments } = sendMailMock.mock.calls[0][0] as { attachments: { filename: string }[] };
+    expect(attachments.map((file) => file.filename)).toEqual(["report.csv", "elapsed-logo.png"]);
+  });
+
+  it("refuses anything renderEmail did not produce, so hand-written messages can't reach the wire", async () => {
+    const forged = { subject: "Hi", text: "Hi", html: "<p>Hi</p>", inlineImages: [] };
+    await expect(deliver(baseConfig, { to: ["a@example.com"], email: forged as never })).rejects.toBeInstanceOf(UnrenderedEmailError);
+    expect(createTransportMock).not.toHaveBeenCalled();
+    expect(sendMailMock).not.toHaveBeenCalled();
   });
 
   it("propagates a send failure without swallowing it", async () => {
     sendMailMock.mockRejectedValueOnce(new Error("Message rejected: spam"));
-    await expect(sendEmail(baseConfig, { to: ["a@example.com"], subject: "S", text: "B" })).rejects.toThrow(
-      "Message rejected",
-    );
+    await expect(deliver(baseConfig, { to: ["a@example.com"], email: rendered })).rejects.toThrow("Message rejected");
   });
 });

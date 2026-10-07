@@ -219,34 +219,29 @@ describe("runNotificationPipeline", () => {
     expect(postMessageMock).toHaveBeenCalledTimes(1);
     // 3.10: one send per recipient, never everyone in one `To`.
     expect(sendEmailMock).toHaveBeenCalledTimes(2);
-    expect(sendEmailMock).toHaveBeenNthCalledWith(
-      1,
-      expectedEmailConfig,
-      expect.objectContaining({
-        to: ["a@example.com"],
-        subject: expect.stringContaining("#4821"),
-        html: expect.stringContaining("#4821"),
-      }),
-      { publicDestinationOnly: true },
-    );
-    expect(sendEmailMock).toHaveBeenNthCalledWith(
-      2,
-      expectedEmailConfig,
-      expect.objectContaining({
-        to: ["b@example.com"],
-        subject: expect.stringContaining("#4821"),
-        html: expect.stringContaining("#4821"),
-      }),
-      { publicDestinationOnly: true },
-    );
+    // Every message is a template request: the layout, not the dispatcher, writes subject/text/HTML.
+    for (const [index, recipient] of ["a@example.com", "b@example.com"].entries()) {
+      expect(sendEmailMock).toHaveBeenNthCalledWith(
+        index + 1,
+        expect.objectContaining({
+          to: [recipient],
+          smtp: expectedEmailConfig,
+          template: "sla-alert",
+          data: expect.objectContaining({ ticketLabel: "#4821", kindLabel: "Resolution", severity: "at_risk" }),
+          delivery: { publicDestinationOnly: true },
+        }),
+      );
+      expect(sendEmailMock.mock.calls[index]![0]).not.toHaveProperty("html");
+      expect(sendEmailMock.mock.calls[index]![0]).not.toHaveProperty("subject");
+    }
     expect(result.notificationsSent).toBe(1);
     expect(prisma.notification.update).toHaveBeenCalledWith({ where: { id: "ntf_1" }, data: { channel: "slack,email" } });
   });
 
   it("keeps other recipients' delivery independent of one recipient's send failing (3.10)", async () => {
     getEmailSettingsMock.mockResolvedValue(emailSettings);
-    sendEmailMock.mockImplementation((_config, message) =>
-      message.to[0] === "bad@example.com" ? Promise.reject(new Error("mailbox unavailable")) : Promise.resolve(),
+    sendEmailMock.mockImplementation((input) =>
+      input.to[0] === "bad@example.com" ? Promise.reject(new Error("mailbox unavailable")) : Promise.resolve(),
     );
     const prisma = fakePrisma({
       slack: null,
@@ -261,7 +256,7 @@ describe("runNotificationPipeline", () => {
     expect(prisma.notification.update).toHaveBeenCalledWith({ where: { id: "ntf_1" }, data: { channel: "email" } });
   });
 
-  it("includes the ticket's subject in the HTML email when the case has one", async () => {
+  it("passes the ticket's subject to the alert template when the case has one", async () => {
     getEmailSettingsMock.mockResolvedValue(emailSettings);
     const prisma = fakePrisma({
       slack: null,
@@ -271,13 +266,11 @@ describe("runNotificationPipeline", () => {
     await runNotificationPipeline(prisma, "org_1", [candidate()]);
 
     expect(sendEmailMock).toHaveBeenCalledWith(
-      expectedEmailConfig,
-      expect.objectContaining({ html: expect.stringContaining("Payment webhook failing") }),
-      { publicDestinationOnly: true },
+      expect.objectContaining({ data: expect.objectContaining({ ticketName: "Payment webhook failing" }) }),
     );
   });
 
-  it("links the HTML email to the ticket when an appUrl is configured", async () => {
+  it("links the alert to the ticket, and hands the deployment URL on for the footer, when an appUrl is configured", async () => {
     getEmailSettingsMock.mockResolvedValue(emailSettings);
     const prisma = fakePrisma({
       slack: null,
@@ -287,9 +280,10 @@ describe("runNotificationPipeline", () => {
     await runNotificationPipeline(prisma, "org_1", [candidate()], { appUrl: "https://app.example.com" });
 
     expect(sendEmailMock).toHaveBeenCalledWith(
-      expectedEmailConfig,
-      expect.objectContaining({ html: expect.stringContaining("https://app.example.com/cases/case_1") }),
-      { publicDestinationOnly: true },
+      expect.objectContaining({
+        appUrl: "https://app.example.com",
+        data: expect.objectContaining({ caseUrl: expect.stringContaining("https://app.example.com/cases/case_1") }),
+      }),
     );
   });
 
@@ -298,11 +292,7 @@ describe("runNotificationPipeline", () => {
     const prisma = fakePrisma({ slack: null, users: [{ email: "a@example.com" }] });
     await runNotificationPipeline(prisma, "org_1", [candidate()]);
 
-    expect(sendEmailMock).toHaveBeenCalledWith(
-      expectedEmailConfig,
-      expect.objectContaining({ html: expect.not.stringContaining("View ticket") }),
-      { publicDestinationOnly: true },
-    );
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ caseUrl: null }) }));
   });
 
   it("keeps Slack delivery independent of email failing", async () => {

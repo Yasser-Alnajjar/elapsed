@@ -21,6 +21,7 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { PrismaClient } from "@sla/db";
+import { renderEmail, type EmailRequest } from "@sla/email";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
@@ -31,8 +32,10 @@ const ORIGINAL_ENV = {
 
 const mail = vi.hoisted(() => ({ sent: [] as { to: string[]; subject: string; text: string }[] }));
 vi.mock("@/lib/transactional-email", () => ({
-  sendTransactionalEmail: vi.fn(async (message: { to: string[]; subject: string; text: string }) => {
-    mail.sent.push(message);
+  // Renders the real template, so the link in the "inbox" is what the layout produced.
+  sendTransactionalEmail: vi.fn(async (request: EmailRequest) => {
+    const { subject, text } = renderEmail(request);
+    mail.sent.push({ to: [...request.to], subject, text });
   }),
 }));
 
