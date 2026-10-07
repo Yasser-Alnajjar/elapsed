@@ -1,5 +1,5 @@
 import "server-only";
-import { withPerfScope, Prisma, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import type { CommitmentKind, CommitmentStatus } from "@sla/core";
 import { formatPriorityTier, rawPrioritiesForTier } from "./format";
 import { ISSUE_LINK_PROVIDERS } from "./providers";
@@ -43,6 +43,12 @@ function worstOf<T extends { status: CommitmentStatus }>(rows: T[]): T | undefin
 }
 
 const LINK_SYSTEMS = ISSUE_LINK_PROVIDERS;
+/** An active link to an issue tracker or code host that is still connected. */
+const ACTIVE_LINK = {
+  unlinkedAt: null,
+  system: { in: LINK_SYSTEMS },
+  ...SYSTEM_SOURCE_CONNECTED,
+} satisfies Prisma.CaseLinkWhereInput;
 
 // Only columns with a real, persisted, monotonic value are sortable
 // server-side. Maps a case-list column id (csr/columns.tsx) to the Prisma
@@ -66,6 +72,7 @@ function buildWhere(
   const where: Prisma.CaseWhereInput = {
     organizationId,
     deletedAt: null,
+    ...CASE_SOURCE_CONNECTED,
   };
 
   if (params.openState === "open") where.closedAt = null;
@@ -73,11 +80,11 @@ function buildWhere(
 
   if (params.linkState === "linked") {
     where.caseLinks = {
-      some: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
+      some: ACTIVE_LINK,
     };
   } else if (params.linkState === "unlinked") {
     where.caseLinks = {
-      none: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
+      none: ACTIVE_LINK,
     };
   }
 
@@ -121,7 +128,7 @@ async function getCounts(
   prisma: PrismaClient,
   organizationId: string,
 ): Promise<CaseListCounts> {
-  const base = { organizationId, deletedAt: null } as const;
+  const base = { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED } as const;
   const statusValues: CommitmentStatus[] = [
     "breached",
     "at_risk",
@@ -152,18 +159,14 @@ async function getCounts(
     prisma.case.count({
       where: {
         ...base,
-        caseLinks: { some: { unlinkedAt: null, system: { in: LINK_SYSTEMS } } },
+        caseLinks: { some: ACTIVE_LINK },
       },
     }),
     prisma.case.count({
       where: {
         ...base,
         caseLinks: {
-          some: {
-            unlinkedAt: null,
-            system: { in: LINK_SYSTEMS },
-            confidence: "certain",
-          },
+          some: { ...ACTIVE_LINK, confidence: "certain" },
         },
       },
     }),
@@ -278,7 +281,7 @@ async function getCaseListDataInner(
           },
         },
         caseLinks: {
-          where: { unlinkedAt: null, system: { in: LINK_SYSTEMS } },
+          where: ACTIVE_LINK,
           select: {
             system: true,
             externalId: true,

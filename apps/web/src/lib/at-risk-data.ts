@@ -1,5 +1,5 @@
 import "server-only";
-import { perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -66,7 +66,7 @@ function preferredLink(
 /** Every open, non-cancelled at-risk/breached/on-track commitment for this org — the filter-independent base every "org-wide" count below shares. */
 function baseWhere(organizationId: string): Prisma.CommitmentWhereInput {
   return {
-    case: { organizationId, deletedAt: null },
+    case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
     closedAt: null,
     status: { in: OPEN_STATUSES },
   };
@@ -77,7 +77,7 @@ function candidateWhere(
   organizationId: string,
   params: Pick<AtRiskParams, "severity" | "q">,
 ): Prisma.CommitmentWhereInput {
-  const caseWhere: Prisma.CaseWhereInput = { organizationId, deletedAt: null };
+  const caseWhere: Prisma.CaseWhereInput = { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED };
 
   if (params.severity !== "all") {
     caseWhere.priority = { in: rawPrioritiesForTier(params.severity) };
@@ -164,6 +164,7 @@ async function getAtRiskDataInner(
           unlinkedAt: null,
           confidence: "certain",
           system: { in: ISSUE_LINK_PROVIDERS },
+          ...SYSTEM_SOURCE_CONNECTED,
         },
       },
     },
@@ -269,10 +270,10 @@ async function evaluateCandidatePage(
       prisma.businessCalendarVersion.findMany({
         where: { id: { in: calendarVersionIds } },
       }),
-      prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } }),
+      prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds }, ...SYSTEM_SOURCE_CONNECTED } }),
       // Same "active relationship" filter as case-detail-data.ts's `links`.
       prisma.caseLink.findMany({
-        where: { caseId: { in: caseIds }, unlinkedAt: null },
+        where: { caseId: { in: caseIds }, unlinkedAt: null, ...SYSTEM_SOURCE_CONNECTED },
       }),
     ]);
 

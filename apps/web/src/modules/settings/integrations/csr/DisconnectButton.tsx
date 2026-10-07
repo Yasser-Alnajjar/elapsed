@@ -75,8 +75,9 @@ export function DisconnectButton({
           <AlertDialogTitle>Disconnect {providerLabel}?</AlertDialogTitle>
 
           <AlertDialogDescription>
-            Stop syncing {providerLabel} and remove its access? Existing cases
-            and history will remain unchanged.
+            Stop syncing {providerLabel} and remove its access? Its cases and
+            history are hidden while it is disconnected and return when you
+            reconnect. Nothing is deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

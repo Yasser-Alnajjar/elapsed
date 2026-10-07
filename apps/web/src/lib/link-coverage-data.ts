@@ -1,5 +1,5 @@
 import { computeLinkCoverage, LINK_COVERAGE_WINDOW_DAYS, NO_LINK_COVERAGE } from "@sla/commitments";
-import type { PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, type PrismaClient } from "@sla/db";
 import { ISSUE_LINK_PROVIDERS } from "./providers";
 import type { LinkCoverage, LinkCoveragePanel, UncoveredCaseRow } from "./types/link-coverage";
 
@@ -40,8 +40,9 @@ export async function getLinkCoveragePanel(
   const uncoveredWhere = {
     organizationId,
     deletedAt: null,
+    ...CASE_SOURCE_CONNECTED,
     openedAt: { gte: since },
-    caseLinks: { none: { confidence: "certain" as const, unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } } },
+    caseLinks: { none: { confidence: "certain" as const, unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED } },
   };
 
   const [rows, probableOnlyCases] = await Promise.all([
@@ -53,13 +54,13 @@ export async function getLinkCoveragePanel(
         subject: true,
         openedAt: true,
         customer: { select: { name: true } },
-        caseLinks: { where: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } }, select: { id: true }, take: 1 },
+        caseLinks: { where: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED }, select: { id: true }, take: 1 },
       },
       orderBy: { openedAt: "desc" },
       take: UNCOVERED_CASES_LIMIT,
     }),
     prisma.case.count({
-      where: { ...uncoveredWhere, caseLinks: { some: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS } } } },
+      where: { ...uncoveredWhere, caseLinks: { some: { confidence: "probable", unlinkedAt: null, system: { in: ISSUE_LINK_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED } } },
     }),
   ]);
   const uncoveredCount = coverage.cases - coverage.linkedCases;

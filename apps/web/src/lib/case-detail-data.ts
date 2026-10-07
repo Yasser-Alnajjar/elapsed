@@ -1,4 +1,12 @@
-import { getWorkerSettingsForRead, perfCount, withPerfScope, type IntegrationProvider, type PrismaClient } from "@sla/db";
+import {
+  CASE_SOURCE_CONNECTED,
+  SYSTEM_SOURCE_CONNECTED,
+  getWorkerSettingsForRead,
+  perfCount,
+  withPerfScope,
+  type IntegrationProvider,
+  type PrismaClient,
+} from "@sla/db";
 import {
   BREACH_NOTIFICATION_THRESHOLD,
   assessFreshness,
@@ -120,11 +128,15 @@ async function getCaseDetailDataInner(
   // the common case (the case exists) saves a full round trip.
   const [caseRow, eventRows, integrationRows, organization] = await Promise.all([
     prisma.case.findFirst({
-      where: { id: caseId, organizationId, deletedAt: null },
-      include: { customer: true, caseLinks: true, commitments: true },
+      where: { id: caseId, organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
+      include: {
+        customer: true,
+        caseLinks: { where: SYSTEM_SOURCE_CONNECTED },
+        commitments: true,
+      },
     }),
     prisma.normalizedEvent.findMany({
-      where: { caseId },
+      where: { caseId, ...SYSTEM_SOURCE_CONNECTED },
       orderBy: [{ occurredAt: "asc" }, { sourceSequence: "asc" }],
     }),
     prisma.integration.findMany({

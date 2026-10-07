@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, Prisma, type PrismaClient } from "@sla/db";
 import { detectCycleTimeAnomaly, type CommitmentKind } from "@sla/core";
 import type { CycleTimeAnomalyRow } from "./types/dashboard";
 
@@ -53,7 +53,7 @@ export async function getCycleTimeAnomalies(
 
   const closedCommitments = await prisma.commitment.findMany({
     where: {
-      case: { organizationId, deletedAt: null, customerId: { not: null } },
+      case: { organizationId, deletedAt: null, customerId: { not: null }, ...CASE_SOURCE_CONNECTED },
       closedAt: { gte: lookbackStart, lte: asOfDate },
       status: { in: ["met", "breached"] },
     },

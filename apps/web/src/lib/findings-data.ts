@@ -1,4 +1,4 @@
-import { perfCount, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, perfCount, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   evaluateCommitment,
@@ -48,8 +48,9 @@ export async function getFindingsData(
       where: {
         organizationId,
         deletedAt: null,
+        ...CASE_SOURCE_CONNECTED,
         openedAt: { gte: periodStart },
-        caseLinks: { some: { system: { in: ISSUE_LINK_PROVIDERS } } },
+        caseLinks: { some: { system: { in: ISSUE_LINK_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED } },
       },
       include: { customer: true, commitments: true },
     }),
@@ -57,8 +58,7 @@ export async function getFindingsData(
       where: { organizationId, provider: { in: ISSUE_LINK_PROVIDERS }, status: { not: "disconnected" } },
     }),
   ]);
-  // Links recorded before a tracker was disconnected still count as escalations.
-  const trackerConnected = connectedTrackers > 0 || escalatedCases.length > 0;
+  const trackerConnected = connectedTrackers > 0;
 
   if (escalatedCases.length === 0) {
     return {
@@ -89,7 +89,7 @@ export async function getFindingsData(
 
   const [eventRows, policyVersionRows, calendarVersionRows] = await Promise.all(
     [
-      prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds } } }),
+      prisma.normalizedEvent.findMany({ where: { caseId: { in: caseIds }, ...SYSTEM_SOURCE_CONNECTED } }),
       policyVersionIds.length > 0
         ? prisma.sLAPolicyVersion.findMany({
             where: { id: { in: policyVersionIds } },

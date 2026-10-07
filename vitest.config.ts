@@ -6,6 +6,7 @@ import { defineConfig } from "vitest/config";
 // other's data: they get their own project, one file at a time, after the rest.
 const realDatabaseSuites = [
   "apps/web/test/tenant-isolation.test.ts",
+  "apps/web/test/integration-disconnect-visibility.test.ts",
   "apps/web/test/connect-links.test.ts",
   "apps/web/test/monthly-report-delivery.test.ts",
   "apps/web/test/onboarding-intercom.test.ts",

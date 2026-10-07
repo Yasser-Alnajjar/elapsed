@@ -1,4 +1,4 @@
-import { perfCount, Prisma, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
   buildCsvHeaderLine,
   buildCsvRowLines,
@@ -59,7 +59,7 @@ const COMMITMENT_SELECT = {
       externalId: true,
       system: true,
       customer: { select: { name: true } },
-      caseLinks: { select: { system: true, externalId: true } },
+      caseLinks: { where: SYSTEM_SOURCE_CONNECTED, select: { system: true, externalId: true } },
     },
   },
 } satisfies Prisma.CommitmentSelect;
@@ -138,7 +138,7 @@ export async function* iterateComplianceReportRows(
   for (;;) {
     const commitmentRows: CommitmentBatchRow[] = await prisma.commitment.findMany({
       where: {
-        case: { organizationId, deletedAt: null },
+        case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
         ...(cursor
           ? {
               OR: [
@@ -219,7 +219,7 @@ async function toReportRows(
       : Promise.resolve([]),
     caseIds.length > 0
       ? prisma.normalizedEvent.findMany({
-          where: { caseId: { in: caseIds } },
+          where: { caseId: { in: caseIds }, ...SYSTEM_SOURCE_CONNECTED },
           select: NORMALIZED_EVENT_SELECT,
         })
       : Promise.resolve([]),

@@ -8,7 +8,7 @@ import {
   type LinkCoverage,
 } from "@sla/commitments";
 import { monthBounds, type CommitmentKind, type Leg } from "@sla/core";
-import type { IntegrationProvider, PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, type IntegrationProvider, type PrismaClient } from "@sla/db";
 
 /**
  * The monthly customer report (N5.6): one organization, one calendar month on
@@ -107,7 +107,7 @@ export async function buildMonthlyReport(prisma: PrismaClient, input: BuildMonth
 
   const { start, end } = monthBounds(input.period, organization.timezone);
   const lastInstant = new Date(end.getTime() - 1);
-  const scope = { organizationId: organization.id, deletedAt: null } as const;
+  const scope = { organizationId: organization.id, deletedAt: null, ...CASE_SOURCE_CONNECTED } as const;
 
   const [metByKind, breachCandidates, casesOpened, coverage] = await Promise.all([
     prisma.commitment.groupBy({

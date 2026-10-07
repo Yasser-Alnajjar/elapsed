@@ -198,8 +198,8 @@ export interface DashboardData {
   attributionLedger: AttributionLedger;
   /**
    * Whether engineering time is something this organization can have: a work
-   * tracker or code host is connected, or engineering time was already
-   * recorded. False means an engineering figure of zero would be "not
+   * tracker or code host is connected. A disconnected one's data is hidden, so
+   * it does not count. False means an engineering figure of zero would be "not
    * measured", not a fact, so no surface may print it as one (N5.2).
    */
   engineeringMeasured: boolean;

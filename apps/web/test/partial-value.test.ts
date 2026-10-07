@@ -157,13 +157,17 @@ describe.skipIf(!TEST_DATABASE_URL)("partial value before a tracker is connected
     expect(result.trackerConnected).toBe(true);
   });
 
-  it("a tracker that was disconnected keeps the engineering time it recorded as measured", async () => {
+  it("a tracker that was disconnected hides the engineering time it recorded, and reconnecting brings it back", async () => {
     const tracker = await addTracker();
     await sourceSync.projectAndEvaluateSourceSyncs(prisma, organizationId);
     await prisma.integration.update({ where: { id: tracker.id }, data: { status: "disconnected", disconnectedAt: new Date() } });
 
     const data = await dashboard.getDashboardData(prisma, organizationId);
-    expect(data.engineeringMeasured).toBe(true);
+    expect(data.engineeringMeasured).toBe(false);
+    expect(await findings.getFindingsData(prisma, organizationId)).toMatchObject({ trackerConnected: false, totalEscalated: 0 });
+
+    await prisma.integration.update({ where: { id: tracker.id }, data: { status: "connected", disconnectedAt: null } });
+    expect((await dashboard.getDashboardData(prisma, organizationId)).engineeringMeasured).toBe(true);
     expect((await findings.getFindingsData(prisma, organizationId)).trackerConnected).toBe(true);
   });
 

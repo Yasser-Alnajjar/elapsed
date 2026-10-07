@@ -1,4 +1,5 @@
 import {
+  CASE_SOURCE_CONNECTED,
   decryptToken,
   getEmailSettings,
   EmailSettingsUnreadableError,
@@ -171,7 +172,8 @@ export async function claimNotifications(
   if (toSend.length === 0) return claims;
 
   const caseRows = await prisma.case.findMany({
-    where: { id: { in: [...new Set(toSend.map((c) => c.caseId))] }, deletedAt: null },
+    // A case whose source is disconnected is skipped without claiming, so it can still alert after a reconnect.
+    where: { id: { in: [...new Set(toSend.map((c) => c.caseId))] }, deletedAt: null, ...CASE_SOURCE_CONNECTED },
     select: { id: true, externalId: true, subject: true, customer: { select: { name: true } } },
   });
   const caseById = new Map(caseRows.map((c) => [c.id, c]));

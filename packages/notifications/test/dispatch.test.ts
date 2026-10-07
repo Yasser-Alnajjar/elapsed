@@ -10,6 +10,7 @@ vi.mock("@sla/slack", () => ({ postMessage: vi.fn() }));
 vi.mock("@sla/email", () => ({ sendEmail: vi.fn() }));
 vi.mock("@sla/db", async (importOriginal) => ({
   isUniqueConstraintError: (await importOriginal<typeof import("@sla/db")>()).isUniqueConstraintError,
+  CASE_SOURCE_CONNECTED: (await importOriginal<typeof import("@sla/db")>()).CASE_SOURCE_CONNECTED,
   getEmailSettings: vi.fn(),
   EmailSettingsUnreadableError: class EmailSettingsUnreadableError extends Error {},
   // Fixtures below use plaintext tokens (e.g. "xoxb-1") — mirrors the real

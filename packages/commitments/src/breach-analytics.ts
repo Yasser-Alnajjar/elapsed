@@ -1,4 +1,4 @@
-import { perfCount, Prisma, type PrismaClient } from "@sla/db";
+import { SYSTEM_SOURCE_CONNECTED, perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
   deriveLegSpans,
   legAtTime,
@@ -183,7 +183,7 @@ export async function attributeBreachLegs(prisma: PrismaClient, breaches: Breach
   const eventRows =
     caseIds.length > 0
       ? await prisma.normalizedEvent.findMany({
-          where: { caseId: { in: caseIds } },
+          where: { caseId: { in: caseIds }, ...SYSTEM_SOURCE_CONNECTED },
           select: {
             id: true,
             caseId: true,

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, type PrismaClient } from "@sla/db";
 import { providersWithCapability } from "./providers";
 import { getSlaPolicies } from "./sla-policies-data";
 import { INTEGRATION_PROVIDER_LABELS } from "./types/integrations";
@@ -26,9 +26,9 @@ export async function getPolicyImportReview(
     prisma.slaImportSummary.findFirst({
       where: { organizationId, provider: { in: importers } },
     }),
-    prisma.case.count({ where: { organizationId, deletedAt: null, closedAt: null } }),
+    prisma.case.count({ where: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED, closedAt: null } }),
     prisma.case.findMany({
-      where: { organizationId, deletedAt: null, closedAt: null, commitments: { none: {} } },
+      where: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED, closedAt: null, commitments: { none: {} } },
       select: { id: true, externalId: true, subject: true, openedAt: true, customer: { select: { name: true } } },
       orderBy: { openedAt: "asc" },
     }),

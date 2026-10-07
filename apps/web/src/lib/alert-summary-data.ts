@@ -1,5 +1,5 @@
 import "server-only";
-import { withPerfScope, type CommitmentStatus, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, withPerfScope, type CommitmentStatus, type PrismaClient } from "@sla/db";
 
 export interface AlertSummaryRow {
   commitmentId: string;
@@ -43,7 +43,7 @@ async function getAlertSummaryInner(
 ): Promise<AlertSummary> {
   const openAlertStatuses: CommitmentStatus[] = ["at_risk", "breached"];
   const where = {
-    case: { organizationId },
+    case: { organizationId, ...CASE_SOURCE_CONNECTED },
     closedAt: null,
     status: { in: openAlertStatuses },
   };

@@ -1,5 +1,10 @@
 import type { PrismaClient } from "@sla/db";
-import { getIntegrationConfigStatus } from "@sla/db";
+import {
+  CASE_SOURCE_CONNECTED,
+  RAW_EVENT_SOURCE_CONNECTED,
+  SYSTEM_SOURCE_CONNECTED,
+  getIntegrationConfigStatus,
+} from "@sla/db";
 import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
 import type { OnboardingStatus, ProviderOnboardingStatus } from "./types/onboarding";
 import { PROVIDERS, WEB_PROVIDERS, WORK_TRACKER_PROVIDERS, TICKET_SOURCE_PROVIDERS } from "./providers";
@@ -20,9 +25,16 @@ export async function getOnboardingStatus(prisma: PrismaClient, organizationId: 
     Promise.all(REGISTRY_ORDER.map((provider) => getIntegrationConfigStatus(prisma, organizationId, provider))),
     countSnapshots(prisma, organizationId),
     prisma.case.count({
-      where: { organizationId, deletedAt: null, caseLinks: { some: { system: { in: WORK_TRACKER_PROVIDERS } } } },
+      where: {
+        organizationId,
+        deletedAt: null,
+        ...CASE_SOURCE_CONNECTED,
+        caseLinks: { some: { system: { in: WORK_TRACKER_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED } },
+      },
     }),
-    prisma.caseLink.count({ where: { case: { organizationId }, system: { in: WORK_TRACKER_PROVIDERS } } }),
+    prisma.caseLink.count({
+      where: { case: { organizationId, ...CASE_SOURCE_CONNECTED }, system: { in: WORK_TRACKER_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED },
+    }),
   ]);
 
   const providers = REGISTRY_ORDER.map((provider, index): ProviderOnboardingStatus => {
@@ -56,7 +68,11 @@ async function countSnapshots(prisma: PrismaClient, organizationId: string): Pro
       const prefix = WEB_PROVIDERS[provider].snapshotEventPrefix;
       return prefix === undefined
         ? []
-        : [prisma.rawEvent.count({ where: { integration: { organizationId, provider }, providerEventId: { startsWith: prefix } } })];
+        : [
+            prisma.rawEvent.count({
+              where: { integration: { organizationId, provider, ...RAW_EVENT_SOURCE_CONNECTED.integration }, providerEventId: { startsWith: prefix } },
+            }),
+          ];
     }),
   );
   return counts.reduce((sum, n) => sum + n, 0);

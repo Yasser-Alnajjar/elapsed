@@ -7,6 +7,11 @@ export type { CustomerIdentityRef } from "./customer-identity";
 export { deriveEncryptionKey, aesGcmEncrypt, aesGcmDecrypt } from "./crypto";
 export { isUniqueConstraintError } from "./prisma-errors";
 export {
+  CASE_SOURCE_CONNECTED,
+  SYSTEM_SOURCE_CONNECTED,
+  RAW_EVENT_SOURCE_CONNECTED,
+} from "./integration-visibility";
+export {
   isConfigurableIntegrationProvider,
   getIntegrationConfig,
   getIntegrationConfigStatus,

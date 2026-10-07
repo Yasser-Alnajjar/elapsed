@@ -1,4 +1,12 @@
-import { getWorkerSettingsForRead, perfCount, withPerfScope, Prisma, type PrismaClient } from "@sla/db";
+import {
+  CASE_SOURCE_CONNECTED,
+  SYSTEM_SOURCE_CONNECTED,
+  getWorkerSettingsForRead,
+  perfCount,
+  withPerfScope,
+  Prisma,
+  type PrismaClient,
+} from "@sla/db";
 import {
   COMMITMENT_KINDS,
   deriveLegSpans,
@@ -32,7 +40,7 @@ import type {
   UnmatchedCaseRow,
 } from "./types/dashboard";
 import type { IntegrationProvider } from "./types/integrations";
-import { ISSUE_LINK_PROVIDERS, isIssueLinkSystem, preferredIssueLink } from "./providers";
+import { isIssueLinkSystem, preferredIssueLink } from "./providers";
 
 // Everything shown on the "silently not being monitored" panels needs to
 // stay readable without scrolling, same rationale as AT_RISK_LIMIT.
@@ -129,17 +137,18 @@ async function getDashboardDataInner(
   const unmatchedCaseWhere = {
     organizationId,
     deletedAt: null,
+    ...CASE_SOURCE_CONNECTED,
     closedAt: null,
     commitments: { none: {} },
   } as const;
   const failedNotificationWhere = {
-    commitment: { case: { organizationId, deletedAt: null } },
+    commitment: { case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED } },
   } as const;
   // Every open commitment except cancelled ones — cancelled commitments
   // never appear on the At-Risk table and shouldn't crowd out real
   // candidates or count toward its overflow total.
   const atRiskWhere: Prisma.CommitmentWhereInput = {
-    case: { organizationId, deletedAt: null },
+    case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
     closedAt: null,
     status: { not: "cancelled" },
   };
@@ -179,16 +188,16 @@ async function getDashboardDataInner(
   ] = await Promise.all([
     prisma.commitment.groupBy({
       by: ["kind", "status"],
-      where: { case: { organizationId, deletedAt: null }, closedAt: null },
+      where: { case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED }, closedAt: null },
       _count: { _all: true },
     }),
     prisma.commitment.findMany({
-      where: { case: { organizationId, deletedAt: null }, closedAt: null },
+      where: { case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED }, closedAt: null },
       select: { caseId: true, status: true },
     }),
     prisma.commitment.findMany({
       where: {
-        case: { organizationId, deletedAt: null },
+        case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
         closedAt: null,
         status: "breached",
       },
@@ -208,7 +217,7 @@ async function getDashboardDataInner(
     }),
     prisma.commitment.findMany({
       where: {
-        case: { organizationId, deletedAt: null },
+        case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
         closedAt: { gte: periodStart, lte: asOfDate },
         status: { in: ["met", "breached"] },
       },
@@ -229,7 +238,7 @@ async function getDashboardDataInner(
     }),
     prisma.commitment.findMany({
       where: {
-        case: { organizationId, deletedAt: null },
+        case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
         closedAt: { gte: previousPeriodStart, lt: periodStart },
         status: { in: ["met", "breached"] },
       },
@@ -344,12 +353,12 @@ async function getDashboardDataInner(
         : Promise.resolve([]),
       eventCaseIds.length > 0
         ? prisma.normalizedEvent.findMany({
-            where: { caseId: { in: eventCaseIds } },
+            where: { caseId: { in: eventCaseIds }, ...SYSTEM_SOURCE_CONNECTED },
           })
         : Promise.resolve([]),
       eventCaseIds.length > 0
         ? prisma.caseLink.findMany({
-            where: { caseId: { in: eventCaseIds }, unlinkedAt: null },
+            where: { caseId: { in: eventCaseIds }, unlinkedAt: null, ...SYSTEM_SOURCE_CONNECTED },
           })
         : Promise.resolve([]),
     ]);
@@ -579,18 +588,13 @@ async function getDashboardDataInner(
     auditTimestamp: asOf,
   };
 
-  // A tracker or code host that was disconnected keeps the engineering time it
-  // recorded; one that never existed means zero is "not measured" (N5.2). The
-  // period totals above cover closed cases only, so a recorded link on any
-  // case settles it; that read is skipped while a tracker is connected.
+  // Zero engineering time only means "measured" while a tracker or code host is
+  // connected (N5.2). A disconnected one's links and events are hidden like the
+  // rest of its data, so with none connected there is nothing to measure.
   const engineeringMeasured =
     integrationRows.some((row) => isIssueLinkSystem(row.provider) && row.status !== "disconnected") ||
     totalEscalatedCount > 0 ||
-    engineeringLegMinutesTotal > 0 ||
-    (await prisma.caseLink.findFirst({
-      where: { case: { organizationId }, system: { in: ISSUE_LINK_PROVIDERS } },
-      select: { id: true },
-    })) !== null;
+    engineeringLegMinutesTotal > 0;
 
   const linkCoverage = await getLinkCoveragePanel(prisma, organizationId, asOfDate);
 

@@ -1,4 +1,4 @@
-import { perfCount, Prisma, type PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, perfCount, Prisma, type PrismaClient } from "@sla/db";
 import {
   assessFreshness,
   evaluateCommitment,
@@ -401,6 +401,9 @@ export async function runEvaluationPipeline(
       case: {
         organizationId,
         deletedAt: null,
+        // A disconnected source's cases are not evaluated, so they raise no
+        // alerts; reconnecting resumes evaluation of the same commitments.
+        ...CASE_SOURCE_CONNECTED,
         ...(options.caseIds ? { id: { in: [...options.caseIds] } } : {}),
       },
       // "all" (the reconciliation sweep) still excludes cancelled commitments

@@ -1,4 +1,4 @@
-import type { IntegrationProvider, PrismaClient } from "@sla/db";
+import { CASE_SOURCE_CONNECTED, SYSTEM_SOURCE_CONNECTED, type IntegrationProvider, type PrismaClient } from "@sla/db";
 
 /**
  * Link coverage: of the cases opened in the last 30 days, the share that has at
@@ -37,6 +37,7 @@ export async function computeLinkCoverage(
   const scope = {
     openedAt: { gte: since },
     deletedAt: null,
+    ...CASE_SOURCE_CONNECTED,
     ...(options.organizationIds ? { organizationId: { in: options.organizationIds } } : {}),
   };
 
@@ -47,7 +48,7 @@ export async function computeLinkCoverage(
       where: {
         ...scope,
         caseLinks: {
-          some: { confidence: "certain", unlinkedAt: null, system: { in: options.issueLinkProviders } },
+          some: { confidence: "certain", unlinkedAt: null, system: { in: options.issueLinkProviders }, ...SYSTEM_SOURCE_CONNECTED },
         },
       },
       _count: { _all: true },
