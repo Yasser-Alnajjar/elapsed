@@ -1,4 +1,4 @@
-import type { EmailMessage } from "@sla/email";
+import type { EmailRequest } from "@sla/email";
 import { PASSWORD_RESET_TTL_MS } from "@sla/db";
 import { getAppUrl } from "@/lib/app-url";
 
@@ -10,19 +10,10 @@ export function passwordResetUrl(token: string): string {
   return url.toString();
 }
 
-export function buildPasswordResetEmail(input: { to: string; token: string }): EmailMessage {
-  const resetUrl = passwordResetUrl(input.token);
+export function buildPasswordResetEmail(input: { to: string; token: string }): EmailRequest<"password-reset"> {
   return {
     to: [input.to],
-    subject: "Reset your Elapsed password",
-    text: [
-      "We received a request to reset your Elapsed password.",
-      "",
-      `Reset your password: ${resetUrl}`,
-      "",
-      `This link is single-use and expires in ${PASSWORD_RESET_TTL_MINUTES} minutes.`,
-      "",
-      "If you didn't request this, you can safely ignore this email — your password won't change.",
-    ].join("\n"),
+    template: "password-reset",
+    data: { resetUrl: passwordResetUrl(input.token), ttlMinutes: PASSWORD_RESET_TTL_MINUTES },
   };
 }

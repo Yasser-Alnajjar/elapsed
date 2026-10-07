@@ -9,7 +9,8 @@ type DocsContentProps = {
 
 export function DocsContent({ children, className }: DocsContentProps) {
   return (
-    <main className="min-w-0 flex-1">
+    // Not a <main>: SidebarInset (docs-layout.tsx) already renders the page's one <main>.
+    <div className="min-w-0 flex-1">
       <article
         className={cn(
           "mx-auto w-full max-w-7xl px-6 py-10",
@@ -19,6 +20,6 @@ export function DocsContent({ children, className }: DocsContentProps) {
       >
         {children}
       </article>
-    </main>
+    </div>
   );
 }

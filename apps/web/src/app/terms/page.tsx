@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
-
 import { Terms } from "@modules/marketing/legal";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-};
+export const generateMetadata = () => getPageMetadata("/terms");
 
 export default function TermsPage() {
   return <Terms />;

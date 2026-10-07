@@ -10,16 +10,8 @@ import {
 import { sendEmail } from "@sla/email";
 import { postMessage } from "@sla/slack";
 import { toEmailConfig } from "./dispatch";
-import { DEFAULT_EMAIL_BRAND_NAME } from "./format";
 import { buildMonthlyReport, hasActivity, type MonthlyReport } from "./monthly-report";
-import {
-  monthlyReportCsvFilename,
-  monthlyReportSubject,
-  renderMonthlyReportCsv,
-  renderMonthlyReportHtml,
-  renderMonthlyReportSlack,
-  renderMonthlyReportText,
-} from "./monthly-report-render";
+import { buildMonthlyReportEmail, monthlyReportCsvAttachment, renderMonthlyReportSlack } from "./monthly-report-render";
 
 /**
  * Delivers one organization's monthly report, exactly once per month and
@@ -178,7 +170,7 @@ export async function deliverMonthlyReport(
           await finish(channel, "sent", null);
         } else {
           if (emailSettings === "unreadable") throw new Error("Saved email settings cannot be read (the encryption key may have changed)");
-          const partial = await sendReportEmails(prisma, organizationId, emailSettings!, report);
+          const partial = await sendReportEmails(prisma, organizationId, emailSettings!, report, options.appUrl);
           await finish(channel, "sent", partial);
         }
       } catch (error) {
@@ -214,23 +206,20 @@ async function sendReportEmails(
   organizationId: string,
   settings: EmailSettings,
   report: MonthlyReport,
+  appUrl: string | null,
 ): Promise<string | null> {
   const config = toEmailConfig(settings);
   const recipients = (await prisma.user.findMany({ where: { organizationId }, select: { email: true } })).map((u) => u.email);
   if (recipients.length === 0) throw new Error("No recipients: the organization has no members");
 
-  const message = {
-    subject: monthlyReportSubject(report),
-    text: renderMonthlyReportText(report),
-    html: renderMonthlyReportHtml(report, config.fromName || DEFAULT_EMAIL_BRAND_NAME),
-    attachments: [{ filename: monthlyReportCsvFilename(report), content: renderMonthlyReportCsv(report), contentType: "text/csv; charset=utf-8" }],
-  };
+  const content = buildMonthlyReportEmail(report);
+  const attachments = [monthlyReportCsvAttachment(report)];
 
   let sent = 0;
   let firstError: unknown = null;
   for (const recipient of recipients) {
     try {
-      await sendEmail(config, { to: [recipient], ...message }, { publicDestinationOnly: true });
+      await sendEmail({ ...content, to: [recipient], attachments, smtp: config, appUrl, delivery: { publicDestinationOnly: true } });
       sent += 1;
     } catch (error) {
       firstError ??= error;

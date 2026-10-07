@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { EmailConfig } from "@sla/email";
+import type { EmailConfig, EmailRequest } from "@sla/email";
 
 const sendEmailMock = vi.fn();
 const loadDeploymentSmtpConfigMock = vi.fn();
@@ -28,6 +28,12 @@ const CONFIGURED: EmailConfig = {
   from: "no-reply@example.com",
 };
 
+const REQUEST: EmailRequest<"invitation"> = {
+  to: ["invitee@example.com"],
+  template: "invitation",
+  data: { organizationName: "Acme", acceptUrl: "https://sla.example.com/invite/accept?token=t", ttlDays: 7 },
+};
+
 beforeEach(() => {
   sendEmailMock.mockReset();
   loadDeploymentSmtpConfigMock.mockReset();
@@ -38,18 +44,11 @@ describe("sendTransactionalEmail", () => {
     loadDeploymentSmtpConfigMock.mockReturnValue(CONFIGURED);
     sendEmailMock.mockResolvedValue(undefined);
 
-    await sendTransactionalEmail({
-      to: ["invitee@example.com"],
-      subject: "You've been invited",
-      text: "Join the team.",
-    });
+    await sendTransactionalEmail(REQUEST);
 
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailMock).toHaveBeenCalledWith(CONFIGURED, {
-      to: ["invitee@example.com"],
-      subject: "You've been invited",
-      text: "Join the team.",
-    });
+    // The request goes through untouched, plus the deployment SMTP to deliver it: no subject or body is added or accepted here.
+    expect(sendEmailMock).toHaveBeenCalledWith({ ...REQUEST, smtp: CONFIGURED });
   });
 
   it("propagates a not-configured error and never calls sendEmail", async () => {
@@ -58,7 +57,7 @@ describe("sendTransactionalEmail", () => {
     });
 
     await expect(
-      sendTransactionalEmail({ to: ["invitee@example.com"], subject: "Hi", text: "Hi" }),
+      sendTransactionalEmail(REQUEST),
     ).rejects.toBeInstanceOf(FakeDeploymentSmtpNotConfiguredError);
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
@@ -68,7 +67,7 @@ describe("sendTransactionalEmail", () => {
     sendEmailMock.mockRejectedValue(new Error("connection refused"));
 
     await expect(
-      sendTransactionalEmail({ to: ["invitee@example.com"], subject: "Hi", text: "Hi" }),
+      sendTransactionalEmail(REQUEST),
     ).rejects.toThrow("connection refused");
   });
 });

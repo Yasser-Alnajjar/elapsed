@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getPrismaClient } from "@sla/db";
-import { encodeAuthThrottleError } from "@/lib/auth-rate-limit";
+import { EMAIL_NOT_VERIFIED_ERROR, encodeAuthThrottleError } from "@/lib/auth-rate-limit";
 import { clientIpFromHeaders } from "@/lib/rate-limit";
 import { assertSessionStillValid } from "@/lib/session-validity";
 import {
@@ -123,6 +123,21 @@ export const authOptions: NextAuthOptions = {
         }
 
         clearAuthThrottle(throttleKey);
+
+        // Email verification gate — the server-side enforcement point for
+        // sign-in (the UI only reflects it). Checked *after* the password so
+        // that "this account exists and is unverified" is only ever revealed
+        // to someone who already holds the right password, never to a
+        // stranger probing an address (same enumeration concern as the
+        // dummy compare above). Throwing, rather than returning `null`, is
+        // what lets the client tell this apart from a wrong password;
+        // crucially, NextAuth never reaches its `jwt` callback or sets a
+        // session cookie when `authorize()` throws, so an unverified user is
+        // never issued a token. `assertSessionStillValid` is the second layer
+        // for tokens that already exist.
+        if (!user.emailVerifiedAt) {
+          throw new Error(EMAIL_NOT_VERIFIED_ERROR);
+        }
 
         return {
           id: user.id,

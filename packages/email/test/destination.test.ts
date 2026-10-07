@@ -12,7 +12,8 @@ vi.mock("nodemailer", () => ({
 }));
 
 const { isPublicAddress, resolvePublicSmtpAddress, SmtpDestinationNotAllowedError } = await import("../src/destination");
-const { sendEmail, verifyEmailConfig } = await import("../src/client");
+const { sendEmail } = await import("../src/send");
+const { verifyEmailConfig } = await import("../src/transport");
 
 const config: EmailConfig = {
   host: "smtp.customer.example",
@@ -23,7 +24,7 @@ const config: EmailConfig = {
   from: "a@customer.example",
   fromName: null,
 };
-const message = { to: ["x@example.com"], subject: "s", text: "t" };
+const message = { to: ["x@example.com"], template: "password-reset", data: { resetUrl: "https://app.example.com/reset-password?token=t", ttlMinutes: 60 }, appUrl: null } as const;
 
 beforeEach(() => {
   lookupMock.mockReset();
@@ -83,7 +84,7 @@ describe("resolvePublicSmtpAddress", () => {
   });
 });
 
-describe("client with publicDestinationOnly", () => {
+describe("transport with publicDestinationOnly", () => {
   it("connects to the resolved address, validating the certificate for the typed name", async () => {
     lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     await verifyEmailConfig(config, { publicDestinationOnly: true });
@@ -97,14 +98,14 @@ describe("client with publicDestinationOnly", () => {
     await expect(verifyEmailConfig({ ...config, host: "localhost" }, { publicDestinationOnly: true })).rejects.toBeInstanceOf(
       SmtpDestinationNotAllowedError,
     );
-    await expect(sendEmail({ ...config, host: "localhost" }, message, { publicDestinationOnly: true })).rejects.toBeInstanceOf(
+    await expect(sendEmail({ ...message, smtp: { ...config, host: "localhost" }, delivery: { publicDestinationOnly: true } })).rejects.toBeInstanceOf(
       SmtpDestinationNotAllowedError,
     );
     expect(createTransportMock).not.toHaveBeenCalled();
   });
 
   it("does not touch operator-configured SMTP (option unset): host used as given, no lookup", async () => {
-    await sendEmail({ ...config, host: "mailpit" }, message);
+    await sendEmail({ ...message, smtp: { ...config, host: "mailpit" } });
     expect((createTransportMock.mock.calls[0]![0] as Record<string, unknown>).host).toBe("mailpit");
     expect(lookupMock).not.toHaveBeenCalled();
   });

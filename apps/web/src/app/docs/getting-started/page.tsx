@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   {
@@ -70,6 +71,8 @@ const setupSteps = [
       "Once data is synchronized, review cases, timelines, SLA state, and engineering handoffs.",
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/getting-started");
 
 export default function GettingStartedPage() {
   return (

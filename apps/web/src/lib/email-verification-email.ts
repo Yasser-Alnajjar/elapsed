@@ -1,4 +1,4 @@
-import type { EmailMessage } from "@sla/email";
+import type { EmailRequest } from "@sla/email";
 import { EMAIL_VERIFICATION_TTL_MS } from "@sla/db";
 import { getAppUrl } from "@/lib/app-url";
 
@@ -11,35 +11,19 @@ export function emailVerificationUrl(token: string): string {
 }
 
 /** Sent to the account's current email — confirms it at sign-up (or on a resend). */
-export function buildEmailVerificationEmail(input: { to: string; token: string }): EmailMessage {
-  const verifyUrl = emailVerificationUrl(input.token);
+export function buildEmailVerificationEmail(input: { to: string; token: string }): EmailRequest<"email-verification"> {
   return {
     to: [input.to],
-    subject: "Verify your email for Elapsed",
-    text: [
-      "Confirm this is your email address to finish setting up Elapsed.",
-      "",
-      `Verify your email: ${verifyUrl}`,
-      "",
-      `This link is single-use and expires in ${EMAIL_VERIFICATION_TTL_HOURS} hours.`,
-    ].join("\n"),
+    template: "email-verification",
+    data: { verifyUrl: emailVerificationUrl(input.token), ttlHours: EMAIL_VERIFICATION_TTL_HOURS },
   };
 }
 
 /** Sent to the *new* address a "change email" request targets — the change never applies until this link is clicked. */
-export function buildEmailChangeVerificationEmail(input: { to: string; token: string }): EmailMessage {
-  const verifyUrl = emailVerificationUrl(input.token);
+export function buildEmailChangeVerificationEmail(input: { to: string; token: string }): EmailRequest<"email-change-verification"> {
   return {
     to: [input.to],
-    subject: "Confirm your new email for Elapsed",
-    text: [
-      "We received a request to change the email on an Elapsed account to this address.",
-      "",
-      `Confirm this change: ${verifyUrl}`,
-      "",
-      `This link is single-use and expires in ${EMAIL_VERIFICATION_TTL_HOURS} hours.`,
-      "",
-      "If you didn't request this, you can safely ignore this email — the account's email won't change.",
-    ].join("\n"),
+    template: "email-change-verification",
+    data: { confirmUrl: emailVerificationUrl(input.token), ttlHours: EMAIL_VERIFICATION_TTL_HOURS },
   };
 }

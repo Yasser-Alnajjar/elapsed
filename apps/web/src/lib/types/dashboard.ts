@@ -1,4 +1,4 @@
-import type { ClockState, CommitmentKind, CommitmentStatus, Leg } from "@sla/core";
+import type { ClockState, CommitmentKind, CommitmentStatus, Leg, SourceRole } from "@sla/core";
 import type { IntegrationProvider } from "./integrations";
 import type { LinkCoveragePanel } from "./link-coverage";
 
@@ -147,7 +147,7 @@ export interface CommitmentKindHealth {
   breached: number;
 }
 
-/** An open case (not deleted, not closed) with zero commitments — the commitment pipeline found no active `SLAPolicyVersion` matching its attributes, so it is silently unmonitored (Phase 6.2). Mirrors `SlaImportSummary.casesWithNoMatchingPolicy`'s count with the actual rows behind it. */
+/** A case (not deleted; open, or closed within the reporting period) with zero commitments — the commitment pipeline found no active `SLAPolicyVersion` matching its attributes, so it is silently unmonitored (Phase 6.2). Mirrors `SlaImportSummary.casesWithNoMatchingPolicy`'s count with the actual rows behind it. */
 export interface UnmatchedCaseRow {
   caseId: string;
   externalId: string;
@@ -220,8 +220,12 @@ export interface DashboardData {
   failedAlertsOverflowCount: number;
 }
 
-/** Which ticket source / tracker the dashboard names as connected. */
-export interface DashboardSourceStatus {
-  ticketSource: { label: string; connected: boolean };
-  tracker: { label: string; connected: boolean };
+/** One connected source (or the "none connected" placeholder for a role that needs one) in the dashboard's status bar. */
+export interface DashboardSourceConnection {
+  label: string;
+  connected: boolean;
+  role: SourceRole;
 }
+
+/** Every connected ticket source, work tracker and code host, whichever providers they are. */
+export type DashboardSourceStatus = DashboardSourceConnection[];

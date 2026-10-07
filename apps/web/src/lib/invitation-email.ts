@@ -1,4 +1,4 @@
-import type { EmailMessage } from "@sla/email";
+import type { EmailRequest } from "@sla/email";
 import { INVITATION_TTL_MS } from "@sla/db";
 import { getAppUrl } from "@/lib/app-url";
 
@@ -14,17 +14,10 @@ export function buildInvitationEmail(input: {
   to: string;
   organizationName: string;
   token: string;
-}): EmailMessage {
-  const acceptUrl = invitationAcceptUrl(input.token);
+}): EmailRequest<"invitation"> {
   return {
     to: [input.to],
-    subject: `You've been invited to join ${input.organizationName} on Elapsed`,
-    text: [
-      `You've been invited to join ${input.organizationName} on Elapsed.`,
-      "",
-      `Accept the invitation: ${acceptUrl}`,
-      "",
-      `This link is single-use and expires in ${INVITATION_TTL_DAYS} days.`,
-    ].join("\n"),
+    template: "invitation",
+    data: { organizationName: input.organizationName, acceptUrl: invitationAcceptUrl(input.token), ttlDays: INVITATION_TTL_DAYS },
   };
 }

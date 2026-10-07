@@ -138,9 +138,12 @@ async function getDashboardDataInner(
     organizationId,
     deletedAt: null,
     ...CASE_SOURCE_CONNECTED,
-    closedAt: null,
+    // Open, or closed inside the reporting period: a closed case the pipeline
+    // never matched is silently missing from compliance and breach counts,
+    // which are computed over cases closed in the period.
+    OR: [{ closedAt: null }, { closedAt: { gte: periodStart } }],
     commitments: { none: {} },
-  } as const;
+  } satisfies Prisma.CaseWhereInput;
   const failedNotificationWhere = {
     commitment: { case: { organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED } },
   } as const;

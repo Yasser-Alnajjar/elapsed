@@ -1,10 +1,11 @@
 "use client";
 
 import { AlertCircle, ArrowRight, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Formik, Form, FormikHelpers } from "formik";
 import { Actions } from "@/actions/client";
 import { AuthAlert, AuthPage } from "@/components/shared/auth-shell";
+import { CheckYourEmail } from "./CheckYourEmail";
 import { IdentityFields } from "./IdentityFields";
 import { NewPasswordField } from "./NewPasswordField";
 import { SignUpFooter, SignUpIntro } from "./SignUpCardSections";
@@ -21,7 +22,7 @@ const initialValues: SignUpFormValues = {
 };
 
 export const SignUpForm = () => {
-  const router = useRouter();
+  const [verificationSentTo, setVerificationSentTo] = useState<string | null>(null);
 
   async function handleSubmit(
     values: SignUpFormValues,
@@ -43,20 +44,13 @@ export const SignUpForm = () => {
       return;
     }
 
-    const signInResult = await Actions.Auth.signIn(
-      values.email,
-      values.password,
-    );
-
+    // No sign-in here: the account can't be used until its email is
+    // verified, and the server refuses to issue a session until then.
     setSubmitting(false);
-
-    if (!signInResult.ok) {
-      router.push("/sign-in");
-      return;
-    }
-
-    router.push("/onboarding");
+    setVerificationSentTo(values.email);
   }
+
+  if (verificationSentTo) return <CheckYourEmail email={verificationSentTo} />;
 
   return (
     <AuthPage>

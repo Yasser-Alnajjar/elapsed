@@ -49,7 +49,7 @@ hand.
 | `DATABASE_URL` | web, worker | `postgresql://user:password@host:5432/db?schema=public`. If you're using the bundled `postgres` service, the host is `postgres` (the Compose service name) and the user/password/db must match `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` below. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | postgres | Only read by the bundled `postgres` service. Omit if you're pointing `DATABASE_URL` at your own database instead. |
 | `NEXTAUTH_SECRET` | web | Random secret used to sign session tokens. Generate one with `openssl rand -base64 32`. |
-| `NEXTAUTH_URL` | web, worker | The public URL the app is served at, e.g. `https://sla.example.com`. The worker uses this to build OAuth redirect URIs — it must match what's registered with each provider. |
+| `NEXTAUTH_URL` | web, worker | The public URL the app is served at, e.g. `https://sla.example.com`. The worker uses this to build OAuth redirect URIs — it must match what's registered with each provider. The web app also builds its SEO output from it (canonical URLs, `sitemap.xml`, `robots.txt`, structured data): see [Search engine indexing](#search-engine-indexing). |
 | `PLATFORM_ADMIN_EMAILS` | web | Comma-separated emails of the platform operators who run this deployment. Only these accounts (checked server-side against the signed-in session's email, not a `UserRole`) may change Worker/Monitoring settings; every tenant, including an org owner, gets a read-only view. |
 | `INTEGRATION_CONFIG_ENCRYPTION_KEY` | web, worker | Encrypts each org's Zendesk/Jira/Slack OAuth client secrets at rest. Generate with `openssl rand -base64 32`. Rotating it invalidates every saved integration config. |
 | `SMTP_ENCRYPTION_KEY` | web, worker | Encrypts each org's saved SMTP password at rest. Generate with `openssl rand -base64 32`, keep distinct from the other encryption keys so rotating one doesn't invalidate the others. |
@@ -60,7 +60,7 @@ hand.
 | `WORKER_HEALTH_PORT` | worker | Optional, defaults to `8081`. The port `GET /health` listens on inside the worker container. |
 | `WORKER_LOCK_RETRY_MS`, `WORKER_LOCK_PING_MS` | worker | Optional, default `15000` and `30000`. How often a worker retries the advisory lock that elects the stalled-work watchdog, and how often the holder checks its lock connection is still alive. Organization work itself is divided by per-organization leases, not by this lock; see [Running multiple workers](#running-multiple-workers). |
 | `OPS_ALERT_SLACK_WEBHOOK_URL`, `OPS_ALERT_EMAIL` | worker | Optional. Where a stalled-worker-cycle alert goes — see [Health checks and observability](#health-checks-and-observability). This is a deployment-owner channel, unrelated to any organization's own SLA breach notifications. `OPS_ALERT_EMAIL` is only the recipient; its SMTP transport is the shared `DEPLOYMENT_SMTP_*` below, so email alerting stays off if that's unset. |
-| `DEPLOYMENT_SMTP_*` | web, worker | Deployment-owned SMTP, shared by every deployment-level email concern: account-lifecycle email sent from web (invitations, password resets, email verification — required, fails explicitly if unset when triggered) and worker's ops alert above (optional — that channel just stays off if unset). Deliberately separate from an organization's own saved SMTP (Settings → Notifications, used only for SLA breach/at-risk alerts, customer-owned) — that's the boundary that matters; there's no separate SMTP transport per deployment-level feature, since both already go through the same mailer. |
+| `DEPLOYMENT_SMTP_*` | web, worker | Deployment-owned SMTP, shared by every deployment-level email concern: account-lifecycle email sent from web (invitations, password resets, email verification — required, fails explicitly if unset when triggered) and worker's ops alert above (optional — that channel just stays off if unset). Deliberately separate from an organization's own saved SMTP (Settings → Notifications, used only for SLA breach/at-risk alerts, customer-owned) — that's the boundary that matters; there's no separate SMTP transport per deployment-level feature, since both already go through the same mailer. Whichever SMTP delivers it, every email is rendered by the one Elapsed template layout in `@sla/email` (see `packages/email/README.md`); its footer links to `NEXTAUTH_URL` and the logo is embedded in the message, so no extra setting is needed. |
 
 None of these secrets are baked into the images — the Dockerfiles only ever
 see fixed placeholder values at build time (see the comments in
@@ -233,6 +233,14 @@ rows are there, drops the scratch database, and appends a line to
 the script creates the file on first use, and it is not part of the repository
 until you commit one). It never stops `web` or `worker`. Commit the log line so
 the recorded timing is the recovery-time figure you quote.
+
+## Search engine indexing
+
+The public pages (home, pricing, about, terms, privacy and the product docs) are built to be indexed; everything else (the signed-in app, admin, API, OAuth callbacks, webhooks and the emailed-token pages) is blocked in `robots.txt` and marked `noindex`. Sitemap, canonical URLs, Open Graph/Twitter tags and structured data are all generated at request time from `NEXTAUTH_URL`, so no separate SEO setting exists.
+
+Indexing is only switched on when `NEXTAUTH_URL` is a real public origin: `https` and a domain name. For anything else (`localhost`, a bare IP address such as `https://203.0.113.7`, a dev tunnel, a `.local`/`.internal`/`.test` name, `example.com`, or an unset value) the app serves `Disallow: /` in `robots.txt`, an empty `sitemap.xml`, `noindex` on every page and no structured data, so a staging or IP-only deployment can never end up in a search index.
+
+To go live in search: serve the app on its domain, set `NEXTAUTH_URL` to that origin (`https://your-domain`, no path), restart `web`, then check `https://your-domain/robots.txt` lists a `Sitemap:` line and submit `https://your-domain/sitemap.xml` in Google Search Console and Bing Webmaster Tools. Keep the reverse proxy redirecting `http` and any `www`/non-`www` alias to this one origin (the app cannot do that itself) and update `server_name` in `apps/nginx/nginx.conf` to match.
 
 ## Security notes
 

@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "the-problem", title: "The problem", level: 2 as const },
@@ -87,6 +88,8 @@ const lifecycleSteps = [
   "On-track → At-risk → Met or Breached",
   "Case closed and evaluation retained",
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/how-it-works");
 
 export default function HowItWorksPage() {
   return (

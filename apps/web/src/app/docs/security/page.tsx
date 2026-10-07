@@ -1,15 +1,11 @@
-import type { Metadata } from "next";
-
 import { DocsLayout } from "@/components/docs/docs-layout";
 import { Badge } from "@/components/ui/badge";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getPageMetadata } from "@/lib/seo/metadata";
 import { getProviderAccessFacts, SLACK_ACCESS_FACT } from "@/lib/security-summary";
 
-export const metadata: Metadata = {
-  title: "Security summary",
-  description: "What Elapsed can access, what it stores, and how it is protected. Written to be forwarded to a security reviewer.",
-};
+export const generateMetadata = () => getPageMetadata("/docs/security");
 
 const toc = [
   { id: "access", title: "Access to your systems", level: 2 as const },

@@ -9,7 +9,7 @@ import {
 import { postMessage } from "@sla/slack";
 import { sendEmail, type EmailConfig } from "@sla/email";
 import type { NotificationCandidate } from "@sla/commitments";
-import { formatSlackMessage, formatEmailMessage } from "./format";
+import { formatSlackMessage, buildSlaAlertEmail } from "./format";
 
 export function toEmailConfig(settings: NonNullable<Awaited<ReturnType<typeof getEmailSettings>>>): EmailConfig {
   return {
@@ -115,6 +115,8 @@ export interface NotificationClaims {
   slack: { accessToken: string; channelId: string } | null;
   emailConfig: EmailConfig | null;
   emailTo: string[];
+  /** Deployment origin for the email footer's links, resolved with the claims. Left unset, the email reads `NEXTAUTH_URL` itself. */
+  appUrl?: string | null;
 }
 
 export async function claimNotifications(
@@ -123,7 +125,7 @@ export async function claimNotifications(
   candidates: NotificationCandidate[],
   options: NotificationPipelineOptions = {},
 ): Promise<NotificationClaims> {
-  const claims: NotificationClaims = { claimed: [], skipped: 0, slack: null, emailConfig: null, emailTo: [] };
+  const claims: NotificationClaims = { claimed: [], skipped: 0, slack: null, emailConfig: null, emailTo: [], ...(options.appUrl !== undefined ? { appUrl: options.appUrl } : {}) };
 
   // Release claims a crashed process never finished, before deciding what
   // still needs sending — even with no candidates this cycle, so a stale
@@ -227,7 +229,7 @@ export async function deliverClaimedNotifications(
     notificationsSkipped: claims.skipped,
     notificationsFailed: [],
   };
-  const { slack, emailConfig, emailTo } = claims;
+  const { slack, emailConfig, emailTo, appUrl } = claims;
 
   for (const { candidate, claimId, context } of claims.claimed) {
     const claim = { id: claimId };
@@ -244,8 +246,7 @@ export async function deliverClaimedNotifications(
     }
 
     if (emailConfig) {
-      const brand = { name: emailConfig.fromName };
-      const { subject, text, html } = formatEmailMessage(candidate, context, brand);
+      const content = buildSlaAlertEmail(candidate, context, { name: emailConfig.fromName });
       // 3.10: one send per recipient, not everyone listed in one `To` — a
       // bad address for one recipient doesn't block the others, and no
       // recipient can see who else was alerted.
@@ -253,7 +254,7 @@ export async function deliverClaimedNotifications(
       let anyEmailSent = false;
       for (const recipient of emailTo) {
         try {
-          await sendEmail(emailConfig, { to: [recipient], subject, text, html }, { publicDestinationOnly: true });
+          await sendEmail({ ...content, to: [recipient], smtp: emailConfig, appUrl, delivery: { publicDestinationOnly: true } });
           anyEmailSent = true;
         } catch (error) {
           recipientErrors.push(`${recipient}: ${errorMessage(error)}`);

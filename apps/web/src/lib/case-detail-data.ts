@@ -90,6 +90,30 @@ function complementIntervals(
   return running;
 }
 
+/** What a case's page title is built from. */
+export interface CaseTitleData {
+  system: string;
+  externalId: string;
+  subject: string | null;
+}
+
+/**
+ * Only the three columns the tab title needs, under the same tenant and
+ * connected-source scope as `getCaseDetailData`. A separate, cheap read rather
+ * than the full detail load: `generateMetadata` runs on every visit and the
+ * detail query pulls the whole event history.
+ */
+export async function getCaseTitleData(
+  prisma: PrismaClient,
+  organizationId: string,
+  caseId: string,
+): Promise<CaseTitleData | null> {
+  return prisma.case.findFirst({
+    where: { id: caseId, organizationId, deletedAt: null, ...CASE_SOURCE_CONNECTED },
+    select: { system: true, externalId: true, subject: true },
+  });
+}
+
 /**
  * Assembles everything the case detail page (roadmap step 10) needs: the
  * header, both commitments with the policy/calendar that produced their

@@ -25,11 +25,13 @@ import {
   PasswordVisibilityToggle,
 } from "@/components/shared/auth-shell";
 import {
+  EMAIL_NOT_VERIFIED_ERROR,
   formatCooldownClock,
   formatCooldownSentence,
 } from "@/lib/auth-rate-limit";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ResendVerification } from "@modules/auth/verify-email/csr/ResendVerification";
 import { useSignInCooldown } from "./useSignInCooldown";
 
 const signInSchema = Yup.object({
@@ -47,6 +49,9 @@ const fieldClass =
 export const SignInForm = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Set when the credentials were right but the account's email isn't
+  // verified yet — the address to offer a resend for.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const { cooldownSeconds, cooldownReason, inCooldown, start: startCooldown } =
     useSignInCooldown();
@@ -70,6 +75,7 @@ export const SignInForm = () => {
     }
 
     setError(null);
+    setUnverifiedEmail(null);
 
     const result = await Actions.Auth.signIn(values.email, values.password);
 
@@ -82,6 +88,8 @@ export const SignInForm = () => {
         "retryAfterSeconds" in result
       ) {
         startCooldown(result.error, result.retryAfterSeconds);
+      } else if (result.error === EMAIL_NOT_VERIFIED_ERROR) {
+        setUnverifiedEmail(values.email);
       } else {
         setError("Incorrect email or password");
       }
@@ -237,6 +245,16 @@ export const SignInForm = () => {
                         icon={<AlertCircle aria-hidden />}
                       >
                         {error}
+                      </AuthAlert>
+                    )}
+
+                    {unverifiedEmail && (
+                      <AuthAlert tone="warning" icon={<Mail aria-hidden />}>
+                        <p className="mb-1">
+                          Verify your email address before signing in. We sent a
+                          verification link when you signed up.
+                        </p>
+                        <ResendVerification email={unverifiedEmail} />
                       </AuthAlert>
                     )}
 

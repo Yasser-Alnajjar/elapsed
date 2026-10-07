@@ -1,6 +1,6 @@
 import { BREACH_NOTIFICATION_THRESHOLD } from "@sla/core";
 import type { NotificationCandidate } from "@sla/commitments";
-import { renderNotificationEmailHtml } from "./email-template";
+import type { EmailTemplateRequest } from "@sla/email";
 
 export interface NotificationContext {
   externalId: string;
@@ -15,20 +15,10 @@ export interface NotificationContext {
   caseUrl?: string | null;
 }
 
-/** Falls back to this when the organization hasn't set an SMTP "from name" — the email still needs a brand to show in its header. */
-export const DEFAULT_EMAIL_BRAND_NAME = "Elapsed";
-
-/** Cosmetic-only inputs the formatter needs beyond `NotificationContext`: nothing here affects dedup or delivery, so callers can omit it entirely. */
+/** Cosmetic-only inputs the builder needs beyond `NotificationContext`: nothing here affects dedup or delivery, so callers can omit it entirely. */
 export interface EmailBrand {
-  /** Shown in the email header and footer — the organization's configured SMTP "from name", or `DEFAULT_EMAIL_BRAND_NAME`. */
+  /** Named in the email's footer — the organization's configured SMTP "from name", when it set one. The email itself is always the Elapsed shell. */
   name?: string | null;
-}
-
-/** Recipients are resolved by the dispatcher, not the formatter — mirrors `formatSlackMessage` not knowing the channel. */
-export interface EmailContent {
-  subject: string;
-  text: string;
-  html: string;
 }
 
 const KIND_LABEL: Record<NotificationCandidate["kind"], string> = {
@@ -110,75 +100,37 @@ export function formatSlackMessage(
 }
 
 /**
- * Subject/text/HTML for one notification email — same inputs and the same
- * pure, side-effect-free shape as `formatSlackMessage` so it can be unit
- * tested without an SMTP server. `brand` is optional and cosmetic-only
- * (header name + ticket link in the HTML body); omitting it still produces
- * a fully valid email with the default brand name and no CTA button.
+ * The `sla-alert` email for one notification candidate — same inputs and the
+ * same pure, side-effect-free shape as `formatSlackMessage` so it can be unit
+ * tested without an SMTP server. It returns template data, not markup: the
+ * subject, plain text and HTML are all produced by `@sla/email`'s layout when
+ * the request is sent. Recipients are resolved by the dispatcher, not here.
+ * `brand` is optional and cosmetic-only; omitting it still produces a fully
+ * valid email, and omitting `context.caseUrl` simply leaves out the button.
  */
-export function formatEmailMessage(
+export function buildSlaAlertEmail(
   candidate: NotificationCandidate,
   context: NotificationContext,
   brand: EmailBrand = {},
-): EmailContent {
-  const kindLabel = KIND_LABEL[candidate.kind];
-  const who = context.customerName ? ` (${context.customerName})` : "";
-  const ticket = `#${context.externalId}`;
-  const brandName = brand.name?.trim() || DEFAULT_EMAIL_BRAND_NAME;
+): EmailTemplateRequest<"sla-alert"> {
   const isBreach = candidate.threshold === BREACH_NOTIFICATION_THRESHOLD;
-
-  // 3.9: policy, target, start and (once breached) breach time — the same
-  // context Slack now carries, joined into the plain-text body and passed
-  // as structured fields to the HTML template (which escapes `policyName`).
-  const meta = contextParts(candidate, isBreach);
-  const metaText = meta.join(" · ");
-  const targetText = formatMinutes(candidate.targetMinutes);
-  const startedText = formatInstant(candidate.startedAt);
-  const breachedText =
-    isBreach && candidate.breachedAt
-      ? formatInstant(candidate.breachedAt)
-      : undefined;
-
-  if (isBreach) {
-    const over = formatMinutes(candidate.breachedByMinutes ?? 0);
-    const detailLine = `Over target by <strong>${over}</strong>.`;
-    return {
-      subject: `SLA breached: ${kindLabel} on ${ticket}${who}`,
-      text: `${kindLabel} SLA breached on ticket ${ticket}${who}.\n\nOver target by ${over}.\n\n${metaText}`,
-      html: renderNotificationEmailHtml({
-        brandName,
-        severity: "breach",
-        heading: `${kindLabel} SLA breached`,
-        ticketLabel: ticket,
-        ticketName: context.subject,
-        customerName: context.customerName,
-        detailLine,
-        caseUrl: context.caseUrl,
-        policyName: candidate.policyName,
-        targetText,
-        startedText,
-        breachedText,
-      }),
-    };
-  }
-
-  const remaining = formatMinutes(candidate.remainingMinutes);
-  const detailLine = `<strong>${candidate.threshold}%</strong> of target used, <strong>${remaining}</strong> remaining.`;
   return {
-    subject: `SLA at risk: ${kindLabel} on ${ticket}${who}`,
-    text: `${kindLabel} SLA at risk on ticket ${ticket}${who}.\n\n${candidate.threshold}% of target used, ${remaining} remaining.\n\n${metaText}`,
-    html: renderNotificationEmailHtml({
-      brandName,
-      severity: "at_risk",
-      heading: `${kindLabel} SLA at risk`,
-      ticketLabel: ticket,
+    template: "sla-alert",
+    data: {
+      severity: isBreach ? "breach" : "at_risk",
+      kindLabel: KIND_LABEL[candidate.kind],
+      ticketLabel: `#${context.externalId}`,
       ticketName: context.subject,
       customerName: context.customerName,
-      detailLine,
-      caseUrl: context.caseUrl,
+      figureText: formatMinutes(isBreach ? (candidate.breachedByMinutes ?? 0) : candidate.remainingMinutes),
+      ...(isBreach ? {} : { thresholdPercent: candidate.threshold }),
+      targetText: formatMinutes(candidate.targetMinutes),
       policyName: candidate.policyName,
-      targetText,
-      startedText,
-    }),
+      startedText: formatInstant(candidate.startedAt),
+      ...(isBreach && candidate.breachedAt ? { breachedText: formatInstant(candidate.breachedAt) } : {}),
+      ...(candidate.sourceStaleSince ? { sourceStaleSinceText: formatInstant(candidate.sourceStaleSince) } : {}),
+      caseUrl: context.caseUrl,
+      senderName: brand.name?.trim() || null,
+    },
   };
 }

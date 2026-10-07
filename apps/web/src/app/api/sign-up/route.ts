@@ -50,11 +50,15 @@ export async function POST(request: Request) {
     include: { users: true },
   });
 
-  // Not awaited — sign-up itself doesn't gate on verification (the caller
-  // signs in and reaches the dashboard immediately either way; see the
-  // Profile page's "unverified" banner for how a user later confirms this),
-  // so a slow or unreachable deployment SMTP server has no business making
-  // account creation itself slow or fail. Logged on failure only.
+  // The new user starts unverified (`User.emailVerifiedAt` is left null) and
+  // can't sign in until the emailed link is clicked — `authorize()` in
+  // `@/lib/auth` enforces that. Sending this email never marks anything
+  // verified; only consuming the token does (`verifyEmail`).
+  //
+  // Not awaited, so a slow or unreachable deployment SMTP server has no
+  // business making account creation itself slow or fail. Logged on
+  // failure only — the user can request another link from the sign-in or
+  // sign-up screen (`/api/email-verification/resend`).
   const user = organization.users[0]!;
   createEmailVerificationToken(prisma, user.id)
     .then(({ token }) => sendTransactionalEmail(buildEmailVerificationEmail({ to: email, token })))

@@ -162,8 +162,8 @@
   /* Elapsed theme — DARK ("Operational Default"). */
 
   /* ── Reference tokens ─────────────────────────── */
-  --background: #060a12;
-  --surface: #0b1324;
+  --background: #0b1326;
+  --surface: #131b2e;
   --surface-raised: #111c34;
   --surface-overlay: #1a2745;
   --surface-hover: #233356;
@@ -215,7 +215,7 @@
   --border-strong: #2d3c59;
   --ring: #0ea5e9;
 
-  --sidebar-background: #070c18;
+  --sidebar-background: #131b2e;
   --sidebar-border: #1c273c;
 
   --secondary-foreground: #080e1a;

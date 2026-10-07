@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@sla/db";
-import type { EmailConfig, EmailMessage } from "@sla/email";
+import { renderEmail, type EmailConfig, type EmailRequest } from "@sla/email";
 import { describe, expect, it, vi } from "vitest";
 import { buildTrialExpiryEmail, deliverTrialExpiryNotice } from "../src/trial-expiry";
 
@@ -28,7 +28,7 @@ function fake(overrides: { trialEndsAt?: Date | null; owners?: string[] } = {}) 
 describe("deliverTrialExpiryNotice (N6.4)", () => {
   it("emails each owner once and stamps the event; later ticks send nothing", async () => {
     const { prisma, events } = fake({ owners: ["a@acme.test", "b@acme.test"] });
-    const send = vi.fn(async (_c: EmailConfig, _m: EmailMessage) => undefined);
+    const send = vi.fn(async (_c: EmailConfig, _r: EmailRequest<"trial-ended">) => undefined);
 
     expect(await deliverTrialExpiryNotice(prisma, "org-a", { appUrl: "https://sla.example.com", now: NOW, loadConfig: () => config, send })).toBe("sent");
     expect(send).toHaveBeenCalledTimes(2);
@@ -84,11 +84,19 @@ describe("deliverTrialExpiryNotice (N6.4)", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("tells the owner that monitoring continues and what is paused, and never mentions billing it does not have", () => {
-    const message = buildTrialExpiryEmail({ to: "o@x.com", organizationName: "Acme", appUrl: "https://sla.example.com" });
+  it("builds a trial-ended template request for one owner, with a plans link only when the deployment has a URL", () => {
+    const withUrl = buildTrialExpiryEmail({ to: "o@x.com", organizationName: "Acme", appUrl: "https://sla.example.com" });
+    expect(withUrl).toEqual({ to: ["o@x.com"], template: "trial-ended", data: { organizationName: "Acme", pricingUrl: "https://sla.example.com/pricing" } });
+    expect(buildTrialExpiryEmail({ to: "o@x.com", organizationName: "Acme", appUrl: null }).data.pricingUrl).toBeNull();
+  });
+
+  it("tells the owner that monitoring continues and what is paused, inside the Elapsed shell, and never mentions billing it does not have", () => {
+    const request = buildTrialExpiryEmail({ to: "o@x.com", organizationName: "Acme", appUrl: "https://sla.example.com" });
+    const message = renderEmail(request, { appUrl: "https://sla.example.com" });
     expect(message.subject).toContain("Acme");
     expect(message.text).toContain("keep working");
     expect(message.text).toContain("https://sla.example.com/pricing");
-    expect(message.text?.toLowerCase()).not.toContain("charged");
+    expect(message.text.toLowerCase()).not.toContain("charged");
+    expect(message.html).toContain('data-elapsed-email="shell"');
   });
 });

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -6,16 +5,17 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionProvider } from "@/providers/session-provider";
 import { GoToTop } from "@/components/ui/go-to-top";
+import { rootMetadata, rootViewport } from "@/lib/seo/metadata";
 
 const hankenGrotesk = localFont({
   src: [
     {
-      path: "../fonts/Hanken_Grotesk/HankenGrotesk-VariableFont_wght.ttf",
+      path: "../fonts/Hanken_Grotesk/HankenGrotesk-VariableFont_wght.woff2",
       weight: "100 900",
       style: "normal",
     },
     {
-      path: "../fonts/Hanken_Grotesk/HankenGrotesk-Italic-VariableFont_wght.ttf",
+      path: "../fonts/Hanken_Grotesk/HankenGrotesk-Italic-VariableFont_wght.woff2",
       weight: "100 900",
       style: "italic",
     },
@@ -27,12 +27,12 @@ const hankenGrotesk = localFont({
 const jetbrainsMono = localFont({
   src: [
     {
-      path: "../fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf",
+      path: "../fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.woff2",
       weight: "100 800",
       style: "normal",
     },
     {
-      path: "../fonts/JetBrains_Mono/JetBrainsMono-Italic-VariableFont_wght.ttf",
+      path: "../fonts/JetBrains_Mono/JetBrainsMono-Italic-VariableFont_wght.woff2",
       weight: "100 800",
       style: "italic",
     },
@@ -41,13 +41,11 @@ const jetbrainsMono = localFont({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    template: `%s | Elapsed`,
-    default: "Elapsed",
-  },
-  description: "Know before your customer does.",
-};
+// A function, not a constant: the public origin (NEXTAUTH_URL) must be read per
+// request. See `lib/seo/metadata.ts` for what is, and deliberately is not, set here.
+export const generateMetadata = () => rootMetadata();
+
+export const viewport = rootViewport;
 
 export default async function RootLayout({
   children,

@@ -55,6 +55,8 @@ export function loadOpsAlertConfig(): OpsAlertConfig | null {
 export interface OpsAlert {
   subject: string;
   message: string;
+  /** `recovered` closes out an earlier alert. Defaults to `alert`. */
+  kind?: "alert" | "recovered";
 }
 
 /**
@@ -89,10 +91,11 @@ export async function sendOpsAlert(config: OpsAlertConfig | null, alert: OpsAler
 
   if (config.email) {
     try {
-      await sendEmail(config.email.smtp, {
+      await sendEmail({
+        smtp: config.email.smtp,
         to: [config.email.to],
-        subject: alert.subject,
-        text: alert.message,
+        template: "ops-alert",
+        data: { subject: alert.subject, message: alert.message, ...(alert.kind ? { kind: alert.kind } : {}) },
       });
     } catch (error) {
       console.error(

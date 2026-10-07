@@ -4,6 +4,9 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import { DocsLayout } from "@/components/docs/docs-layout";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { JsonLd } from "@/components/seo/json-ld";
+import { getPageMetadata } from "@/lib/seo/metadata";
+import { faqStructuredData } from "@/lib/seo/structured-data";
 
 const faqs = [
   {
@@ -88,9 +91,16 @@ const faqs = [
   },
 ];
 
+export const generateMetadata = () => getPageMetadata("/docs/faq");
+
 export default function FaqPage() {
   return (
     <DocsLayout>
+      <JsonLd
+        data={faqStructuredData(
+          faqs.map(({ q, a }) => ({ question: q, answer: a })),
+        )}
+      />
       <div className="space-y-12">
         <header className="space-y-4">
           <Badge variant="outline">Administration</Badge>

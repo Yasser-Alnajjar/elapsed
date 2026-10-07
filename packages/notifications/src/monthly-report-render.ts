@@ -1,12 +1,13 @@
 import { buildCsv, type CommitmentKind, type Leg } from "@sla/core";
-import { escapeHtml } from "./email-template";
-import { DEFAULT_EMAIL_BRAND_NAME } from "./format";
+import type { EmailAttachment, EmailSwatch, EmailTemplateRequest, MonthlyReportData } from "@sla/email";
 import { MAX_REPORT_BREACH_ROWS, type MonthlyReport } from "./monthly-report";
 
 /**
- * Renders a `MonthlyReport` for each channel: email (subject, plain text,
- * HTML, a CSV attachment) and a Slack message. Neutral language throughout:
- * stages are places where time was spent, never parties at fault.
+ * Prepares a `MonthlyReport` for each channel: the email (template data for
+ * `@sla/email`'s `monthly-report` template, plus a CSV attachment) and a Slack
+ * message. Neutral language throughout: stages are places where time was
+ * spent, never parties at fault. Nothing here writes markup or a plain-text
+ * body for the email; the shared layout renders both.
  */
 
 const KIND_LABEL: Record<CommitmentKind, string> = {
@@ -23,6 +24,14 @@ const STAGE_LABEL: Record<Leg, string> = {
   unknown: "Not attributed",
 };
 
+/** The stage colors the email draws next to "Time by stage". */
+const STAGE_SWATCH: Record<Leg, EmailSwatch> = {
+  support: "support",
+  engineering: "engineering",
+  waiting_customer: "waiting",
+  unknown: "neutral",
+};
+
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /** `2026-09` -> "September 2026". */
@@ -36,10 +45,6 @@ const formatRatio = (ratio: number | null) => (ratio === null ? "n/a" : `${Math.
 
 function plural(count: number, one: string, many: string): string {
   return `${count.toLocaleString("en-US")} ${count === 1 ? one : many}`;
-}
-
-export function monthlyReportSubject(report: MonthlyReport): string {
-  return `${report.organizationName}: SLA report for ${formatPeriod(report.period)}`;
 }
 
 export function monthlyReportCsvFilename(report: MonthlyReport): string {
@@ -65,126 +70,37 @@ function truncated(report: MonthlyReport): number {
   return Math.max(0, report.overall.breached - report.breaches.length);
 }
 
-/** The plain-text body, also the fallback for clients that cannot show HTML. */
-export function renderMonthlyReportText(report: MonthlyReport): string {
-  const lines: string[] = [`SLA report for ${formatPeriod(report.period)} (${report.timezone})`, report.organizationName, ""];
-
-  lines.push(
-    `Commitments met: ${report.overall.met.toLocaleString("en-US")}. Breached: ${report.overall.breached.toLocaleString("en-US")}. Compliance: ${formatPercent(report.overall.compliancePercent)}.`,
-    `Cases opened: ${report.casesOpened.toLocaleString("en-US")}.`,
-    "",
-    "Compliance by commitment",
-  );
-  for (const row of report.complianceByKind) {
-    lines.push(`- ${KIND_LABEL[row.kind]}: ${formatPercent(row.compliancePercent)} (${row.met} met, ${row.breached} breached)`);
-  }
-
-  lines.push("", "Time by stage (where the clock was when a commitment was breached)");
-  if (report.breachesByStage.length === 0) lines.push("- No breaches this month.");
-  for (const row of report.breachesByStage) lines.push(`- ${STAGE_LABEL[row.leg]}: ${plural(row.count, "breach", "breaches")}`);
-
-  lines.push("", "Customers with the most breaches");
-  if (report.topCustomers.length === 0) lines.push("- None.");
-  for (const row of report.topCustomers) lines.push(`- ${row.customerName}: ${plural(row.breaches, "breach", "breaches")}`);
-
-  lines.push(
-    "",
-    `Link coverage: ${formatRatio(report.linkCoverage.ratio)} (${report.linkCoverage.linkedCases} of ${report.linkCoverage.cases} cases from the last 30 days of the month are linked to engineering work). Only certain links count.`,
-  );
-  if (truncated(report) > 0) {
-    lines.push("", `The attached CSV lists the first ${MAX_REPORT_BREACH_ROWS.toLocaleString("en-US")} breaches of ${report.overall.breached.toLocaleString("en-US")}.`);
-  }
-  if (report.caseListUrl) lines.push("", `View the breached cases: ${report.caseListUrl}`);
-  return lines.join("\n");
+/** The `monthly-report` email: figures formatted for reading, laid out by the template. */
+export function buildMonthlyReportEmail(report: MonthlyReport): EmailTemplateRequest<"monthly-report"> {
+  const data: MonthlyReportData = {
+    organizationName: report.organizationName,
+    periodLabel: formatPeriod(report.period),
+    timezone: report.timezone,
+    overview: [
+      { label: "Cases opened", value: report.casesOpened.toLocaleString("en-US") },
+      { label: "Met", value: report.overall.met.toLocaleString("en-US") },
+      { label: "Breached", value: report.overall.breached.toLocaleString("en-US"), ...(report.overall.breached > 0 ? { tone: "danger" as const } : {}) },
+      { label: "Compliance", value: formatPercent(report.overall.compliancePercent), tone: "info" },
+    ],
+    compliance: report.complianceByKind.map((row) => ({
+      label: KIND_LABEL[row.kind],
+      value: `${formatPercent(row.compliancePercent)} (${row.met} met, ${row.breached} breached)`,
+    })),
+    stages: report.breachesByStage.map((row) => ({ label: STAGE_LABEL[row.leg], value: plural(row.count, "breach", "breaches"), swatch: STAGE_SWATCH[row.leg] })),
+    topCustomers: report.topCustomers.map((row) => ({ label: row.customerName, value: plural(row.breaches, "breach", "breaches") })),
+    linkCoverage: `${formatRatio(report.linkCoverage.ratio)}: ${report.linkCoverage.linkedCases} of ${report.linkCoverage.cases} cases from the last 30 days of the month are linked to engineering work. Only certain links count.`,
+    csvNote:
+      truncated(report) > 0
+        ? `The attached CSV lists the first ${MAX_REPORT_BREACH_ROWS.toLocaleString("en-US")} breaches of ${report.overall.breached.toLocaleString("en-US")}.`
+        : null,
+    caseListUrl: report.caseListUrl,
+  };
+  return { template: "monthly-report", data };
 }
 
-const CELL = "padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:14px;color:#0f172a;";
-const CELL_RIGHT = `${CELL}text-align:right;font-variant-numeric:tabular-nums;`;
-const HEADING = "padding:22px 0 6px;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#64748b;text-transform:uppercase;";
-
-function table(rows: string[]): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table>`;
-}
-
-function row(label: string, value: string): string {
-  return `<tr><td style="${CELL}">${escapeHtml(label)}</td><td style="${CELL_RIGHT}">${escapeHtml(value)}</td></tr>`;
-}
-
-/** Table-based, inline-styled HTML like the alert email: no `<style>` block, no external assets. */
-export function renderMonthlyReportHtml(report: MonthlyReport, brandName: string = DEFAULT_EMAIL_BRAND_NAME): string {
-  const brand = escapeHtml(brandName);
-  const sections: string[] = [];
-
-  sections.push(
-    `<tr><td style="padding-bottom:4px;color:#0f172a;font-size:19px;font-weight:700;">SLA report for ${escapeHtml(formatPeriod(report.period))}</td></tr>`,
-    `<tr><td style="color:#64748b;font-size:13px;">${escapeHtml(report.organizationName)} &middot; ${escapeHtml(report.timezone)}</td></tr>`,
-    `<tr><td style="padding-top:16px;color:#334155;font-size:14px;line-height:1.6;">
-      <strong>${report.overall.met.toLocaleString("en-US")}</strong> commitments met,
-      <strong>${report.overall.breached.toLocaleString("en-US")}</strong> breached
-      (${escapeHtml(formatPercent(report.overall.compliancePercent))} compliance) across
-      ${escapeHtml(plural(report.casesOpened, "case", "cases"))} opened.
-    </td></tr>`,
-  );
-
-  sections.push(`<tr><td style="${HEADING}">Compliance by commitment</td></tr>`);
-  sections.push(
-    `<tr><td>${table(
-      report.complianceByKind.map((r) => row(KIND_LABEL[r.kind], `${formatPercent(r.compliancePercent)} (${r.met} met, ${r.breached} breached)`)),
-    )}</td></tr>`,
-  );
-
-  sections.push(`<tr><td style="${HEADING}">Time by stage</td></tr>`);
-  sections.push(
-    report.breachesByStage.length === 0
-      ? `<tr><td style="${CELL}">No breaches this month.</td></tr>`
-      : `<tr><td>${table(report.breachesByStage.map((r) => row(STAGE_LABEL[r.leg], plural(r.count, "breach", "breaches"))))}</td></tr>`,
-  );
-
-  sections.push(`<tr><td style="${HEADING}">Customers with the most breaches</td></tr>`);
-  sections.push(
-    report.topCustomers.length === 0
-      ? `<tr><td style="${CELL}">None.</td></tr>`
-      : `<tr><td>${table(report.topCustomers.map((r) => row(r.customerName, plural(r.breaches, "breach", "breaches"))))}</td></tr>`,
-  );
-
-  sections.push(`<tr><td style="${HEADING}">Link coverage</td></tr>`);
-  sections.push(
-    `<tr><td style="${CELL}">${escapeHtml(formatRatio(report.linkCoverage.ratio))}: ${report.linkCoverage.linkedCases} of ${report.linkCoverage.cases} cases from the last 30 days of the month are linked to engineering work. Only certain links count.</td></tr>`,
-  );
-
-  if (truncated(report) > 0) {
-    sections.push(
-      `<tr><td style="padding-top:12px;color:#64748b;font-size:13px;">The attached CSV lists the first ${MAX_REPORT_BREACH_ROWS.toLocaleString("en-US")} breaches of ${report.overall.breached.toLocaleString("en-US")}.</td></tr>`,
-    );
-  }
-  if (report.caseListUrl) {
-    sections.push(
-      `<tr><td style="padding-top:24px;"><a href="${escapeHtml(report.caseListUrl)}" style="display:inline-block;background-color:#0f172a;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 20px;border-radius:6px;">View breached cases</a></td></tr>`,
-    );
-  }
-
-  return `<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
-            <tr><td style="background-color:#0f172a;padding:16px 24px;"><span style="color:#ffffff;font-size:15px;font-weight:700;letter-spacing:0.01em;">${brand}</span></td></tr>
-            <tr>
-              <td style="padding:28px 24px 24px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                  ${sections.join("\n                  ")}
-                </table>
-              </td>
-            </tr>
-            <tr><td style="background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 24px;"><span style="color:#94a3b8;font-size:12px;">Monthly SLA report from ${brand}. Full breach list attached as CSV.</span></td></tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
+/** The breaches of the month as the email's CSV attachment. */
+export function monthlyReportCsvAttachment(report: MonthlyReport): EmailAttachment {
+  return { filename: monthlyReportCsvFilename(report), content: renderMonthlyReportCsv(report), contentType: "text/csv; charset=utf-8" };
 }
 
 /** The Slack message: a short summary and a link, since the detail is in the email and the app. */

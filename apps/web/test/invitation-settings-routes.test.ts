@@ -170,10 +170,11 @@ describe("POST /api/settings/invitations", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true, resent: false });
     expect(email.sendTransactionalEmail).toHaveBeenCalledTimes(1);
-    const [message] = email.sendTransactionalEmail.mock.calls[0]!;
-    expect(message.to).toEqual(["a@x.com"]);
-    expect(message.text).toContain("raw-token");
-    expect(message.text).toContain("Acme");
+    const [request] = email.sendTransactionalEmail.mock.calls[0]!;
+    expect(request.to).toEqual(["a@x.com"]);
+    expect(request.template).toBe("invitation");
+    expect(request.data.acceptUrl).toContain("raw-token");
+    expect(request.data.organizationName).toBe("Acme");
   });
 
   it("returns 502 (but keeps the created invitation) when the email fails to send", async () => {

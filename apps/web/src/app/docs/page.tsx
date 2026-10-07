@@ -11,6 +11,7 @@ import {
 
 import { DocsLayout } from "@/components/docs/docs-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const sections = [
   {
@@ -57,6 +58,8 @@ const sections = [
   },
 ];
 
+export const generateMetadata = () => getPageMetadata("/docs");
+
 export default function DocsPage() {
   return (
     <DocsLayout>
@@ -79,6 +82,8 @@ export default function DocsPage() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2">
+          <h2 className="sr-only">Documentation sections</h2>
+
           {sections.map((section) => {
             const Icon = section.icon;
 

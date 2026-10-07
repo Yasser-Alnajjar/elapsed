@@ -69,6 +69,7 @@ export async function checkForStalledCycles(
       await sendOpsAlert(opsAlertConfig, {
         subject: `SLA worker recovered: ${kind}`,
         message: `${kind} is being serviced again for every organization.`,
+        kind: "recovered",
       });
     }
   }

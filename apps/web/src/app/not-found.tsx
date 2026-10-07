@@ -2,6 +2,9 @@ import { SearchX } from "lucide-react";
 import Link from "next/link";
 import { RouteStatus } from "@/components/shared/route-status";
 import { Button } from "@/components/ui/button";
+import { noIndexMetadata } from "@/lib/seo/metadata";
+
+export const metadata = noIndexMetadata("Page not found");
 
 export default function RootNotFound() {
   return (

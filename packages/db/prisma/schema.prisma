@@ -90,7 +90,10 @@ model User {
   /// unverified). An invitation-accepted user (5.2) is marked verified
   /// immediately at account creation — clicking that emailed link is
   /// already proof of control over the address, so there's no separate
-  /// verification step for them to do.
+  /// verification step for them to do. Sign-in is refused while this is
+  /// null (`authorize()` in `apps/web/src/lib/auth.ts`), and a live session
+  /// stops working if it is ever null (`assertSessionStillValid`) — so a
+  /// new sign-up has no access to the platform until `verifyEmail` runs.
   emailVerifiedAt DateTime?
   passwordHash   String
   /// Bumped whenever a live JWT session for this user must stop working

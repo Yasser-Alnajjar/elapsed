@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "overview", title: "Overview", level: 2 as const },
@@ -66,6 +67,8 @@ const charts = [
       'A horizontal bar chart of breached time attributed to each leg (support, engineering, waiting on customer, unknown) — the "where did the time go" view, not a ranking of teams.',
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/dashboard");
 
 export default function DashboardPage() {
   return (

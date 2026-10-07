@@ -103,6 +103,20 @@ describe("POST /api/sign-up", () => {
     );
   });
 
+  it("creates the owner unverified: emailVerifiedAt is never set at sign-up, and sending the email doesn't set it either", async () => {
+    db.findUnique.mockResolvedValue(null);
+    db.create.mockResolvedValue({ id: "org1", users: [{ id: "user1", email: VALID_INPUT.email }] });
+    const { POST } = await import("../src/app/api/sign-up/route");
+    await POST(postRequest(VALID_INPUT));
+    await flushMicrotasks();
+
+    const createCall = db.create.mock.calls[0]![0] as { data: { users: { create: Record<string, unknown> } } };
+    expect(createCall.data.users.create).not.toHaveProperty("emailVerifiedAt");
+    expect(transactionalEmail.sendTransactionalEmail).toHaveBeenCalledTimes(1);
+    // Only `create` ran against the database — nothing in the route updates the user after the email goes out.
+    expect(db.create).toHaveBeenCalledTimes(1);
+  });
+
   it("issues a verification token and sends the verification email for the new user", async () => {
     db.findUnique.mockResolvedValue(null);
     db.create.mockResolvedValue({ id: "org1", users: [{ id: "user1", email: VALID_INPUT.email }] });

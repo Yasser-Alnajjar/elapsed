@@ -46,6 +46,9 @@ RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
 COPY --from=builder /repo/apps/web/.next/standalone ./
 COPY --from=builder /repo/apps/web/.next/static ./apps/web/.next/static
+# Standalone output does not include public/: without this the web app manifest
+# and structured-data icon (public/icon-512.png) would 404 in the image.
+COPY --from=builder /repo/apps/web/public ./apps/web/public
 
 USER nextjs
 EXPOSE 3000

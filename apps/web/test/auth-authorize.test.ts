@@ -11,6 +11,7 @@ interface FakeUser {
   role: string;
   createdAt: Date;
   passwordHash: string;
+  emailVerifiedAt: Date | null;
 }
 
 const users = new Map<string, FakeUser>();
@@ -58,7 +59,7 @@ function authorize(credentials: { email: string; password: string }, ip?: string
   });
 }
 
-function seedUser(email: string, password: string): FakeUser {
+function seedUser(email: string, password: string, emailVerifiedAt: Date | null = new Date("2024-01-02T00:00:00.000Z")): FakeUser {
   const user: FakeUser = {
     id: "user-1",
     email,
@@ -68,6 +69,7 @@ function seedUser(email: string, password: string): FakeUser {
     role: "owner",
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
     passwordHash: `hash:${password}`,
+    emailVerifiedAt,
   };
   users.set(email, user);
   return user;
@@ -214,5 +216,53 @@ describe("authorize() — progressive throttle integration", () => {
       "198.51.100.4",
     );
     expect(ownerResult).toMatchObject({ id: "user-1" });
+  });
+});
+
+describe("authorize() — email verification gate", () => {
+  it("throws EMAIL_NOT_VERIFIED for the correct password on an unverified account, and never returns a user (so NextAuth issues no token)", async () => {
+    seedUser("new@example.com", "correct-horse", null);
+
+    await expect(authorize({ email: "new@example.com", password: "correct-horse" })).rejects.toThrow(
+      /^EMAIL_NOT_VERIFIED$/,
+    );
+  });
+
+  it("gives the same deterministic error on every attempt — it is not a one-off or throttle-dependent signal", async () => {
+    seedUser("new@example.com", "correct-horse", null);
+
+    for (let i = 0; i < 3; i += 1) {
+      await expect(authorize({ email: "new@example.com", password: "correct-horse" })).rejects.toThrow(
+        /^EMAIL_NOT_VERIFIED$/,
+      );
+    }
+  });
+
+  it("does not reveal that an account is unverified to someone with the wrong password (plain null, same as any bad credential)", async () => {
+    seedUser("new@example.com", "correct-horse", null);
+
+    expect(await authorize({ email: "new@example.com", password: "wrong" })).toBeNull();
+  });
+
+  it("an unknown address is still the plain null path, not the unverified error", async () => {
+    expect(await authorize({ email: "nobody@example.com", password: "whatever" })).toBeNull();
+  });
+
+  it("signs in a verified account", async () => {
+    seedUser("ok@example.com", "correct-horse", new Date());
+
+    const result = await authorize({ email: "ok@example.com", password: "correct-horse" });
+    expect(result).toMatchObject({ id: "user-1", email: "ok@example.com" });
+  });
+
+  it("becomes sign-in-able as soon as the account is marked verified (the verification link's effect)", async () => {
+    const user = seedUser("new@example.com", "correct-horse", null);
+    await expect(authorize({ email: "new@example.com", password: "correct-horse" })).rejects.toThrow(
+      /^EMAIL_NOT_VERIFIED$/,
+    );
+
+    user.emailVerifiedAt = new Date();
+
+    expect(await authorize({ email: "new@example.com", password: "correct-horse" })).toMatchObject({ id: "user-1" });
   });
 });

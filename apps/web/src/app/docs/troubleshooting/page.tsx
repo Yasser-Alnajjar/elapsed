@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   {
@@ -197,6 +198,8 @@ const issues: Issue[] = [
       "Click the reconnect link/button for that provider and re-approve the OAuth prompt. No history is lost — only the credential is refreshed.",
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/troubleshooting");
 
 export default function TroubleshootingPage() {
   return (
