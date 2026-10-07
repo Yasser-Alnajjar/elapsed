@@ -1,27 +1,21 @@
 "use client";
 
 import { SettingsSectionHeader } from "@/components/settings/section-header";
-import { AlertCircle, Building2, CheckCircle2, Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Reveal } from "@/components/shared/reveal";
 import { TimezoneCombobox } from "@/components/shared/timezone-combobox";
+import { notify } from "@/lib/notify";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
 
 interface OrganizationViewProps {
   data: OrganizationSettingsData;
-}
-
-interface SaveResult {
-  ok: boolean;
-  message?: string;
-  error?: string;
 }
 
 /**
@@ -36,7 +30,6 @@ export function OrganizationView({ data }: OrganizationViewProps) {
   const [name, setName] = useState(data.name);
   const [timezone, setTimezone] = useState(data.timezone);
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<SaveResult | null>(null);
 
   const trimmedName = name.trim();
   const dirty = trimmedName !== data.name || timezone !== data.timezone;
@@ -46,20 +39,19 @@ export function OrganizationView({ data }: OrganizationViewProps) {
     if (!trimmedName) return;
 
     setSaving(true);
-    setResult(null);
 
     const { ok, body } = await Actions.Organization.update({ name: trimmedName, timezone });
 
     setSaving(false);
 
     if (!ok) {
-      setResult({ ok: false, error: body.error ?? "Failed to update organization" });
+      notify.error(body.error ?? "Failed to update organization.");
       return;
     }
 
     setName(body.name);
     setTimezone(body.timezone);
-    setResult({ ok: true, message: "Organization updated." });
+    notify.success("Organization updated.");
     router.refresh();
   }
 
@@ -115,15 +107,6 @@ export function OrganizationView({ data }: OrganizationViewProps) {
                   disabled={!data.canEdit || saving}
                 />
               </div>
-
-              {result && (
-                <Alert variant={result.ok ? "success" : "destructive"}>
-                  {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-                  <AlertDescription>
-                    {result.ok ? result.message : result.error}
-                  </AlertDescription>
-                </Alert>
-              )}
 
               {data.canEdit && (
                 <div className="flex justify-end">

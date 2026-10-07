@@ -92,7 +92,7 @@ export function CycleTimeAnomaliesBanner({
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="text-outline hover:text-on-surface shrink-0 p-1.5 transition-colors"
+            className="cursor-pointer text-outline hover:text-on-surface shrink-0 p-1.5 transition-colors"
             aria-label="Dismiss"
           >
             <X className="size-4" />

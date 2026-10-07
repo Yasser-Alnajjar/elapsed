@@ -1,65 +1,52 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notify } from "@/lib/notify";
 import type { IUser } from "@/lib/types/user";
 
 interface EmailCardProps {
   user: IUser;
 }
 
-interface Result {
-  ok: boolean;
-  message?: string;
-  error?: string;
-}
-
 export function EmailCard({ user }: EmailCardProps) {
   const router = useRouter();
   const [resending, setResending] = useState(false);
-  const [resendResult, setResendResult] = useState<Result | null>(null);
 
   const [changing, setChanging] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
-  const [changeResult, setChangeResult] = useState<Result | null>(null);
   const [showChangeForm, setShowChangeForm] = useState(false);
 
   async function handleResend() {
     setResending(true);
-    setResendResult(null);
     const { ok, body } = await Actions.Profile.resendVerification();
     setResending(false);
-    setResendResult(
-      ok
-        ? { ok: true, message: "Verification email sent — check your inbox." }
-        : { ok: false, error: body.error ?? "Failed to send verification email" },
-    );
+    if (ok) notify.success("Verification email sent — check your inbox.");
+    else notify.error(body.error ?? "Failed to send verification email.");
   }
 
   async function handleChangeSubmit(event: FormEvent) {
     event.preventDefault();
     setChanging(true);
-    setChangeResult(null);
 
     const { ok, body } = await Actions.Profile.requestEmailChange({ newEmail, currentPassword });
     setChanging(false);
 
     if (!ok) {
-      setChangeResult({ ok: false, error: body.error ?? "Failed to request email change" });
+      notify.error(body.error ?? "Failed to request email change.");
       return;
     }
 
     setCurrentPassword("");
-    setChangeResult({ ok: true, message: `Check ${newEmail} for a link to confirm this change.` });
+    notify.success(`Check ${newEmail} for a link to confirm this change.`);
     router.refresh();
   }
 
@@ -96,13 +83,6 @@ export function EmailCard({ user }: EmailCardProps) {
           )}
         </div>
 
-        {resendResult && (
-          <Alert variant={resendResult.ok ? "success" : "destructive"}>
-            {resendResult.ok ? <CheckCircle2 /> : <AlertCircle />}
-            <AlertDescription>{resendResult.ok ? resendResult.message : resendResult.error}</AlertDescription>
-          </Alert>
-        )}
-
         {!showChangeForm && (
           <Button type="button" variant="ghost" size="sm" onClick={() => setShowChangeForm(true)}>
             Change email
@@ -134,13 +114,6 @@ export function EmailCard({ user }: EmailCardProps) {
                 required
               />
             </div>
-
-            {changeResult && (
-              <Alert variant={changeResult.ok ? "success" : "destructive"}>
-                {changeResult.ok ? <CheckCircle2 /> : <AlertCircle />}
-                <AlertDescription>{changeResult.ok ? changeResult.message : changeResult.error}</AlertDescription>
-              </Alert>
-            )}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" size="sm" onClick={() => setShowChangeForm(false)}>

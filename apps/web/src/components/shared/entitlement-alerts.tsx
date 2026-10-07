@@ -1,5 +1,6 @@
 import { AlertTriangle, Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 import { getUpgradeCta } from "@/lib/upgrade-cta";
 
 /** The replaceable "how do I upgrade" call to action (`lib/upgrade-cta.ts`): a link when there is somewhere to go, plain text otherwise. */
@@ -22,12 +23,12 @@ export interface EntitlementWarningPayload {
 /** A soft-limit warning shown beside a creation that succeeded. Informational: it never blocks anything. */
 export function EntitlementWarningAlert({ warning }: { warning: EntitlementWarningPayload }) {
   return (
-    <Alert variant="warning" data-testid="entitlement-warning" data-level={warning.level}>
+    <DismissibleAlert variant="warning" data-testid="entitlement-warning" data-level={warning.level}>
       <AlertTriangle />
       <AlertDescription>
         {warning.message} <UpgradeCtaLink />
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }
 
@@ -51,7 +52,7 @@ export function blockedActionLabel(action: string | undefined, provider: string 
  */
 export function EntitlementBlockedNotice({ action, provider }: { action?: string; provider?: string }) {
   return (
-    <Alert variant="warning" className="mb-4" data-testid="entitlement-blocked">
+    <DismissibleAlert variant="warning" className="mb-4" data-testid="entitlement-blocked">
       <Info />
       <AlertDescription>
         <p>
@@ -61,7 +62,7 @@ export function EntitlementBlockedNotice({ action, provider }: { action?: string
           Your cases, SLA monitoring, alerts and history are unaffected. <UpgradeCtaLink />
         </p>
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }
 

@@ -1,5 +1,6 @@
 import { PauseCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 
 interface PollingPausedBannerProps {
   /** Display name shown in the copy, e.g. "Zendesk", "Jira". */
@@ -15,7 +16,7 @@ interface PollingPausedBannerProps {
  */
 export function PollingPausedBanner({ provider }: PollingPausedBannerProps) {
   return (
-    <Alert variant="warning">
+    <DismissibleAlert variant="warning">
       <PauseCircle />
       <AlertDescription>
         <p>
@@ -24,6 +25,6 @@ export function PollingPausedBanner({ provider }: PollingPausedBannerProps) {
         </p>
         <p className="mt-1">You don&apos;t need to do anything. Contact support if you didn&apos;t expect this.</p>
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }

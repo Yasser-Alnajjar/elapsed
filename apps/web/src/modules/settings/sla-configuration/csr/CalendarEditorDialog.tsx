@@ -4,6 +4,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -214,10 +215,10 @@ export function CalendarEditorDialog({
           />
 
           {error && (
-            <Alert variant="destructive">
+            <DismissibleAlert key={error} variant="destructive">
               <AlertCircle />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            </DismissibleAlert>
           )}
 
           <DialogFooter>

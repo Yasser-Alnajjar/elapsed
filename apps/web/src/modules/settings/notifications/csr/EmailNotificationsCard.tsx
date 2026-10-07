@@ -2,7 +2,6 @@
 
 import {
   AlertCircle,
-  CheckCircle2,
   History,
   Loader2,
   Mail,
@@ -26,10 +25,7 @@ import {
   type EmailSecurity,
   type EmailSettingsStatus,
 } from "@/lib/types/email-settings";
-import {
-  useSmtpSettingsForm,
-  type SmtpActionState,
-} from "./useSmtpSettingsForm";
+import { useSmtpSettingsForm } from "./useSmtpSettingsForm";
 
 interface EmailNotificationsCardProps {
   status: EmailSettingsStatus;
@@ -37,18 +33,6 @@ interface EmailNotificationsCardProps {
 
 const labelClass =
   "text-outline font-mono text-xxs font-semibold uppercase tracking-wider";
-
-function ResultBanner({ result }: { result: SmtpActionState["result"] }) {
-  if (!result) return null;
-  return (
-    <Alert variant={result.ok ? "success" : "destructive"} className="mt-3">
-      {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-      <AlertDescription>
-        {result.ok ? result.message : result.error}
-      </AlertDescription>
-    </Alert>
-  );
-}
 
 export function EmailNotificationsCard({
   status,
@@ -67,7 +51,6 @@ export function EmailNotificationsCard({
     testConnection,
     testSend,
     saving,
-    saveResult,
     anyPending,
     handleTestConnection,
     handleSendTest,
@@ -264,9 +247,6 @@ export function EmailNotificationsCard({
             </Button>
           </div>
 
-          <ResultBanner result={testConnection.result} />
-          <ResultBanner result={testSend.result} />
-          <ResultBanner result={saveResult} />
         </form>
       </CardContent>
     </Card>

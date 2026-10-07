@@ -1,27 +1,21 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, UserRound } from "lucide-react";
+import { Loader2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initialsOf } from "@/lib/format";
+import { notify } from "@/lib/notify";
 import type { IUser } from "@/lib/types/user";
 
 interface ProfileInformationCardProps {
   user: IUser;
-}
-
-interface SaveResult {
-  ok: boolean;
-  message?: string;
-  error?: string;
 }
 
 export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
@@ -30,7 +24,6 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
 
   const [name, setName] = useState(user.name ?? "");
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<SaveResult | null>(null);
 
   const trimmedName = name.trim();
   const dirty = trimmedName !== (user.name ?? "");
@@ -41,7 +34,6 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
     if (!trimmedName) return;
 
     setSaving(true);
-    setResult(null);
 
     const { ok, body } = await Actions.Profile.update({
       name: trimmedName,
@@ -51,7 +43,7 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
     setSaving(false);
 
     if (!ok) {
-      setResult({ ok: false, error: body.error ?? "Failed to update profile" });
+      notify.error(body.error ?? "Failed to update profile.");
       return;
     }
 
@@ -59,7 +51,7 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
     // the session — the sidebar reads it fresh from the database instead
     // (see `(main)/layout.tsx`).
     await updateSession({ name: body.name });
-    setResult({ ok: true, message: "Profile updated." });
+    notify.success("Profile updated.");
     router.refresh();
   }
 
@@ -104,15 +96,6 @@ export function ProfileInformationCard({ user }: ProfileInformationCardProps) {
               autoComplete="name"
             />
           </div>
-
-          {result && (
-            <Alert variant={result.ok ? "success" : "destructive"}>
-              {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-              <AlertDescription>
-                {result.ok ? result.message : result.error}
-              </AlertDescription>
-            </Alert>
-          )}
 
           <div className="flex justify-end">
             <Button
