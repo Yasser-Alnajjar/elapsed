@@ -157,4 +157,28 @@ describe("proxy rate limiting — other routes keep the plain error body", () =>
     expect(body).toEqual({ error: "Too many requests" });
     expect(blocked.headers.get("Retry-After")).toBeTruthy();
   });
+
+  it("/api/email-verification/resend is reachable without a session, and is capped at 5 per IP per window", async () => {
+    const request = (ip: string) =>
+      new NextRequest("https://app.example.com/api/email-verification/resend", {
+        method: "POST",
+        // A same-origin browser POST: the proxy's CSRF check (which runs before the route) must pass.
+        headers: { "x-forwarded-for": ip, origin: "https://app.example.com", host: "app.example.com" },
+      });
+
+    for (let i = 0; i < 5; i += 1) {
+      const response = await proxy(request("203.0.113.11"));
+      // Passed through to the route (public path: no 401 redirect/JSON) — not blocked by anything in the proxy.
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    }
+    const blocked = await proxy(request("203.0.113.11"));
+
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ error: "Too many requests" });
+    expect(blocked.headers.get("Retry-After")).toBeTruthy();
+
+    // Another IP is unaffected.
+    expect((await proxy(request("203.0.113.12"))).status).toBe(200);
+  });
 });

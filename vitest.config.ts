@@ -60,6 +60,7 @@ const realDatabaseSuites = [
   "apps/web/test/invitation-accept-race.test.ts",
   "apps/web/test/password-reset-race.test.ts",
   "apps/web/test/email-verification-race.test.ts",
+  "apps/web/test/email-verification-flow.test.ts",
   "apps/web/test/smoke-signup-to-alert.test.ts",
   "apps/web/test/notification-claim.test.ts",
   "apps/web/test/stale-source-notifications.test.ts",

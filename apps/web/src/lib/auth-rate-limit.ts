@@ -31,6 +31,15 @@ import type { SignInResponse } from "next-auth/react";
 const RATE_LIMITED_ERROR_CODE = "RATE_LIMITED";
 const AUTH_THROTTLED_ERROR_CODE = "AUTH_THROTTLED";
 
+/**
+ * Thrown by `authorize()` in `@/lib/auth.ts` when the credentials are correct
+ * but the account's email isn't verified yet — rides the same
+ * throw-an-`Error` → `{ url }` body path as `AUTH_THROTTLED` above, and is
+ * deliberately a bare code (no payload to encode) so the client can match it
+ * exactly.
+ */
+export const EMAIL_NOT_VERIFIED_ERROR = "EMAIL_NOT_VERIFIED";
+
 /** Used only by `proxy.ts` when crafting the 429 response body for this route. */
 export function encodeCredentialsRateLimitError(retryAfterSeconds: number): string {
   return `${RATE_LIMITED_ERROR_CODE}:${Math.max(1, Math.round(retryAfterSeconds))}`;
@@ -45,6 +54,7 @@ export type SignInOutcome =
   | { ok: true }
   | { ok: false; error: "RATE_LIMITED"; retryAfterSeconds: number }
   | { ok: false; error: "AUTH_THROTTLED"; retryAfterSeconds: number }
+  | { ok: false; error: typeof EMAIL_NOT_VERIFIED_ERROR }
   | { ok: false; error: string };
 
 /**
@@ -64,6 +74,10 @@ export function interpretCredentialsSignInResult(result: SignInResponse | undefi
   const throttleMatch = /^AUTH_THROTTLED:(\d+)$/.exec(result.error);
   if (throttleMatch) {
     return { ok: false, error: "AUTH_THROTTLED", retryAfterSeconds: Number(throttleMatch[1]) };
+  }
+
+  if (result.error === EMAIL_NOT_VERIFIED_ERROR) {
+    return { ok: false, error: EMAIL_NOT_VERIFIED_ERROR };
   }
 
   return { ok: false, error: result.error };

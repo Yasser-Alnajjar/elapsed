@@ -42,10 +42,12 @@ const AUTH_PAGE_PATHS = ["/sign-in", "/sign-up"];
  * session-gated like every other settings route), the password-reset
  * endpoints (same token-is-the-credential shape — roadmap 5.5; distinct
  * from `/api/me/password`, the authenticated change-password route, which
- * stays session-gated), the email-verification confirm endpoint (same
- * shape again — roadmap 5.6; distinct from `/api/me/email` and
- * `/api/me/resend-verification`, which request/resend a token and stay
- * session-gated), and the health check (an uptime monitor or container
+ * stays session-gated), the email-verification confirm and resend endpoints
+ * (same shape again — roadmap 5.6; sign-in is blocked until an email is
+ * verified, so the person asking for a fresh link has no session; distinct
+ * from `/api/me/email` and `/api/me/resend-verification`, which
+ * request/resend a token for a signed-in user and stay session-gated), and
+ * the health check (an uptime monitor or container
  * orchestrator has no session cookie either, and needs no org context — it
  * only checks DB connectivity).
  */
@@ -134,6 +136,16 @@ const RATE_LIMITS: RateLimitRule[] = [
     match: (p) => p === "/api/email-verification/confirm",
     bucket: "email-verification-confirm",
     limit: 20,
+    windowMs: 15 * 60_000,
+  },
+  {
+    // Like password-reset-request: always `{ ok: true }` (no enumeration
+    // signal), so this cap exists only to stop the route being used to spam
+    // inboxes with verification emails. The route adds its own per-address
+    // limit on top.
+    match: (p) => p === "/api/email-verification/resend",
+    bucket: "email-verification-resend",
+    limit: 5,
     windowMs: 15 * 60_000,
   },
   {

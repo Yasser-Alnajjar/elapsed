@@ -402,6 +402,10 @@ export const Actions = {
     async confirm(token: string) {
       return postJSON<{ ok: boolean; email: string }>("/api/email-verification/confirm", { token });
     },
+    /** Public — an unverified account can't sign in, so the address (not a session) identifies who to resend to. Always `ok` for a well-formed address, whether or not it has an account. */
+    async resend(email: string) {
+      return postJSON<Record<string, never>>("/api/email-verification/resend", { email });
+    },
   },
 
   Members: {

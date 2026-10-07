@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_NOT_VERIFIED_ERROR,
   encodeAuthThrottleError,
   encodeCredentialsRateLimitError,
   formatCooldownClock,
@@ -66,6 +67,13 @@ describe("interpretCredentialsSignInResult", () => {
     expect(
       interpretCredentialsSignInResult({ error: "CredentialsSignin", status: 401, ok: false, url: null }),
     ).toEqual({ ok: false, error: "CredentialsSignin" });
+  });
+
+  it("surfaces the unverified-email error as its own stable code (what authorize() throws), distinct from a wrong password", () => {
+    expect(EMAIL_NOT_VERIFIED_ERROR).toBe("EMAIL_NOT_VERIFIED");
+    expect(
+      interpretCredentialsSignInResult({ error: EMAIL_NOT_VERIFIED_ERROR, status: 401, ok: false, url: null }),
+    ).toEqual({ ok: false, error: "EMAIL_NOT_VERIFIED" });
   });
 
   it("returns a generic failure when signIn() itself resolves undefined", () => {
