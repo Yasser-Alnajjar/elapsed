@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
+import { tooManyAttemptsMessage } from "@/lib/auth-rate-limit";
 import {
   checkAuthThrottle,
   clearAuthThrottle,
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
   if (throttle.throttled) {
     return NextResponse.json(
       {
-        error: `Too many attempts. Try again in ${throttle.retryAfterSeconds}s.`,
+        error: tooManyAttemptsMessage(throttle.retryAfterSeconds ?? 60),
+        retryAfterSeconds: throttle.retryAfterSeconds ?? 60,
       },
       { status: 429 },
     );

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatRetryAfter } from "@/lib/auth-rate-limit";
+import { useRetryCountdown } from "@/hooks/use-retry-countdown";
 import { notify } from "@/lib/notify";
 
 export function SecurityCard() {
@@ -15,6 +17,7 @@ export function SecurityCard() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const retry = useRetryCountdown();
 
   const mismatch =
     confirmPassword.length > 0 && newPassword !== confirmPassword;
@@ -37,6 +40,7 @@ export function SecurityCard() {
     setSaving(false);
 
     if (!ok) {
+      if (body.retryAfterSeconds) retry.start(body.retryAfterSeconds);
       notify.error(body.error ?? "Failed to change password.");
       return;
     }
@@ -119,9 +123,13 @@ export function SecurityCard() {
           )}
 
           <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={!canSubmit || saving}>
+            <Button type="submit" size="sm" disabled={!canSubmit || saving || retry.active}>
               {saving && <Loader2 className="animate-spin" />}
-              {saving ? "Updating…" : "Update password"}
+              {saving
+                ? "Updating…"
+                : retry.active
+                  ? `Try again in ${formatRetryAfter(retry.remainingSeconds)}`
+                  : "Update password"}
             </Button>
           </div>
         </form>

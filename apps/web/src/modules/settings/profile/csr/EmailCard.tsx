@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatRetryAfter } from "@/lib/auth-rate-limit";
+import { useRetryCountdown } from "@/hooks/use-retry-countdown";
 import { notify } from "@/lib/notify";
 import type { IUser } from "@/lib/types/user";
 
@@ -19,6 +21,8 @@ interface EmailCardProps {
 export function EmailCard({ user }: EmailCardProps) {
   const router = useRouter();
   const [resending, setResending] = useState(false);
+  const resendRetry = useRetryCountdown();
+  const changeRetry = useRetryCountdown();
 
   const [changing, setChanging] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -30,7 +34,10 @@ export function EmailCard({ user }: EmailCardProps) {
     const { ok, body } = await Actions.Profile.resendVerification();
     setResending(false);
     if (ok) notify.success("Verification email sent — check your inbox.");
-    else notify.error(body.error ?? "Failed to send verification email.");
+    else {
+      if (body.retryAfterSeconds) resendRetry.start(body.retryAfterSeconds);
+      notify.error(body.error ?? "Failed to send verification email.");
+    }
   }
 
   async function handleChangeSubmit(event: FormEvent) {
@@ -41,6 +48,7 @@ export function EmailCard({ user }: EmailCardProps) {
     setChanging(false);
 
     if (!ok) {
+      if (body.retryAfterSeconds) changeRetry.start(body.retryAfterSeconds);
       notify.error(body.error ?? "Failed to request email change.");
       return;
     }
@@ -76,9 +84,13 @@ export function EmailCard({ user }: EmailCardProps) {
             </div>
           </div>
           {!user.emailVerifiedAt && (
-            <Button type="button" variant="surface" size="sm" disabled={resending} onClick={handleResend}>
+            <Button type="button" variant="surface" size="sm" disabled={resending || resendRetry.active} onClick={handleResend}>
               {resending && <Loader2 className="animate-spin" />}
-              {resending ? "Sending…" : "Resend verification"}
+              {resending
+                ? "Sending…"
+                : resendRetry.active
+                  ? `Try again in ${formatRetryAfter(resendRetry.remainingSeconds)}`
+                  : "Resend verification"}
             </Button>
           )}
         </div>
@@ -119,9 +131,13 @@ export function EmailCard({ user }: EmailCardProps) {
               <Button type="button" variant="ghost" size="sm" onClick={() => setShowChangeForm(false)}>
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={changing || !newEmail || !currentPassword}>
+              <Button type="submit" size="sm" disabled={changing || changeRetry.active || !newEmail || !currentPassword}>
                 {changing && <Loader2 className="animate-spin" />}
-                {changing ? "Sending…" : "Send confirmation link"}
+                {changing
+                  ? "Sending…"
+                  : changeRetry.active
+                    ? `Try again in ${formatRetryAfter(changeRetry.remainingSeconds)}`
+                    : "Send confirmation link"}
               </Button>
             </div>
           </form>

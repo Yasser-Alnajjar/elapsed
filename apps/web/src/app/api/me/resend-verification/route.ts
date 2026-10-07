@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { createEmailVerificationToken, getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
+import { tooManyAttemptsMessage } from "@/lib/auth-rate-limit";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildEmailVerificationEmail } from "@/lib/email-verification-email";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -26,7 +27,8 @@ export async function POST() {
   const rateLimit = checkRateLimit(`resend-verification:${session.user.id}`, 3, 10 * 60_000);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${rateLimit.retryAfterSeconds}s.` },
+      { error: tooManyAttemptsMessage(rateLimit.retryAfterSeconds ?? 60),
+        retryAfterSeconds: rateLimit.retryAfterSeconds ?? 60 },
       { status: 429 },
     );
   }

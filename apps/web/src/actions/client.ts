@@ -34,7 +34,7 @@ import type {
 interface ActionResult<T> {
   ok: boolean;
   status: number;
-  body: T & { error?: string; reauthRequired?: boolean };
+  body: T & { error?: string; reauthRequired?: boolean; retryAfterSeconds?: number };
 }
 
 export interface EmailSettingsFormInput {

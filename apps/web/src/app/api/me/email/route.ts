@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { EmailAlreadyRegisteredError, createEmailChangeToken, getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
+import { tooManyAttemptsMessage } from "@/lib/auth-rate-limit";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
 import { buildEmailChangeVerificationEmail } from "@/lib/email-verification-email";
 import {
@@ -39,7 +40,8 @@ export async function POST(request: Request) {
   const throttle = checkAuthThrottle(throttleKey);
   if (throttle.throttled) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${throttle.retryAfterSeconds}s.` },
+      { error: tooManyAttemptsMessage(throttle.retryAfterSeconds ?? 60),
+        retryAfterSeconds: throttle.retryAfterSeconds ?? 60 },
       { status: 429 },
     );
   }

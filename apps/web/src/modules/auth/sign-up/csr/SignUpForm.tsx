@@ -22,7 +22,9 @@ const initialValues: SignUpFormValues = {
 };
 
 export const SignUpForm = () => {
-  const [verificationSentTo, setVerificationSentTo] = useState<string | null>(null);
+  const [verificationSentTo, setVerificationSentTo] = useState<string | null>(
+    null,
+  );
 
   async function handleSubmit(
     values: SignUpFormValues,

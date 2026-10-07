@@ -26,8 +26,7 @@ import {
 } from "@/components/shared/auth-shell";
 import {
   EMAIL_NOT_VERIFIED_ERROR,
-  formatCooldownClock,
-  formatCooldownSentence,
+  formatRetryAfter,
 } from "@/lib/auth-rate-limit";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -264,7 +263,7 @@ export const SignInForm = () => {
                           ? "Too many failed login attempts."
                           : "Too many login attempts."}{" "}
                         Please try again in{" "}
-                        {formatCooldownSentence(cooldownSeconds ?? 0)}.
+                        {formatRetryAfter(cooldownSeconds)}.
                       </AuthAlert>
                     )}
 
@@ -284,7 +283,7 @@ export const SignInForm = () => {
                       )}
                       <span>
                         {inCooldown
-                          ? `Try again in ${formatCooldownClock(cooldownSeconds ?? 0)}`
+                          ? `Try again in ${formatRetryAfter(cooldownSeconds)}`
                           : isSubmitting
                             ? "Signing in…"
                             : "Sign In to Workspace"}

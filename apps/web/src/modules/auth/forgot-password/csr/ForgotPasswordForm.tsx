@@ -61,7 +61,7 @@ export const ForgotPasswordForm = () => {
   return (
     <AuthPage>
       <div className="relative z-10 flex w-full flex-col items-center justify-center">
-        <div className="relative w-full max-w-[540px]">
+        <div className="relative w-full max-w-135">
           <div
             aria-hidden
             className="pointer-events-none absolute -left-16 -top-16 size-64 rounded-full bg-primary/10 blur-3xl"
@@ -72,7 +72,7 @@ export const ForgotPasswordForm = () => {
           />
 
           <div className="relative w-full overflow-hidden rounded-[4px] bg-background p-4 shadow-2xl sm:p-8">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-primary to-transparent opacity-80" />
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-1 border-b border-border/70 pb-4">
               <div
@@ -93,8 +93,8 @@ export const ForgotPasswordForm = () => {
 
             <div className="flex flex-col items-center text-center">
               <div className="group relative mb-4">
-                <div className="absolute inset-0 rounded-[8px] bg-primary/20 blur-md transition-all duration-300 group-hover:blur-lg" />
-                <div className="relative flex size-14 items-center justify-center rounded-[8px] bg-surface-raised shadow-lg">
+                <div className="absolute inset-0 rounded-lg  bg-primary/20 blur-md transition-all duration-300 group-hover:blur-lg" />
+                <div className="relative flex size-14 items-center justify-center rounded-lg  bg-surface-raised shadow-lg">
                   <LockKeyhole
                     aria-hidden
                     className="size-7 fill-primary/20 text-primary"
@@ -121,7 +121,7 @@ export const ForgotPasswordForm = () => {
               <h1 className="mb-1 text-[28px] font-semibold leading-9 tracking-[-0.015em] text-foreground">
                 {submitted ? "Check your email" : "Reset your password"}
               </h1>
-              <p className="mb-6 max-w-[430px] text-sm leading-relaxed text-muted-foreground">
+              <p className="mb-6 max-w-107.5 text-sm leading-relaxed text-muted-foreground">
                 {submitted
                   ? "If an account exists for that email, we've sent a link to reset your password."
                   : "Enter your registered corporate email address and we will dispatch a cryptographically signed, time-bounded password reset link."}
@@ -164,7 +164,7 @@ export const ForgotPasswordForm = () => {
                       <div className="relative flex items-center">
                         <AtSign
                           aria-hidden
-                          className="pointer-events-none absolute inset-s-4 size-[18px] text-foreground-subtle"
+                          className="pointer-events-none absolute inset-s-4 size-4.5 text-foreground-subtle"
                         />
                         <AuthInput
                           {...getFieldProps("email")}
@@ -213,7 +213,7 @@ export const ForgotPasswordForm = () => {
                       <div className="flex items-start gap-2 ps-1">
                         <Info
                           aria-hidden
-                          className="mt-0.5 size-[18px] shrink-0 text-warning-text"
+                          className="mt-0.5 size-4.5 shrink-0 text-warning-text"
                         />
                         <div className="flex flex-col gap-0.5">
                           <span
@@ -255,11 +255,11 @@ export const ForgotPasswordForm = () => {
                       </span>
                       {!isSubmitting &&
                         (submitted ? (
-                          <Check aria-hidden className="size-[18px]" />
+                          <Check aria-hidden className="size-4.5" />
                         ) : (
                           <ArrowRight
                             aria-hidden
-                            className="size-[18px] transition-transform duration-200 group-hover:translate-x-0.5"
+                            className="size-4.5 transition-transform duration-200 group-hover:translate-x-0.5"
                           />
                         ))}
                     </button>
@@ -295,7 +295,7 @@ export const ForgotPasswordForm = () => {
                 <div className="flex items-center gap-2">
                   <LockKeyhole
                     aria-hidden
-                    className="size-[18px] text-primary-fixed-dim"
+                    className="size-4.5 text-primary-fixed-dim"
                   />
                   <div className="flex flex-col text-start">
                     <span
@@ -313,13 +313,13 @@ export const ForgotPasswordForm = () => {
                 </div>
                 <ChevronRight
                   aria-hidden
-                  className="size-[18px] text-foreground-subtle transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
+                  className="size-4.5 text-foreground-subtle transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
                 />
               </a>
               <div className="flex items-center justify-center pt-1">
                 <a
                   href="/sign-in"
-                  className="inline-flex items-center gap-1 rounded-[2px] px-2 py-1 font-mono text-xxs font-semibold leading-[14px] tracking-[0.04em] text-muted-foreground transition-colors hover:bg-surface-raised hover:text-primary"
+                  className="inline-flex items-center gap-1 rounded-[2px] px-2 py-1 font-mono text-xxs font-semibold leading-3.5 tracking-[0.04em] text-muted-foreground transition-colors hover:bg-surface-raised hover:text-primary"
                 >
                   <ArrowLeft aria-hidden className="size-4" />
                   <span>Return to Sign In</span>
@@ -330,7 +330,7 @@ export const ForgotPasswordForm = () => {
             <div className="mt-4 flex items-start gap-2 border-t border-border/40 pt-4">
               <ShieldCheck
                 aria-hidden
-                className="mt-0.5 size-[15px] shrink-0 text-foreground-subtle"
+                className="mt-0.5 size-3.75 shrink-0 text-foreground-subtle"
               />
               <div className="flex flex-col gap-0.5 text-start">
                 <p
