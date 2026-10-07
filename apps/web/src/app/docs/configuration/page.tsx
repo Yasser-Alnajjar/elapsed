@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "oauth-apps", title: "Bringing your own OAuth app", level: 2 as const },
@@ -76,6 +77,8 @@ const settings = [
     default: "None — no alerts sent until a channel is chosen",
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/configuration");
 
 export default function ConfigurationPage() {
   return (

@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "channels", title: "Channels", level: 2 as const },
@@ -14,6 +15,8 @@ const toc = [
   { id: "deduplication", title: "Deduplication", level: 2 as const },
   { id: "failures", title: "Delivery failures", level: 2 as const },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/notifications");
 
 export default function NotificationsPage() {
   return (

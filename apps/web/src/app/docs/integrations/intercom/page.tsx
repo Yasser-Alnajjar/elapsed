@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getIntercomRedirectUri } from "@/lib/intercom-redirect";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -41,6 +42,8 @@ const toc = [
 // The callback URL shown below comes from NEXTAUTH_URL at request time; a
 // static render would freeze the build placeholder (http://localhost:3000).
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = () => getPageMetadata("/docs/integrations/intercom");
 
 export default function IntercomIntegrationPage() {
   return (

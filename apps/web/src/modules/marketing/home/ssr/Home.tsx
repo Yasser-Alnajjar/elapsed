@@ -1,5 +1,8 @@
+import { JsonLd } from "@/components/seo/json-ld";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { homeStructuredData } from "@/lib/seo/structured-data";
+import { HOME_FAQS } from "../csr/home-content";
 import { HomeView } from "../csr/HomeView";
 
 /**
@@ -9,6 +12,7 @@ import { HomeView } from "../csr/HomeView";
 export const Home = async () => {
   return (
     <div className="flex min-h-screen flex-col">
+      <JsonLd data={homeStructuredData(HOME_FAQS)} />
       <SiteHeader />
       <HomeView />
       <SiteFooter />

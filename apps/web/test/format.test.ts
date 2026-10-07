@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCaseKey,
   formatCaseLinkMethod,
+  formatCaseTitle,
   formatCommitmentKind,
   formatNextCycle,
   formatTicketSourceShort,
@@ -98,5 +99,28 @@ describe("formatCaseLinkMethod", () => {
   it("names no provider: an official link is a ticket source's own record (Zendesk's registry, Intercom's jira_issue_key)", () => {
     expect(formatCaseLinkMethod("official_link")).toBe("Official link");
     expect(formatCaseLinkMethod("remote_link")).toBe("Remote link");
+  });
+});
+
+describe("formatCaseTitle", () => {
+  it("names the case by its key and subject", () => {
+    expect(formatCaseTitle("zendesk", "8921", "Login fails after SSO")).toBe("ZD-8921 · Login fails after SSO");
+  });
+
+  it("falls back to the key alone when the ticket has no usable subject", () => {
+    expect(formatCaseTitle("zendesk", "8921", null)).toBe("ZD-8921");
+    expect(formatCaseTitle("zendesk", "8921", "   ")).toBe("ZD-8921");
+  });
+
+  it("collapses whitespace and line breaks so the tab title stays on one line", () => {
+    expect(formatCaseTitle("zendesk", "8921", "  Login\n  fails\t after   SSO ")).toBe("ZD-8921 · Login fails after SSO");
+  });
+
+  it("shortens a very long subject with an ellipsis", () => {
+    const title = formatCaseTitle("zendesk", "8921", "x".repeat(200));
+    expect(title.startsWith("ZD-8921 · xxx")).toBe(true);
+    expect(title.endsWith("…")).toBe(true);
+    // key + separator + at most 70 characters of subject
+    expect(title.length).toBe("ZD-8921 · ".length + 70);
   });
 });

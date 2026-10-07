@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   {
@@ -88,6 +89,8 @@ const statuses = [
     variant: "outline" as const,
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/sla");
 
 export default function SlaPage() {
   return (

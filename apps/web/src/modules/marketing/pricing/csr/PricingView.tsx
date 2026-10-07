@@ -65,6 +65,7 @@ export const PricingView = ({ viewer }: { viewer: PricingViewer }) => {
 
         {/* Plans */}
         <section className="grid grid-cols-1 items-stretch gap-4 pt-3 md:grid-cols-2 lg:grid-cols-3">
+          <h2 className="sr-only">Plans</h2>
           {PLANS.map((plan, i) => (
             <Reveal key={plan.id} delay={i * 0.05} className="h-full">
               <PricingPlanCard plan={plan} state={viewer.cards[plan.id]} />

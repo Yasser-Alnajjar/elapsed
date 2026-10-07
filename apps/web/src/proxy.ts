@@ -246,8 +246,15 @@ export async function proxy(request: NextRequest) {
   return NextResponse.redirect(signInUrl);
 }
 
+/**
+ * Everything here is fetched by crawlers and link-preview bots that have no
+ * session: the SEO files (robots.txt, sitemap.xml, the web manifest) and every
+ * image (favicons, the touch icon, the Open Graph card, `public/` assets).
+ * Left to this proxy they would be redirected to /sign-in, which is how a
+ * crawler ends up with a login page instead of an icon or a share preview.
+ */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest|.*\\.(?:png|jpe?g|gif|webp|avif|svg|ico)$).*)",
   ],
 };

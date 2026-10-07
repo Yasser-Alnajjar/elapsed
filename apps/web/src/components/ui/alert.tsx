@@ -32,11 +32,13 @@ const Alert = React.forwardRef<
 ));
 Alert.displayName = "Alert";
 
+// A callout label, not a section heading: a heading element here would jump a
+// docs page from h2 straight to h5 and put noise in the document outline.
 const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <h5
+  <div
     ref={ref}
     className={cn("font-medium leading-tight", className)}
     {...props}

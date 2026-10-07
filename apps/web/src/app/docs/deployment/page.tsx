@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
 import { getAppUrl } from "@/lib/app-url";
+import { noIndexMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "overview", title: "Overview", level: 2 as const },
@@ -126,6 +127,10 @@ const securityNotes = [
   "To rotate secrets, run scripts/rotate-secrets.sh --apply-to-db .env.prod after a backup, then restart the stack. Changing the sign-in session secret signs everyone out. Changing either encryption key means each organization must re-enter its saved integration secrets or email password. See the secret rotation section of the deployment runbook.",
   "Additional hardening, such as HTTP security headers, rate limiting, and health checks, is not provided by the containers themselves. Add it at your reverse proxy if you need it.",
 ];
+
+// Self-hosting guide: public, but it prints this deployment's own address and is
+// not part of the customer docs, so it stays out of the index and the sitemap.
+export const metadata = noIndexMetadata("Deployment");
 
 export default function DeploymentPage() {
   return (

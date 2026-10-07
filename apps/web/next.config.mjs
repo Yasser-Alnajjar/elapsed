@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { withSentryConfig } from "@sentry/nextjs/config";
+import { buildNoIndexHeaders } from "./seo-routes.mjs";
 import { buildSecurityHeaders } from "./security-headers.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +32,10 @@ const nextConfig = {
           isDev: process.env.NODE_ENV !== "production",
         }),
       },
+      // `X-Robots-Tag: noindex` on the signed-in app, admin, API and token
+      // pages (seo-routes.mjs): the one way to mark a JSON response, and a
+      // guard that does not depend on each page's own metadata.
+      ...buildNoIndexHeaders(),
     ];
   },
 };

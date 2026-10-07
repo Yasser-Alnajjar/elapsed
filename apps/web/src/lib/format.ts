@@ -446,6 +446,17 @@ export function formatCaseKey(system: string, externalId: string): string {
   return prefix ? `${prefix}-${externalId}` : `#${externalId}`;
 }
 
+const CASE_TITLE_SUBJECT_MAX = 70;
+
+/** The browser-tab title for a case: its key and subject ("ZD-8921 · Login fails after SSO"), the key alone when the ticket has no subject. */
+export function formatCaseTitle(system: string, externalId: string, subject: string | null): string {
+  const key = formatCaseKey(system, externalId);
+  const text = subject?.replace(/\s+/g, " ").trim();
+  if (!text) return key;
+  const short = text.length > CASE_TITLE_SUBJECT_MAX ? `${text.slice(0, CASE_TITLE_SUBJECT_MAX - 1).trimEnd()}…` : text;
+  return `${key} · ${short}`;
+}
+
 const LINKED_SYSTEM_SHORT_LABELS: Record<string, string> = {
   jira: "ENG",
   linear: "LIN",

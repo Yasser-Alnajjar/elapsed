@@ -26,6 +26,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { HOME_FAQS } from "./home-content";
 
 const TRIAL = `${TRIAL_LENGTH_DAYS}-day trial`;
 
@@ -164,34 +165,6 @@ const SECURITY = [
     title: "Tenant isolation",
     description:
       "Every record is scoped to its organization, so one customer's data never reaches another.",
-  },
-];
-
-const FAQS = [
-  {
-    question: "Is Elapsed read-only?",
-    answer:
-      "Yes, for every connected data source (Zendesk, Jira, Linear, Intercom, GitHub). The only outbound writes anywhere in the product are a Slack message and an alert email.",
-  },
-  {
-    question: "How fresh is the data?",
-    answer:
-      "Every 5 minutes for open cases, every 30 minutes for a full reconciliation sweep, and near-instantly for Zendesk and Jira when a webhook is configured.",
-  },
-  {
-    question: "How does Elapsed know which Jira issue belongs to a ticket?",
-    answer:
-      "By reading Jira's own remote-link data on the issue and matching a Zendesk URL against your exact connected subdomain. When there is no link, the case has no engineering leg and is never guessed at.",
-  },
-  {
-    question: "Does it handle business hours and holidays?",
-    answer:
-      "Yes. Calendars imported from Zendesk business-hours schedules, or a 24/7 always-open calendar, are used to compute working time. A date marked as a holiday contributes zero working minutes.",
-  },
-  {
-    question: "How far back does history go?",
-    answer:
-      "90 days from the date each integration was connected, so you see your baseline on day one.",
   },
 ];
 
@@ -678,9 +651,9 @@ export const HomeView = () => {
               )}
             >
               <div>
-                <h4 className="font-mono text-sm font-bold text-foreground">
+                <h3 className="font-mono text-sm font-bold text-foreground">
                   {capability.title}
-                </h4>
+                </h3>
 
                 <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
                   {capability.description}
@@ -794,9 +767,9 @@ export const HomeView = () => {
                 delay={0.08 + index * 0.07}
                 className="bg-card rounded p-5"
               >
-                <h4 className="font-mono text-sm font-bold text-foreground">
+                <h3 className="font-mono text-sm font-bold text-foreground">
                   {item.title}
-                </h4>
+                </h3>
 
                 <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
                   {item.description}
@@ -843,9 +816,9 @@ export const HomeView = () => {
                   {String(i + 1).padStart(2, "0")}
                 </span>
 
-                <h4 className="font-mono text-sm font-semibold text-foreground">
+                <h3 className="font-mono text-sm font-semibold text-foreground">
                   {item.title}
-                </h4>
+                </h3>
 
                 <p className="text-foreground-subtle mt-2 text-xs">
                   {item.description}
@@ -975,7 +948,7 @@ export const HomeView = () => {
         </Reveal>
 
         <Accordion type="multiple" className="gap-3">
-          {FAQS.map((faq, index) => (
+          {HOME_FAQS.map((faq, index) => (
             <Reveal key={faq.question} variant="up" delay={0.05 + index * 0.06}>
               <AccordionItem
                 value={faq.question}

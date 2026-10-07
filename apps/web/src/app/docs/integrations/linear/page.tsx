@@ -5,6 +5,7 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -22,6 +23,8 @@ const toc = [
   { id: "sync", title: "Sync behavior", level: 2 as const },
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/integrations/linear");
 
 export default function LinearIntegrationPage() {
   return (

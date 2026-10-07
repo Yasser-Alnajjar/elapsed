@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
+import { getPageMetadata } from "@/lib/seo/metadata";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -66,6 +67,8 @@ const situations = [
       'The last known state is kept; the next successful poll catches up. If the failure is due to an expired/revoked connection, the integration is marked "Needs reconnect."',
   },
 ];
+
+export const generateMetadata = () => getPageMetadata("/docs/integrations/jira");
 
 export default function JiraIntegrationPage() {
   return (

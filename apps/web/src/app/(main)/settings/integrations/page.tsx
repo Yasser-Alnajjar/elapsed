@@ -1,9 +1,12 @@
 import { Integrations } from "@modules/settings/integrations";
 import { EntitlementBlockedNotice } from "@/components/shared/entitlement-alerts";
+import { noIndexMetadata } from "@/lib/seo/metadata";
 
 interface IntegrationsPageProps {
   searchParams: Promise<{ entitlement?: string; action?: string; provider?: string }>;
 }
+
+export const metadata = noIndexMetadata("Integrations");
 
 export default async function IntegrationsPage({ searchParams }: IntegrationsPageProps) {
   const { entitlement, action, provider } = await searchParams;
