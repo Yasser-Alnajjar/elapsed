@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ArrowRightLeft,
   CheckCircle2,
@@ -5,6 +7,7 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { PermissionDeniedBanner } from "@/components/shared/permission-denied-banner";
 import { PollingPausedBanner } from "@/components/shared/polling-paused-banner";
 import { formatLongDateTime } from "@/lib/format";
@@ -27,6 +30,7 @@ export function SyncHealthSection({
   data: IntegrationDetailData;
   label: string;
 }) {
+  const timeZone = useOrgTimezone();
   const {
     provider,
     reauthRequired,
@@ -61,13 +65,14 @@ export function SyncHealthSection({
           <span className={labelClass}>Last ingress cycle</span>
           <span className="text-primary font-mono text-sm font-semibold">
             {lastSyncAt
-              ? formatLongDateTime(lastSyncAt)
+              ? formatLongDateTime(lastSyncAt, timeZone)
               : "No sync attempt yet"}
           </span>
           <p className={descriptionClass}>
             {backfillCompletedAt
               ? `90-day backfill complete as of ${formatLongDateTime(
                   backfillCompletedAt,
+                  timeZone,
                 )}.`
               : "No backfill run yet."}
           </p>

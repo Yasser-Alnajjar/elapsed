@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageSquare } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import type {
   IntegrationConfigStatus,
   SlackConnectionView,
@@ -11,7 +12,8 @@ import { DisconnectButton } from "./DisconnectButton";
 import { IntegrationCardShell } from "./IntegrationCardShell";
 import { IntegrationConfigGate } from "./IntegrationConfigGate";
 import { StatusIndicator } from "./IntegrationStatus";
-import { descriptionClass, formatDateTime } from "./card-format";
+import { formatDateTime } from "@/lib/format";
+import { descriptionClass } from "./card-format";
 import {
   SlackChannelChangeButton,
   SlackChannelPicker,
@@ -63,6 +65,7 @@ export function SlackIntegrationCard({
 }
 
 function SlackConnectedBody({ slack }: { slack: SlackConnectionView }) {
+  const timeZone = useOrgTimezone();
   return (
     <div className="flex flex-1 flex-col gap-4">
       <MetaLine>
@@ -71,7 +74,7 @@ function SlackConnectedBody({ slack }: { slack: SlackConnectionView }) {
           {slack.teamName}
         </span>
         <span className="text-outline font-mono text-xxs">
-          ({formatDateTime(slack.installedAt!)})
+          ({formatDateTime(slack.installedAt!, timeZone)})
         </span>
       </MetaLine>
 

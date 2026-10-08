@@ -7,7 +7,9 @@ import {
   PlanStatusBadge,
 } from "@/components/admin/tenant-badges";
 import { Button } from "@/components/ui/button";
-import { formatUtcClock, formatUtcTimestamp } from "@/lib/admin-format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
+import { formatUtcTimestamp } from "@/lib/admin-format";
+import { formatClockTime } from "@/lib/format";
 import type { AdminTenantRow } from "@/lib/types/admin";
 
 interface TenantHeaderProps {
@@ -24,6 +26,7 @@ export function TenantHeader({
   refreshing,
   onRefresh,
 }: TenantHeaderProps) {
+  const timeZone = useOrgTimezone();
   return (
     <AdminPanel className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
@@ -88,7 +91,7 @@ export function TenantHeader({
             Refresh snapshot
           </span>
           <span className="text-foreground-subtle tabular-nums">
-            {formatUtcClock(new Date(asOf))}
+            {formatClockTime(new Date(asOf), timeZone)}
           </span>
         </Button>
         <Button

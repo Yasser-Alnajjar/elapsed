@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -43,6 +46,7 @@ export function IntegrationDetailHeader({
   reauthRequired: boolean;
   permissionDenied: boolean;
 }) {
+  const timeZone = useOrgTimezone();
   return (
     <>
       <div className="w-full flex flex-wrap items-center justify-between gap-4 bg-surface-container-low px-6 py-2 rounded-xl">
@@ -72,7 +76,7 @@ export function IntegrationDetailHeader({
               </h1>
             </div>
             <p className={descriptionClass}>
-              Connected {formatLongDateTime(connectedAt)} via read-only
+              Connected {formatLongDateTime(connectedAt, timeZone)} via read-only
               access
             </p>
           </div>

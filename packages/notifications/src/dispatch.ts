@@ -105,6 +105,8 @@ interface ClaimedNotification {
     customerName: string | null;
     subject: string | null;
     caseUrl: string | null;
+    /** The organization's display timezone, for alert timestamps. */
+    timeZone: string;
   };
 }
 
@@ -176,7 +178,7 @@ export async function claimNotifications(
   const caseRows = await prisma.case.findMany({
     // A case whose source is disconnected is skipped without claiming, so it can still alert after a reconnect.
     where: { id: { in: [...new Set(toSend.map((c) => c.caseId))] }, deletedAt: null, ...CASE_SOURCE_CONNECTED },
-    select: { id: true, externalId: true, subject: true, customer: { select: { name: true } } },
+    select: { id: true, externalId: true, subject: true, customer: { select: { name: true } }, organization: { select: { timezone: true } } },
   });
   const caseById = new Map(caseRows.map((c) => [c.id, c]));
 
@@ -196,6 +198,7 @@ export async function claimNotifications(
           externalId: caseRow.externalId,
           customerName: caseRow.customer?.name ?? null,
           subject: caseRow.subject,
+          timeZone: caseRow.organization?.timezone ?? "UTC",
           // 3.9/E-19: shared by both channels — Slack alerts previously carried
           // no case link at all.
           // N5.7: `ref`/`n` let the case page record the alert's first open (click-through).

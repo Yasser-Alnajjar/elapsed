@@ -19,7 +19,7 @@ type DocsLayoutProps = {
 
 export function DocsLayout({ children, toc = [] }: DocsLayoutProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <DocsSidebar />
       <SidebarInset>
         <DocsHeader />

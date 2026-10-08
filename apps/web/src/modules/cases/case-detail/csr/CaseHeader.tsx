@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy, ExternalLink, Link2, RefreshCw } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { useRouter } from "next/navigation";
 
 import { PriorityTierChip } from "@/components/shared/priority-tier-chip";
@@ -57,6 +58,7 @@ function CopyKeysButton({ reference }: { reference: string }) {
 }
 
 export function CaseHeader({ data }: { data: CaseDetailData }) {
+  const timeZone = useOrgTimezone();
   const { case: c, currentLeg } = data;
   const router = useRouter();
 
@@ -188,7 +190,7 @@ export function CaseHeader({ data }: { data: CaseDetailData }) {
             <span>•</span>
             <span>
               {c.closedAt
-                ? `Resolved ${formatDateTime(c.closedAt)}`
+                ? `Resolved ${formatDateTime(c.closedAt, timeZone)}`
                 : `Currently in ${formatLeg(currentLeg)}`}
             </span>
           </div>

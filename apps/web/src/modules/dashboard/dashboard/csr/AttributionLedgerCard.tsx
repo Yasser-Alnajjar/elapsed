@@ -1,4 +1,7 @@
+"use client";
+
 import { formatExactTimestamp } from "@/lib/format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import type { AttributionLedger } from "@/lib/types/dashboard";
 import { LEG_STYLES } from "@/lib/status-styles";
 
@@ -11,6 +14,7 @@ export function AttributionLedgerCard({
   /** False without a tracker: engineering hours are "not measured", never a zero (N5.2). */
   engineeringMeasured?: boolean;
 }) {
+  const timeZone = useOrgTimezone();
   const rows = [
     {
       label: "Total support leg hours",
@@ -97,7 +101,7 @@ export function AttributionLedgerCard({
           <span className="text-tertiary">✓</span> Audit timestamped
         </span>
         <span className="text-on-surface-variant">
-          {formatExactTimestamp(ledger.auditTimestamp)}
+          {formatExactTimestamp(ledger.auditTimestamp, timeZone)}
         </span>
       </div>
     </div>

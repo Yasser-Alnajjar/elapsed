@@ -1,4 +1,7 @@
+"use client";
+
 import { CreditCard } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { RESOURCE_LABELS, type LimitedResource } from "@sla/db/plans";
 import { AlertDescription } from "@/components/ui/alert";
 import { DismissibleAlert } from "@/components/ui/dismissible-alert";
@@ -17,12 +20,13 @@ export interface PlanNotice {
  * affected, because it is not: only adding new configuration is.
  */
 export function PlanNoticeBanner({ notice }: { notice: PlanNotice }) {
+  const timeZone = useOrgTimezone();
   if (notice.trialExpiredAt) {
     return (
       <DismissibleAlert variant="warning" className="mb-4">
         <CreditCard />
         <AlertDescription>
-          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt)}. Cases, SLA monitoring, alerts and history keep working;{" "}
+          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt, timeZone)}. Cases, SLA monitoring, alerts and history keep working;{" "}
           {notice.trialRestricted === false
             ? "choose a plan to keep adding members, integrations and SLA policies."
             : "adding members, integrations or SLA policies is paused until you upgrade."}{" "}

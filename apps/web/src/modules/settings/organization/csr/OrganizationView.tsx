@@ -19,11 +19,12 @@ interface OrganizationViewProps {
 }
 
 /**
- * Organization settings (roadmap 5.8): name and a display timezone, used
- * only to group days on the dashboard (roadmap 6.5) — never read by SLA
- * calculations, which stay pinned to each calendar's own timezone. Editing
- * is owner-only (`data.canEdit`); every other signed-in member gets a
- * read-only view, matching Monitoring's convention.
+ * Organization settings (roadmap 5.8): name and the display timezone — how
+ * dates and times are shown across the app, the default in timezone pickers,
+ * the dashboard's day grouping (roadmap 6.5) and the monthly report's period.
+ * Never read by SLA calculations, which stay pinned to each business
+ * calendar's own timezone. Editing is owner-only (`data.canEdit`); every other
+ * signed-in member gets a read-only view, matching Monitoring's convention.
  */
 export function OrganizationView({ data }: OrganizationViewProps) {
   const router = useRouter();
@@ -60,7 +61,7 @@ export function OrganizationView({ data }: OrganizationViewProps) {
       <SettingsSectionHeader
         eyebrow="Workspace"
         title="Organization"
-        description="Manage this organization's name and display timezone."
+        description="Manage this organization's name and the display timezone used across Elapsed."
       />
 
       <Reveal delay={0}>
@@ -76,7 +77,7 @@ export function OrganizationView({ data }: OrganizationViewProps) {
                 </CardTitle>
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {data.canEdit
-                    ? "The timezone only groups days on the dashboard — it's never used in SLA calculations."
+                    ? "Dates and times are shown in this timezone, new timezone pickers start on it, and it sets the dashboard's day grouping and the monthly report's month. SLA calculations use each business calendar's own timezone instead."
                     : "View only — ask an organization owner to change these."}
                 </p>
               </div>

@@ -1,4 +1,7 @@
+"use client";
+
 import { formatDateTimeWithOffset, formatSeconds } from "@/lib/format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { cn } from "@/lib/utils";
 import type { CommitmentDetail } from "@/lib/types/cases";
 import type { LedgerFigures } from "./ledger-math";
@@ -73,6 +76,7 @@ export function LedgerTable({
   commitment: CommitmentDetail;
   figures: LedgerFigures;
 }) {
+  const timeZone = useOrgTimezone();
   const {
     isClosed,
     grossSeconds,
@@ -93,8 +97,8 @@ export function LedgerTable({
 
       <LedgerRow
         label="1. Gross Wall-Clock Time"
-        sublabel={`From ${formatDateTimeWithOffset(commitment.startedAt)} to ${
-          isClosed ? formatDateTimeWithOffset(commitment.closedAt!) : "now"
+        sublabel={`From ${formatDateTimeWithOffset(commitment.startedAt, timeZone)} to ${
+          isClosed ? formatDateTimeWithOffset(commitment.closedAt!, timeZone) : "now"
         }`}
         value={formatSeconds(grossSeconds)}
       />
@@ -129,7 +133,7 @@ export function LedgerTable({
         label={runwayLabel}
         sublabel={
           commitment.effectiveDueAt
-            ? `Expected breach at ${formatDateTimeWithOffset(commitment.effectiveDueAt)}`
+            ? `Expected breach at ${formatDateTimeWithOffset(commitment.effectiveDueAt, timeZone)}`
             : undefined
         }
         value={runwayValue}

@@ -4,9 +4,17 @@ import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { AuditNotice, CountBadge, MonoLabel, PageHeader, SectionTitle, ZeroState } from "@/components/admin/admin-ui";
+import {
+  AuditNotice,
+  CountBadge,
+  MonoLabel,
+  PageHeader,
+  SectionTitle,
+  ZeroState,
+} from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
-import { formatUtcTimestamp } from "@/lib/admin-format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
+import { formatTimestampWithZone } from "@/lib/format";
 import type { AdminUsageData } from "@/lib/types/admin";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
@@ -31,15 +39,19 @@ interface OverviewViewProps {
  * organization it belongs to. Only reachable by `PLATFORM_ADMIN_EMAILS`.
  */
 export function OverviewView({ data, worker, usage }: OverviewViewProps) {
+  const timeZone = useOrgTimezone();
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
 
-  const failingAlertCount = data.failedAlerts.length + data.failedAlertsOverflowCount;
+  const failingAlertCount =
+    data.failedAlerts.length + data.failedAlertsOverflowCount;
   const organizationsWithIssues = new Set([
     ...data.unhealthyIntegrations.map((row) => row.organizationId),
     ...data.failedAlerts.map((row) => row.organizationId),
   ]).size;
-  const pausedCount = data.unhealthyIntegrations.filter((row) => row.pollingPausedAt).length;
+  const pausedCount = data.unhealthyIntegrations.filter(
+    (row) => row.pollingPausedAt,
+  ).length;
   const actionableCount = data.unhealthyIntegrations.length - pausedCount;
 
   return (
@@ -52,9 +64,18 @@ export function OverviewView({ data, worker, usage }: OverviewViewProps) {
           <div className="bg-card border-border flex items-center justify-between gap-4 rounded-lg border px-4 py-2.5">
             <div className="flex flex-col gap-0.5">
               <MonoLabel>Snapshot</MonoLabel>
-              <span className="text-foreground font-mono text-xs tabular-nums">{formatUtcTimestamp(data.asOf)}</span>
+              <span className="text-foreground font-mono text-xs tabular-nums">
+                {formatTimestampWithZone(data.asOf, timeZone)}
+              </span>
             </div>
-            <Button type="button" variant="surface" size="sm" onClick={() => startRefresh(() => router.refresh())} disabled={refreshing} className="font-mono text-xs">
+            <Button
+              type="button"
+              variant="surface"
+              size="sm"
+              onClick={() => startRefresh(() => router.refresh())}
+              disabled={refreshing}
+              className="font-mono text-xs"
+            >
               <RefreshCw className={refreshing ? "animate-spin" : undefined} />
               Refresh
             </Button>
@@ -69,14 +90,23 @@ export function OverviewView({ data, worker, usage }: OverviewViewProps) {
         failingAlertCount={failingAlertCount}
       />
 
-      <section aria-labelledby="integration-issues" className="flex flex-col gap-3">
+      <section
+        aria-labelledby="integration-issues"
+        className="flex flex-col gap-3"
+      >
         <SectionTitle
           tone={actionableCount > 0 ? "danger" : "success"}
-          title={<span id="integration-issues">Integrations requiring attention</span>}
+          title={
+            <span id="integration-issues">
+              Integrations requiring attention
+            </span>
+          }
           description="Re-auth needed, provider access lost, a failing streak, or data gone stale, on any organization."
           badges={
             <>
-              {actionableCount > 0 && <CountBadge count={actionableCount}>actionable</CountBadge>}
+              {actionableCount > 0 && (
+                <CountBadge count={actionableCount}>actionable</CountBadge>
+              )}
               {pausedCount > 0 && (
                 <CountBadge count={pausedCount} tone="warning">
                   paused
@@ -87,7 +117,8 @@ export function OverviewView({ data, worker, usage }: OverviewViewProps) {
         />
         {data.unhealthyIntegrations.length === 0 ? (
           <ZeroState title="Zero ingress deficits">
-            Every integration on all {data.organizationCount} organization{data.organizationCount === 1 ? "" : "s"} is syncing cleanly.
+            Every integration on all {data.organizationCount} organization
+            {data.organizationCount === 1 ? "" : "s"} is syncing cleanly.
           </ZeroState>
         ) : (
           <IntegrationIssues rows={data.unhealthyIntegrations} />
@@ -99,22 +130,37 @@ export function OverviewView({ data, worker, usage }: OverviewViewProps) {
           tone={failingAlertCount > 0 ? "danger" : "success"}
           title={<span id="failed-alerts">Failed alert deliveries</span>}
           description="Every configured channel failed at least once for these alerts."
-          badges={failingAlertCount > 0 && <CountBadge count={failingAlertCount}>failing</CountBadge>}
+          badges={
+            failingAlertCount > 0 && (
+              <CountBadge count={failingAlertCount}>failing</CountBadge>
+            )
+          }
         />
         {data.failedAlerts.length === 0 ? (
-          <ZeroState title="No failed deliveries">No alert deliveries are currently failing.</ZeroState>
+          <ZeroState title="No failed deliveries">
+            No alert deliveries are currently failing.
+          </ZeroState>
         ) : (
-          <FailedAlerts rows={data.failedAlerts} overflowCount={data.failedAlertsOverflowCount} />
+          <FailedAlerts
+            rows={data.failedAlerts}
+            overflowCount={data.failedAlertsOverflowCount}
+          />
         )}
       </section>
 
-      <HealthyIntegrations rows={data.healthyIntegrations} total={data.healthyIntegrationCount} />
+      <HealthyIntegrations
+        rows={data.healthyIntegrations}
+        total={data.healthyIntegrationCount}
+      />
 
       <UsageSection usage={usage} />
 
       <AuditNotice label="Audit rule" tone="primary">
         Every operator inspection and change is recorded in the platform{" "}
-        <Link href="/admin/audit" className="text-primary underline underline-offset-2">
+        <Link
+          href="/admin/audit"
+          className="text-primary underline underline-offset-2"
+        >
           audit log
         </Link>
         .

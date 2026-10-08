@@ -50,12 +50,19 @@ function initialDays(weekly: WeeklyWindow[]): DayState[] {
   );
 }
 
+/**
+ * `defaultTimezone` (the organization's display timezone) only seeds a *new*
+ * calendar. An existing calendar always keeps its own saved timezone — that
+ * one drives the SLA arithmetic and is deliberately independent of the
+ * display timezone.
+ */
 export function initialCalendarFormState(
   calendar: BusinessCalendarOption | undefined,
+  defaultTimezone: string,
 ) {
   return {
     name: calendar?.name ?? "",
-    timezone: calendar?.timezone ?? "UTC",
+    timezone: calendar?.timezone ?? defaultTimezone,
     days: initialDays(calendar?.weekly ?? []),
     holidays: calendar?.holidays ?? [],
   };

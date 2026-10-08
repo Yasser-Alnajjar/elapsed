@@ -345,7 +345,7 @@ A warning banner listing customer/commitment-type combinations whose recent reso
 
 Three charts, all computed from the same 30-day period as the tiles above:
 
-- **Breaches Over Time** — a daily line chart of breach counts across the period, by the UTC day each commitment actually ran out of time (business hours and customer pauses included), not the day it was first synced or evaluated. Imported history lands on its original dates.
+- **Breaches Over Time** — a daily line chart of breach counts across the period, by the day (in your organization's display timezone) each commitment actually ran out of time (business hours and customer pauses included), not the day it was first synced or evaluated. Imported history lands on its original dates.
 - **SLA Compliance** — a donut chart of all cases in the period by their worst commitment status: **Met**, **At Risk**, **Breached**.
 - **Breaches by Stage** — a horizontal bar chart of breached time attributed to each leg (support, engineering, waiting on customer, unknown) — this is the "where did the time go" view, not a ranking of teams.
 
@@ -406,6 +406,15 @@ The engine's one governing rule: **elapsed time is always computed from the reco
 Each SLA policy is bound to a business calendar — either a set of weekly working windows with a timezone and holiday list (imported from Zendesk's own business-hours schedules), or an always-open calendar for 24/7 targets. An 8-hour resolution target under a business-hours calendar does not mean 8 calendar hours — only time inside the calendar's open windows counts, so an 8-hour target opened at 4pm on a Friday, under a 9-to-5 weekday calendar, doesn't come due until well into the following week.
 
 Working windows follow the calendar's local wall clock through daylight-saving changes: a 9-to-5 window is 9-to-5 local time on both sides of a clock change. On the change day itself, a window that spans the skipped hour counts one hour less and a window that spans the repeated hour counts one hour more, because that is how much real time passed.
+
+### Display timezone vs. calendar timezone
+
+Elapsed has two different kinds of timezone, and they do different jobs:
+
+- **Organization display timezone** (Settings → Organization). Every date and time you see in Elapsed is shown in this timezone: case timelines, commitments, members, integration status, banners and alert messages. It is also the timezone that new timezone pickers start on (for example, a new business calendar), the one that groups the dashboard's charts into days, and the one the monthly report uses to decide where a month starts and ends. Changing it changes only how times are *shown*: stored timestamps and SLA results do not change.
+- **Business calendar timezone**. Each business calendar has its own timezone. Its working windows and holidays are read in that timezone, and it alone decides how SLA deadlines are calculated. A new calendar starts with your display timezone pre-selected, but you can pick another, and an existing calendar never changes when you change the display timezone.
+
+Billing dates and the "Breached at (UTC)" column in the monthly report CSV stay in UTC on purpose.
 
 ### Holidays
 

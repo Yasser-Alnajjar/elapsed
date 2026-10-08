@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageSquare, UserRound } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { Reveal } from "@/components/shared/reveal";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import { formatActor, formatDateTime } from "@/lib/format";
@@ -14,6 +15,7 @@ function SystemMessageNote({
 }: {
   message: ConversationMessageDetail;
 }) {
+  const timeZone = useOrgTimezone();
   return (
     <li className="flex justify-center py-1">
       <div className="max-w-[85%] rounded-lg border border-dashed border-outline-variant bg-surface-container px-4 py-3">
@@ -23,7 +25,7 @@ function SystemMessageNote({
           </span>
           <span aria-hidden>·</span>
           <time className="tabular-nums">
-            {formatDateTime(message.occurredAt)}
+            {formatDateTime(message.occurredAt, timeZone)}
           </time>
         </div>
         <p className="mt-2 whitespace-pre-wrap wrap-break-word text-center text-sm leading-5 text-on-surface">
@@ -39,6 +41,7 @@ function ConversationMessageBubble({
 }: {
   message: ConversationMessageDetail;
 }) {
+  const timeZone = useOrgTimezone();
   if (message.actor === "system")
     return <SystemMessageNote message={message} />;
   const isAgent = message.actor === "agent";
@@ -66,7 +69,7 @@ function ConversationMessageBubble({
           </span>
           <span className="text-muted-foreground">·</span>
           <time className="font-mono text-xxs text-outline tabular-nums">
-            {formatDateTime(message.occurredAt)}
+            {formatDateTime(message.occurredAt, timeZone)}
           </time>
         </div>
         <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-on-surface-variant">

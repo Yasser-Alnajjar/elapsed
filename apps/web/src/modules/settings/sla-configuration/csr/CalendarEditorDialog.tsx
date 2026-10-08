@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TimezoneCombobox } from "@/components/shared/timezone-combobox";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import type { BusinessCalendarOption } from "@/lib/types/sla-configuration";
 import {
   buildWeeklyWindows,
@@ -41,7 +42,8 @@ export function CalendarEditorDialog({
   onOpenChange,
   onSaved,
 }: CalendarEditorDialogProps) {
-  const [state, setState] = useState(() => initialCalendarFormState(calendar));
+  const orgTimezone = useOrgTimezone();
+  const [state, setState] = useState(() => initialCalendarFormState(calendar, orgTimezone));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +57,7 @@ export function CalendarEditorDialog({
 
   useEffect(() => {
     if (!open) return;
-    setState(initialCalendarFormState(calendar));
+    setState(initialCalendarFormState(calendar, orgTimezone));
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

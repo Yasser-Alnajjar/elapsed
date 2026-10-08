@@ -13,6 +13,12 @@ export interface NotificationContext {
    * Null/undefined omits the link entirely (e.g. no `appUrl` configured).
    */
   caseUrl?: string | null;
+  /**
+   * IANA zone alert times are shown in — the organization's display timezone
+   * (`Organization.timezone`). Omitted means UTC. Display only: it never
+   * affects which alerts fire or when, which follow the commitment's calendar.
+   */
+  timeZone?: string;
 }
 
 /** Cosmetic-only inputs the builder needs beyond `NotificationContext`: nothing here affects dedup or delivery, so callers can omit it entirely. */
@@ -37,18 +43,18 @@ function formatMinutes(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-/** e.g. "Sep 17, 2026, 09:00 UTC" — fixed UTC so the instant reads the same regardless of the server's or reader's own timezone. */
-function formatInstant(iso: string): string {
-  const formatted = new Date(iso).toLocaleString("en-US", {
+/** e.g. "Sep 17, 2026, 09:00 UTC" — the instant in `timeZone` (the organization's display timezone, UTC by default) with its zone label, so it reads unambiguously wherever it is opened. */
+function formatInstant(iso: string, timeZone = "UTC"): string {
+  return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "UTC",
+    timeZone,
+    timeZoneName: "short",
   });
-  return `${formatted} UTC`;
 }
 
 /**
@@ -58,17 +64,18 @@ function formatInstant(iso: string): string {
 function contextParts(
   candidate: NotificationCandidate,
   isBreach: boolean,
+  timeZone?: string,
 ): string[] {
   const parts = [
     `Policy: ${candidate.policyName}`,
     `Target: ${formatMinutes(candidate.targetMinutes)}`,
-    `Started: ${formatInstant(candidate.startedAt)}`,
+    `Started: ${formatInstant(candidate.startedAt, timeZone)}`,
   ];
   if (isBreach && candidate.breachedAt)
-    parts.push(`Breached: ${formatInstant(candidate.breachedAt)}`);
+    parts.push(`Breached: ${formatInstant(candidate.breachedAt, timeZone)}`);
   if (candidate.sourceStaleSince)
     parts.push(
-      `Source data stale since: ${formatInstant(candidate.sourceStaleSince)}`,
+      `Source data stale since: ${formatInstant(candidate.sourceStaleSince, timeZone)}`,
     );
   return parts;
 }
@@ -91,7 +98,7 @@ export function formatSlackMessage(
     ? `:rotating_light: *${kindLabel} SLA breached* — ${ticket}${who}, over target by ${formatMinutes(candidate.breachedByMinutes ?? 0)}.`
     : `:warning: *${kindLabel} SLA at risk* — ${ticket}${who}, ${candidate.threshold}% of target used, ${formatMinutes(candidate.remainingMinutes)} remaining.`;
 
-  const metaLine = contextParts(candidate, isBreach).join(" · ");
+  const metaLine = contextParts(candidate, isBreach, context.timeZone).join(" · ");
   // Slack mrkdwn link syntax — E-19: Slack alerts previously carried no case
   // link at all, unlike email's "View ticket" button.
   const link = context.caseUrl ? `\n<${context.caseUrl}|View ticket>` : "";
@@ -126,9 +133,9 @@ export function buildSlaAlertEmail(
       ...(isBreach ? {} : { thresholdPercent: candidate.threshold }),
       targetText: formatMinutes(candidate.targetMinutes),
       policyName: candidate.policyName,
-      startedText: formatInstant(candidate.startedAt),
-      ...(isBreach && candidate.breachedAt ? { breachedText: formatInstant(candidate.breachedAt) } : {}),
-      ...(candidate.sourceStaleSince ? { sourceStaleSinceText: formatInstant(candidate.sourceStaleSince) } : {}),
+      startedText: formatInstant(candidate.startedAt, context.timeZone),
+      ...(isBreach && candidate.breachedAt ? { breachedText: formatInstant(candidate.breachedAt, context.timeZone) } : {}),
+      ...(candidate.sourceStaleSince ? { sourceStaleSinceText: formatInstant(candidate.sourceStaleSince, context.timeZone) } : {}),
       caseUrl: context.caseUrl,
       senderName: brand.name?.trim() || null,
     },

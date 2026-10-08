@@ -74,7 +74,7 @@
 - **Scheduling:**
   - The worker's reconciliation tick checks, per org, whether the previous month's report has been delivered.
   - The idempotency key is `(organizationId, month)` in a new `ReportDelivery { id, organizationId, period, channel, status, deliveredAt, error }` table with a unique key.
-  - The month boundary uses the org's display timezone (`Organization.timezone`). SLA math is unaffected.
+  - The month boundary uses the org's display timezone (`Organization.timezone`), the same timezone the app displays dates in. SLA math is unaffected (it uses each business calendar's own timezone).
 - **Content:**
   - compliance by commitment kind
   - breaches by stage ("time by stage", neutral language)
