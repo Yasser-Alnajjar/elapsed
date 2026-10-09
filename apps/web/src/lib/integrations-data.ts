@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { PrismaClient } from "@sla/db";
-import { getIntegrationConfigStatus } from "@sla/db";
+import { getIntegrationConfigStatus, resolveOrganizationAvailability, type IntegrationAvailabilityDecision } from "@sla/db";
 import type { ZendeskCredentials } from "@sla/zendesk";
 import { getCustomStatus } from "./custom-provider/status";
 import { providerRole } from "./providers";
@@ -8,6 +8,7 @@ import type {
   IntegrationConnectionView,
   IntegrationProvider,
   IntegrationsPageData,
+  ProviderAvailabilityView,
 } from "./types/integrations";
 
 type IntegrationRow = {
@@ -27,6 +28,18 @@ const ROW_SELECT = {
 } as const;
 
 /** Never return `credentials`/the row itself — only these display-only scalars. */
+export function toAvailabilityView(decision: IntegrationAvailabilityDecision): ProviderAvailabilityView {
+  return decision.available
+    ? { available: true, releaseStage: decision.releaseStage, code: null, message: null, statusMessage: null }
+    : {
+        available: false,
+        releaseStage: decision.releaseStage,
+        code: decision.code,
+        message: decision.message,
+        statusMessage: decision.statusMessage,
+      };
+}
+
 function toConnectionView(
   provider: IntegrationProvider,
   integration: IntegrationRow,
@@ -80,7 +93,7 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     intercomIntegration,
     githubIntegration,
     customIntegration,
-    customFlag,
+    availability,
     slackIntegration,
     zendeskConfig,
     linearConfig,
@@ -121,7 +134,7 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
       where: { organizationId_provider: { organizationId, provider: "custom" } },
       select: ROW_SELECT,
     }),
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } }),
+    resolveOrganizationAvailability(prisma, organizationId),
     prisma.slackIntegration.findUnique({
       where: { organizationId },
       select: {
@@ -175,7 +188,10 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     intercom: toConnectionView("intercom", intercomIntegration, intercomWorkspaceId),
     github: toConnectionView("github", githubIntegration, githubRepo),
     custom: toConnectionView("custom", customIntegration),
-    customEnabled: customFlag?.customProviderEnabled === true,
+    customEnabled: availability.custom.available,
+    availability: Object.fromEntries(
+      Object.entries(availability).map(([provider, decision]) => [provider, toAvailabilityView(decision)]),
+    ) as IntegrationsPageData["availability"],
     customState: customIntegration && customIntegration.credentials !== null ? (await getCustomStatus(prisma, organizationId)).state : null,
     slack: {
       connected: slackIntegration !== null,

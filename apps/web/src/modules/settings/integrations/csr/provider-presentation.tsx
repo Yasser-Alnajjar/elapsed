@@ -19,7 +19,8 @@ import { ZendeskConnectForm } from "./ZendeskCard";
  * to `IntegrationProvider` is a compile error until it has an entry.
  *
  * Whatever the registry already knows (role, capabilities, read-only scopes)
- * arrives in `OnboardingStatus` instead and is never repeated here.
+ * arrives in `OnboardingStatus` instead and is never repeated here, and so does
+ * the release stage (D33: persisted, set in `/admin/integrations`).
  */
 export interface ProviderPresentation {
   icon: LucideIcon;
@@ -27,8 +28,6 @@ export interface ProviderPresentation {
   tagline: string;
   /** What this provider's cases are called to a customer: "tickets", "conversations". */
   caseNoun: string;
-  /** Not promoted out of Beta yet (D17). */
-  beta: boolean;
   /** Where an admin registers the OAuth app the connect button needs. */
   help?: { url: string; label: string };
   /** The read-only promise printed on the connect card. */
@@ -44,7 +43,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: Ticket,
     tagline: "Ticket timestamps, SLA policies, and organizations",
     caseNoun: "tickets",
-    beta: false,
     readOnlyNote: "Read-only access: nothing is ever written back to Zendesk.",
     Connect: ZendeskConnectForm,
     reconnectHref: ({ subdomain }) => `/api/integrations/zendesk/connect?subdomain=${encodeURIComponent(subdomain ?? "")}`,
@@ -53,7 +51,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: MessageCircle,
     tagline: "Conversation timelines and reply deltas",
     caseNoun: "conversations",
-    beta: true,
     help: {
       url: "https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth",
       label: "Get your Intercom OAuth app credentials",
@@ -66,7 +63,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: Database,
     tagline: "Engineering-leg timing for escalated cases",
     caseNoun: "issues",
-    beta: false,
     readOnlyNote: "Read-only access: no issues, comments, or workflows are ever written back to Jira.",
     Connect: JiraConnectButton,
     reconnectHref: () => "/api/integrations/jira/connect",
@@ -75,7 +71,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: Layers,
     tagline: "Engineering-leg timing for escalated cases",
     caseNoun: "issues",
-    beta: false,
     help: { url: "https://linear.app/settings/api", label: "Get your Linear OAuth app credentials" },
     readOnlyNote: "Read-only access: no issues, comments, or fields are ever written back to Linear.",
     Connect: LinearConnectButton,
@@ -85,7 +80,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: Code,
     tagline: "Pull request lifecycle",
     caseNoun: "pull requests",
-    beta: true,
     help: { url: "/docs/integrations/github#create-github-app", label: "Create your read-only GitHub App" },
     readOnlyNote: "Read-only access: correlated through whichever issue a pull request already references.",
     Connect: GithubConnectForm,
@@ -96,7 +90,6 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     icon: Plug,
     tagline: "Any helpdesk with a read-only JSON API",
     caseNoun: "tickets",
-    beta: true,
     readOnlyNote: "Read-only access: Elapsed only reads from your API, over HTTPS, and never creates, edits or deletes anything.",
     Connect: CustomConnectLink,
     reconnectHref: () => "/settings/integrations/custom",

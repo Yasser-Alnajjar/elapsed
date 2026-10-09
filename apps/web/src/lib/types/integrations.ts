@@ -33,6 +33,21 @@ export interface IntegrationConnectionView {
   subdomain: string | null;
 }
 
+/**
+ * Platform availability of one provider for this organization (D33, N10), as
+ * the integrations page and onboarding show it. `available: false` with a
+ * connection is "Paused by Elapsed", never "Disconnected".
+ */
+export interface ProviderAvailabilityView {
+  available: boolean;
+  releaseStage: "stable" | "beta" | "coming_soon";
+  code: "integration_disabled" | "integration_coming_soon" | "integration_beta_restricted" | null;
+  /** Fixed customer-facing sentence; null when available. */
+  message: string | null;
+  /** The operator's note, when set. */
+  statusMessage: string | null;
+}
+
 /** Narrow, display-only view of `SlackIntegration` — never the row itself (it carries a bot access token). */
 export interface SlackConnectionView {
   connected: boolean;
@@ -53,8 +68,10 @@ export interface IntegrationsPageData {
   githubConfig: IntegrationConfigStatus;
   /** The `custom` REST source (N9): no OAuth app, so no config status. */
   custom: IntegrationConnectionView;
-  /** The operator's Beta flag for this organization (`Organization.customProviderEnabled`). */
+  /** Custom REST is available to this organization (D33: enabled and on its Beta allowlist). */
   customEnabled: boolean;
+  /** Every provider's platform availability for this organization (D33). Slack is not covered (N10 ruling 7). */
+  availability: Record<IntegrationProvider, ProviderAvailabilityView>;
   /** The one customer-facing sync state of the Custom REST source (plan 09, 6.13), or null when it is not connected. */
   customState: import("@/lib/custom-provider/status").CustomSyncState | null;
   slack: SlackConnectionView;

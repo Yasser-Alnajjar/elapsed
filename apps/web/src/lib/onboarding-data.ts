@@ -4,7 +4,9 @@ import {
   RAW_EVENT_SOURCE_CONNECTED,
   SYSTEM_SOURCE_CONNECTED,
   getIntegrationConfigStatus,
+  resolveOrganizationAvailability,
 } from "@sla/db";
+import { toAvailabilityView } from "./integrations-data";
 import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider, type OAuthIntegrationProvider } from "./types/integrations";
 import type { OnboardingStatus, ProviderOnboardingStatus } from "./types/onboarding";
 import { PROVIDERS, WEB_PROVIDERS, WORK_TRACKER_PROVIDERS, TICKET_SOURCE_PROVIDERS } from "./providers";
@@ -23,7 +25,7 @@ const REGISTRY_ORDER = (Object.keys(PROVIDERS) as IntegrationProvider[]).filter(
  * appears here with no change.
  */
 export async function getOnboardingStatus(prisma: PrismaClient, organizationId: string): Promise<OnboardingStatus> {
-  const [rows, configs, ticketsFetched, escalatedCases, linkedIssues] = await Promise.all([
+  const [rows, configs, ticketsFetched, escalatedCases, linkedIssues, availability] = await Promise.all([
     prisma.integration.findMany({ where: { organizationId } }),
     Promise.all(REGISTRY_ORDER.map((provider) => getIntegrationConfigStatus(prisma, organizationId, provider))),
     countSnapshots(prisma, organizationId),
@@ -38,6 +40,7 @@ export async function getOnboardingStatus(prisma: PrismaClient, organizationId: 
     prisma.caseLink.count({
       where: { case: { organizationId, ...CASE_SOURCE_CONNECTED }, system: { in: WORK_TRACKER_PROVIDERS }, ...SYSTEM_SOURCE_CONNECTED },
     }),
+    resolveOrganizationAvailability(prisma, organizationId),
   ]);
 
   const providers = REGISTRY_ORDER.map((provider, index): ProviderOnboardingStatus => {
@@ -58,8 +61,11 @@ export async function getOnboardingStatus(prisma: PrismaClient, organizationId: 
       reauthRequired: row?.status === "reauth_required" || credentials?.reauthRequired === true,
       subdomain: typeof credentials?.subdomain === "string" ? credentials.subdomain : null,
       config: configs[index]!,
+      availability: toAvailabilityView(availability[provider]),
     };
-  });
+  })
+    // A Beta restricted to other organizations is not offered unless this organization is already connected (D33).
+    .filter((status) => status.availability.code !== "integration_beta_restricted" || status.connected);
 
   return { providers, ticketsFetched, escalatedCases, linkedIssues };
 }

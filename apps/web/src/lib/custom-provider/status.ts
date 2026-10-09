@@ -1,4 +1,4 @@
-import { getWorkerSettingsForRead, type PrismaClient } from "@sla/db";
+import { getWorkerSettingsForRead, resolveIntegrationAvailability, type PrismaClient } from "@sla/db";
 import type { RecordFailureDetail } from "@sla/ingestion";
 import { isRunSuperseded, latestLifecycleAbort, type AbortedPassPreview } from "@sla/custom-ticket";
 import { staleFields } from "@/lib/freshness-data";
@@ -101,8 +101,8 @@ export interface CustomStatus {
 const RUNS_SHOWN = 10;
 
 export async function getCustomStatus(prisma: PrismaClient, organizationId: string, now = new Date()): Promise<CustomStatus> {
-  const [org, integration] = await Promise.all([
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } }),
+  const [availability, integration] = await Promise.all([
+    resolveIntegrationAvailability(prisma, organizationId, "custom"),
     prisma.integration.findUnique({
       where: { organizationId_provider: { organizationId, provider: "custom" } },
       select: {
@@ -143,7 +143,8 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
   }));
   const backfillCompleted = (integration.cursor as { backfillCompletedAt?: string } | null)?.backfillCompletedAt != null;
   const input: StateInput = {
-    flagEnabled: org?.customProviderEnabled === true,
+    // D33: the provider enabled and this organization on its Beta allowlist (was the per-organization flag).
+    flagEnabled: availability.available,
     pollingPaused: integration.pollingPausedAt !== null,
     integrationStatus: integration.status,
     backfillCompleted,

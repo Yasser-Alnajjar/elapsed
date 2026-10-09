@@ -27,6 +27,8 @@ const status = (phases: Partial<Record<IntegrationProvider, Phase>>): Onboarding
       reauthRequired: false,
       subdomain: null,
       config: { configured: true, clientId: "id" },
+      // D33: every provider available, as before platform availability existed.
+      availability: { available: true, releaseStage: "stable", code: null, message: null, statusMessage: null },
     };
   }),
   ticketsFetched: 0,
