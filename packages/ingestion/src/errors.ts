@@ -68,3 +68,18 @@ export class IntegrationNotConfiguredError extends Error {
     this.name = "IntegrationNotConfiguredError";
   }
 }
+
+/**
+ * An ingest run stopped on purpose before finishing and wrote nothing from the
+ * unfinished page (the operator's Beta flag turned off mid-run, N9 Q5). Not a
+ * provider failure: the worker records it as an `aborted` sync run and leaves
+ * the failure counters alone. `reason` is a short fixed code.
+ */
+export class IngestAbortedError extends Error {
+  readonly reason: string;
+  constructor(reason: string) {
+    super(`Ingest stopped: ${reason}`);
+    this.name = "IngestAbortedError";
+    this.reason = reason;
+  }
+}

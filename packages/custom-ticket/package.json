@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@sla/core": "workspace:*",
+    "@sla/db": "workspace:*",
+    "@sla/ingestion": "workspace:*",
+    "@sla/logger": "workspace:*",
     "@sla/safe-http": "workspace:*",
     "zod": "^4.5.4"
   },

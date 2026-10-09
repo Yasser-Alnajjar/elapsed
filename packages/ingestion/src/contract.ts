@@ -65,6 +65,29 @@ export interface IngestResult {
   /** Records the pass fetched from the provider (tickets, issues, ...); `counts` breaks that down in the provider's own terms. */
   recordsFetched: number;
   counts: Record<string, number>;
+  /**
+   * Optional (N9, Q12 and R3); no existing adapter sets it. Present only when
+   * the run ended early *solely because* its time or record budget ran out:
+   * not a success and not a failure. A run that sets it never advances
+   * `lastSuccessfulSyncAt` and never touches the failure counters.
+   */
+  partial?: {
+    reason: "budget_exhausted" | "run_cap_reached";
+    /** How far the run got (pages completed, whether the initial import is still running); counts and flags only. */
+    progress?: Record<string, number | boolean | string | null>;
+  };
+  /**
+   * Optional: facts for the sync-run record. Counts and fixed codes only,
+   * never a payload, URL or credential.
+   */
+  syncRun?: {
+    requests?: number;
+    bytes?: number;
+    /** Tickets that could not be stored (`payload_too_large`, `missing_required`, ...), up to 50. */
+    recordFailures?: { recordId: string; code: string }[];
+    /** Total record failures, which may exceed `recordFailures.length`. */
+    recordFailureCount?: number;
+  };
 }
 
 export interface NormalizeContext extends AdapterContext {

@@ -1,4 +1,5 @@
 export {
+  IngestAbortedError,
   IntegrationNotConfiguredError,
   PERMISSION_DENIED_BRAND,
   PermissionDeniedError,

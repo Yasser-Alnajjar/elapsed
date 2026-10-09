@@ -285,6 +285,15 @@ importers:
       '@sla/core':
         specifier: workspace:*
         version: link:../core
+      '@sla/db':
+        specifier: workspace:*
+        version: link:../db
+      '@sla/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
+      '@sla/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@sla/safe-http':
         specifier: workspace:*
         version: link:../safe-http
