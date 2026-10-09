@@ -76,14 +76,16 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
                 delay={SOURCE_INTEGRATION_SPECS.indexOf(spec) * CARD_STAGGER}
               />
             ))}
+            {role === "ticket_source" &&
+              (data.customEnabled || data.custom.connected) && (
+                <CustomIntegrationCard
+                  view={data.custom}
+                  state={data.customState}
+                  delay={SOURCE_INTEGRATION_SPECS.length * CARD_STAGGER}
+                />
+              )}
           </IntegrationGroup>
         ),
-      )}
-
-      {(data.customEnabled || data.custom.connected) && (
-        <IntegrationGroup title="Custom sources (Beta)" description="Connect a helpdesk Elapsed has no adapter for">
-          <CustomIntegrationCard view={data.custom} state={data.customState} delay={SOURCE_INTEGRATION_SPECS.length * CARD_STAGGER} />
-        </IntegrationGroup>
       )}
 
       {/* Slack, the only notification channel. */}

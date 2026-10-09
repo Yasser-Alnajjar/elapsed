@@ -1,5 +1,6 @@
 import { getWorkerSettingsForRead, type PrismaClient } from "@sla/db";
-import { latestLifecycleAbort, type AbortedPassPreview } from "@sla/custom-ticket";
+import type { RecordFailureDetail } from "@sla/ingestion";
+import { isRunSuperseded, latestLifecycleAbort, type AbortedPassPreview } from "@sla/custom-ticket";
 import { staleFields } from "@/lib/freshness-data";
 
 /**
@@ -23,6 +24,7 @@ export type AttentionCause =
 export interface RunSummary {
   id: string;
   startedAt: string;
+  finishedAt: string | null;
   outcome: "ok" | "partial" | "failed" | "aborted";
   reasonCode: string | null;
   secondaryReason: string | null;
@@ -81,13 +83,16 @@ export interface CustomStatus {
   attention: AttentionCause | null;
   stale: boolean;
   staleSince: string | null;
+  /** The last successful check (D32: kept apart from the last data change, and not read from the stored runs). */
   lastSuccessfulSyncAt: string | null;
+  /** The last run that actually changed data (D32); null until one is recorded. Never advanced by a no-change sync. */
+  lastDataChangedAt: string | null;
   activeVersion: number | null;
   slaSupport: unknown;
   versions: { version: number; createdAt: string; note: string | null; active: boolean }[];
   runs: RunSummary[];
   /** Tickets that could not be processed in the latest completed run, with their codes. */
-  failedTickets: { recordId: string; code: string }[];
+  failedTickets: { recordId: string; code: string; details?: RecordFailureDetail[] }[];
   failedTicketCount: number;
   /** The aborted pass the owner may review, when the latest run is a lifecycle-guard abort. */
   override: AbortedPassPreview | null;
@@ -106,13 +111,14 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
         cursor: true,
         pollingPausedAt: true,
         lastSuccessfulSyncAt: true,
+        lastDataChangedAt: true,
         activeConfigVersion: true,
         slaSupport: true,
       },
     }),
   ]);
   if (!integration || integration.status === "disconnected") {
-    return { connected: false, state: null, attention: null, stale: false, staleSince: null, lastSuccessfulSyncAt: null, activeVersion: null, slaSupport: null, versions: [], runs: [], failedTickets: [], failedTicketCount: 0, override: null };
+    return { connected: false, state: null, attention: null, stale: false, staleSince: null, lastSuccessfulSyncAt: null, lastDataChangedAt: null, activeVersion: null, slaSupport: null, versions: [], runs: [], failedTickets: [], failedTicketCount: 0, override: null };
   }
   const [runRows, versionRows, settings] = await Promise.all([
     prisma.integrationSyncRun.findMany({ where: { integrationId: integration.id }, orderBy: { startedAt: "desc" }, take: RUNS_SHOWN }),
@@ -127,6 +133,7 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
   const runs: RunSummary[] = runRows.map((run) => ({
     id: run.id,
     startedAt: run.startedAt.toISOString(),
+    finishedAt: run.finishedAt?.toISOString() ?? null,
     outcome: run.outcome,
     reasonCode: run.reasonCode,
     secondaryReason: run.secondaryReason,
@@ -140,10 +147,11 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
     pollingPaused: integration.pollingPausedAt !== null,
     integrationStatus: integration.status,
     backfillCompleted,
-    runs,
+    // A stored run a later clean check has superseded no longer drives the state (D32).
+    runs: runs.filter((run) => !isRunSuperseded(run, integration.lastSuccessfulSyncAt)),
   };
   const stale = staleFields({ status: integration.status, lastSuccessfulSyncAt: integration.lastSuccessfulSyncAt }, now.toISOString(), settings);
-  const latestCompleted = runRows.find((run) => run.outcome === "ok" || run.outcome === "partial");
+  const latestCompleted = runRows.find((run) => (run.outcome === "ok" || run.outcome === "partial") && !isRunSuperseded(run, integration.lastSuccessfulSyncAt));
   return {
     connected: true,
     state: deriveSyncState(input),
@@ -151,11 +159,12 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
     stale: stale.stale,
     staleSince: stale.staleSince,
     lastSuccessfulSyncAt: integration.lastSuccessfulSyncAt?.toISOString() ?? null,
+    lastDataChangedAt: integration.lastDataChangedAt?.toISOString() ?? null,
     activeVersion: integration.activeConfigVersion,
     slaSupport: integration.slaSupport,
     versions: versionRows.map((v) => ({ version: v.version, createdAt: v.createdAt.toISOString(), note: v.note, active: v.version === integration.activeConfigVersion })),
     runs,
-    failedTickets: ((latestCompleted?.failures as { recordId: string; code: string }[] | null) ?? []).slice(0, 50),
+    failedTickets: ((latestCompleted?.failures as { recordId: string; code: string; details?: RecordFailureDetail[] }[] | null) ?? []).slice(0, 50),
     failedTicketCount: latestCompleted?.failureCount ?? 0,
     override: await latestLifecycleAbort(prisma, integration.id),
   };

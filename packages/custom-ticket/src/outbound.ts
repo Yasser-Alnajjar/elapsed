@@ -1,4 +1,4 @@
-import { registerSecretValues } from "@sla/logger";
+import { createLogger, registerSecretValues } from "@sla/logger";
 import {
   RunBudget,
   SafeHttpError,
@@ -12,7 +12,7 @@ import {
 import { deriveBatch, type DerivedBatch, type RawRow } from "./derive";
 import { fetchPage, type Endpoint } from "./fetcher";
 import { MAX_PAGES_PER_RUN, MAX_TICKETS_PER_RUN, authHeaders, buildTicketEvents, sensitiveValues } from "./ingest";
-import { MappingError } from "./errors";
+import { MappingError, type MappingProblem } from "./errors";
 import { START, type Position } from "./requests";
 import type { CustomConfig } from "./schema";
 import { SourceStatusError } from "./source-errors";
@@ -26,6 +26,14 @@ import { envOf } from "./shared";
  * safe classifications and, for a sample or preview, data that goes to the
  * owner's browser alone (plan 09, 8.5).
  */
+const log = createLogger({ component: "custom_outbound" });
+
+/** One line per failed check: the check name and a fixed code, never a URL, header or body. */
+function logFailure(check: string, error: unknown): void {
+  const e = error as { code?: unknown; status?: unknown; name?: unknown } | null;
+  log.warn("custom_outbound_check_failed", { check, name: typeof e?.name === "string" ? e.name : "error", code: typeof e?.code === "string" ? e.code : null, status: typeof e?.status === "number" ? e.status : null });
+}
+
 export interface OutboundSession {
   config: CustomConfig;
   client: SafeHttpClient;
@@ -82,6 +90,7 @@ export async function testConnection(session: OutboundSession, now = new Date())
     void page;
     return { classification: "ok" };
   } catch (error) {
+    logFailure("test", error);
     if (error instanceof SourceStatusError) return { classification: classifyStatus(error.status), status: error.status };
     return { classification: classifyError(error) };
   }
@@ -121,6 +130,7 @@ export async function sampleSource(session: OutboundSession, now = new Date()): 
     }
     return sample;
   } catch (error) {
+    logFailure("sample", error);
     if (error instanceof SourceStatusError) return { classification: classifyStatus(error.status), tickets: [], itemCount: 0, hasNextPage: false };
     return { classification: classifyError(error), tickets: [], itemCount: 0, hasNextPage: false };
   }
@@ -146,7 +156,7 @@ export interface Preview {
   classification: SafeClassification;
   ticketsRead: number;
   tickets: PreviewTicket[];
-  failures: { id: string; code: string }[];
+  failures: { id: string; code: string; details?: MappingProblem[] }[];
   diagnostics: { id: string; code: string }[];
   deletedExternalIds: string[];
 }
@@ -162,7 +172,7 @@ export async function previewMapping(session: OutboundSession, now = new Date())
   const { config, client } = session;
   const empty = (classification: SafeClassification): Preview => ({ classification, ticketsRead: 0, tickets: [], failures: [], diagnostics: [], deletedExternalIds: [] });
   const rows: RawRow[] = [];
-  const failures: { id: string; code: string }[] = [];
+  const failures: { id: string; code: string; details?: MappingProblem[] }[] = [];
   let position: Position = START;
   let read = 0;
   try {
@@ -178,13 +188,14 @@ export async function previewMapping(session: OutboundSession, now = new Date())
           }
         } catch (error) {
           if (!(error instanceof MappingError)) throw error;
-          failures.push({ id: (safeId(config, item) ?? "unknown").slice(0, 64), code: error.code });
+          failures.push({ id: (safeId(config, item) ?? "unknown").slice(0, 64), code: error.code, ...(error.problems.length > 0 ? { details: error.problems } : {}) });
         }
       }
       if (page.next === null) break;
       position = page.next;
     }
   } catch (error) {
+    logFailure("preview", error);
     if (error instanceof SourceStatusError) return empty(classifyStatus(error.status));
     return empty(classifyError(error));
   }
@@ -200,7 +211,7 @@ export async function previewMapping(session: OutboundSession, now = new Date())
       closedAt: facts.closedAt ? facts.closedAt.toISOString() : null,
       events: (byId.get(facts.externalId)?.events ?? []).map((e) => ({ type: e.type, occurredAt: e.occurredAt.toISOString(), actor: e.actor })),
     })),
-    failures: [...failures, ...derived.failures.map((f) => ({ id: f.id, code: f.code }))],
+    failures: [...failures, ...derived.failures.map((f) => ({ id: f.id, code: f.code, ...(f.details.length > 0 ? { details: f.details } : {}) }))],
     diagnostics: derived.diagnostics,
     deletedExternalIds: derived.deletedCaseExternalIds,
   };

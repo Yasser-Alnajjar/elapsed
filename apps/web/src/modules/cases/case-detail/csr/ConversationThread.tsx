@@ -49,7 +49,9 @@ function ConversationMessageBubble({
     ? "Requester"
     : formatActor(message.actor);
   return (
-    <li className={`flex ${isAgent ? "justify-end" : "justify-start"}`}>
+    <li
+      className={`flex ${isAgent ? "justify-end" : "justify-start"} mb-2 last:mb-0`}
+    >
       <article
         className={`max-w-[min(78%,54rem)] rounded-xl border p-4 shadow-sm ${isAgent ? "border-primary/20 bg-primary/5" : "border-surface-variant bg-surface-container"}`}
       >

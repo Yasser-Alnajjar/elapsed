@@ -70,6 +70,30 @@ export const UNSUPPORTED_KIND_COPY: Record<string, string> = {
   resolution: "Resolution is not supported for this source.",
 };
 
+/** Why one ticket could not be imported. Codes carry no ticket data, so these say what to check, not what the value was. */
+export const MAPPING_ERROR_COPY: Record<string, string> = {
+  invalid_path: "A field path in your mapping is not valid.",
+  missing_required: "A required field (such as the ticket or comment ID) was empty in your API's response. Check the field mapping.",
+  invalid_type: "A mapped field has an unexpected type, for example an object or list where text was expected. Check the path in the field mapping.",
+  invalid_date: "A date could not be read. Check the date format in your mapping.",
+  date_format_required: "A date value needs a format in your mapping.",
+  timezone_required: "A date without a time zone was found. Set a time zone in the Fields step.",
+  invalid_timezone: "The time zone in your configuration is not recognised.",
+  nonexistent_local_time: "A local time falls in a daylight-saving gap and does not exist in the configured time zone.",
+  ambiguous_local_time: "A local time occurs twice because of a daylight-saving change in the configured time zone.",
+  unknown_status: "The ticket has a status that is not in your status mapping. Add it, or choose a fallback for unknown statuses.",
+  unknown_priority: "The ticket has a priority that is not in your priority mapping.",
+  unknown_author_role: "A comment author's role is not in your author role mapping.",
+  unknown_visibility: "A comment's public/private value is not in your visibility mapping.",
+  creation_actor_unknown: "Could not tell who created the ticket. Check the ticket creator setting on the Replies and SLA step.",
+  payload_too_large: "The ticket and its comments or history are too large to import.",
+  duplicate_id: "Another ticket in the same sync has this ID.",
+  unsafe_id: "The ticket ID is too long or contains control characters.",
+  comments_not_found: "Your API returned 404 (not found) for this ticket's comments. Check the comments path on the Replies and SLA step, or the ticket was deleted.",
+  history_not_found: "Your API returned 404 (not found) for this ticket's status history. Check the status history path, or the ticket was deleted.",
+  transform_failed: "A mapped value could not be built: a template uses a value that is not defined, or a text value is too long.",
+};
+
 export const REASON_COPY: Record<string, string> = {
   no_comments_source: "No comments source is configured.",
   no_author_role_mapping: "The comment author role is not mapped.",

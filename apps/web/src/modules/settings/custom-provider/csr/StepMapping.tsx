@@ -44,11 +44,6 @@ export function StepMapping({ config, set, paths }: StepProps) {
   const priorityMap = (getIn(config, ["valueMaps", "priority"]) ?? {}) as Record<string, string>;
   return (
     <div className="flex flex-col gap-6">
-      <datalist id="cp-paths">
-        {paths.map((path) => (
-          <option key={path} value={path} />
-        ))}
-      </datalist>
       {paths.length === 0 && <p className="text-on-surface-variant text-xs">Run “Sample” in the Review step to see your ticket fields here and pick paths from a list.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         {FIELDS.map((field) => (
@@ -57,7 +52,7 @@ export function StepMapping({ config, set, paths }: StepProps) {
             id={`cp-map-${field.key}`}
             label={`${field.label}${field.required ? " *" : ""}`}
             mono
-            list="cp-paths"
+            suggestions={paths}
             value={mappingOf(field.key)}
             onChange={(v) => {
               let parsed: unknown = v;

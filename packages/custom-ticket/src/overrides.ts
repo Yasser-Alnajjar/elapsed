@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@sla/db";
 import { LIFECYCLE_GUARD } from "./normalize";
+import { isRunSuperseded } from "./supersession";
 
 /**
  * Override of the mass-lifecycle-change guard (plan 09, 6.11; Q15, R1, R2, U1,
@@ -44,14 +45,22 @@ export interface AbortedPassPreview {
   previewHash: string;
 }
 
-/** The latest run, when it is a lifecycle-guard abort. A later run of any outcome means there is nothing to override. */
+/**
+ * The latest run, when it is a lifecycle-guard abort. A later run of any stored
+ * outcome means there is nothing to override, and so does a later clean check
+ * that was not stored because it changed nothing (D32).
+ */
 export async function latestLifecycleAbort(prisma: PrismaClient, integrationId: string): Promise<AbortedPassPreview | null> {
-  const run = await prisma.integrationSyncRun.findFirst({
-    where: { integrationId },
-    orderBy: { startedAt: "desc" },
-    select: { id: true, startedAt: true, outcome: true, reasonCode: true, progress: true },
-  });
+  const [run, integration] = await Promise.all([
+    prisma.integrationSyncRun.findFirst({
+      where: { integrationId },
+      orderBy: { startedAt: "desc" },
+      select: { id: true, startedAt: true, finishedAt: true, outcome: true, reasonCode: true, progress: true },
+    }),
+    prisma.integration.findUnique({ where: { id: integrationId }, select: { lastSuccessfulSyncAt: true } }),
+  ]);
   if (!run || run.outcome !== "aborted" || run.reasonCode !== LIFECYCLE_GUARD) return null;
+  if (isRunSuperseded(run, integration?.lastSuccessfulSyncAt)) return null;
   const progress = (run.progress ?? {}) as { R?: unknown; L?: unknown; ratio?: unknown; recordIds?: unknown; previewHash?: unknown };
   if (typeof progress.previewHash !== "string") return null;
   return {

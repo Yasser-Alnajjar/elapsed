@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useFormik } from "formik";
+import { useMemo, useRef, useState } from "react";
 import { Actions } from "@/actions/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 import { emptyConfig, samplePaths, setIn } from "@/lib/custom-provider/wizard";
 import type { CustomProviderPageData, DraftConfigDocument, Sample } from "@/lib/types/custom-provider";
 import { ReviewPanel } from "./ReviewPanel";
@@ -13,6 +15,14 @@ import { StepReplies } from "./StepReplies";
 import { StepTickets } from "./StepTickets";
 import { TextAreaField } from "./fields";
 import type { StepProps } from "./wizard-types";
+
+interface WizardValues {
+  config: DraftConfigDocument;
+  /** New secret values typed in this session (write-only). */
+  secrets: Record<string, string>;
+  /** The Advanced tab's editor text. */
+  json: string;
+}
 
 const STEPS = ["Connection", "Tickets", "Fields", "Replies and SLA", "Review", "Advanced (JSON)"] as const;
 
@@ -24,37 +34,47 @@ const STEPS = ["Connection", "Tickets", "Fields", "Replies and SLA", "Review", "
  */
 export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }: { initial: CustomProviderPageData["draft"]; secretsSet: string[]; userId: string }) {
   const [step, setStep] = useState<(typeof STEPS)[number]>("Connection");
-  const [config, setConfig] = useState<DraftConfigDocument>((initial?.config as DraftConfigDocument | undefined) ?? emptyConfig());
-  const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [secretsSet, setSecretsSet] = useState<string[]>(initialSecretsSet);
   const [issues, setIssues] = useState(initial?.issues ?? []);
   const [sampleTicket, setSampleTicket] = useState<unknown>(null);
-  const [json, setJson] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const saved = useRef(false);
+  const quiet = useRef(false);
 
+  const formik = useFormik<WizardValues>({
+    initialValues: { config: (initial?.config as DraftConfigDocument | undefined) ?? emptyConfig(), secrets: {}, json: "" },
+    onSubmit: async (values, { setFieldValue }) => {
+      saved.current = false;
+      const typed = Object.fromEntries(Object.entries(values.secrets).filter(([, v]) => v !== ""));
+      const result = await Actions.CustomProvider.saveDraft(values.config, Object.keys(typed).length ? typed : undefined);
+      if (!result.ok || !result.body.draft) {
+        notify.error(result.body.error === "unknown_secret_field" ? "A credential does not match the authentication type." : "The draft could not be saved.");
+        return;
+      }
+      setSecretsSet(result.body.draft.secretsSet);
+      setIssues(result.body.draft.issues);
+      await setFieldValue("secrets", {});
+      saved.current = true;
+      if (!quiet.current) notify.success("Draft saved.");
+    },
+  });
+
+  const { config } = formik.values;
   const paths = useMemo(() => (sampleTicket ? samplePaths(sampleTicket).map((p) => p.path) : []), [sampleTicket]);
 
-  async function save(): Promise<boolean> {
-    setError(null);
-    const typed = Object.fromEntries(Object.entries(secrets).filter(([, v]) => v !== ""));
-    const result = await Actions.CustomProvider.saveDraft(config, Object.keys(typed).length ? typed : undefined);
-    if (!result.ok || !result.body.draft) {
-      setError(result.body.error === "unknown_secret_field" ? "A credential does not match the authentication type." : "The draft could not be saved.");
-      return false;
-    }
-    setSecretsSet(result.body.draft.secretsSet);
-    setIssues(result.body.draft.issues);
-    setSecrets({});
-    return true;
+  /** `silent` skips the "saved" toast, for the checks on the Review step that save first. */
+  async function save(silent = false): Promise<boolean> {
+    quiet.current = silent;
+    await formik.submitForm();
+    return saved.current;
   }
 
   const props: StepProps = {
     config,
-    set: (path, value) => setConfig((current) => setIn(current, path, value)),
+    set: (path, value) => void formik.setFieldValue("config", setIn(config, path, value)),
     paths,
     secretsSet,
-    secrets,
-    setSecret: (field, value) => setSecrets((current) => ({ ...current, [field]: value })),
+    secrets: formik.values.secrets,
+    setSecret: (field, value) => void formik.setFieldValue(`secrets.${field}`, value),
     userId,
   };
 
@@ -62,18 +82,19 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
     <div className="flex flex-col gap-4">
       <nav aria-label="Configuration steps" className="flex flex-wrap gap-1.5">
         {STEPS.map((name) => (
-          <button
+          <Button
             key={name}
             type="button"
+            size="sm"
+            variant={name === step ? "default" : "surface"}
             aria-current={name === step}
             onClick={() => {
-              if (name === "Advanced (JSON)") setJson(JSON.stringify(config, null, 2));
+              if (name === "Advanced (JSON)") void formik.setFieldValue("json", JSON.stringify(config, null, 2));
               setStep(name);
             }}
-            className={`rounded px-3 py-1.5 text-xs font-medium ${name === step ? "bg-primary text-primary-foreground" : "bg-surface-container-high text-on-surface hover:bg-surface-active"}`}
           >
             {name}
-          </button>
+          </Button>
         ))}
       </nav>
 
@@ -91,29 +112,28 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
           </div>
         </Alert>
       )}
-      {error && <Alert variant="destructive">{error}</Alert>}
 
       <div className="bg-surface-container-low rounded-xl p-5">
         {step === "Connection" && <StepConnection {...props} />}
         {step === "Tickets" && <StepTickets {...props} />}
         {step === "Fields" && <StepMapping {...props} />}
         {step === "Replies and SLA" && <StepReplies {...props} />}
-        {step === "Review" && <ReviewPanel save={save} onSample={(sample: Sample) => setSampleTicket(sample.tickets[0] ?? null)} />}
+        {step === "Review" && <ReviewPanel save={() => save(true)} onSample={(sample: Sample) => setSampleTicket(sample.tickets[0] ?? null)} />}
         {step === "Advanced (JSON)" && (
           <div className="flex flex-col gap-3">
-            <TextAreaField id="cp-json" label="Configuration document" rows={22} value={json ?? ""} onChange={setJson} hint="The same closed schema the server validates. Credentials never appear here. Unknown keys are rejected." />
+            <TextAreaField id="cp-json" label="Configuration document" rows={22} value={formik.values.json} onChange={(v) => void formik.setFieldValue("json", v)} hint="The same closed schema the server validates. Credentials never appear here. Unknown keys are rejected." />
             <Button
               type="button"
               size="sm"
               className="self-start"
               onClick={() => {
                 try {
-                  const parsed = JSON.parse(json ?? "{}");
+                  const parsed = JSON.parse(formik.values.json || "{}");
                   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
-                  setConfig(parsed as DraftConfigDocument);
-                  setError(null);
+                  void formik.setFieldValue("config", parsed as DraftConfigDocument);
+                  notify.success("Configuration applied. Save the draft to keep it.");
                 } catch {
-                  setError("That is not valid JSON.");
+                  notify.error("That is not valid JSON.");
                 }
               }}
             >
@@ -125,7 +145,7 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
 
       {step !== "Review" && (
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void save()}>
+          <Button type="button" size="sm" variant="outline" disabled={formik.isSubmitting} onClick={() => void formik.submitForm()}>
             Save draft
           </Button>
           <Button type="button" size="sm" onClick={() => setStep(STEPS[Math.min(STEPS.indexOf(step) + 1, 4)]!)}>

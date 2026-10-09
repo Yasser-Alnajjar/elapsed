@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UNSUPPORTED_KIND_COPY } from "@/lib/custom-provider/state-copy";
 import type { ActivationImpact } from "@/lib/types/custom-provider";
 
@@ -27,26 +28,26 @@ export function ImpactPanel({ impact, busy, onConfirm, onCancel }: { impact: Act
             Activating will cancel <strong>{cancellation.total}</strong> unfinished commitment{cancellation.total === 1 ? "" : "s"}. Nothing is deleted, and {cancellation.keptFinalized} finished
             commitment{cancellation.keptFinalized === 1 ? "" : "s"} and every evaluation are kept exactly as they are.
           </p>
-          <table className="text-xs">
-            <thead>
-              <tr className="text-on-surface-variant text-left">
-                <th className="pe-4 font-medium">Kind</th>
-                <th className="pe-4 font-medium">On track</th>
-                <th className="pe-4 font-medium">At risk</th>
-                <th className="pe-4 font-medium">Breached, still open</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kind</TableHead>
+                <TableHead align="end">On track</TableHead>
+                <TableHead align="end">At risk</TableHead>
+                <TableHead align="end">Breached, still open</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {Object.entries(cancellation.byKind).map(([kind, row]) => (
-                <tr key={kind}>
-                  <td className="pe-4">{KIND_LABEL[kind] ?? kind}</td>
-                  <td className="pe-4">{row.onTrack}</td>
-                  <td className="pe-4">{row.atRisk}</td>
-                  <td className="pe-4">{row.breachedOpen}</td>
-                </tr>
+                <TableRow key={kind}>
+                  <TableCell>{KIND_LABEL[kind] ?? kind}</TableCell>
+                  <TableCell align="end">{row.onTrack}</TableCell>
+                  <TableCell align="end">{row.atRisk}</TableCell>
+                  <TableCell align="end">{row.breachedOpen}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <p className="text-on-surface-variant text-xs">
             Cancelling is not undone by a rollback: a cancelled commitment is not restored when you switch back to an earlier configuration. Examples: {cancellation.sampleCaseIds.slice(0, 5).join(", ") || "none"}.
           </p>

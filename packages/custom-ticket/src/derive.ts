@@ -1,7 +1,8 @@
 import type { Actor, CanonicalPriority, NormalizedState } from "@sla/core";
 import type { IntegrationProvider } from "@sla/db";
 import type { CaseFacts, CustomerIdentityFact, EventGroup, NormalizedEventFact } from "@sla/ingestion";
-import { MappingError, type MappingErrorCode } from "./errors";
+import { complete, ProblemCollector, sourcesOf } from "./diagnostics";
+import { MappingError, type MappingErrorCode, type MappingProblem } from "./errors";
 import { evaluatePath } from "./path";
 import type { CustomConfig } from "./schema";
 import { evaluateDate, evaluateExpr, evaluateText } from "./transforms";
@@ -29,7 +30,7 @@ export interface DerivedBatch {
   eventGroups: EventGroup[];
   deletedCaseExternalIds: string[];
   /** Records that could not be derived: the ticket id and a fixed code. */
-  failures: { id: string; code: MappingErrorCode }[];
+  failures: { id: string; code: MappingErrorCode; details: MappingProblem[] }[];
   /** Non-fatal observations (`unknown_priority`, `unknown_visibility`, ...), per ticket. */
   diagnostics: { id: string; code: string }[];
   /** B: distinct tickets the pass attempted (all stored tickets). */
@@ -67,7 +68,10 @@ function truthy(value: unknown): boolean {
 function mapStatus(config: CustomConfig, raw: string): NormalizedState {
   if (Object.hasOwn(config.valueMaps.status, raw)) return config.valueMaps.status[raw]!;
   if (config.unknownStatus === "open") return "open";
-  throw new MappingError("unknown_status");
+  throw new MappingError("unknown_status", {
+    reason: "not_in_map",
+    detail: 'the ticket\'s status is not in "valueMaps.status" and "unknownStatus" is not "open". Add the status to the mapping, or treat unknown statuses as open.',
+  });
 }
 
 function mapRole(config: CustomConfig, raw: string | null): Actor | null {
@@ -183,7 +187,7 @@ export function deriveBatch(config: CustomConfig, rows: readonly RawRow[]): Deri
       if (derived.customer) customers.set(derived.customer.externalId, derived.customer);
     } catch (error) {
       if (!(error instanceof MappingError)) throw error;
-      out.failures.push({ id: g.externalId, code: error.code });
+      out.failures.push({ id: g.externalId, code: error.code, details: error.problems });
     }
   }
   out.customers = [...customers.values()];
@@ -200,20 +204,21 @@ function deriveTicket(
 ): "deleted" | { facts: CaseFacts; group: EventGroup; customer: CustomerIdentityFact | null } {
   const ticket = latest.payload;
   const m = config.mapping;
+  // Every independent field is evaluated and its failure recorded, so one run reports all that is wrong, not the first.
+  const p = new ProblemCollector();
 
-  const rawStatus = evaluateText(m.status, ticket, env);
-  if (rawStatus === null) throw new MappingError("missing_required");
+  const rawStatus = p.require("mapping.status", m.status, ticket, () => evaluateText(m.status, ticket, env));
   const deletion = config.deletion;
   if (
-    g.deleted ||
-    (deletion?.statusValues && deletion.statusValues.includes(rawStatus)) ||
-    (deletion?.flagPath && truthy(evaluatePath(deletion.flagPath, ticket)[0]))
+    rawStatus !== undefined &&
+    (g.deleted ||
+      (deletion?.statusValues && deletion.statusValues.includes(rawStatus)) ||
+      (deletion?.flagPath && truthy(evaluatePath(deletion.flagPath, ticket)[0])))
   ) {
     return "deleted";
   }
-  const status = mapStatus(config, rawStatus);
-  const openedAt = evaluateDate(m.createdAt, ticket, env);
-  if (openedAt === null) throw new MappingError("missing_required");
+  const status = rawStatus === undefined ? undefined : p.attempt("mapping.status", () => mapStatus(config, rawStatus));
+  const openedAt = p.require("mapping.createdAt", m.createdAt, ticket, () => evaluateDate(m.createdAt, ticket, env));
 
   // Replies --------------------------------------------------------------------
   interface Comment {
@@ -231,11 +236,12 @@ function deriveTicket(
       : evaluatePath(config.comments.itemsPath, ticket).flatMap((match) => (Array.isArray(match) ? match : [match])).map((doc) => ({ rowId: latest.rowId, doc }));
     for (const source of sources) {
       if (!isPlainObject(source.doc)) continue;
-      const id = evaluateText(mapping.id, source.doc, env);
-      const createdAt = evaluateDate(mapping.createdAt, source.doc, env);
-      if (id === null || createdAt === null) throw new MappingError("missing_required");
-      const role = mapRole(config, evaluateText(mapping.authorRole, source.doc, env));
-      comments.push({ rowId: source.rowId, id, createdAt, role, publicFlag: isPublic(config, source.doc) });
+      const id = p.require("commentMapping.id", mapping.id, source.doc, () => evaluateText(mapping.id, source.doc, env));
+      const createdAt = p.require("commentMapping.createdAt", mapping.createdAt, source.doc, () => evaluateDate(mapping.createdAt, source.doc, env));
+      const role = p.attempt("commentMapping.authorRole", () => mapRole(config, evaluateText(mapping.authorRole, source.doc, env))) ?? null;
+      const publicFlag = p.attempt("commentMapping.isPublic", () => isPublic(config, source.doc)) ?? null;
+      if (id === undefined || createdAt === undefined) continue;
+      comments.push({ rowId: source.rowId, id, createdAt, role, publicFlag });
     }
     comments.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   }
@@ -245,9 +251,25 @@ function deriveTicket(
   const full = config.slaMode === "full";
   const ca = config.creationActor;
   if (ca?.type === "assume_customer") creator = "customer";
-  else if (ca?.type === "path") creator = mapRole(config, evaluateText(ca.path, ticket, env));
+  else if (ca?.type === "path") creator = p.attempt("creationActor", () => mapRole(config, evaluateText(ca.path, ticket, env))) ?? null;
   else if (ca?.type === "first_comment_author") creator = comments[0]?.role ?? null;
-  if (full && creator === null) throw new MappingError("creation_actor_unknown");
+  if (full && creator === null && !p.any) {
+    const detail =
+      ca?.type === "path"
+        ? `the creator role read from "${ca.path}" is missing or not in valueMaps.authorRole.`
+        : ca?.type === "first_comment_author"
+          ? "the ticket has no comment whose author role is mapped, so the first comment's author cannot be used as the creator."
+          : "no ticket creator is configured.";
+    p.add(new MappingError("creation_actor_unknown", [complete("creationActor", "creation_actor_unknown", { reason: "other", detail })]));
+  }
+
+  // Fields read from the ticket (evaluated now so their failures are reported together) -----
+  const rawPriority = m.priority ? p.attempt("mapping.priority", () => evaluateText(m.priority!, ticket, env)) ?? null : null;
+  const customerId = m.customerId ? p.attempt("mapping.customerId", () => evaluateText(m.customerId!, ticket, env)) ?? null : null;
+  const customerName = m.customerName && customerId ? p.attempt("mapping.customerName", () => evaluateText(m.customerName!, ticket, env)) ?? null : null;
+  const title = m.title ? p.attempt("mapping.title", () => evaluateText(m.title!, ticket, env)) ?? null : null;
+  const channel = m.channel ? p.attempt("mapping.channel", () => evaluateText(m.channel!, ticket, env)) ?? null : null;
+  const tagsRaw = m.tags ? p.attempt("mapping.tags", () => evaluatePath(m.tags!, ticket)[0]) : undefined;
 
   // Status history ---------------------------------------------------------------
   const events: NormalizedEventFact[] = [];
@@ -259,32 +281,61 @@ function deriveTicket(
   if (hist && g.history.size > 0) {
     const entries = [...g.history.values()].map((e) => ({
       rowId: e.rowId,
-      changedAt: evaluateDate(hist.mapping.changedAt, e.payload, env),
-      to: evaluateText(hist.mapping.toStatus, e.payload, env),
-      from: hist.mapping.fromStatus ? evaluateText(hist.mapping.fromStatus, e.payload, env) : null,
+      changedAt: p.require("statusHistory.mapping.changedAt", hist.mapping.changedAt, e.payload, () => evaluateDate(hist.mapping.changedAt, e.payload, env)),
+      to: p.require("statusHistory.mapping.toStatus", hist.mapping.toStatus, e.payload, () => evaluateText(hist.mapping.toStatus, e.payload, env)),
+      from: hist.mapping.fromStatus ? p.attempt("statusHistory.mapping.fromStatus", () => evaluateText(hist.mapping.fromStatus!, e.payload, env)) ?? null : null,
     }));
-    if (entries.some((e) => e.changedAt === null || e.to === null)) throw new MappingError("missing_required");
-    entries.sort((a, b) => a.changedAt!.getTime() - b.changedAt!.getTime() || (a.rowId < b.rowId ? -1 : 1));
-    initialState = entries[0]!.from !== null ? mapStatus(config, entries[0]!.from!) : null;
-    let current: NormalizedState | null = initialState;
-    for (const entry of entries) {
-      const to = mapStatus(config, entry.to!);
-      if (to === current) continue;
-      sequence += 1;
-      stateEvents.push({
-        type: TERMINAL.has(to) ? "case_closed" : "state_changed",
-        occurredAt: entry.changedAt!,
-        actor: "system",
-        sourceRole: CUSTOM_SOURCE_ROLE,
-        fromState: current,
-        toState: to,
-        sourceRawEventId: entry.rowId,
-        sourceSequence: sequence,
-      });
-      current = to;
+    if (!entries.some((e) => e.changedAt === undefined || e.to === undefined)) {
+      entries.sort((a, b) => a.changedAt!.getTime() - b.changedAt!.getTime() || (a.rowId < b.rowId ? -1 : 1));
+      initialState = entries[0]!.from !== null ? p.attempt("statusHistory.mapping.fromStatus", () => mapStatus(config, entries[0]!.from!)) ?? null : null;
+      let current: NormalizedState | null = initialState;
+      for (const entry of entries) {
+        const to = p.attempt("statusHistory.mapping.toStatus", () => mapStatus(config, entry.to!));
+        if (to === undefined || to === current) continue;
+        sequence += 1;
+        stateEvents.push({
+          type: TERMINAL.has(to) ? "case_closed" : "state_changed",
+          occurredAt: entry.changedAt!,
+          actor: "system",
+          sourceRole: CUSTOM_SOURCE_ROLE,
+          fromState: current,
+          toState: to,
+          sourceRawEventId: entry.rowId,
+          sourceSequence: sequence,
+        });
+        current = to;
+      }
+      lastHistoryState = current;
     }
-    lastHistoryState = current;
   }
+
+  // Closure --------------------------------------------------------------------
+  let closedAt: Date | null = null;
+  let closureEvent: { occurredAt: Date } | null = null;
+  const hasHistory = hist !== undefined && g.history.size > 0;
+  if (hasHistory) {
+    const lastEvent = stateEvents[stateEvents.length - 1];
+    if (lastHistoryState !== null && TERMINAL.has(lastHistoryState) && lastEvent) closedAt = lastEvent.occurredAt;
+    else if (status !== undefined && TERMINAL.has(status) && !(lastHistoryState !== null && TERMINAL.has(lastHistoryState)) && !p.any) {
+      out.diagnostics.push({ id: g.externalId, code: "history_status_mismatch" });
+    }
+  } else if (status !== undefined && TERMINAL.has(status)) {
+    const closed = m.closedAt ? p.attempt("mapping.closedAt", () => evaluateDate(m.closedAt!, ticket, env)) ?? null : null;
+    if (closed !== null) {
+      if (openedAt !== undefined && closed.getTime() < openedAt.getTime()) {
+        p.add(new MappingError("invalid_date", [complete("mapping.closedAt", "invalid_date", { reason: "other", source: sourcesOf(m.closedAt!).join(", ") || undefined, detail: "the closing time is earlier than the opening time (mapping.createdAt)." })]));
+      } else {
+        closureEvent = { occurredAt: closed };
+        closedAt = closed;
+      }
+    } else if (!p.any) {
+      // Resolution cannot complete without a source-supplied closure time (U7); `updatedAt` is never substituted.
+      out.diagnostics.push({ id: g.externalId, code: "terminal_status_without_closure_timestamp" });
+    }
+  }
+
+  p.throwIfAny();
+  if (status === undefined || openedAt === undefined) throw new MappingError("missing_required");
 
   events.push({
     type: "case_created",
@@ -297,35 +348,18 @@ function deriveTicket(
     sourceSequence: 0,
   });
   events.push(...stateEvents);
-
-  // Closure --------------------------------------------------------------------
-  let closedAt: Date | null = null;
-  if (hist && g.history.size > 0) {
-    const lastEvent = stateEvents[stateEvents.length - 1];
-    if (lastHistoryState !== null && TERMINAL.has(lastHistoryState) && lastEvent) closedAt = lastEvent.occurredAt;
-    else if (TERMINAL.has(status) && !(lastHistoryState !== null && TERMINAL.has(lastHistoryState))) {
-      out.diagnostics.push({ id: g.externalId, code: "history_status_mismatch" });
-    }
-  } else if (TERMINAL.has(status)) {
-    const closed = m.closedAt ? evaluateDate(m.closedAt, ticket, env) : null;
-    if (closed !== null) {
-      if (closed.getTime() < openedAt.getTime()) throw new MappingError("invalid_date");
-      sequence += 1;
-      events.push({
-        type: "case_closed",
-        occurredAt: closed,
-        actor: "system",
-        sourceRole: CUSTOM_SOURCE_ROLE,
-        fromState: null,
-        toState: status,
-        sourceRawEventId: latest.rowId,
-        sourceSequence: sequence,
-      });
-      closedAt = closed;
-    } else {
-      // Resolution cannot complete without a source-supplied closure time (U7); `updatedAt` is never substituted.
-      out.diagnostics.push({ id: g.externalId, code: "terminal_status_without_closure_timestamp" });
-    }
+  if (closureEvent) {
+    sequence += 1;
+    events.push({
+      type: "case_closed",
+      occurredAt: closureEvent.occurredAt,
+      actor: "system",
+      sourceRole: CUSTOM_SOURCE_ROLE,
+      fromState: null,
+      toState: status,
+      sourceRawEventId: latest.rowId,
+      sourceSequence: sequence,
+    });
   }
 
   // Replies after the structural events, in source order.
@@ -359,36 +393,29 @@ function deriveTicket(
 
   // Case facts ---------------------------------------------------------------------
   let priority: CanonicalPriority | null = null;
-  if (m.priority) {
-    const rawPriority = evaluateText(m.priority, ticket, env);
-    if (rawPriority !== null) {
-      const map = config.valueMaps.priority;
-      if (map && Object.hasOwn(map, rawPriority)) priority = map[rawPriority]!;
-      else out.diagnostics.push({ id: g.externalId, code: "unknown_priority" });
-    }
+  if (rawPriority !== null) {
+    const map = config.valueMaps.priority;
+    if (map && Object.hasOwn(map, rawPriority)) priority = map[rawPriority]!;
+    else out.diagnostics.push({ id: g.externalId, code: "unknown_priority" });
   }
   let customer: CustomerIdentityFact | null = null;
   let customerRef: CaseFacts["customer"] = null;
-  if (m.customerId) {
-    const customerId = evaluateText(m.customerId, ticket, env);
-    if (customerId) {
-      const name = (m.customerName ? evaluateText(m.customerName, ticket, env) : null) ?? `Customer ${customerId}`;
-      customerRef = { provider: CUSTOM_PROVIDER, kind: "customer", externalId: customerId };
-      customer = { ...customerRef, name: name.slice(0, 200) };
-    }
+  if (customerId) {
+    const name = customerName ?? `Customer ${customerId}`;
+    customerRef = { provider: CUSTOM_PROVIDER, kind: "customer", externalId: customerId };
+    customer = { ...customerRef, name: name.slice(0, 200) };
   }
   let tags: string[] | undefined;
   if (m.tags) {
-    const raw = evaluatePath(m.tags, ticket)[0];
-    tags = Array.isArray(raw) ? raw.filter((t): t is string => typeof t === "string").map((t) => t.slice(0, MAX_TAG_LENGTH)).slice(0, MAX_TAGS) : [];
+    tags = Array.isArray(tagsRaw) ? tagsRaw.filter((t): t is string => typeof t === "string").map((t) => t.slice(0, MAX_TAG_LENGTH)).slice(0, MAX_TAGS) : [];
   }
 
   const facts: CaseFacts = {
     externalId: g.externalId,
-    subject: m.title ? (evaluateText(m.title, ticket, env)?.slice(0, 500) ?? null) : null,
+    subject: title?.slice(0, 500) ?? null,
     assigneeName: null,
     priority,
-    channel: m.channel ? (evaluateText(m.channel, ticket, env)?.slice(0, 64) ?? null) : null,
+    channel: channel?.slice(0, 64) ?? null,
     openedAt,
     closedAt,
     customer: customerRef,

@@ -13,7 +13,8 @@ import { registerSecretValues } from "@sla/logger";
 import { RunBudget, SafeHttpError, createSafeHttpClient, privateHostsAllowed, type SafeHttpClient } from "@sla/safe-http";
 import { CustomIngestError, SourceStatusError } from "./source-errors";
 import { readCursor, type CustomCursor } from "./cursor";
-import { MappingError } from "./errors";
+import { atMapping, complete, kindOf, missingRequired } from "./diagnostics";
+import { MappingError, type MappingProblem } from "./errors";
 import { ChildTooLargeError, fetchAllItems, fetchPage, type Endpoint } from "./fetcher";
 import { computeSourceHash } from "./hash";
 import { MAX_STORED_PAYLOAD_BYTES, commentPaths, historyPaths, projectByPaths, ticketPaths } from "./projection";
@@ -79,8 +80,13 @@ function formatUpdatedSince(date: Date, format: "iso8601" | "epoch_seconds" | "e
 }
 
 /** A stored raw event's payload is capped; a larger one fails its record and is never truncated. */
-function assertPayloadSize(payload: unknown): void {
-  if (Buffer.byteLength(JSON.stringify(payload), "utf8") > MAX_STORED_PAYLOAD_BYTES) throw new MappingError("payload_too_large");
+function assertPayloadSize(payload: unknown, what: string): void {
+  const bytes = Buffer.byteLength(JSON.stringify(payload), "utf8");
+  if (bytes > MAX_STORED_PAYLOAD_BYTES) {
+    throw new MappingError("payload_too_large", [
+      complete(what, "payload_too_large", { reason: "too_long", length: bytes, max: MAX_STORED_PAYLOAD_BYTES, detail: `the data kept for this record is ${bytes} bytes; maximum allowed is ${MAX_STORED_PAYLOAD_BYTES}. Map fewer or smaller fields.` }),
+    ]);
+  }
 }
 
 export interface TicketRawEvents {
@@ -96,24 +102,57 @@ export interface TicketRawEvents {
  */
 export async function buildTicketEvents(client: SafeHttpClient, config: CustomConfig, item: unknown): Promise<TicketRawEvents> {
   const env = envOf(config);
-  if (item === null || typeof item !== "object" || Array.isArray(item)) throw new MappingError("invalid_type");
-  const ticketId = evaluateText(config.mapping.id, item, env);
-  if (ticketId === null) throw new MappingError("missing_required");
-  if (ticketId.length > 256 || /[\u0000-\u001f]/.test(ticketId)) throw new MappingError("unsafe_id");
+  if (item === null || typeof item !== "object" || Array.isArray(item)) {
+    const kind = kindOf(item);
+    throw new MappingError("invalid_type", [
+      complete("tickets.itemsPath", "invalid_type", {
+        reason: "unsupported_type",
+        source: config.tickets.itemsPath,
+        actualType: kind,
+        detail: `an item found at "${config.tickets.itemsPath}" is ${/^[aeiou]/.test(kind) ? "an" : "a"} ${kind}; expected an object. Check where the tickets are in the response.`,
+      }),
+    ]);
+  }
+  const ticketId = atMapping("mapping.id", () => evaluateText(config.mapping.id, item, env));
+  if (ticketId === null) missingRequired("mapping.id", config.mapping.id, item);
+  if (ticketId.length > 256 || /[\u0000-\u001f]/.test(ticketId)) {
+    throw new MappingError("unsafe_id", [
+      complete("mapping.id", "unsafe_id", {
+        reason: "other",
+        length: ticketId.length,
+        max: 256,
+        detail: ticketId.length > 256 ? `ticket ID is ${ticketId.length} characters long; maximum allowed is 256.` : "ticket ID contains control characters.",
+      }),
+    ]);
+  }
 
   const projection = projectByPaths(item, ticketPaths(config));
-  assertPayloadSize(projection);
+  assertPayloadSize(projection, "mapping");
   const events: RawEventInput[] = [];
   const hash = computeSourceHash(projection);
   events.push({ providerEventId: `${RAW_PREFIX.ticket}${ticketId}:${hash}`, sourceHash: hash, payload: projection });
 
   // A child request for a ticket that has since been deleted is a record failure, not a failed run.
-  const children = async (endpoint: Endpoint): Promise<unknown[]> => {
+  const children = async (endpoint: Endpoint, notFound: "comments_not_found" | "history_not_found"): Promise<unknown[]> => {
+    const where = notFound === "comments_not_found" ? "comments.request" : "statusHistory.request";
     try {
       return await fetchAllItems(client, endpoint, { "ticket.id": ticketId });
     } catch (error) {
-      if (error instanceof SourceStatusError && error.status === 404) throw new MappingError("transform_failed");
-      if (error instanceof ChildTooLargeError) throw new MappingError("payload_too_large");
+      if (error instanceof SourceStatusError && error.status === 404) {
+        const what = notFound === "comments_not_found" ? "comments" : "status history";
+        throw new MappingError(notFound, [
+          complete(where, notFound, {
+            reason: "other",
+            source: endpoint.request.path,
+            detail: `${endpoint.request.method} ${endpoint.request.path} answered 404 (not found) for this ticket's ${what}. Check the path, or the ticket was deleted.`,
+          }),
+        ], { cause: error });
+      }
+      if (error instanceof ChildTooLargeError) {
+        throw new MappingError("payload_too_large", [
+          complete(where, "payload_too_large", { reason: "too_long", detail: `${endpoint.request.path} returned more pages or data than one ticket may have.` }),
+        ], { cause: error });
+      }
       throw error;
     }
   };
@@ -121,11 +160,11 @@ export async function buildTicketEvents(client: SafeHttpClient, config: CustomCo
   if (config.comments?.request && config.commentMapping) {
     const endpoint: Endpoint = { request: config.comments.request, itemsPath: config.comments.itemsPath, pagination: config.comments.pagination };
     const paths = commentPaths(config);
-    for (const comment of await children(endpoint)) {
-      const commentId = evaluateText(config.commentMapping.id, comment, env);
-      if (commentId === null) throw new MappingError("missing_required");
+    for (const comment of await children(endpoint, "comments_not_found")) {
+      const commentId = atMapping("commentMapping.id", () => evaluateText(config.commentMapping!.id, comment, env));
+      if (commentId === null) missingRequired("commentMapping.id", config.commentMapping.id, comment);
       const body = { t: ticketId, i: projectByPaths(comment, paths) };
-      assertPayloadSize(body);
+      assertPayloadSize(body, "comments.request");
       const commentHash = computeSourceHash(body);
       events.push({ providerEventId: `${RAW_PREFIX.comment}${ticketId}:${commentId}:${commentHash}`, sourceHash: commentHash, payload: body });
     }
@@ -134,11 +173,11 @@ export async function buildTicketEvents(client: SafeHttpClient, config: CustomCo
     const endpoint: Endpoint = { request: config.statusHistory.request, itemsPath: config.statusHistory.itemsPath, pagination: config.statusHistory.pagination };
     const paths = historyPaths(config);
     let index = 0;
-    for (const entry of await children(endpoint)) {
-      const entryId = (config.statusHistory.mapping.id ? evaluateText(config.statusHistory.mapping.id, entry, env) : null) ?? String(index);
+    for (const entry of await children(endpoint, "history_not_found")) {
+      const entryId = (config.statusHistory.mapping.id ? atMapping("statusHistory.mapping.id", () => evaluateText(config.statusHistory!.mapping.id!, entry, env)) : null) ?? String(index);
       index += 1;
       const body = { t: ticketId, i: projectByPaths(entry, paths) };
-      assertPayloadSize(body);
+      assertPayloadSize(body, "statusHistory.request");
       const entryHash = computeSourceHash(body);
       events.push({ providerEventId: `${RAW_PREFIX.history}${ticketId}:${entryId}:${entryHash}`, sourceHash: entryHash, payload: body });
     }
@@ -150,9 +189,11 @@ interface RunState {
   pages: number;
   tickets: number;
   recordsStored: number;
-  failures: { recordId: string; code: string }[];
+  failures: { recordId: string; code: string; details?: MappingProblem[] }[];
   failureCount: number;
 }
+
+const MAX_DETAILS_PER_FAILURE = 8;
 
 function endpointOf(config: CustomConfig): Endpoint {
   return { request: config.tickets.request, itemsPath: config.tickets.itemsPath, pagination: config.tickets.pagination };
@@ -345,7 +386,7 @@ async function ingestPasses(
 
     let next: Position | null;
     const pageEvents: RawEventInput[] = [];
-    const pageFailures: { recordId: string; code: string }[] = [];
+    const pageFailures: { recordId: string; code: string; details?: MappingProblem[] }[] = [];
     let pageTickets = 0;
     const seen: string[] = [];
     try {
@@ -359,7 +400,9 @@ async function ingestPasses(
         pageTickets += 1;
         try {
           const built = await buildTicketEvents(client, config, item);
-          if (idsThisPage.has(built.ticketId)) throw new MappingError("duplicate_id");
+          if (idsThisPage.has(built.ticketId)) {
+            throw new MappingError("duplicate_id", [complete("mapping.id", "duplicate_id", { reason: "other", detail: "another ticket on the same page has this ID. Check that the ID field is unique per ticket." })]);
+          }
           idsThisPage.add(built.ticketId);
           pageEvents.push(...built.events);
           seen.push(built.ticketId);
@@ -372,7 +415,7 @@ async function ingestPasses(
               return "unknown";
             }
           })();
-          pageFailures.push({ recordId: recordId.slice(0, 64), code: error.code });
+          pageFailures.push({ recordId: recordId.slice(0, 64), code: error.code, ...(error.problems.length > 0 ? { details: error.problems.slice(0, MAX_DETAILS_PER_FAILURE) } : {}) });
         }
       }
       next = page.next;

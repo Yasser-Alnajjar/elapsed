@@ -87,7 +87,7 @@ export interface IngestResult {
     requests?: number;
     bytes?: number;
     /** Tickets that could not be stored (`payload_too_large`, `missing_required`, ...), up to 50. */
-    recordFailures?: { recordId: string; code: string }[];
+    recordFailures?: { recordId: string; code: string; details?: RecordFailureDetail[] }[];
     /** Total record failures, which may exceed `recordFailures.length`. */
     recordFailureCount?: number;
   };
@@ -177,10 +177,26 @@ export interface CanonicalBatch {
   afterProject?: () => Promise<void>;
 }
 
+/**
+ * Why one field of a record failed: the mapping, what it fills, and a sentence
+ * the owner can act on. Built from configuration and measured sizes, never
+ * from source values, so it is safe to store and show.
+ */
+export interface RecordFailureDetail {
+  mapping: string;
+  target: string;
+  reason: string;
+  message: string;
+  /** How many items (comments, history entries) had this same problem. */
+  count?: number;
+}
+
 export interface ProjectionFailure {
   /** The source record's id: a ticket id, an issue key, a pull request id. */
   id: string;
   error: string;
+  /** Field-level reasons, where the adapter can give them. */
+  details?: RecordFailureDetail[];
 }
 
 export interface CaseFacts {

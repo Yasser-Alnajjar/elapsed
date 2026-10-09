@@ -126,7 +126,7 @@ export async function normalizeCustom(ctx: NormalizeContext): Promise<CanonicalB
     cases: derived.cases,
     eventGroups: derived.eventGroups,
     deletedCaseExternalIds: derived.deletedCaseExternalIds,
-    failures: derived.failures.map((f) => ({ id: f.id, error: f.code })),
+    failures: derived.failures.map((f) => ({ id: f.id, error: f.code, ...(f.details.length > 0 ? { details: f.details } : {}) })),
     ...(override
       ? {
           afterProject: async () => {

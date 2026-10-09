@@ -7,11 +7,15 @@ import { Actions } from "@/actions/client";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { CustomProviderPageData, DraftView } from "@/lib/types/custom-provider";
+import { notify } from "@/lib/notify";
+import type {
+  CustomProviderPageData,
+  DraftView,
+} from "@/lib/types/custom-provider";
 import { ConfigWizard } from "./ConfigWizard";
 import { LimitationsNotice } from "./LimitationsNotice";
 import { OverridePanel } from "./OverridePanel";
-import { RunHistory } from "./RunHistory";
+import { RunHistory, SyncFreshness } from "./RunHistory";
 import { SyncStateBanner } from "./SyncStateBanner";
 import { VersionList } from "./VersionList";
 
@@ -32,7 +36,10 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
     return (
       <div className="flex flex-col gap-4">
         <Header />
-        <Alert>Custom REST is in Beta and is not enabled for your organization. Contact support to request access.</Alert>
+        <Alert>
+          Custom REST is in Beta and is not enabled for your organization.
+          Contact support to request access.
+        </Alert>
       </div>
     );
   }
@@ -50,6 +57,7 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
             <h2 id="cp-runs" className="text-on-surface font-medium">
               Syncs
             </h2>
+            <SyncFreshness status={status} />
             <RunHistory status={status} />
           </section>
           <section className={section} aria-labelledby="cp-versions">
@@ -65,7 +73,9 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
         <section className={section} aria-labelledby="cp-config">
           <div className="flex items-center justify-between gap-3">
             <h2 id="cp-config" className="text-on-surface font-medium">
-              {status.connected ? "Change the configuration" : "Connect your helpdesk"}
+              {status.connected
+                ? "Change the configuration"
+                : "Connect your helpdesk"}
             </h2>
             {status.connected && !editing && (
               <Button
@@ -77,6 +87,8 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
                   if (result.ok && result.body.draft) {
                     setSeed(result.body.draft);
                     setEditing(true);
+                  } else {
+                    notify.error("The configuration could not be opened for editing.");
                   }
                 }}
               >
@@ -85,7 +97,12 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
             )}
           </div>
           {(!status.connected || editing) && (
-            <ConfigWizard key={seed?.expiresAt ?? "new"} initial={seed ?? data.draft} secretsSet={(seed ?? data.draft)?.secretsSet ?? []} userId={data.userId} />
+            <ConfigWizard
+              key={seed?.expiresAt ?? "new"}
+              initial={seed ?? data.draft}
+              secretsSet={(seed ?? data.draft)?.secretsSet ?? []}
+              userId={data.userId}
+            />
           )}
           {status.connected && (
             <div className="border-outline-variant/20 border-t pt-3">
@@ -94,8 +111,13 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
                 size="sm"
                 variant="destructive"
                 onClick={async () => {
-                  if (window.confirm("Disconnect Custom REST? Syncing stops. Your existing data and configuration versions are kept.")) {
+                  if (
+                    window.confirm(
+                      "Disconnect Custom REST? Syncing stops. Your existing data and configuration versions are kept.",
+                    )
+                  ) {
                     await Actions.CustomProvider.disconnect();
+                    notify.success("Custom REST disconnected.");
                     router.refresh();
                   }
                 }}
@@ -114,14 +136,17 @@ function Header() {
   return (
     <div className="flex items-center gap-3">
       <span className="bg-surface-container-highest text-primary flex size-10 items-center justify-center rounded">
-        <Plug className="size-5" />
+        <Plug className="size-5 shrink-0" />
       </span>
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-on-surface text-xl font-medium">Custom REST</h1>
           <Badge variant="beta">Beta</Badge>
         </div>
-        <p className="text-on-surface-variant text-sm">Connect a helpdesk through its read-only JSON API. Elapsed only reads; nothing is ever written back.</p>
+        <p className="text-on-surface-variant text-sm">
+          Connect a helpdesk through its read-only JSON API. Elapsed only reads;
+          nothing is ever written back.
+        </p>
       </div>
     </div>
   );

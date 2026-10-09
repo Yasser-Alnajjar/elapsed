@@ -277,6 +277,12 @@ model Integration {
   /// this is never advanced by a failed attempt and is the source of truth
   /// for customer-visible data freshness.
   lastSuccessfulSyncAt DateTime?
+  /// Last run that actually changed data (D32, plan 09 6.7): a case, customer,
+  /// event, link, calendar or policy written with a value that differs from what
+  /// was stored, or a deletion. Advanced only by such a run, never by a
+  /// no-change sync (which is no longer stored as an `IntegrationSyncRun`), and
+  /// never derived from sync history. Null until the first recorded change.
+  lastDataChangedAt DateTime?
   /// Consecutive failed worker sync attempts. Customer-action states are
   /// included: their data is stale too, even though they do not degrade the
   /// worker process itself.

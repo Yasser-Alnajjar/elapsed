@@ -1,4 +1,4 @@
-export { MappingError, type MappingErrorCode } from "./errors";
+export { MappingError, type MappingErrorCode, type MappingProblem, type MappingProblemReason } from "./errors";
 export { evaluatePath, firstMatch, isValidPath, parsePath, MAX_PATH_LENGTH, MAX_PATH_SEGMENTS, type ParsedPath, type PathSegment } from "./path";
 export { isValidTimeZone, localToInstant, parseDateValue, type DateFormat } from "./dates";
 export { evaluateDate, evaluateExpr, evaluateText, stripHtml, type EvalEnv, type Value } from "./transforms";
@@ -117,3 +117,4 @@ export {
   type AbortedPassPreview,
   type OverrideErrorCode,
 } from "./overrides";
+export { isRunSuperseded } from "./supersession";

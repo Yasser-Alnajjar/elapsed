@@ -1,16 +1,39 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { ListFilter, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const labelClass = "text-on-surface-variant text-xs font-medium";
 const hintClass = "text-on-surface-variant/70 text-xs";
-export const selectClass =
-  "border-input bg-background text-foreground h-8 w-full rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-input focus-visible:outline-none";
 
-export function Field({ label, hint, children, htmlFor }: { label: string; hint?: string; children: ReactNode; htmlFor?: string }) {
+export function Field({
+  label,
+  hint,
+  children,
+  htmlFor,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+  htmlFor?: string;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor} className={labelClass}>
@@ -30,7 +53,7 @@ export function TextField({
   hint,
   placeholder,
   type = "text",
-  list,
+  suggestions,
   mono = false,
 }: {
   id: string;
@@ -40,22 +63,80 @@ export function TextField({
   hint?: string;
   placeholder?: string;
   type?: "text" | "password" | "number";
-  list?: string;
+  /** Paths from the sample ticket to pick from; free text is still allowed. */
+  suggestions?: string[];
   mono?: boolean;
 }) {
+  const input = (
+    <Input
+      id={id}
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      autoComplete="off"
+      className={mono ? "font-mono" : undefined}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
   return (
     <Field label={label} hint={hint} htmlFor={id}>
-      <Input
-        id={id}
-        type={type}
-        value={value}
-        list={list}
-        placeholder={placeholder}
-        autoComplete="off"
-        className={mono ? "font-mono" : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      {suggestions && suggestions.length > 0 ? (
+        <div className="flex items-center gap-1.5">
+          {input}
+          <PathPicker label={label} paths={suggestions} onPick={onChange} />
+        </div>
+      ) : (
+        input
+      )}
     </Field>
+  );
+}
+
+/** The paths found in the sample ticket; picking one fills the field. */
+function PathPicker({
+  label,
+  paths,
+  onPick,
+}: {
+  label: string;
+  paths: string[];
+  onPick: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Pick a path for ${label}`}
+          className="size-8 shrink-0"
+        >
+          <ListFilter />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="max-h-64 w-72 overflow-y-auto p-1">
+        <ul aria-label="Paths in your sample ticket">
+          {paths.map((path) => (
+            <li key={path}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="bare"
+                className="w-full justify-start rounded px-2 py-1 font-mono text-xs"
+                onClick={() => {
+                  onPick(path);
+                  setOpen(false);
+                }}
+              >
+                {path}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -76,21 +157,43 @@ export function SelectField<T extends string>({
 }) {
   return (
     <Field label={label} hint={hint} htmlFor={id}>
-      <select id={id} className={selectClass} value={value} onChange={(event) => onChange(event.target.value as T)}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={(next) => onChange(next as T)}>
+        <SelectTrigger id={id}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </Field>
   );
 }
 
-export function CheckField({ id, label, checked, onChange, hint }: { id: string; label: string; checked: boolean; onChange: (checked: boolean) => void; hint?: string }) {
+export function CheckField({
+  id,
+  label,
+  checked,
+  onChange,
+  hint,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  hint?: string;
+}) {
   return (
     <div className="flex items-start gap-2">
-      <input id={id} type="checkbox" className="mt-0.5 size-4" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <Checkbox
+        id={id}
+        className="mt-0.5"
+        checked={checked}
+        onCheckedChange={(next) => onChange(next === true)}
+      />
       <div className="flex flex-col gap-0.5">
         <Label htmlFor={id} className="text-on-surface text-sm">
           {label}
@@ -101,10 +204,44 @@ export function CheckField({ id, label, checked, onChange, hint }: { id: string;
   );
 }
 
-export function TextAreaField({ id, label, value, onChange, hint, rows = 4, mono = true }: { id: string; label: string; value: string; onChange: (value: string) => void; hint?: string; rows?: number; mono?: boolean }) {
+/**
+ * Keeps what the user is typing apart from the saved value. `canonical` maps typed text to the form the saved
+ * value would have; while they agree the typed text is left alone (so a half-typed line or half-typed JSON is not
+ * reverted), and when the saved value changes from elsewhere the text follows it.
+ */
+export function TextAreaField({
+  id,
+  label,
+  value,
+  onChange,
+  hint,
+  rows = 4,
+  mono = true,
+  canonical = (text) => text,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+  rows?: number;
+  mono?: boolean;
+  canonical?: (text: string, current: string) => string;
+}) {
+  const [text, setText] = useState(value);
+  if (canonical(text, value) !== value) setText(value);
   return (
     <Field label={label} hint={hint} htmlFor={id}>
-      <Textarea id={id} rows={rows} value={value} className={mono ? "font-mono text-xs" : "text-xs"} onChange={(event) => onChange(event.target.value)} />
+      <Textarea
+        id={id}
+        rows={rows}
+        value={text}
+        className={mono ? "font-mono text-xs" : "text-xs"}
+        onChange={(event) => {
+          setText(event.target.value);
+          onChange(event.target.value);
+        }}
+      />
     </Field>
   );
 }
@@ -126,40 +263,68 @@ export function MapEditor({
   onChange: (next: Record<string, string>) => void;
 }) {
   const entries = Object.entries(value);
-  const rename = (from: string, to: string) => onChange(Object.fromEntries(entries.map(([k, v]) => [k === from ? to : k, v])));
+  const rename = (from: string, to: string) =>
+    onChange(
+      Object.fromEntries(entries.map(([k, v]) => [k === from ? to : k, v])),
+    );
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className={labelClass}>{label}</legend>
+    <div role="group" aria-label={label} className="flex flex-col gap-2">
+      <span className={labelClass}>{label}</span>
       {entries.map(([source, target], index) => (
         <div key={index} className="flex items-center gap-2">
-          <Input aria-label={`${label}: value in your system`} className="font-mono" value={source} onChange={(event) => rename(source, event.target.value)} />
+          <Input
+            aria-label={`${label}: value in your system`}
+            className="font-mono"
+            value={source}
+            onChange={(event) => rename(source, event.target.value)}
+          />
           <span className="text-on-surface-variant">→</span>
-          <select aria-label={`${label}: Elapsed value`} className={selectClass} value={target} onChange={(event) => onChange({ ...value, [source]: event.target.value })}>
-            {targets.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="text-on-surface-variant hover:text-on-surface px-1 text-sm"
-            aria-label={`Remove ${source}`}
-            onClick={() => onChange(Object.fromEntries(entries.filter(([k]) => k !== source)))}
+          <Select
+            value={target}
+            onValueChange={(next) => onChange({ ...value, [source]: next })}
           >
-            ×
-          </button>
+            <SelectTrigger aria-label={`${label}: Elapsed value`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {targets.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="subtle"
+            size="icon-xs"
+            aria-label={`Remove ${source}`}
+            onClick={() =>
+              onChange(
+                Object.fromEntries(entries.filter(([k]) => k !== source)),
+              )
+            }
+          >
+            <X />
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
         id={`${idPrefix}-add`}
-        className="text-primary self-start text-xs hover:underline"
-        onClick={() => onChange({ ...value, [`value${entries.length + 1}`]: targets[0]!.value })}
+        variant="link"
+        size="bare"
+        className="self-start text-xs"
+        onClick={() =>
+          onChange({
+            ...value,
+            [`value${entries.length + 1}`]: targets[0]!.value,
+          })
+        }
       >
         Add a value
-      </button>
+      </Button>
       {hint && <p className={hintClass}>{hint}</p>}
-    </fieldset>
+    </div>
   );
 }

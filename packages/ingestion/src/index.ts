@@ -26,6 +26,7 @@ export type {
   CustomerIdentityRef,
   EventGroup,
   ProjectionFailure,
+  RecordFailureDetail,
   NormalizedEventFact,
   CorrelationOutput,
   LinkFact,
@@ -39,6 +40,8 @@ export type {
   ConversationMessage,
 } from "./contract";
 export { projectCanonicalBatch } from "./projector";
+export { caseFieldsChanged, sameJson } from "./case-change";
+export type { StoredCaseFields } from "./case-change";
 export type { ProjectionResult } from "./projector";
 export { diffNormalizedEvents, normalizedEventKey } from "./diff";
 export { projectIssueRemoval, projectLinkFacts, projectLinkSweep } from "./link-projector";

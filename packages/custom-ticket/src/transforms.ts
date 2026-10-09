@@ -1,4 +1,5 @@
 import { parseDateValue, type DateFormat } from "./dates";
+import { sourceFailureDraft, sourcesOf, tooLongDraft, wrongTypeDraft } from "./diagnostics";
 import { MappingError } from "./errors";
 import { evaluatePath } from "./path";
 import type { Expr } from "./schema";
@@ -14,17 +15,17 @@ export interface EvalEnv {
 const MAX_STRING = 8192;
 const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
-function asScalar(value: unknown): string | number | boolean | null {
+function asScalar(value: unknown, of: Expr): string | number | boolean | null {
   if (value === undefined || value === null) return null;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
-  throw new MappingError("invalid_type");
+  throw new MappingError("invalid_type", wrongTypeDraft(of, value, "text"));
 }
 
-function asText(value: unknown): string | null {
-  const scalar = asScalar(value);
+function asText(value: unknown, of: Expr): string | null {
+  const scalar = asScalar(value, of);
   if (scalar === null) return null;
   const text = String(scalar);
-  if (text.length > MAX_STRING) throw new MappingError("transform_failed");
+  if (text.length > MAX_STRING) throw new MappingError("transform_failed", tooLongDraft(text.length, MAX_STRING, sourcesOf(of).join(", ")));
   return text;
 }
 
@@ -109,25 +110,34 @@ export function evaluateExpr(expr: Expr, document: unknown, env: EvalEnv): Value
       let missing = false;
       const rendered = expr.template.replace(/\{([A-Za-z0-9_-]{1,64})\}/g, (_match, name: string) => {
         const part = expr.values[name];
-        if (part === undefined) throw new MappingError("transform_failed");
-        const text = asText(evaluateExpr(part, document, env));
+        if (part === undefined) {
+          const available = Object.keys(expr.values);
+          throw new MappingError("transform_failed", {
+            reason: "undefined_variable",
+            template: expr.template,
+            variable: name,
+            available,
+            detail: `template "${expr.template}" references undefined variable "${name}". Available variables: ${available.join(", ") || "none"}.`,
+          });
+        }
+        const text = asText(evaluateExpr(part, document, env), part);
         if (text === null) missing = true;
         return text ?? "";
       });
       if (missing) return null;
-      if (rendered.length > MAX_STRING) throw new MappingError("transform_failed");
+      if (rendered.length > MAX_STRING) throw new MappingError("transform_failed", { ...tooLongDraft(rendered.length, MAX_STRING), template: expr.template });
       return rendered;
     }
     case "trim": {
-      const text = asText(evaluateExpr(expr.of, document, env));
+      const text = asText(evaluateExpr(expr.of, document, env), expr.of);
       return text === null ? null : text.trim();
     }
     case "lowercase": {
-      const text = asText(evaluateExpr(expr.of, document, env));
+      const text = asText(evaluateExpr(expr.of, document, env), expr.of);
       return text === null ? null : text.toLowerCase();
     }
     case "stripHtml": {
-      const text = asText(evaluateExpr(expr.of, document, env));
+      const text = asText(evaluateExpr(expr.of, document, env), expr.of);
       return text === null ? null : stripHtml(text);
     }
     case "epochToIso": {
@@ -141,7 +151,7 @@ export function evaluateExpr(expr: Expr, document: unknown, env: EvalEnv): Value
       return parseDateValue(value, { format: expr.format as DateFormat, timezone: expr.timezone ?? env.timezone }).toISOString();
     }
     case "valueMap": {
-      const text = asText(evaluateExpr(expr.of, document, env));
+      const text = asText(evaluateExpr(expr.of, document, env), expr.of);
       if (text === null) return null;
       if (Object.hasOwn(expr.map, text)) return expr.map[text]!;
       return expr.fallback ?? null;
@@ -153,16 +163,21 @@ export function evaluateExpr(expr: Expr, document: unknown, env: EvalEnv): Value
 export function evaluateDate(expr: Expr, document: unknown, env: EvalEnv): Date | null {
   const value = evaluateExpr(expr, document, env);
   if (value === null) return null;
-  if (Array.isArray(value) || typeof value === "object" || typeof value === "boolean") throw new MappingError("invalid_type");
-  return parseDateValue(value, { format: "iso8601", timezone: env.timezone });
+  if (Array.isArray(value) || typeof value === "object" || typeof value === "boolean") throw new MappingError("invalid_type", wrongTypeDraft(expr, value, "a date (text or a number)"));
+  try {
+    return parseDateValue(value, { format: "iso8601", timezone: env.timezone });
+  } catch (error) {
+    if (error instanceof MappingError && error.drafts.length === 0 && error.problems.length === 0) throw new MappingError(error.code, sourceFailureDraft(expr, error.code), { cause: error });
+    throw error;
+  }
 }
 
 /** Evaluates an expression that must produce text (a trimmed, non-empty string), or null when missing. */
 export function evaluateText(expr: Expr, document: unknown, env: EvalEnv): string | null {
   const value = evaluateExpr(expr, document, env);
   if (value === null) return null;
-  if (typeof value === "object") throw new MappingError("invalid_type");
+  if (typeof value === "object") throw new MappingError("invalid_type", wrongTypeDraft(expr, value, "text"));
   const text = String(value).trim();
-  if (text.length > MAX_STRING) throw new MappingError("transform_failed");
+  if (text.length > MAX_STRING) throw new MappingError("transform_failed", tooLongDraft(text.length, MAX_STRING, sourcesOf(expr).join(", ")));
   return text === "" ? null : text;
 }

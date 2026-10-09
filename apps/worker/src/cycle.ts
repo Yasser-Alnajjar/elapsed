@@ -26,6 +26,7 @@ import {
   syncIntegration,
   type IngestResult,
   type IntegrationRef,
+  type IntegrationSyncResult,
   type PolicyImportResult,
   type ProjectionResult,
 } from "@sla/ingestion";
@@ -43,7 +44,7 @@ import type { WorkerConfig } from "./config";
 import { LeaseLostError, type LeaseGuard } from "./lease";
 import { ISSUE_LINK_PROVIDERS, PROVIDERS } from "./providers";
 import { captureException } from "./sentry";
-import { classifyRun, pruneSyncHistory, recordSyncRun } from "./sync-runs";
+import { classifyRun, dataChanged, pruneSyncHistory, recordSyncRun } from "./sync-runs";
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
 
@@ -442,6 +443,9 @@ export async function processOrganization(
           let normalizeError: string | null = null;
           let normalizeErrorObject: unknown | null = null;
           let normalization: ProjectionResult | null = null;
+          let correlation: IntegrationSyncResult["correlation"] = null;
+          let calendarImport: IntegrationSyncResult["calendarImport"] = null;
+          let policyImport: IntegrationSyncResult["policyImport"] = null;
 
           try {
             const adapter = PROVIDERS[integration.provider];
@@ -462,6 +466,9 @@ export async function processOrganization(
               ensureDefaultCalendarVersion: (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
             });
             normalization = synced.normalization;
+            correlation = synced.correlation;
+            calendarImport = synced.calendarImport;
+            policyImport = synced.policyImport;
             if (synced.policyImport) {
               slaPolicyImport = { provider: integration.provider, result: synced.policyImport };
             }
@@ -514,31 +521,43 @@ export async function processOrganization(
             normalizeError: normalizeErrorObject,
             normalization,
           });
+          const runFacts = {
+            ingestError: ingestOutcome.ingestError,
+            ingestResult: ingestOutcome.ingestResult,
+            normalizeError: normalizeErrorObject,
+            normalization,
+            correlation,
+            calendarImport,
+            policyImport,
+          };
+          // D32: one clock reading is both the run's `finishedAt` and the
+          // `lastSuccessfulSyncAt` below, so a later clean check is exactly
+          // comparable with a stored run. `lastDataChangedAt` moves only when this
+          // attempt changed data; a successful no-change attempt is not stored.
+          const finishedAt = new Date();
           await recordSyncRun(prisma, {
             organizationId: organization.id,
             integrationId: integration.id,
             startedAt: ingestOutcome.startedAt,
-            facts: {
-              ingestError: ingestOutcome.ingestError,
-              ingestResult: ingestOutcome.ingestResult,
-              normalizeError: normalizeErrorObject,
-              normalization,
-            },
+            facts: runFacts,
             classified,
+            finishedAt,
             logger: orgLogger,
           });
+          const changedData = dataChanged(runFacts) ? { lastDataChangedAt: finishedAt } : {};
           await prisma.integration.update({
             where: { id: integration.id },
             data:
               classified.leavesHealthAlone && syncError === null
-                ? { lastSyncAt: new Date(), lastSyncDurationMs: ingestOutcome.durationMs }
+                ? { lastSyncAt: new Date(), lastSyncDurationMs: ingestOutcome.durationMs, ...changedData }
                 : {
                     lastSyncAt: new Date(),
                     lastSyncError: syncError,
                     lastSyncDurationMs: ingestOutcome.durationMs,
+                    ...changedData,
                     ...(syncError === null
                       ? {
-                          lastSuccessfulSyncAt: new Date(),
+                          lastSuccessfulSyncAt: finishedAt,
                           consecutiveFailures: 0,
                           failingSince: null,
                         }

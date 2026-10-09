@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Actions } from "@/actions/client";
 import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
-import { Alert } from "@/components/ui/alert";
+import { notify } from "@/lib/notify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CustomStatus } from "@/lib/custom-provider/status";
@@ -18,17 +18,18 @@ export function VersionList({ status, isOwner }: { status: CustomStatus; isOwner
   const timeZone = useOrgTimezone();
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<{ version: number; outcome: ActivateOutcome } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   async function rollback(version: number, hash?: string) {
     setBusy(true);
-    setMessage(null);
     const outcome = await Actions.CustomProvider.rollback(version, hash);
     setBusy(false);
     if (outcome.kind === "needs_confirmation") return setPending({ version, outcome });
     setPending(null);
-    if (outcome.kind === "activated") return router.refresh();
-    setMessage(
+    if (outcome.kind === "activated") {
+      notify.success(`Rolled back to version ${version}.`);
+      return router.refresh();
+    }
+    notify.error(
       outcome.kind === "error" && outcome.code === "auth_changed_reenter_credentials"
         ? "That version uses different credentials. Edit the configuration and enter them again."
         : outcome.kind === "error" && outcome.code === "next_reply_restore_blocked"
@@ -60,7 +61,6 @@ export function VersionList({ status, isOwner }: { status: CustomStatus; isOwner
       {pending?.outcome.kind === "needs_confirmation" && (
         <ImpactPanel impact={pending.outcome.impact} busy={busy} onConfirm={() => void rollback(pending.version, pending.outcome.kind === "needs_confirmation" ? pending.outcome.impact.cancellation?.previewHash : undefined)} onCancel={() => setPending(null)} />
       )}
-      {message && <Alert variant="destructive">{message}</Alert>}
     </div>
   );
 }

@@ -3,10 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Actions } from "@/actions/client";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { notify } from "@/lib/notify";
 import { REASON_COPY, UNSUPPORTED_KIND_COPY } from "@/lib/custom-provider/state-copy";
 import type { ActivateOutcome, ConnectionTest, Preview, Sample, ValidateResponse } from "@/lib/types/custom-provider";
+import { FailureReasons } from "./FailureReasons";
 import { ImpactPanel } from "./ImpactPanel";
 
 const CLASSIFICATION_COPY: Record<string, string> = {
@@ -33,20 +37,17 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
   const [preview, setPreview] = useState<Preview | null>(null);
   const [validation, setValidation] = useState<ValidateResponse | null>(null);
   const [outcome, setOutcome] = useState<ActivateOutcome | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   async function run<T>(name: string, action: () => Promise<{ ok: boolean; status: number; body: T & { error?: string } }>, apply: (body: T) => void) {
     setBusy(name);
-    setMessage(null);
     if (!(await save())) {
       setBusy(null);
-      setMessage("The draft could not be saved.");
       return;
     }
     const result = await action();
     setBusy(null);
     if (!result.ok) {
-      setMessage(result.status === 429 ? "Too many checks. Try again in a minute." : `That check could not run (${result.body.error ?? "error"}).`);
+      notify.error(result.status === 429 ? "Too many checks. Try again in a minute." : `That check could not run (${result.body.error ?? "error"}).`);
       return;
     }
     apply(result.body);
@@ -54,16 +55,17 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
 
   async function activate(confirmPreviewHash?: string) {
     setBusy("activate");
-    setMessage(null);
     if (!(await save())) {
       setBusy(null);
-      setMessage("The draft could not be saved.");
       return;
     }
     const result = await Actions.CustomProvider.activate({ confirmPreviewHash });
     setBusy(null);
     setOutcome(result);
-    if (result.kind === "activated") router.refresh();
+    if (result.kind === "activated") {
+      notify.success(`Activated as version ${result.version}.`);
+      router.refresh();
+    }
   }
 
   return (
@@ -94,16 +96,21 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
         </Button>
       </div>
       {busy && <p className="text-on-surface-variant text-xs">Working: {busy}…</p>}
-      {message && <Alert variant="destructive">{message}</Alert>}
 
       {test && <Alert variant={test.classification === "ok" ? "success" : "destructive"}>{CLASSIFICATION_COPY[test.classification] ?? test.classification}</Alert>}
 
       {sample && (
-        <details open className="bg-surface-container-low rounded-lg p-3 text-xs">
-          <summary className="cursor-pointer font-medium">Sample from your API ({sample.itemCount} tickets on the first page{sample.hasNextPage ? ", more pages" : ""})</summary>
-          <p className="text-on-surface-variant my-2">Shown only to you. It is not stored.</p>
-          <pre className="max-h-72 overflow-auto font-mono">{JSON.stringify(sample.tickets[0] ?? null, null, 2)}</pre>
-        </details>
+        <Accordion type="single" collapsible defaultValue="sample" className="bg-surface-container-low rounded-lg px-3 text-xs">
+          <AccordionItem value="sample" className="border-0">
+            <AccordionTrigger className="text-xs">
+              Sample from your API ({sample.itemCount} tickets on the first page{sample.hasNextPage ? ", more pages" : ""})
+            </AccordionTrigger>
+            <AccordionContent className="text-xs">
+              <p className="text-on-surface-variant mb-2">Shown only to you. It is not stored.</p>
+              <pre className="max-h-72 overflow-auto font-mono">{JSON.stringify(sample.tickets[0] ?? null, null, 2)}</pre>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
 
       {preview && (
@@ -115,7 +122,7 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
             <ul className="text-warning mt-2">
               {preview.failures.slice(0, 10).map((f) => (
                 <li key={f.id}>
-                  Ticket {f.id}: {f.code}
+                  Ticket {f.id}: <FailureReasons code={f.code} details={f.details} />
                 </li>
               ))}
             </ul>
@@ -152,17 +159,17 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
             </Alert>
           )}
           {validation.support && (
-            <table>
-              <tbody>
+            <Table className="text-xs">
+              <TableBody>
                 {(Object.keys(validation.support) as (keyof typeof METRIC_LABEL)[]).map((metric) => (
-                  <tr key={metric} className="align-top">
-                    <td className="pe-4 font-medium">{METRIC_LABEL[metric]}</td>
-                    <td className="pe-4">{VERDICT_LABEL[validation.support![metric].state]}</td>
-                    <td className="text-on-surface-variant">{validation.support![metric].reasons.map((r) => REASON_COPY[r] ?? r).join(" ")}</td>
-                  </tr>
+                  <TableRow key={metric}>
+                    <TableCell className="align-top font-medium">{METRIC_LABEL[metric]}</TableCell>
+                    <TableCell className="align-top">{VERDICT_LABEL[validation.support![metric].state]}</TableCell>
+                    <TableCell className="text-on-surface-variant align-top">{validation.support![metric].reasons.map((r) => REASON_COPY[r] ?? r).join(" ")}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
           {validation.requiredSecrets && validation.requiredSecrets.some((f) => !validation.secretsSet?.includes(f)) && (
             <Alert variant="warning">Enter your credentials in the Connection step before activating.</Alert>

@@ -39,6 +39,14 @@ export function StepTickets({ config, set }: StepProps) {
             id="cp-body"
             label="JSON body"
             value={request.body === undefined ? "" : JSON.stringify(request.body, null, 2)}
+            canonical={(text, current) => {
+              if (text.trim() === "") return "";
+              try {
+                return JSON.stringify(JSON.parse(text), null, 2);
+              } catch {
+                return current;
+              }
+            }}
             onChange={(v) => {
               try {
                 set(["tickets", "request", "body"], v.trim() === "" ? undefined : JSON.parse(v));
@@ -54,6 +62,7 @@ export function StepTickets({ config, set }: StepProps) {
         label="Query parameters (key=value per line)"
         rows={3}
         value={recordToLines(request.query)}
+        canonical={(text) => recordToLines(linesToRecord(text))}
         onChange={(v) => set(["tickets", "request", "query"], Object.keys(linesToRecord(v)).length ? linesToRecord(v) : undefined)}
         hint="Credentials are not allowed here: authentication lives in headers."
       />

@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Actions } from "@/actions/client";
-import { Alert } from "@/components/ui/alert";
+import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { CustomStatus } from "@/lib/custom-provider/status";
 
@@ -18,7 +19,6 @@ export function OverridePanel({ status, isOwner }: { status: CustomStatus; isOwn
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
   const aborted = status.override;
   if (!aborted) return null;
 
@@ -27,10 +27,10 @@ export function OverridePanel({ status, isOwner }: { status: CustomStatus; isOwn
     const response = await Actions.CustomProvider.confirmOverride({ previewHash: aborted!.previewHash, reason, via });
     setBusy(false);
     if (response.ok) {
-      setResult(via === "support" ? "Recorded. A support operator can now apply it." : "Confirmed. The next sync will apply exactly this change once.");
+      notify.success(via === "support" ? "Recorded. A support operator can now apply it." : "Confirmed. The next sync will apply exactly this change once.");
       router.refresh();
     } else {
-      setResult(response.body.error === "stale_preview" ? "The data changed. Review the new preview." : "That could not be recorded.");
+      notify.error(response.body.error === "stale_preview" ? "The data changed. Review the new preview." : "That could not be recorded.");
     }
   }
 
@@ -44,10 +44,12 @@ export function OverridePanel({ status, isOwner }: { status: CustomStatus; isOwn
       {aborted.recordIds.length > 0 && <p className="text-xs">Examples: {aborted.recordIds.join(", ")}.</p>}
       {isOwner ? (
         <>
-          <label className="flex flex-col gap-1 text-xs">
-            Why is this change expected? (required)
-            <Textarea rows={2} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} />
-          </label>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="cp-override-reason" className="text-xs font-normal">
+              Why is this change expected? (required)
+            </Label>
+            <Textarea id="cp-override-reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} />
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={busy || reason.trim() === ""} onClick={() => void confirm()}>
               Apply this change on the next sync
@@ -60,7 +62,6 @@ export function OverridePanel({ status, isOwner }: { status: CustomStatus; isOwn
       ) : (
         <p className="text-xs">Only an organization owner can review this.</p>
       )}
-      {result && <Alert>{result}</Alert>}
     </div>
   );
 }
