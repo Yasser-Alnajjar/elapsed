@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getPrismaClient, type PrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { availabilityCheck, unavailableResponse } from "@/lib/integration-availability";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export interface OwnerContext {
@@ -22,14 +23,18 @@ const OUTBOUND_WINDOW_MS = 60_000;
 /**
  * The gate every Custom REST route passes (plan 09, 8.5, 8.7): a signed-in
  * organization OWNER (never a member), the organization taken from the session
- * and never from input, and the operator's Beta flag, checked server-side on
- * every call. The same-origin check for state-changing requests is applied by
+ * and never from input, and platform availability (D33: the provider enabled
+ * and this organization on its Beta allowlist, which replaced the operator's
+ * Beta flag), checked server-side on every call. Only `status` and
+ * `disconnect`, which make no outbound request, pass
+ * `requireAvailable: false`: a customer can always see and disconnect a
+ * paused source. The same-origin check for state-changing requests is applied by
  * `proxy.ts` for every `/api` route. Routes that make an outbound request also
  * take a per-organization rate limit and a single in-flight slot, so the
  * endpoint cannot be used as a scanner or a resolver; the caller must call
  * `release()` when done.
  */
-export async function ownerGuard(options: { outbound?: boolean } = {}): Promise<GuardResult> {
+export async function ownerGuard(options: { outbound?: boolean; requireAvailable?: boolean } = {}): Promise<GuardResult> {
   const session = await getServerSession(authOptions);
   if (!session) return { ok: false, response: NextResponse.json({ error: "Not signed in" }, { status: 401 }) };
   const denied = requireOwner(session);
@@ -37,9 +42,9 @@ export async function ownerGuard(options: { outbound?: boolean } = {}): Promise<
 
   const prisma = getPrismaClient();
   const organizationId = session.user.organizationId;
-  const flag = await prisma.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } });
-  if (!flag?.customProviderEnabled) {
-    return { ok: false, response: NextResponse.json({ error: "Custom REST is not enabled for this organization", code: "beta_disabled" }, { status: 403 }) };
+  if (options.requireAvailable !== false) {
+    const availability = await availabilityCheck(organizationId, "custom");
+    if (!availability.available) return { ok: false, response: unavailableResponse(availability) };
   }
 
   let release = () => {};

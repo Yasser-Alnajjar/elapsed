@@ -13,6 +13,7 @@ import { PROVIDERS, WEB_PROVIDERS } from "@/lib/providers";
 import { getZendeskOAuthConfig } from "@/lib/zendesk-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 import { errorMessage } from "@/lib/utils";
+import { ignoreWebhookIfUnavailable } from "@/lib/integration-availability";
 
 export const maxDuration = 60;
 
@@ -56,6 +57,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
   if (integration.status === "disconnected") {
     return NextResponse.json({ status: "ignored", reason: "integration disconnected" });
   }
+
+  // D33 ruling 5: while the provider is unavailable to this organization the
+  // delivery is acknowledged (200) and ignored, so the sender neither retries
+  // nor disables the webhook. Nothing is stored; the first poll after
+  // re-enablement fetches the change from the stored cursor.
+  const unavailable = await ignoreWebhookIfUnavailable(integration.organizationId, "zendesk");
+  if (unavailable) return unavailable;
 
   let payload: unknown;
   try {

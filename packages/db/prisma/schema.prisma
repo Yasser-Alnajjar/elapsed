@@ -85,16 +85,17 @@ model Organization {
   billingSubscription BillingSubscription?
   billingInvoices     BillingInvoice[]
   billingEvents       BillingEvent[]
-  /// Operator Beta flag for the `custom` ticket source (N9, plan 09 8.7). Set
-  /// only by a platform operator from `/admin` (audited in `AdminAuditLog`),
-  /// default off. It gates the custom routes, UI and activation server-side; it
-  /// never bypasses owner-only authorization or tenant isolation.
+  /// DEPRECATED (D33, N10): superseded by the Custom REST entry of
+  /// `IntegrationBetaAllowlist`, which the N10 migration seeded from it. No
+  /// code reads or writes it any more; kept for one release so a rolling
+  /// deploy never meets a missing column, then dropped by N10-F1.
   customProviderEnabled Boolean @default(false)
   customProviderDrafts  CustomProviderDraft[]
   customConfigVersions  CustomProviderConfigVersion[]
   integrationSyncRuns   IntegrationSyncRun[]
   guardOverrides        GuardOverride[]
   customActivationAudits CustomActivationAudit[]
+  integrationBetaAllowlist IntegrationBetaAllowlist[]
 
   @@map("organizations")
 }
@@ -1598,4 +1599,58 @@ model CustomActivationAudit {
 
   @@index([integrationId, createdAt])
   @@map("custom_activation_audits")
+}
+
+/// Release stage of an integration provider (D33, N10). Independent of
+/// `IntegrationAvailability.enabled`: "disabled" is not a stage.
+enum IntegrationReleaseStage {
+  stable
+  beta
+  coming_soon
+}
+
+/// Who may use a provider while it is in Beta (D33). Ignored for other stages.
+enum IntegrationBetaAccess {
+  all_organizations
+  allowlist
+}
+
+/// Platform-level availability of one integration provider (D33, N10),
+/// written only by a platform operator from `/admin/integrations` and audited
+/// in `AdminAuditLog`. Registration stays static (D16): this row only decides
+/// whether a statically registered provider may be used right now. A missing
+/// row falls back to `INTEGRATION_CATALOG`'s default
+/// (`packages/db/src/integration-catalog.ts`). Read through
+/// `resolveIntegrationAvailability` on every provider path, with no cache.
+/// Never holds a credential or secret.
+model IntegrationAvailability {
+  provider       IntegrationProvider     @id
+  /// Off makes the provider unavailable to every organization, whatever its
+  /// stage. Never changes `Integration.status` or deletes anything.
+  enabled        Boolean                 @default(true)
+  releaseStage   IntegrationReleaseStage
+  betaAccess     IntegrationBetaAccess   @default(allowlist)
+  /// Customer-facing explanation shown while unavailable. Operator-authored text.
+  statusMessage  String?
+  /// Optimistic concurrency: every write is a compare-and-set on this value.
+  version        Int                     @default(0)
+  updatedAt      DateTime                @updatedAt
+  updatedByEmail String?
+
+  @@map("integration_availability")
+}
+
+/// Organizations allowed to use a Beta provider whose `betaAccess` is
+/// `allowlist` (D33, N10). Written only by a platform operator, audited.
+/// Absorbs the former `Organization.customProviderEnabled` (Custom REST).
+model IntegrationBetaAllowlist {
+  provider       IntegrationProvider
+  organizationId String
+  addedByEmail   String
+  createdAt      DateTime            @default(now())
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([provider, organizationId])
+  @@index([organizationId])
+  @@map("integration_beta_allowlist")
 }

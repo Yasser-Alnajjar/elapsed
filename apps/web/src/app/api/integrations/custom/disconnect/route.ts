@@ -8,7 +8,7 @@ import { failure, ownerGuard } from "@/lib/custom-provider/route-guard";
  * The worker skips disconnected integrations, so polling stops on its next tick.
  */
 export async function POST() {
-  const guard = await ownerGuard();
+  const guard = await ownerGuard({ requireAvailable: false });
   if (!guard.ok) return guard.response;
   const done = await disconnectCustom(guard.ctx.prisma, guard.ctx.organizationId);
   return done ? NextResponse.json({ status: "disconnected" }) : failure("not_connected", 404);

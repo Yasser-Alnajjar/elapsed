@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@sla/db";
-import { decryptCustomSecrets, CustomCredentialsUnreadableError } from "@sla/db";
+import { decryptCustomSecrets, CustomCredentialsUnreadableError, resolveIntegrationAvailability } from "@sla/db";
 import {
   IngestAbortedError,
   IntegrationNotConfiguredError,
@@ -222,7 +222,7 @@ function classifyFailure(error: unknown): Error {
  *   out of any of them ends the run `partial` at the last completed page;
  *   a real failure (provider, transport, auth) is thrown and keeps the
  *   failure policy, even when the budget also ran out while retrying it.
- * - The Beta flag is checked before the run, before each attempt and every few
+ * - Platform availability (the Beta allowlist, D33) is checked before the run, before each attempt and every few
  *   seconds while a request is on the wire.
  */
 export async function runCustomIngest(ctx: IngestContext): Promise<IngestResult> {
@@ -233,10 +233,15 @@ export async function runCustomIngest(ctx: IngestContext): Promise<IngestResult>
       credentials: true,
       cursor: true,
       activeConfigVersion: true,
-      organization: { select: { customProviderEnabled: true } },
     },
   });
-  if (!row.organization.customProviderEnabled || row.activeConfigVersion === null) throw new IntegrationNotConfiguredError("Custom");
+  // Platform availability (D33): a disabled provider, or an organization off the
+  // Custom REST allowlist, makes no request. The worker already skips an
+  // unavailable integration before calling `ingest`; this keeps the adapter
+  // safe on its own.
+  if (!(await resolveIntegrationAvailability(prisma, integration.organizationId, "custom")).available || row.activeConfigVersion === null) {
+    throw new IntegrationNotConfiguredError("Custom");
+  }
 
   const versionRow = await prisma.customProviderConfigVersion.findUnique({
     where: { integrationId_version: { integrationId: integration.id, version: row.activeConfigVersion } },
@@ -258,9 +263,12 @@ export async function runCustomIngest(ctx: IngestContext): Promise<IngestResult>
   const sensitive = sensitiveValues(headers, secrets);
   const unregister = registerSecretValues(sensitive);
 
+  // Re-checked before each attempt and every ~5 s while a request is in flight
+  // (plan 09 §8.7): turning the provider off, or removing the organization from
+  // its allowlist, aborts the request and discards the response (D33).
   const checkStop = async (): Promise<string | null> => {
-    const current = await prisma.organization.findUnique({ where: { id: integration.organizationId }, select: { customProviderEnabled: true } });
-    return current?.customProviderEnabled ? null : "flag_disabled";
+    const decision = await resolveIntegrationAvailability(prisma, integration.organizationId, "custom");
+    return decision.available ? null : "flag_disabled";
   };
   const budget = new RunBudget({ checkStop });
   const client = createSafeHttpClient({

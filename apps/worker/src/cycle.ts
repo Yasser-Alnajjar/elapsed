@@ -12,8 +12,10 @@ import {
   getIntegrationConfig,
   isConfigurableIntegrationProvider,
   recordSlaImportSummary,
+  resolveOrganizationAvailability,
   withOrganizationSlaLock,
   withPerfScope,
+  type IntegrationAvailabilityDecision,
   type IntegrationProvider,
   type PrismaClient,
 } from "@sla/db";
@@ -240,7 +242,7 @@ export async function processOrganization(
       reauthRequired: boolean;
       permissionDenied: boolean;
       durationMs: number;
-      /** Ingest was skipped on purpose (operator pause): no sync attempt happened, so none is recorded. */
+      /** Ingest was skipped on purpose (operator pause, or the provider is unavailable to this organization, D33): no sync attempt happened, so none is recorded. */
       paused: boolean;
       /** What the sync-run record (N9.9) is built from. */
       startedAt: Date;
@@ -249,12 +251,57 @@ export async function processOrganization(
     }
   >();
 
+  // Platform availability (D33, plan 10 §5.3), read fresh for every
+  // organization run so an operator's change applies to the next run in every
+  // worker. If it cannot be read, no provider is called this run (fail closed):
+  // the stored-data stages below still run.
+  let availability: Record<IntegrationProvider, IntegrationAvailabilityDecision> | null = null;
+  try {
+    availability = await resolveOrganizationAvailability(prisma, organization.id);
+  } catch (error) {
+    result.failures.push({
+      organizationId: organization.id,
+      stage: "availability",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    captureException(error, { organizationId: organization.id, kind, stage: "availability" });
+  }
+
+  const skipIngest = (integration: OrganizationToProcess["integrations"][number]) =>
+    ingestOutcomes.set(integration.id, {
+      syncError: null,
+      reauthRequired: false,
+      permissionDenied: false,
+      durationMs: 0,
+      paused: true,
+      startedAt: new Date(),
+      ingestError: null,
+      ingestResult: null,
+    });
+
   for (const integration of orderedIntegrations) {
     // Outside the try below on purpose: losing the lease must abort the run,
     // not be recorded as this integration's sync error. Each provider call
     // advances the integration's cursor, so this is the gate that keeps a
     // worker that lost the organization from ingesting it.
     lease?.assertValid();
+    const decision = availability?.[integration.provider];
+    if (!decision?.available) {
+      // Unavailable to this organization (D33): disabled, Coming Soon, or Beta
+      // without this organization on the allowlist. Treated exactly like an
+      // operator pause: no provider call, no sync attempt, no failure and no
+      // "failing since" streak. `Integration.status` is never touched, so it
+      // stays distinct from a customer's disconnect. Stored data keeps being
+      // normalized and evaluated below; the source goes stale (D22).
+      orgLogger.info("integration_ingest_unavailable", {
+        position,
+        provider: integration.provider,
+        integrationId: integration.id,
+        reason: decision && !decision.available ? decision.code : "availability_unknown",
+      });
+      skipIngest(integration);
+      continue;
+    }
     if (integration.pollingPausedAt) {
       // Paused by a platform operator (N4.5): no provider fetch. Not a failure
       // and not a sync attempt, so no sync health is written for it below;
@@ -267,16 +314,7 @@ export async function processOrganization(
         integrationId: integration.id,
         pausedAt: integration.pollingPausedAt.toISOString(),
       });
-      ingestOutcomes.set(integration.id, {
-        syncError: null,
-        reauthRequired: false,
-        permissionDenied: false,
-        durationMs: 0,
-        paused: true,
-        startedAt: new Date(),
-        ingestError: null,
-        ingestResult: null,
-      });
+      skipIngest(integration);
       continue;
     }
     const integrationStartedAt = Date.now();

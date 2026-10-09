@@ -9,6 +9,7 @@ import {
 } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { requireIntegrationAvailable } from "@/lib/integration-availability";
 
 /**
  * Shared GET/POST/DELETE handlers for `/api/integrations/{provider}/config`,
@@ -19,6 +20,14 @@ import { requireOwner } from "@/lib/authz";
 export function createIntegrationConfigHandlers(
   provider: ConfigurableIntegrationProvider,
 ) {
+  /**
+   * D33: configuration writes for an unavailable provider are refused (reads
+   * stay open). Slack is a notification channel, outside N10 (ruling 7).
+   */
+  async function availabilityGate(organizationId: string) {
+    return provider === "slack" ? null : requireIntegrationAvailable(organizationId, provider);
+  }
+
   async function GET() {
     const session = await getServerSession(authOptions);
     if (!session)
@@ -39,6 +48,8 @@ export function createIntegrationConfigHandlers(
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const denied = requireOwner(session);
     if (denied) return denied;
+    const unavailable = await availabilityGate(session.user.organizationId);
+    if (unavailable) return unavailable;
 
     const body = (await request.json().catch(() => null)) as {
       clientId?: unknown;
@@ -118,6 +129,8 @@ export function createIntegrationConfigHandlers(
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const denied = requireOwner(session);
     if (denied) return denied;
+    const unavailable = await availabilityGate(session.user.organizationId);
+    if (unavailable) return unavailable;
 
     const result = await deleteIntegrationConfig(
       getPrismaClient(),

@@ -4,6 +4,7 @@ import { runZendeskBackfill, ZendeskReauthRequiredError } from "@sla/zendesk";
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { requireIntegrationAvailable } from "@/lib/integration-availability";
 import { projectAndEvaluateSourceSyncs } from "@/lib/source-sync";
 import { getZendeskOAuthConfig } from "@/lib/zendesk-env";
 
@@ -14,6 +15,9 @@ export async function POST() {
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const denied = requireOwner(session);
   if (denied) return denied;
+  // D33: no import from a provider that is unavailable to this organization.
+  const unavailable = await requireIntegrationAvailable(session.user.organizationId, "zendesk");
+  if (unavailable) return unavailable;
 
   const prisma = getPrismaClient();
   const integration = await prisma.integration.findUnique({
