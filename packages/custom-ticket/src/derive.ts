@@ -16,8 +16,8 @@ export interface RawRow {
 }
 
 export const CUSTOM_SOURCE_ROLE = "ticket_source" as const;
-/** Becomes the literal `"custom"` once the N9.8 migration adds the enum value. */
-export const CUSTOM_PROVIDER = "custom" as IntegrationProvider;
+/** The `custom` value of the provider enum (added by the N9.8 migration). */
+export const CUSTOM_PROVIDER = "custom" satisfies IntegrationProvider;
 /** A customer (or agent) comment this close to creation is the ticket's opening message, not a reply. */
 export const OPENING_MESSAGE_WINDOW_MS = 60_000;
 const MAX_TAGS = 20;

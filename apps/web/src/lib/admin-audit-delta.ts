@@ -62,6 +62,11 @@ export function describeAuditChange(row: Pick<AdminAuditRow, "action" | "metadat
       if (row.integrationId) facts.push({ label: "Integration", value: row.integrationId });
       return { entries: [], facts };
     }
+    case "enable_custom_provider":
+    case "disable_custom_provider": {
+      if (isObject(row.metadata) && row.metadata.pausedPolling === true) facts.push({ label: "Polling", value: "Paused with the flag; resume it separately" });
+      return { entries: [], facts };
+    }
     default:
       return { entries: [], facts };
   }

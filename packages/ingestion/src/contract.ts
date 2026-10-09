@@ -6,7 +6,10 @@ import type { Logger } from "@sla/logger";
  * The one typed record a provider is reached through. Registries are static
  * object literals (`satisfies Record<IntegrationProvider, ProviderAdapter>`),
  * so a missing provider is a compile error. There is no plugin loading and no
- * runtime registration (D16): every member maps to a function that exists.
+ * runtime registration (D16, amended by D31): every member maps to a function
+ * that exists. The one data-driven member, `custom`, is itself a statically
+ * registered adapter that interprets a validated, versioned configuration;
+ * it never executes customer-supplied code.
  */
 export interface ProviderAdapter {
   provider: IntegrationProvider;

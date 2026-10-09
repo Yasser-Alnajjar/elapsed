@@ -15,6 +15,7 @@
     "@sentry/nextjs": "^10.74.0",
     "@sla/commitments": "workspace:*",
     "@sla/core": "workspace:*",
+    "@sla/custom-ticket": "workspace:*",
     "@sla/db": "workspace:*",
     "@sla/email": "workspace:*",
     "@sla/github": "workspace:*",

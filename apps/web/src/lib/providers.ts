@@ -1,5 +1,6 @@
 import type { SourceRole } from "@sla/core";
 import type { IntegrationProvider } from "@sla/db";
+import { customAdapter, customWebAdapter } from "@sla/custom-ticket";
 import { githubAdapter, githubWebAdapter } from "@sla/github";
 import type { ProviderAdapter, ProviderCapabilities, ProviderWebAdapter } from "@sla/ingestion";
 import { intercomAdapter, intercomWebAdapter } from "@sla/intercom";
@@ -22,6 +23,7 @@ export const PROVIDERS = {
   intercom: intercomAdapter,
   linear: linearAdapter,
   github: githubAdapter,
+  custom: customAdapter,
 } satisfies Record<IntegrationProvider, ProviderAdapter>;
 
 export const WEB_PROVIDERS = {
@@ -30,6 +32,7 @@ export const WEB_PROVIDERS = {
   intercom: intercomWebAdapter,
   linear: linearWebAdapter,
   github: githubWebAdapter,
+  custom: customWebAdapter,
 } satisfies Record<IntegrationProvider, ProviderWebAdapter>;
 
 const ALL_PROVIDERS = Object.keys(PROVIDERS) as IntegrationProvider[];

@@ -1301,6 +1301,9 @@ enum IntegrationProvider {
   linear
   intercom
   github
+  /// The declarative `custom` ticket source (D31, N9): one per organization,
+  /// interpreting a versioned, closed-schema configuration. Role `ticket_source`.
+  custom
 }
 
 enum IntegrationStatus {

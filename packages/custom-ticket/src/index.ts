@@ -79,3 +79,5 @@ export {
   type GuardCounts,
 } from "./guards";
 export { LIFECYCLE_GUARD, lifecyclePreviewHash, loadActiveConfig, loadRawRows, normalizeCustom } from "./normalize";
+export { CUSTOM_ACCESS_NOTE, customAdapter, customWebAdapter } from "./adapter";
+export { customTicketUrl, recognizeCustomTicketUrl } from "./ticket-url";

@@ -1,10 +1,11 @@
 "use client";
 
-import { Code, Database, Layers, MessageCircle, Ticket, type LucideIcon } from "lucide-react";
+import { Code, Database, Layers, MessageCircle, Plug, Ticket, type LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
 import type { IntegrationProvider } from "@/lib/types/integrations";
 
+import { CustomConnectLink } from "./CustomConnectLink";
 import { GithubConnectForm } from "./GithubCard";
 import { IntercomConnectButton } from "./IntercomCard";
 import { JiraConnectButton } from "./JiraCard";
@@ -89,6 +90,16 @@ const PRESENTATION: Record<IntegrationProvider, ProviderPresentation> = {
     readOnlyNote: "Read-only access: correlated through whichever issue a pull request already references.",
     Connect: GithubConnectForm,
     reconnectHref: () => "/settings/integrations",
+  },
+  // Not offered in the guided onboarding flow (N9, V1): it has its own wizard, reached from the integrations page.
+  custom: {
+    icon: Plug,
+    tagline: "Any helpdesk with a read-only JSON API",
+    caseNoun: "tickets",
+    beta: true,
+    readOnlyNote: "Read-only access: Elapsed only reads from your API, over HTTPS, and never creates, edits or deletes anything.",
+    Connect: CustomConnectLink,
+    reconnectHref: () => "/settings/integrations/custom",
   },
 };
 

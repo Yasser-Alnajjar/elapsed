@@ -10,6 +10,7 @@ import {
 } from "@sla/commitments";
 import {
   getIntegrationConfig,
+  isConfigurableIntegrationProvider,
   recordSlaImportSummary,
   withOrganizationSlaLock,
   withPerfScope,
@@ -279,7 +280,10 @@ export async function processOrganization(
         integration: integrationRef(integration),
         logger: orgLogger.child({ integrationId: integration.id, provider: integration.provider }),
         appUrl: config.appUrl ?? null,
-        loadOAuthConfig: () => getIntegrationConfig(prisma, organization.id, integration.provider),
+        loadOAuthConfig: () =>
+          isConfigurableIntegrationProvider(integration.provider)
+            ? getIntegrationConfig(prisma, organization.id, integration.provider)
+            : Promise.resolve(null), // `custom` has no OAuth app
       });
     } catch (error) {
       // Not a sync failure: this worker no longer owns the organization (its

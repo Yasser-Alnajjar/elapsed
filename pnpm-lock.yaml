@@ -54,6 +54,9 @@ importers:
       '@sla/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@sla/custom-ticket':
+        specifier: workspace:*
+        version: link:../../packages/custom-ticket
       '@sla/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -193,6 +196,9 @@ importers:
       '@sla/commitments':
         specifier: workspace:*
         version: link:../../packages/commitments
+      '@sla/custom-ticket':
+        specifier: workspace:*
+        version: link:../../packages/custom-ticket
       '@sla/db':
         specifier: workspace:*
         version: link:../../packages/db

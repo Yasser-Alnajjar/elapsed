@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { ShieldCheck, type LucideIcon } from "lucide-react";
 
+import type { OAuthIntegrationProvider } from "@/lib/types/integrations";
 import type { ProviderOnboardingStatus } from "@/lib/types/onboarding";
 import { IntegrationConfigGate } from "@modules/settings/integrations/csr/IntegrationConfigGate";
 import { providerPresentation } from "@modules/settings/integrations/csr/provider-presentation";
@@ -141,7 +142,8 @@ export function AlternativeConnectorCard({
       </div>
 
       <IntegrationConfigGate
-        provider={provider.provider}
+        // Onboarding never lists `custom` (no OAuth app; see getOnboardingStatus).
+        provider={provider.provider as OAuthIntegrationProvider}
         providerLabel={provider.label}
         config={provider.config}
         connected={provider.connected}
@@ -185,7 +187,8 @@ export function PrimaryConnectorCard({
       <ScopeBanner access={provider.access} />
 
       <IntegrationConfigGate
-        provider={provider.provider}
+        // Onboarding never lists `custom` (no OAuth app; see getOnboardingStatus).
+        provider={provider.provider as OAuthIntegrationProvider}
         providerLabel={provider.label}
         config={provider.config}
         connected={provider.connected}

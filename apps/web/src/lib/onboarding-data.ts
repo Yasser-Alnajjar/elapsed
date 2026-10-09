@@ -5,11 +5,14 @@ import {
   SYSTEM_SOURCE_CONNECTED,
   getIntegrationConfigStatus,
 } from "@sla/db";
-import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
+import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider, type OAuthIntegrationProvider } from "./types/integrations";
 import type { OnboardingStatus, ProviderOnboardingStatus } from "./types/onboarding";
 import { PROVIDERS, WEB_PROVIDERS, WORK_TRACKER_PROVIDERS, TICKET_SOURCE_PROVIDERS } from "./providers";
 
-const REGISTRY_ORDER = Object.keys(PROVIDERS) as IntegrationProvider[];
+// `custom` has no OAuth app and its own wizard, so the guided onboarding flow does not offer it (N9, V1).
+const REGISTRY_ORDER = (Object.keys(PROVIDERS) as IntegrationProvider[]).filter(
+  (provider): provider is OAuthIntegrationProvider => provider !== "custom",
+);
 
 /**
  * Cheap counts for the onboarding progress view (roadmap step 11). Reads

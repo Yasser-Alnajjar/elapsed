@@ -78,6 +78,8 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     linearIntegration,
     intercomIntegration,
     githubIntegration,
+    customIntegration,
+    customFlag,
     slackIntegration,
     zendeskConfig,
     linearConfig,
@@ -114,6 +116,11 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
       },
       select: ROW_SELECT,
     }),
+    prisma.integration.findUnique({
+      where: { organizationId_provider: { organizationId, provider: "custom" } },
+      select: ROW_SELECT,
+    }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } }),
     prisma.slackIntegration.findUnique({
       where: { organizationId },
       select: {
@@ -166,6 +173,8 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     linear: toConnectionView("linear", linearIntegration),
     intercom: toConnectionView("intercom", intercomIntegration, intercomWorkspaceId),
     github: toConnectionView("github", githubIntegration, githubRepo),
+    custom: toConnectionView("custom", customIntegration),
+    customEnabled: customFlag?.customProviderEnabled === true,
     slack: {
       connected: slackIntegration !== null,
       teamName: slackIntegration?.teamName ?? null,

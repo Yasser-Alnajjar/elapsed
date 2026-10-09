@@ -1,4 +1,4 @@
-import { Eye, FileSliders, Gauge, Pause, Play, ReceiptText, RefreshCw, type LucideIcon } from "lucide-react";
+import { Eye, FileSliders, Gauge, Pause, Play, Plug, PlugZap, ReceiptText, RefreshCw, type LucideIcon } from "lucide-react";
 import { Tag } from "@/components/admin/admin-ui";
 import { ADMIN_AUDIT_ACTION_LABELS, type AdminAuditAction } from "@/lib/types/admin";
 
@@ -10,6 +10,8 @@ const PRESENTATION: Record<AdminAuditAction, { tone: "neutral" | "primary" | "su
   request_renormalize: { tone: "primary", icon: RefreshCw },
   update_worker_settings: { tone: "warning", icon: Gauge },
   billing_override: { tone: "warning", icon: ReceiptText },
+  enable_custom_provider: { tone: "primary", icon: PlugZap },
+  disable_custom_provider: { tone: "warning", icon: Plug },
 };
 
 /** Quiet outline for a view, a tint for a real change, so changes stand out in a long list. */
