@@ -36,6 +36,18 @@ export {
   IntegrationCredentialsUnreadableError,
 } from "./integration-credentials";
 export {
+  CUSTOM_CREDENTIALS_UNREADABLE_MESSAGE,
+  CustomCredentialsUnreadableError,
+  DRAFT_INTEGRATION_ID,
+  customSecretFieldsSet,
+  decryptCustomSecret,
+  decryptCustomSecrets,
+  encryptCustomSecret,
+  encryptCustomSecrets,
+  isCustomSecretCiphertext,
+} from "./custom-secrets";
+export type { CustomSecretBinding, CustomSecretContext } from "./custom-secrets";
+export {
   getEmailSettings,
   getEmailSettingsStatus,
   saveEmailSettings,

@@ -85,6 +85,14 @@ model Organization {
   billingSubscription BillingSubscription?
   billingInvoices     BillingInvoice[]
   billingEvents       BillingEvent[]
+  /// Operator Beta flag for the `custom` ticket source (N9, plan 09 8.7). Set
+  /// only by a platform operator from `/admin` (audited in `AdminAuditLog`),
+  /// default off. It gates the custom routes, UI and activation server-side; it
+  /// never bypasses owner-only authorization or tenant isolation.
+  customProviderEnabled Boolean @default(false)
+  customProviderDrafts  CustomProviderDraft[]
+  customConfigVersions  CustomProviderConfigVersion[]
+  integrationSyncRuns   IntegrationSyncRun[]
 
   @@map("organizations")
 }
@@ -308,16 +316,133 @@ model Integration {
   /// owner connect. Organization-owned data, not an operator action, so it is
   /// never written to `AdminAuditLog`.
   connectedBy    String?
+  /// `custom` only (N9): the `CustomProviderConfigVersion.version` the worker
+  /// and the web adapter load. Set by compare-and-set at activation and at
+  /// rollback. Null for every other provider.
+  activeConfigVersion Int?
+  /// What this source cannot support, written at activation from the validated
+  /// configuration (N9, Q1): `{ unsupportedKinds: CommitmentKind[], limitations: string[] }`.
+  /// The commitments pipelines read this generic field and never the provider
+  /// name. Null means full support and is what every other provider has.
+  slaSupport     Json?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   cases          Case[]
   rawEvents      RawEvent[]
+  syncRuns       IntegrationSyncRun[]
+  configVersions CustomProviderConfigVersion[]
 
   @@unique([organizationId, provider])
   @@map("integrations")
 }
 
-/// Exactly what the provider returned, with fetch time and a source hash.
-/// Immutable, append-only. Retained for replay — never queried by the engine.
+enum SyncRunOutcome {
+  ok
+  /// Stopped only because the run's time or record budget was exhausted (Q12,
+  /// R3). Not a success and not a failure: it never advances
+  /// `lastSuccessfulSyncAt` and never touches the failure counters.
+  partial
+  failed
+  /// A safety guard stopped the pass before any projection.
+  aborted
+}
+
+enum SyncRunTrigger {
+  worker
+  manual
+  connect
+  webhook
+}
+
+/// One ingest + normalize attempt of one integration (N9, plan 09 6.7). Written
+/// for every provider. Retained 30 days, pruned by the worker's reconciliation
+/// tick. Holds counts and fixed codes only: never a payload, URL, header or
+/// credential.
+model IntegrationSyncRun {
+  id              String         @id @default(cuid())
+  organizationId  String
+  integrationId   String
+  startedAt       DateTime
+  finishedAt      DateTime?
+  trigger         SyncRunTrigger @default(worker)
+  outcome         SyncRunOutcome
+  /// A fixed code for every outcome other than `ok` (`budget_exhausted`,
+  /// `run_cap_reached`, `mass_deletion`, `unauthorized`, ...).
+  reasonCode      String?
+  /// A partial run's reason is kept apart from failure codes; a failed run may
+  /// carry a partial reason here as a secondary note.
+  secondaryReason String?
+  configVersion   Int?
+  requests        Int            @default(0)
+  bytes           Int            @default(0)
+  recordsFetched  Int            @default(0)
+  casesWritten    Int            @default(0)
+  eventsWritten   Int            @default(0)
+  deletions       Int            @default(0)
+  failureCount    Int            @default(0)
+  /// Up to 50 `{ recordId, code }`; no payload text.
+  failures        Json?
+  /// How far the run got: pages completed, records read, whether the initial
+  /// import is still running. For guard aborts: `R`, `L`, ratio, record ids.
+  progress        Json?
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration     Integration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, startedAt])
+  @@index([organizationId, startedAt])
+  @@map("integration_sync_runs")
+}
+
+/// The wizard's work in progress for the `custom` source (N9). One per
+/// organization in V1. Non-secret configuration plus encrypted secret values,
+/// until activation creates the `Integration` and its first configuration
+/// version. Expires after 14 days; the worker (or a lazy cleanup) deletes it.
+model CustomProviderDraft {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  displayName    String
+  /// The in-progress configuration document (never a secret).
+  config         Json
+  /// Per-field-name ciphertext (`enc:v1:...`), each bound to the organization
+  /// and field it belongs to. Write-only: never returned to the browser.
+  secrets        Json?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("custom_provider_drafts")
+}
+
+/// An immutable, versioned configuration document (N9, plan 09 6.8). There is
+/// no update path: a change is a new version, activation points
+/// `Integration.activeConfigVersion` at it, and rollback re-activates an
+/// earlier one. Never contains a secret.
+model CustomProviderConfigVersion {
+  id              String       @id @default(cuid())
+  organizationId  String
+  integrationId   String
+  version         Int
+  schemaVersion   Int
+  config          Json
+  configHash      String
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  validatedAt     DateTime?
+  note            String?
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration     Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, version])
+  @@index([organizationId])
+  @@map("custom_provider_config_versions")
+}
+
+/// What the provider returned, with fetch time and a source hash: the full
+/// payload for most providers, a subset or augmented payload for some (Intercom
+/// ticket parts, Zendesk requester and assignee names), and for `custom` (N9) a
+/// whitelist projection of the mapped fields only. Immutable, append-only.
+/// Retained for replay — never queried by the engine.
 model RawEvent {
   id               String            @id @default(cuid())
   integrationId    String
