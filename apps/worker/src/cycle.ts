@@ -19,12 +19,15 @@ import {
 } from "@sla/db";
 import type { SourceRole } from "@sla/core";
 import {
+  IngestAbortedError,
   IntegrationNotConfiguredError,
   PermissionDeniedError,
   ReauthRequiredError,
   syncIntegration,
+  type IngestResult,
   type IntegrationRef,
   type PolicyImportResult,
+  type ProjectionResult,
 } from "@sla/ingestion";
 import { createLogger, type Logger } from "@sla/logger";
 import {
@@ -40,6 +43,7 @@ import type { WorkerConfig } from "./config";
 import { LeaseLostError, type LeaseGuard } from "./lease";
 import { ISSUE_LINK_PROVIDERS, PROVIDERS } from "./providers";
 import { captureException } from "./sentry";
+import { classifyRun, pruneSyncHistory, recordSyncRun } from "./sync-runs";
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
 
@@ -237,6 +241,10 @@ export async function processOrganization(
       durationMs: number;
       /** Ingest was skipped on purpose (operator pause): no sync attempt happened, so none is recorded. */
       paused: boolean;
+      /** What the sync-run record (N9.9) is built from. */
+      startedAt: Date;
+      ingestError: unknown | null;
+      ingestResult: IngestResult | null;
     }
   >();
 
@@ -264,6 +272,9 @@ export async function processOrganization(
         permissionDenied: false,
         durationMs: 0,
         paused: true,
+        startedAt: new Date(),
+        ingestError: null,
+        ingestResult: null,
       });
       continue;
     }
@@ -272,10 +283,13 @@ export async function processOrganization(
     let reauthRequired = false;
     let permissionDenied = false;
     let skipped = false;
+    let ingestError: unknown | null = null;
+    let ingestResult: IngestResult | null = null;
+    const attemptStartedAt = new Date();
     const providerLabel = `${integration.provider[0]!.toUpperCase()}${integration.provider.slice(1)}`;
 
     try {
-      await PROVIDERS[integration.provider].ingest({
+      ingestResult = await PROVIDERS[integration.provider].ingest({
         prisma,
         integration: integrationRef(integration),
         logger: orgLogger.child({ integrationId: integration.id, provider: integration.provider }),
@@ -295,74 +309,85 @@ export async function processOrganization(
       // silent `continue`, so a misconfigured or disconnected-at-the-config
       // level integration shows up the same way a failed sync does, both
       // in `result.failures` and on `Integration.lastSyncError`.
-      reauthRequired = error instanceof ReauthRequiredError;
-      // A 403 (roadmap step 32): the token works but the connecting user
-      // lost access provider-side — surfaced as its own status, since the
-      // fix is restoring that user's permissions, not reconnecting.
-      permissionDenied = !reauthRequired && error instanceof PermissionDeniedError;
-      syncError = reauthRequired
-        ? `${providerLabel} needs to be reconnected`
-        : permissionDenied
-          ? `${providerLabel} denied access — the connecting user's ${providerLabel} permissions may have changed`
-          : error instanceof Error
-            ? error.message
-            : String(error);
-      if (error instanceof IntegrationNotConfiguredError) {
-        // Nothing to ingest: skip this integration, keep going. The message
-        // still lands on Integration.lastSyncError so the settings page can
-        // show why, but it is not a failure of this run.
-        skipped = true;
-        result.skipped.push({ organizationId: organization.id, provider: integration.provider, reason: syncError });
-        orgLogger.info("integration_skipped", {
+      ingestError = error;
+      if (error instanceof IngestAbortedError) {
+        // Stopped on purpose (the operator turned the Beta flag off): not a failure, nothing was written from the unfinished page (N9, Q5).
+        orgLogger.info("integration_ingest_aborted", {
           position,
           provider: integration.provider,
           integrationId: integration.id,
-          reason: syncError,
-        });
-      } else if (reauthRequired || permissionDenied) {
-        // The customer's integration needs attention (reconnect, or restore
-        // the connecting user's provider permissions). That is integration
-        // health, recorded on the Integration below and logged here — not a
-        // failure of the worker, so it stays out of `failures`.
-        result.integrationIssues.push({
-          organizationId: organization.id,
-          provider: integration.provider,
-          issue: reauthRequired ? "reauth_required" : "permission_denied",
-          message: syncError,
-        });
-        orgLogger.warn("integration_needs_attention", {
-          position,
-          provider: integration.provider,
-          integrationId: integration.id,
-          issue: reauthRequired ? "reauth_required" : "permission_denied",
-          message: syncError,
+          reason: error.reason,
         });
       } else {
-        result.failures.push({
-          organizationId: organization.id,
-          stage: `ingest:${integration.provider}`,
-          error: syncError,
-        });
-      }
-      // Reauth is an expected, already-surfaced state (the settings page's
-      // ReauthBanner) — not a bug — so it's excluded here to keep Sentry
-      // for actual failures worth investigating, not routine reauth churn.
-      // Permission loss is reported once, on the transition into
-      // `permission_denied`: the operator should hear about it, but not
-      // again on every cycle until the customer fixes it. A skipped,
-      // unconfigured integration is expected and never reported.
-      if (
-        !skipped &&
-        !reauthRequired &&
-        !(permissionDenied && integration.status === "permission_denied")
-      ) {
-        captureException(error, {
-          organizationId: organization.id,
-          integrationId: integration.id,
-          provider: integration.provider,
-          kind,
-          stage: "ingest",
-        });
+        reauthRequired = error instanceof ReauthRequiredError;
+        // A 403 (roadmap step 32): the token works but the connecting user
+        // lost access provider-side — surfaced as its own status, since the
+        // fix is restoring that user's permissions, not reconnecting.
+        permissionDenied = !reauthRequired && error instanceof PermissionDeniedError;
+        syncError = reauthRequired
+          ? `${providerLabel} needs to be reconnected`
+          : permissionDenied
+            ? `${providerLabel} denied access — the connecting user's ${providerLabel} permissions may have changed`
+            : error instanceof Error
+              ? error.message
+              : String(error);
+        if (error instanceof IntegrationNotConfiguredError) {
+          // Nothing to ingest: skip this integration, keep going. The message
+          // still lands on Integration.lastSyncError so the settings page can
+          // show why, but it is not a failure of this run.
+          skipped = true;
+          result.skipped.push({ organizationId: organization.id, provider: integration.provider, reason: syncError });
+          orgLogger.info("integration_skipped", {
+            position,
+            provider: integration.provider,
+            integrationId: integration.id,
+            reason: syncError,
+          });
+        } else if (reauthRequired || permissionDenied) {
+          // The customer's integration needs attention (reconnect, or restore
+          // the connecting user's provider permissions). That is integration
+          // health, recorded on the Integration below and logged here — not a
+          // failure of the worker, so it stays out of `failures`.
+          result.integrationIssues.push({
+            organizationId: organization.id,
+            provider: integration.provider,
+            issue: reauthRequired ? "reauth_required" : "permission_denied",
+            message: syncError,
+          });
+          orgLogger.warn("integration_needs_attention", {
+            position,
+            provider: integration.provider,
+            integrationId: integration.id,
+            issue: reauthRequired ? "reauth_required" : "permission_denied",
+            message: syncError,
+          });
+        } else {
+          result.failures.push({
+            organizationId: organization.id,
+            stage: `ingest:${integration.provider}`,
+            error: syncError,
+          });
+        }
+        // Reauth is an expected, already-surfaced state (the settings page's
+        // ReauthBanner) — not a bug — so it's excluded here to keep Sentry
+        // for actual failures worth investigating, not routine reauth churn.
+        // Permission loss is reported once, on the transition into
+        // `permission_denied`: the operator should hear about it, but not
+        // again on every cycle until the customer fixes it. A skipped,
+        // unconfigured integration is expected and never reported.
+        if (
+          !skipped &&
+          !reauthRequired &&
+          !(permissionDenied && integration.status === "permission_denied")
+        ) {
+          captureException(error, {
+            organizationId: organization.id,
+            integrationId: integration.id,
+            provider: integration.provider,
+            kind,
+            stage: "ingest",
+          });
+        }
       }
     }
 
@@ -386,6 +411,9 @@ export async function processOrganization(
       permissionDenied,
       durationMs: Date.now() - integrationStartedAt,
       paused: false,
+      startedAt: attemptStartedAt,
+      ingestError,
+      ingestResult,
     });
   }
 
@@ -412,6 +440,8 @@ export async function processOrganization(
           lease?.assertValid();
           const ingestOutcome = ingestOutcomes.get(integration.id)!;
           let normalizeError: string | null = null;
+          let normalizeErrorObject: unknown | null = null;
+          let normalization: ProjectionResult | null = null;
 
           try {
             const adapter = PROVIDERS[integration.provider];
@@ -431,11 +461,13 @@ export async function processOrganization(
                 adapter.role === "work_tracker" ? await caseRefResolverFor(prisma, organization.id) : null,
               ensureDefaultCalendarVersion: (organizationId) => ensureDefaultCalendarVersion(prisma, organizationId),
             });
+            normalization = synced.normalization;
             if (synced.policyImport) {
               slaPolicyImport = { provider: integration.provider, result: synced.policyImport };
             }
           } catch (error) {
             if (error instanceof LeaseLostError) throw error;
+            normalizeErrorObject = error;
             normalizeError =
               error instanceof Error ? error.message : String(error);
             result.failures.push({
@@ -471,28 +503,53 @@ export async function processOrganization(
           // instead of only stdout logs. Ingest's error takes priority when
           // both phases failed — it's the more actionable diagnostic.
           const syncError = ingestOutcome.syncError ?? normalizeError;
+          // One history row per attempt, for every provider (N9.9). A `partial` run
+          // (budget or per-run cap exhausted, nothing failed) and an ingest stopped on
+          // purpose leave `lastSuccessfulSyncAt`, the failure counters and
+          // `lastSyncError` exactly as they were: they are neither a success nor a
+          // failure, and D13(b) freshness is untouched.
+          const classified = classifyRun({
+            ingestError: ingestOutcome.ingestError,
+            ingestResult: ingestOutcome.ingestResult,
+            normalizeError: normalizeErrorObject,
+            normalization,
+          });
+          await recordSyncRun(prisma, {
+            organizationId: organization.id,
+            integrationId: integration.id,
+            startedAt: ingestOutcome.startedAt,
+            facts: {
+              ingestError: ingestOutcome.ingestError,
+              ingestResult: ingestOutcome.ingestResult,
+              normalizeError: normalizeErrorObject,
+              normalization,
+            },
+            classified,
+            logger: orgLogger,
+          });
           await prisma.integration.update({
             where: { id: integration.id },
-            data: {
-              lastSyncAt: new Date(),
-              lastSyncError: syncError,
-              lastSyncDurationMs: ingestOutcome.durationMs,
-              ...(syncError === null
-                ? {
-                    lastSuccessfulSyncAt: new Date(),
-                    consecutiveFailures: 0,
-                    failingSince: null,
-                  }
+            data:
+              classified.leavesHealthAlone && syncError === null
+                ? { lastSyncAt: new Date(), lastSyncDurationMs: ingestOutcome.durationMs }
                 : {
-                    consecutiveFailures: { increment: 1 },
-                    // Do not overwrite the beginning of an outage on every
-                    // retry; this is the customer-facing failure duration.
-                    failingSince: integration.failingSince === null ? new Date() : undefined,
-                  }),
-              ...(ingestOutcome.reauthRequired
-                ? { status: "reauth_required" as const }
-                : {}),
-            },
+                    lastSyncAt: new Date(),
+                    lastSyncError: syncError,
+                    lastSyncDurationMs: ingestOutcome.durationMs,
+                    ...(syncError === null
+                      ? {
+                          lastSuccessfulSyncAt: new Date(),
+                          consecutiveFailures: 0,
+                          failingSince: null,
+                        }
+                      : {
+                          consecutiveFailures: { increment: 1 },
+                          // Do not overwrite the beginning of an outage on every
+                          // retry; this is the customer-facing failure duration.
+                          failingSince: integration.failingSince === null ? new Date() : undefined,
+                        }),
+                    ...(ingestOutcome.reauthRequired ? { status: "reauth_required" as const } : {}),
+                  },
           });
 
           // `permission_denied` transitions (roadmap step 32) are compare-and-set
@@ -787,6 +844,14 @@ export async function processOrganization(
       },
       { organizationId: organization.id, kind },
     );
+  }
+
+  // Retention (N9.9): sync-run history 30 days, expired custom drafts 14 days.
+  // Reconciliation only, per organization; a prune that fails never fails the run.
+  if (kind === "reconciliation_sweep") {
+    await pruneSyncHistory(prisma, organization.id, new Date()).catch((error: unknown) => {
+      orgLogger.warn("sync_history_prune_failed", { error: error instanceof Error ? error.name : "error" });
+    });
   }
 
   // Monthly customer report (N5.6). Reconciliation runs only: it is the
