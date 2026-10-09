@@ -26,7 +26,7 @@ A third provider (N7) should be "implement one adapter record", not "edit the wo
 
 ## 3. Design decisions (bound by roadmap D16)
 
-- **No generic connector framework, no plugin SDK, no dynamic loading.** The contract is a TypeScript interface. Registries are **static object literals** with `satisfies Record<IntegrationProvider, …>`, so a missing provider is a compile error.
+- **No general-purpose connector framework, no plugin SDK, no dynamic loading.** _(Amended by D31, 2026-10-09: the single declarative `custom` ticket-source engine is the one exception; see [plan 09](09-custom-ticket-provider.md). Everything else in this section still holds.)_ The contract is a TypeScript interface. Registries are **static object literals** with `satisfies Record<IntegrationProvider, …>`, so a missing provider is a compile error.
 - **Only what current code needs.** Every contract member below maps to an existing function. Nothing is added "for future providers".
 - **One new package: `packages/ingestion` (`@sla/ingestion`).** It holds the contract types, shared errors, the projector and the link resolver. It depends on `@sla/core`, `@sla/db` and `@sla/logger`. Provider packages may import **types and error classes only** from it (enforced by the boundary test). Why a new package:
   - The projector cannot live in a provider package.
@@ -36,49 +36,17 @@ A third provider (N7) should be "implement one adapter record", not "edit the wo
 
 ## 4. The contract (derived from existing code)
 
-```ts
-// packages/ingestion/src/contract.ts (sketch — exact shapes are finalised in N2.1)
-export interface ProviderAdapter {
-  provider: IntegrationProvider;                 // "zendesk" | "jira" | ...
-  role: SourceRole;                              // from N1
-  capabilities: ProviderCapabilities;
-  ingest(ctx: IngestContext): Promise<IngestResult>;          // today: run*Backfill (backfill + incremental)
-  normalize(ctx: NormalizeContext): Promise<CanonicalBatch>;  // today: run*Normalization minus the writes
-  correlate?(ctx: CorrelateContext): Promise<LinkFact[]>;     // trackers: run{Jira,Linear,Github}Correlation minus the writes
-  recognizeCaseUrl?(url: string, integration: IntegrationRef): string | null; // ticket sources (N1.13)
-  importPolicies?(ctx: ImportContext): Promise<PolicyImportResult>;           // Zendesk only
-  importCalendars?(ctx: ImportContext): Promise<CalendarImportResult>;        // Zendesk only
-}
-
-export interface ProviderCapabilities {
-  webhooks: boolean;                // Zendesk, Jira
-  policyImport: boolean;            // Zendesk
-  calendarImport: boolean;          // Zendesk
-  incrementalNormalization: boolean;// Zendesk (Integration.normalizedThroughFetchedAt)
-  replyEvents: boolean;             // Zendesk, Intercom
-  priorityChanges: boolean;         // Zendesk
-  officialLinks: boolean;           // Zendesk (runZendeskJiraLinkCorrelation)
-}
-
-export interface CanonicalBatch {
-  cases: CaseFacts[];               // externalId, subject, requesterName, assigneeName, priority (CanonicalPriority), tier, channel, tags, attributes, openedAt, closedAt, deletedAt
-  customers: CustomerIdentityFact[];// provider, kind, externalId, name
-  events: NormalizedEventFact[];    // per case externalId; sourceRole set by adapter
-  deletedCaseExternalIds: string[];
-}
-export interface LinkFact { caseUrlOrRef: string; issueExternalId: string; method: CaseLinkMethod; evidence: unknown; observedAt: Date; active: boolean }
-
-export class ReauthRequiredError extends Error {}
-export class PermissionDeniedError extends Error {}
-export class ProviderUnavailableError extends Error {}   // 5xx / network / timeout — used by N3
-
-// Web-side (apps/web/src/lib/providers.ts)
-export interface ProviderWebAdapter {
-  externalUrl(ref: { externalId: string; credentials: unknown }): string | null;
-  renderConversation?(rawEvents: { id: string; payload: unknown }[], events: NormalizedEvent[]): ConversationMessage[];
-  verifyWebhook?(req: Request, secret: string): Promise<boolean>;
-}
-```
+> **Rev 8 correction (2026-10-09).** The sketch that stood here was written before N2.1 and differs from what was built. The authority is [`packages/ingestion/src/contract.ts`](../packages/ingestion/src/contract.ts); read that file, not a copy of it. The differences, verified against the code on 2026-10-09 (also recorded in the roadmap's Appendix E):
+>
+> - **`ProviderAdapter`** has `provider`, `role`, `capabilities`, `ingest(ctx)`, `normalize(ctx)`, and the optional `correlate`, `recognizeCaseUrl`, `importPolicies`, `importCalendars`. `ingest` and `normalize` take context objects (`IngestContext`, `NormalizeContext`), not bare arguments.
+> - **`normalize` returns a `CanonicalBatch`** with `customers`, `cases`, **`eventGroups`** (one `EventGroup` per source record, naming its `ownRawEventIds`; the sketch's flat `events` list does not exist), `deletedCaseExternalIds`, `failures` and an optional `afterProject` hook.
+> - **`correlate` returns a `CorrelationOutput`** (`links: LinkFact[]`, `sweeps`, `evaluated`, `unmatched`), not `LinkFact[]`. `LinkFact` carries `caseId`, `system`, `externalId`, `method`, `methodOnUpdate`, `evidence`, `evidenceMode`, `sourceRole`, `linkedEvent`, `relinkedEvent`, `repairLinkedEvent`; the sketch's `caseUrlOrRef` / `observedAt` / `active` fields do not exist.
+> - **`recognizeCaseUrl(url, credentials)`** takes the integration's stored credentials, not an `IntegrationRef`.
+> - **`ProviderCapabilities`** is as sketched (`webhooks`, `policyImport`, `calendarImport`, `incrementalNormalization`, `replyEvents`, `priorityChanges`, `officialLinks`).
+> - **`ProviderWebAdapter`** (web registry) is larger than sketched: `access` (read-only scopes or a note), `snapshotEventPrefix`, `externalUrl`, `conversationContext`, `renderConversation(ConversationInput)` and `verifyWebhook`.
+> - **Shared errors** are `ReauthRequiredError`, `PermissionDeniedError`, `ProviderUnavailableError` and `IntegrationNotConfiguredError` (`packages/ingestion/src/errors.ts`).
+>
+> The one-line design intent of the original sketch still holds: every contract member maps to a function that already existed, and registries are static (D16, as amended by D31 for the single `custom` engine).
 
 ## 5. Current implementation relevant to this phase
 
@@ -230,7 +198,7 @@ pnpm --filter @sla/commitments replay:compare -- <baseline.jsonl> <after.jsonl> 
 
 ## 13. Out of scope
 
-- Plugin SDK, dynamic loading, or runtime-configurable providers (D16).
+- Plugin SDK, dynamic loading, or runtime-configurable providers (D16). _(D31 allows one runtime-configurable provider, `custom`, and no other. `Integration @@unique([organizationId, provider])` stays, which is why V1 allows one custom integration per organization.)_
 - More than one integration per provider per org (`Integration @@unique([organizationId, provider])` stays).
 - New webhook receivers (Intercom, Linear, GitHub).
 - Persisting message bodies as normalized records.

@@ -143,8 +143,8 @@ The product connects to two kinds of systems: **ticket sources**, which create C
 
 | Integration                                        | Role                                     | Auth                                  | Sync                            | Webhook |
 | -------------------------------------------------- | ---------------------------------------- | ------------------------------------- | ------------------------------- | ------- |
-| [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
-| [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
+| [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
+| [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
 | [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk)   | OAuth2, read-only                     | Poll only                       | No      |
 | [Linear](/docs/integrations/linear)                | Engineering source (alternative to Jira) | OAuth2, read-only                     | Poll only                       | No      |
 | [GitHub](/docs/integrations/github) **(Beta)**     | Engineering source (pull requests)       | OAuth2                                | Poll only                       | No      |
@@ -257,7 +257,7 @@ Nothing. No issue, status, comment, or field in Jira is ever created or changed.
 
 ### Sync behavior
 
-Same two-speed poll as Zendesk (5 min / 60 min), plus an optional webhook (manually registered in Jira's own admin settings — Section 20) for near-real-time updates on issue creation and updates.
+Same two-speed poll as Zendesk (5 min / 30 min), plus an optional webhook (manually registered in Jira's own admin settings — Section 20) for near-real-time updates on issue creation and updates.
 
 ### What happens when...
 
