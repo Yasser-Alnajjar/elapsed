@@ -728,6 +728,10 @@ async function buildConversationMessages(
     }
   }
 
+  // Optional, additive (N9, option B): configuration an adapter interprets at render time.
+  const config =
+    sourceIntegrationId && adapter.loadRenderConfig ? await adapter.loadRenderConfig(prisma, sourceIntegrationId) : undefined;
+
   const payloads = new Map<string, unknown>();
   if (replyEvents.length > 0) {
     const rawEventRows = await prisma.rawEvent.findMany({
@@ -753,5 +757,6 @@ async function buildConversationMessages(
     ),
     payloads,
     context,
+    ...(config !== undefined ? { config } : {}),
   });
 }

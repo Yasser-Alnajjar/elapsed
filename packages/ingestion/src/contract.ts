@@ -357,6 +357,14 @@ export interface ProviderWebAdapter {
    * handed over, in prefix order.
    */
   conversationContext?(externalId: string): string[];
+  /**
+   * Ticket sources whose rendering depends on stored configuration (the `custom`
+   * source, N9): loaded once per rendered case and handed to `renderConversation`
+   * as `input.config`. Rendering-time interpretation is deliberate: nothing is
+   * frozen into raw payloads, so replay is preserved. Optional; every other
+   * adapter omits it.
+   */
+  loadRenderConfig?(prisma: PrismaClient, integrationId: string): Promise<unknown>;
   /** Ticket sources: the case's message-only Conversation, read from its raw events. Never the Activity Timeline. */
   renderConversation?(input: ConversationInput): ConversationMessage[];
   /** Webhook providers: whether the delivery carries the integration's secret. Never consumes the request body. */
@@ -372,6 +380,8 @@ export interface ConversationInput {
   payloads: ReadonlyMap<string, unknown>;
   /** Payloads of the raw events `conversationContext` asked for; `undefined` where none exists. */
   context: readonly unknown[];
+  /** What `loadRenderConfig` returned, for the adapters that have one (N9). */
+  config?: unknown;
 }
 
 export interface ConversationEventRef {

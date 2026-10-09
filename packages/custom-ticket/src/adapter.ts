@@ -1,7 +1,8 @@
 import type { ProviderAdapter, ProviderWebAdapter } from "@sla/ingestion";
+import { renderCustomConversation } from "./conversation";
 import { CUSTOM_PROVIDER, CUSTOM_SOURCE_ROLE } from "./derive";
 import { runCustomIngest } from "./ingest";
-import { normalizeCustom } from "./normalize";
+import { loadActiveConfig, normalizeCustom } from "./normalize";
 import { customTicketUrl, recognizeCustomTicketUrl } from "./ticket-url";
 import { RAW_PREFIX } from "./shared";
 
@@ -38,4 +39,7 @@ export const customWebAdapter: ProviderWebAdapter = {
   access: { scopes: [], note: CUSTOM_ACCESS_NOTE },
   snapshotEventPrefix: RAW_PREFIX.ticket,
   externalUrl: ({ externalId, credentials }) => customTicketUrl(externalId, credentials),
+  // The configured body and author paths are applied at render time, so ingest-time interpretations are never frozen into raw payloads (option B).
+  loadRenderConfig: async (prisma, integrationId) => (await loadActiveConfig(prisma, integrationId))?.config,
+  renderConversation: renderCustomConversation,
 };
