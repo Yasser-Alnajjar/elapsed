@@ -1,11 +1,11 @@
 "use client";
 
-import { AlertCircle, Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { tableHeadClass } from "./SlaSection";
 import type { BusinessCalendarOption, CustomerCalendarSummary } from "@/lib/types/sla-configuration";
@@ -20,13 +20,11 @@ function CustomerRow({ customer, calendars }: { customer: CustomerCalendarSummar
   const router = useRouter();
   const [selected, setSelected] = useState(customer.calendarId ?? DEFAULT_VALUE);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const dirty = selected !== (customer.calendarId ?? DEFAULT_VALUE);
 
   async function handleSave() {
     setSaving(true);
-    setError(null);
 
     const { ok, body } = await Actions.SlaConfiguration.setCustomerCalendar(
       customer.id,
@@ -35,7 +33,7 @@ function CustomerRow({ customer, calendars }: { customer: CustomerCalendarSummar
     setSaving(false);
 
     if (!ok) {
-      setError(body.error ?? "Failed to save calendar");
+      notify.error(body.error ?? "Failed to save calendar.");
       return;
     }
 
@@ -80,12 +78,6 @@ function CustomerRow({ customer, calendars }: { customer: CustomerCalendarSummar
         )}
         </div>
       </div>
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 }

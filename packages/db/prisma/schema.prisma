@@ -19,10 +19,16 @@ datasource db {
 model Organization {
   id                String             @id @default(cuid())
   name              String
-  /// Display-only grouping for the dashboard (Phase 6 roadmap 6.5) — never
-  /// read by SLA calculations, which stay pinned to each calendar's own
-  /// timezone (see `packages/commitments/src/pipeline.ts`). Defaults to UTC
-  /// so every pre-existing organization gets a valid value on migration.
+  /// The organization's display timezone: the application-wide default for how
+  /// dates and times are shown (case, event and commitment timestamps, alert
+  /// messages) and the pre-selected value in timezone pickers (a new business
+  /// calendar). It also sets the dashboard's day grouping (roadmap 6.5) and the
+  /// monthly report's month boundaries and delivery period. It is never read by
+  /// SLA calculations, which stay pinned to each business calendar's own
+  /// timezone (`BusinessCalendarVersion.timezone`; see
+  /// `packages/commitments/src/pipeline.ts`), and it never changes a stored
+  /// UTC timestamp. Defaults to UTC so every pre-existing organization gets a
+  /// valid value on migration.
   timezone          String             @default("UTC")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -31,10 +37,15 @@ model Organization {
   /// no target is configured — deliberately a single org-scoped value, not a
   /// policy builder or a per-team entity.
   engineeringLegTargetMinutes Int?
-  /// Pre-filled calendar choice when creating a native policy or calendar
-  /// (Phase 4 task 4.7) — not part of runtime commitment calendar
-  /// resolution, which stays customer-override-then-matched-policy exactly
-  /// as before (see packages/commitments/src/pipeline.ts).
+  /// The organization's default business calendar (Phase 4 tasks 4.7 and 4i).
+  /// It pre-fills the calendar choice when creating a native policy, and it is
+  /// also a runtime fallback: a native policy with no explicit calendar
+  /// (`calendarIsExplicit = false`) resolves to this calendar's latest version
+  /// for each *new* commitment, then to the system Always Open calendar when
+  /// unset (`resolveOrganizationCalendarFallback`,
+  /// packages/commitments/src/calendar-fallback.ts). A customer calendar
+  /// override and a policy's explicit calendar still win first, and existing
+  /// commitments keep the calendar version they froze at creation.
   defaultCalendarId String?
   defaultCalendar   BusinessCalendar?  @relation("OrganizationDefaultCalendar", fields: [defaultCalendarId], references: [id], onDelete: SetNull)
   businessCalendars BusinessCalendar[]
@@ -74,6 +85,17 @@ model Organization {
   billingSubscription BillingSubscription?
   billingInvoices     BillingInvoice[]
   billingEvents       BillingEvent[]
+  /// DEPRECATED (D33, N10): superseded by the Custom REST entry of
+  /// `IntegrationBetaAllowlist`, which the N10 migration seeded from it. No
+  /// code reads or writes it any more; kept for one release so a rolling
+  /// deploy never meets a missing column, then dropped by N10-F1.
+  customProviderEnabled Boolean @default(false)
+  customProviderDrafts  CustomProviderDraft[]
+  customConfigVersions  CustomProviderConfigVersion[]
+  integrationSyncRuns   IntegrationSyncRun[]
+  guardOverrides        GuardOverride[]
+  customActivationAudits CustomActivationAudit[]
+  integrationBetaAllowlist IntegrationBetaAllowlist[]
 
   @@map("organizations")
 }
@@ -256,6 +278,12 @@ model Integration {
   /// this is never advanced by a failed attempt and is the source of truth
   /// for customer-visible data freshness.
   lastSuccessfulSyncAt DateTime?
+  /// Last run that actually changed data (D32, plan 09 6.7): a case, customer,
+  /// event, link, calendar or policy written with a value that differs from what
+  /// was stored, or a deletion. Advanced only by such a run, never by a
+  /// no-change sync (which is no longer stored as an `IntegrationSyncRun`), and
+  /// never derived from sync history. Null until the first recorded change.
+  lastDataChangedAt DateTime?
   /// Consecutive failed worker sync attempts. Customer-action states are
   /// included: their data is stale too, even though they do not degrade the
   /// worker process itself.
@@ -297,16 +325,135 @@ model Integration {
   /// owner connect. Organization-owned data, not an operator action, so it is
   /// never written to `AdminAuditLog`.
   connectedBy    String?
+  /// `custom` only (N9): the `CustomProviderConfigVersion.version` the worker
+  /// and the web adapter load. Set by compare-and-set at activation and at
+  /// rollback. Null for every other provider.
+  activeConfigVersion Int?
+  /// What this source cannot support, written at activation from the validated
+  /// configuration (N9, Q1): `{ unsupportedKinds: CommitmentKind[], limitations: string[] }`.
+  /// The commitments pipelines read this generic field and never the provider
+  /// name. Null means full support and is what every other provider has.
+  slaSupport     Json?
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   cases          Case[]
   rawEvents      RawEvent[]
+  syncRuns       IntegrationSyncRun[]
+  guardOverrides GuardOverride[]
+  activationAudits CustomActivationAudit[]
+  configVersions CustomProviderConfigVersion[]
 
   @@unique([organizationId, provider])
   @@map("integrations")
 }
 
-/// Exactly what the provider returned, with fetch time and a source hash.
-/// Immutable, append-only. Retained for replay — never queried by the engine.
+enum SyncRunOutcome {
+  ok
+  /// Stopped only because the run's time or record budget was exhausted (Q12,
+  /// R3). Not a success and not a failure: it never advances
+  /// `lastSuccessfulSyncAt` and never touches the failure counters.
+  partial
+  failed
+  /// A safety guard stopped the pass before any projection.
+  aborted
+}
+
+enum SyncRunTrigger {
+  worker
+  manual
+  connect
+  webhook
+}
+
+/// One ingest + normalize attempt of one integration (N9, plan 09 6.7). Written
+/// for every provider. Retained 30 days, pruned by the worker's reconciliation
+/// tick. Holds counts and fixed codes only: never a payload, URL, header or
+/// credential.
+model IntegrationSyncRun {
+  id              String         @id @default(cuid())
+  organizationId  String
+  integrationId   String
+  startedAt       DateTime
+  finishedAt      DateTime?
+  trigger         SyncRunTrigger @default(worker)
+  outcome         SyncRunOutcome
+  /// A fixed code for every outcome other than `ok` (`budget_exhausted`,
+  /// `run_cap_reached`, `mass_deletion`, `unauthorized`, ...).
+  reasonCode      String?
+  /// A partial run's reason is kept apart from failure codes; a failed run may
+  /// carry a partial reason here as a secondary note.
+  secondaryReason String?
+  configVersion   Int?
+  requests        Int            @default(0)
+  bytes           Int            @default(0)
+  recordsFetched  Int            @default(0)
+  casesWritten    Int            @default(0)
+  eventsWritten   Int            @default(0)
+  deletions       Int            @default(0)
+  failureCount    Int            @default(0)
+  /// Up to 50 `{ recordId, code }`; no payload text.
+  failures        Json?
+  /// How far the run got: pages completed, records read, whether the initial
+  /// import is still running. For guard aborts: `R`, `L`, ratio, record ids.
+  progress        Json?
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration     Integration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, startedAt])
+  @@index([organizationId, startedAt])
+  @@map("integration_sync_runs")
+}
+
+/// The wizard's work in progress for the `custom` source (N9). One per
+/// organization in V1. Non-secret configuration plus encrypted secret values,
+/// until activation creates the `Integration` and its first configuration
+/// version. Expires after 14 days; the worker (or a lazy cleanup) deletes it.
+model CustomProviderDraft {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  displayName    String
+  /// The in-progress configuration document (never a secret).
+  config         Json
+  /// Per-field-name ciphertext (`enc:v1:...`), each bound to the organization
+  /// and field it belongs to. Write-only: never returned to the browser.
+  secrets        Json?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("custom_provider_drafts")
+}
+
+/// An immutable, versioned configuration document (N9, plan 09 6.8). There is
+/// no update path: a change is a new version, activation points
+/// `Integration.activeConfigVersion` at it, and rollback re-activates an
+/// earlier one. Never contains a secret.
+model CustomProviderConfigVersion {
+  id              String       @id @default(cuid())
+  organizationId  String
+  integrationId   String
+  version         Int
+  schemaVersion   Int
+  config          Json
+  configHash      String
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  validatedAt     DateTime?
+  note            String?
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration     Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, version])
+  @@index([organizationId])
+  @@map("custom_provider_config_versions")
+}
+
+/// What the provider returned, with fetch time and a source hash: the full
+/// payload for most providers, a subset or augmented payload for some (Intercom
+/// ticket parts, Zendesk requester and assignee names), and for `custom` (N9) a
+/// whitelist projection of the mapped fields only. Immutable, append-only.
+/// Retained for replay — never queried by the engine.
 model RawEvent {
   id               String            @id @default(cuid())
   integrationId    String
@@ -1163,6 +1310,9 @@ enum IntegrationProvider {
   linear
   intercom
   github
+  /// The declarative `custom` ticket source (D31, N9): one per organization,
+  /// interpreting a versioned, closed-schema configuration. Role `ticket_source`.
+  custom
 }
 
 enum IntegrationStatus {
@@ -1217,8 +1367,9 @@ enum CommitmentStatus {
 
 /// Singleton row (`id` is always `"singleton"`) holding the worker's
 /// persisted polling configuration and last-observed run state — see
-/// `@sla/db`'s `worker-settings.ts`. There is exactly one worker process for
-/// the whole deployment: the two intervals apply to every organization (each
+/// `@sla/db`'s `worker-settings.ts`. Several worker processes may run (each
+/// organization is leased to one at a time, see `OrganizationWorkState`), and
+/// they all read this one row: the two intervals apply to every organization (each
 /// organization's own next-due times live in `OrganizationWorkState`), so this
 /// config is deliberately global rather than living on `Organization`.
 /// `reconciliationIntervalMs` is capped at 30 minutes wherever it is read,
@@ -1386,4 +1537,120 @@ model IntegrationConnectLink {
 
   @@index([organizationId, provider, createdAt])
   @@map("integration_connect_links")
+}
+
+/// A durable, tenant-scoped record of every override of a normalization safety
+/// guard (N9, plan 09 6.11): the customer path (organization owner) and the
+/// support-assisted path. Only the mass lifecycle change guard can be
+/// overridden; a mass deletion never can. Single use, expiring, bound to the
+/// exact preview (a hash of the aborted pass's record set). Not pruned with
+/// the 30-day sync history and not `AdminAuditLog`, which is platform-side.
+model GuardOverride {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  integrationId      String
+  /// `mass_lifecycle_change` is the only value the engine honors.
+  guard              String
+  /// Hash of the guard and the sorted ids of the records the preview showed.
+  previewHash        String
+  /// `R`, `L`, ratio and the like: counts only.
+  counts             Json
+  reason             String
+  /// `customer` or `support_assisted`.
+  path               String
+  requestedByUserId  String
+  /// Support path: the organization owner who authorized this exact preview.
+  authorizedByUserId String?
+  operatorEmail      String?
+  /// When the confirmation completed; the engine honors only confirmed rows.
+  confirmedAt        DateTime?
+  expiresAt          DateTime
+  consumedAt         DateTime?
+  /// `applied`, `void` (the record set changed) or `expired`.
+  outcome            String?
+  createdAt          DateTime     @default(now())
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration        Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, guard, consumedAt])
+  @@index([organizationId, createdAt])
+  @@map("guard_overrides")
+}
+
+/// Who activated or rolled back which `custom` configuration version, and what it
+/// cost (N9, plan 09 5.5 and 5.6): the counts of commitments the activation
+/// cancelled and the preview hash the owner confirmed. Append-only, tenant
+/// scoped (there is no organization-level audit log; `AdminAuditLog` is
+/// platform-side). Holds counts and ids only, never configuration or secrets.
+model CustomActivationAudit {
+  id             String       @id @default(cuid())
+  organizationId String
+  integrationId  String
+  /// `activate` or `rollback`.
+  action         String
+  fromVersion    Int?
+  toVersion      Int
+  userId         String
+  /// `{ cancelledByKind, keptFinalized, remainsCancelled, previewHash }`: counts and a hash.
+  details        Json
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration    Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, createdAt])
+  @@map("custom_activation_audits")
+}
+
+/// Release stage of an integration provider (D33, N10). Independent of
+/// `IntegrationAvailability.enabled`: "disabled" is not a stage.
+enum IntegrationReleaseStage {
+  stable
+  beta
+  coming_soon
+}
+
+/// Who may use a provider while it is in Beta (D33). Ignored for other stages.
+enum IntegrationBetaAccess {
+  all_organizations
+  allowlist
+}
+
+/// Platform-level availability of one integration provider (D33, N10),
+/// written only by a platform operator from `/admin/integrations` and audited
+/// in `AdminAuditLog`. Registration stays static (D16): this row only decides
+/// whether a statically registered provider may be used right now. A missing
+/// row falls back to `INTEGRATION_CATALOG`'s default
+/// (`packages/db/src/integration-catalog.ts`). Read through
+/// `resolveIntegrationAvailability` on every provider path, with no cache.
+/// Never holds a credential or secret.
+model IntegrationAvailability {
+  provider       IntegrationProvider     @id
+  /// Off makes the provider unavailable to every organization, whatever its
+  /// stage. Never changes `Integration.status` or deletes anything.
+  enabled        Boolean                 @default(true)
+  releaseStage   IntegrationReleaseStage
+  betaAccess     IntegrationBetaAccess   @default(allowlist)
+  /// Customer-facing explanation shown while unavailable. Operator-authored text.
+  statusMessage  String?
+  /// Optimistic concurrency: every write is a compare-and-set on this value.
+  version        Int                     @default(0)
+  updatedAt      DateTime                @updatedAt
+  updatedByEmail String?
+
+  @@map("integration_availability")
+}
+
+/// Organizations allowed to use a Beta provider whose `betaAccess` is
+/// `allowlist` (D33, N10). Written only by a platform operator, audited.
+/// Absorbs the former `Organization.customProviderEnabled` (Custom REST).
+model IntegrationBetaAllowlist {
+  provider       IntegrationProvider
+  organizationId String
+  addedByEmail   String
+  createdAt      DateTime            @default(now())
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([provider, organizationId])
+  @@index([organizationId])
+  @@map("integration_beta_allowlist")
 }

@@ -3,8 +3,7 @@ import {
   EMAIL_NOT_VERIFIED_ERROR,
   encodeAuthThrottleError,
   encodeCredentialsRateLimitError,
-  formatCooldownClock,
-  formatCooldownSentence,
+  formatRetryAfter,
   interpretCredentialsSignInResult,
 } from "../src/lib/auth-rate-limit";
 
@@ -91,40 +90,16 @@ describe("interpretCredentialsSignInResult", () => {
   });
 });
 
-describe("formatCooldownSentence", () => {
-  it("formats the example from the spec", () => {
-    expect(formatCooldownSentence(4 * 60 + 47)).toBe("4 minutes 47 seconds");
-  });
-
-  it("uses singular units for exactly one minute or one second", () => {
-    expect(formatCooldownSentence(61)).toBe("1 minute 1 second");
-  });
-
-  it("omits the seconds clause on an exact multiple of a minute", () => {
-    expect(formatCooldownSentence(300)).toBe("5 minutes");
-  });
-
-  it("omits the minutes clause under a minute", () => {
-    expect(formatCooldownSentence(47)).toBe("47 seconds");
-  });
-
-  it("never goes negative", () => {
-    expect(formatCooldownSentence(-5)).toBe("0 seconds");
-  });
-});
-
-describe("formatCooldownClock", () => {
-  it("formats mm:ss, zero-padded", () => {
-    expect(formatCooldownClock(4 * 60 + 47)).toBe("04:47");
-    expect(formatCooldownClock(5)).toBe("00:05");
-    expect(formatCooldownClock(600)).toBe("10:00");
-  });
-
-  it("never goes negative", () => {
-    expect(formatCooldownClock(-1)).toBe("00:00");
-  });
-
-  it("reaches 00:00 at the end of the countdown", () => {
-    expect(formatCooldownClock(0)).toBe("00:00");
+describe("formatRetryAfter", () => {
+  it.each([
+    [353, "6 minutes"],
+    [120, "2 minutes"],
+    [61, "2 minutes"],
+    [60, "1 minute"],
+    [45, "less than a minute"],
+    [0, "less than a minute"],
+    [-5, "less than a minute"],
+  ])("%i seconds -> %s", (seconds, expected) => {
+    expect(formatRetryAfter(seconds)).toBe(expected);
   });
 });

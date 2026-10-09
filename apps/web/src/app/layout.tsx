@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionProvider } from "@/providers/session-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { GoToTop } from "@/components/ui/go-to-top";
 import { rootMetadata, rootViewport } from "@/lib/seo/metadata";
 
@@ -64,6 +65,7 @@ export default async function RootLayout({
           <ThemeProvider>
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
             <GoToTop />
+            <Toaster />
           </ThemeProvider>
         </SessionProvider>
       </body>

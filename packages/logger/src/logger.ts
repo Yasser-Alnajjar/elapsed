@@ -1,3 +1,5 @@
+import { redactValue } from "./redact";
+
 export type LogFields = Record<string, unknown>;
 
 export interface Logger {
@@ -18,14 +20,18 @@ export interface Logger {
  */
 function makeLogger(base: LogFields): Logger {
   function write(sink: (line: string) => void, level: "info" | "warn" | "error", event: string, fields?: LogFields): void {
+    // Credentials and sensitive URLs are removed on the way out (N9.3); a record
+    // with nothing sensitive in it serializes exactly as before.
     sink(
-      JSON.stringify({
-        level,
-        event,
-        time: new Date().toISOString(),
-        ...base,
-        ...fields,
-      }),
+      JSON.stringify(
+        redactValue({
+          level,
+          event,
+          time: new Date().toISOString(),
+          ...base,
+          ...fields,
+        }),
+      ),
     );
   }
 

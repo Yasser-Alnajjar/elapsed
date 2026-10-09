@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createEmailVerificationToken, getPrismaClient } from "@sla/db";
 import { sendTransactionalEmail } from "@/lib/transactional-email";
+import { tooManyAttemptsMessage } from "@/lib/auth-rate-limit";
 import { buildEmailVerificationEmail } from "@/lib/email-verification-email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { errorMessage } from "@/lib/utils";
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`resend-verification-public:${email}`, 3, 10 * 60_000);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${rateLimit.retryAfterSeconds}s.` },
+      { error: tooManyAttemptsMessage(rateLimit.retryAfterSeconds ?? 60),
+        retryAfterSeconds: rateLimit.retryAfterSeconds ?? 60 },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 60) } },
     );
   }

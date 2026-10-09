@@ -59,7 +59,7 @@ The 2×2 matrix proves the boundary for providers that existed while the boundar
 
 ### N7.4 — Registration and settings surface
 - Add the provider to `IntegrationProvider` (migration), `apps/worker/src/providers.ts`, `apps/web/src/lib/providers.ts`, `app/api/integrations/<provider>/{connect,callback,config,disconnect,backfill}`, a settings card in `modules/settings/integrations/csr/`, and `lib/<provider>-env.ts`.
-- These are the **only** permitted changes outside the new package.
+- These are the **only** permitted changes outside the new package. _(Rev 8 correction, 2026-10-09: the list above under-counts the real registration surface. The per-provider literals that must also change, or that a new provider silently appears in, include `lib/types/integrations.ts` (the `IntegrationProvider` union, `INTEGRATION_PROVIDERS`, `INTEGRATION_PROVIDER_LABELS`, `IntegrationsPageData`), `lib/integrations-data.ts`, `modules/settings/integrations/csr/provider-presentation.tsx` and `source-integration-specs.tsx`, `modules/settings/integration-detail/csr/IntegrationDetailHeader.tsx`, `lib/onboarding-data.ts` (iterates every registered provider), `lib/security-summary.ts`, and the plan copy in `packages/db/src/plans.ts`. The exact, verified checklist is [plan 09 §9.2](09-custom-ticket-provider.md#92-registration-checklist-verified-2026-10-09); use it for N7 too.)_
 - **Verify:** `git diff --stat main -- packages/core packages/commitments packages/notifications packages/ingestion/src/projector.ts` is empty.
 
 ### N7.5 — Matrix extension

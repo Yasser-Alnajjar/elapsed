@@ -159,11 +159,11 @@ describe("case detail commitment deadline (ticket #45)", () => {
     expect(text).toContain("Paused");
     expect(text).toContain("1m 26s remaining");
     expect(text).toContain(
-      `Paused since ${formatDateTimeWithOffset(PAUSED.toISOString())}`,
+      `Paused since ${formatDateTimeWithOffset(PAUSED.toISOString(), "UTC")}`,
     );
     expect(text).not.toContain("Due ");
     expect(text).not.toContain(
-      formatDateTimeWithOffset(NOMINAL_DUE.toISOString()),
+      formatDateTimeWithOffset(NOMINAL_DUE.toISOString(), "UTC"),
     );
   });
 
@@ -187,7 +187,7 @@ describe("case detail commitment deadline (ticket #45)", () => {
     expect(text).toContain("Running");
     expect(text).toContain("1m 30s remaining");
     expect(text).toContain(
-      `Due ${formatDateTimeWithOffset(NOMINAL_DUE.toISOString())}`,
+      `Due ${formatDateTimeWithOffset(NOMINAL_DUE.toISOString(), "UTC")}`,
     );
   });
 

@@ -5,6 +5,7 @@ import {
   matchPolicyVersion,
   resolveCommitmentPolicyChange,
   type BusinessCalendarVersion,
+  type CommitmentKind,
   type SLAPolicyVersion,
 } from "@sla/core";
 import { RE_RESOLUTION_ELIGIBLE_WHERE } from "./active-commitment";
@@ -16,6 +17,7 @@ import {
   resolveOrganizationCalendarFallback,
 } from "./calendar-fallback";
 import { toPolicyVersionDomain } from "./policy-domain";
+import { SLA_SUPPORT_SELECT, unsupportedKindsOf } from "./sla-support";
 import { loadPolicyContext, type PolicyContext } from "./tick-context";
 
 /**
@@ -186,6 +188,8 @@ export async function runCommitmentReResolutionPipeline(
       system: true,
       attributes: true,
       openedAt: true,
+      // What the source integration cannot support (N9, Q1); null for every provider that predates it.
+      ...SLA_SUPPORT_SELECT,
       commitments: {
         where: RE_RESOLUTION_ELIGIBLE_WHERE,
         select: {
@@ -267,7 +271,10 @@ export async function runCommitmentReResolutionPipeline(
         caseRow.customerId ? customerCalendarVersionByCustomerId.get(caseRow.customerId) : undefined,
       );
 
+      const unsupported = unsupportedKindsOf(caseRow.sourceIntegration?.slaSupport);
       for (const commitment of caseRow.commitments) {
+        // An unsupported kind is never re-resolved (N9, Q1).
+        if (unsupported.has(commitment.kind as CommitmentKind)) continue;
         const currentPolicyId = policyIdByVersionId.get(commitment.policyVersionId);
         if (!currentPolicyId) {
           throw new Error(`No SLAPolicyVersion loaded for ${commitment.policyVersionId} (commitment ${commitment.id})`);

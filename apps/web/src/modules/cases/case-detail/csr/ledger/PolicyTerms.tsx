@@ -1,4 +1,7 @@
+"use client";
+
 import { formatDateTimeWithOffset, formatWeeklyWindow } from "@/lib/format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { cn } from "@/lib/utils";
 import type { CommitmentDetail } from "@/lib/types/cases";
 
@@ -8,6 +11,7 @@ export function PolicyCalendarCards({
 }: {
   commitment: CommitmentDetail;
 }) {
+  const timeZone = useOrgTimezone();
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="flex flex-col rounded-lg bg-surface-container p-3">
@@ -19,7 +23,7 @@ export function PolicyCalendarCards({
         </span>
         <span className="mt-0.5 font-mono text-xxs text-outline">
           Version: v{commitment.policyVersion.version} (Eff:{" "}
-          {formatDateTimeWithOffset(commitment.policyVersion.effectiveFrom)})
+          {formatDateTimeWithOffset(commitment.policyVersion.effectiveFrom, timeZone)})
         </span>
       </div>
 

@@ -57,6 +57,12 @@ export const ADMIN_AUDIT_ACTIONS = [
   "request_renormalize",
   "update_worker_settings",
   "billing_override",
+  "enable_custom_provider",
+  "disable_custom_provider",
+  "apply_guard_override",
+  "update_integration_availability",
+  "add_integration_allowlist",
+  "remove_integration_allowlist",
 ] as const;
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
 
@@ -68,6 +74,12 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   request_renormalize: "Requested re-normalization",
   update_worker_settings: "Changed worker settings",
   billing_override: "Billing override",
+  enable_custom_provider: "Enabled Custom REST (Beta)",
+  disable_custom_provider: "Disabled Custom REST (Beta)",
+  apply_guard_override: "Applied a guard override (support-assisted)",
+  update_integration_availability: "Changed integration availability",
+  add_integration_allowlist: "Added to a Beta allowlist",
+  remove_integration_allowlist: "Removed from a Beta allowlist",
 };
 
 export interface AdminAuditRow {
@@ -247,6 +259,12 @@ export interface AdminTenantDetail {
   casesWithNoMatchingPolicy: number;
   work: AdminWorkRunSummary | null;
   entitlements: AdminEntitlements;
+  /**
+   * This organization's place on each Beta allowlist (D33, N10). Every provider
+   * whose policy is Beta with an allowlist, plus any provider it is still
+   * listed on. Replaces the N9 Custom REST flag.
+   */
+  betaAccess: AdminTenantBetaAccess[];
 }
 
 /** One entitlement check that warned, blocked, or found a lapsed trial (N6.3, N6.4). */
@@ -299,4 +317,82 @@ export interface AdminUsageData {
   timeToFirstValue: { organizations: number; medianMinutes: number | null };
   /** Least recently seen first, so the organizations to look into lead. */
   organizations: AdminUsageOrganizationRow[];
+}
+
+// ---- Integration Control Center (N10, D33) ------------------------------------
+
+export const RELEASE_STAGES = ["stable", "beta", "coming_soon"] as const;
+export type ReleaseStage = (typeof RELEASE_STAGES)[number];
+export const BETA_ACCESS_MODES = ["all_organizations", "allowlist"] as const;
+export type BetaAccessMode = (typeof BETA_ACCESS_MODES)[number];
+
+export const RELEASE_STAGE_LABELS: Record<ReleaseStage, string> = {
+  stable: "Stable",
+  beta: "Beta",
+  coming_soon: "Coming soon",
+};
+export const BETA_ACCESS_LABELS: Record<BetaAccessMode, string> = {
+  all_organizations: "All organizations",
+  allowlist: "Allowlist only",
+};
+
+/** Operator-authored text shown to customers; kept short. */
+export const STATUS_MESSAGE_MAX_LENGTH = 280;
+/** Every availability change needs a reason for the audit log. */
+export const AVAILABILITY_REASON_MAX_LENGTH = 500;
+
+/** The policy fields an operator edits; what the audit log records before and after. */
+export interface AvailabilityPolicyFields {
+  enabled: boolean;
+  releaseStage: ReleaseStage;
+  betaAccess: BetaAccessMode;
+  statusMessage: string | null;
+}
+
+export interface AvailabilityAllowlistEntry {
+  organizationId: string;
+  organizationName: string | null;
+  addedByEmail: string;
+  createdAt: string;
+}
+
+/** One provider in `/admin/integrations`. Counts only: never a credential. */
+export interface AdminIntegrationAvailabilityRow extends AvailabilityPolicyFields {
+  provider: IntegrationProvider;
+  name: string;
+  category: "ticket_source" | "work_tracker" | "code_host";
+  connectionType: "oauth" | "api_credentials";
+  version: number;
+  updatedAt: string | null;
+  updatedByEmail: string | null;
+  allowlist: AvailabilityAllowlistEntry[];
+  /** Integration rows that are not disconnected. */
+  connections: number;
+  /** Distinct organizations with a connection. */
+  activeOrganizations: number;
+  /** Connections the current policy makes unavailable to their organization (paused by Elapsed). */
+  pausedConnections: number;
+  health: { healthy: number; failing: number; needsAttention: number; stale: number };
+  rolloutBlock: { id: string; reason: string } | null;
+}
+
+export interface AdminIntegrationsData {
+  rows: AdminIntegrationAvailabilityRow[];
+  /** For the allowlist "add organization" picker. */
+  organizations: { id: string; name: string }[];
+}
+
+/** What a proposed change would take away; read-only. */
+export interface AvailabilityImpact {
+  organizationsLosingAccess: { id: string; name: string; connections: number }[];
+  connectionsAffected: number;
+}
+
+export interface AdminTenantBetaAccess {
+  provider: IntegrationProvider;
+  name: string;
+  listed: boolean;
+  /** The provider's policy currently restricts it to its allowlist (Beta, allowlist, enabled). */
+  allowlistApplies: boolean;
+  rolloutBlock: { id: string; reason: string } | null;
 }

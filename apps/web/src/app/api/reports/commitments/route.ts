@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { localDateKey } from "@sla/core";
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import {
@@ -15,7 +16,13 @@ export async function GET(request: NextRequest) {
 
   const prisma = getPrismaClient();
   const organizationId = session.user.organizationId;
-  const date = new Date().toISOString().slice(0, 10);
+  // The filename's date is the organization's local date (display timezone);
+  // the exported timestamps themselves stay ISO 8601 UTC instants.
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { timezone: true },
+  });
+  const date = localDateKey(new Date(), organization?.timezone ?? "UTC");
   const isJson = request.nextUrl.searchParams.get("format") === "json";
 
   // Streamed in keyset-paginated batches (performance-plan.md Phase 2 item

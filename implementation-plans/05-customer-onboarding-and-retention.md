@@ -43,6 +43,7 @@
   4. **Connect a work tracker** (Jira or Linear; optional).
   5. **Alerts** (Slack or email).
 - Beta labels stay on Intercom and GitHub until promoted (D17). Linear was promoted out of Beta on 2026-10-05 and carries no label.
+  - **Rev 9 (D33):** the label is derived from the provider's persisted release stage (`IntegrationAvailability`), set in `/admin/integrations`; the onboarding selector also shows an unavailable provider as Unavailable or Coming soon ([plan 10](10-integration-control-center.md) §5.5).
 - **Verify:** onboarding-status tests for all four matrix pairs; browser walkthrough of the Zendesk + Jira and Intercom + Jira paths in local dev with stubbed integrations.
 
 ### N5.2 — Partial value before a tracker is connected
@@ -74,7 +75,7 @@
 - **Scheduling:**
   - The worker's reconciliation tick checks, per org, whether the previous month's report has been delivered.
   - The idempotency key is `(organizationId, month)` in a new `ReportDelivery { id, organizationId, period, channel, status, deliveredAt, error }` table with a unique key.
-  - The month boundary uses the org's display timezone (`Organization.timezone`). SLA math is unaffected.
+  - The month boundary uses the org's display timezone (`Organization.timezone`), the same timezone the app displays dates in. SLA math is unaffected (it uses each business calendar's own timezone).
 - **Content:**
   - compliance by commitment kind
   - breaches by stage ("time by stage", neutral language)

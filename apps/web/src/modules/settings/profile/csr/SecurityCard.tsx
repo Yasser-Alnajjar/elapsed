@@ -1,27 +1,23 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
+import { KeyRound, Loader2 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-interface SaveResult {
-  ok: boolean;
-  message?: string;
-  error?: string;
-}
+import { formatRetryAfter } from "@/lib/auth-rate-limit";
+import { useRetryCountdown } from "@/hooks/use-retry-countdown";
+import { notify } from "@/lib/notify";
 
 export function SecurityCard() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<SaveResult | null>(null);
+  const retry = useRetryCountdown();
 
   const mismatch =
     confirmPassword.length > 0 && newPassword !== confirmPassword;
@@ -35,7 +31,6 @@ export function SecurityCard() {
     if (!canSubmit) return;
 
     setSaving(true);
-    setResult(null);
 
     const { ok, body } = await Actions.Profile.changePassword({
       currentPassword,
@@ -45,17 +40,15 @@ export function SecurityCard() {
     setSaving(false);
 
     if (!ok) {
-      setResult({
-        ok: false,
-        error: body.error ?? "Failed to change password",
-      });
+      if (body.retryAfterSeconds) retry.start(body.retryAfterSeconds);
+      notify.error(body.error ?? "Failed to change password.");
       return;
     }
 
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    setResult({ ok: true, message: "Password updated. Signing you out…" });
+    notify.success("Password updated. Signing you out…");
 
     // A password change invalidates every live session for this account,
     // including this one (roadmap 5.7's `User.sessionVersion` — see
@@ -129,19 +122,14 @@ export function SecurityCard() {
             <p className="text-xs text-error">Passwords don&apos;t match.</p>
           )}
 
-          {result && (
-            <Alert variant={result.ok ? "success" : "destructive"}>
-              {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-              <AlertDescription>
-                {result.ok ? result.message : result.error}
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="flex justify-end">
-            <Button type="submit" size="sm" disabled={!canSubmit || saving}>
+            <Button type="submit" size="sm" disabled={!canSubmit || saving || retry.active}>
               {saving && <Loader2 className="animate-spin" />}
-              {saving ? "Updating…" : "Update password"}
+              {saving
+                ? "Updating…"
+                : retry.active
+                  ? `Try again in ${formatRetryAfter(retry.remainingSeconds)}`
+                  : "Update password"}
             </Button>
           </div>
         </form>

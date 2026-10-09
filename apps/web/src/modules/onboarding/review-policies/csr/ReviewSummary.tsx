@@ -1,4 +1,7 @@
+"use client";
+
 import { formatExactTimestamp } from "@/lib/format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import type { PolicyImportReview } from "@/lib/types/onboarding";
 import {
   TONE_DOT,
@@ -9,6 +12,7 @@ import {
 
 /** Import status line: whether the import ran, how many policies, and when. */
 export function ImportStatusBar({ review }: { review: PolicyImportReview }) {
+  const timeZone = useOrgTimezone();
   return (
     <div className="font-code-audit text-code-audit flex flex-wrap items-center gap-x-3 gap-y-2 rounded bg-surface-container-low px-3 py-2 text-on-surface-variant">
       <span className="inline-flex items-center gap-1.5 rounded bg-surface-container-lowest px-2 py-0.5 text-primary">
@@ -24,7 +28,7 @@ export function ImportStatusBar({ review }: { review: PolicyImportReview }) {
         <>
           <span className="text-muted-foreground">/</span>
           <span className="text-tertiary">
-            LAST RUN: {formatExactTimestamp(review.lastImportAt)}
+            LAST RUN: {formatExactTimestamp(review.lastImportAt, timeZone)}
           </span>
         </>
       )}

@@ -1,7 +1,7 @@
 # 04 — Architecture Sketch
 **Phases 12–17, at design-decision depth.**
 
-> **Built (roadmap Rev 6, 2026-10-05).** This sketch predates the code. The product is built and live; the authoritative design is the implementation plans in `implementation-plans/` (`01`–`08`) and the code. Where they differ, the plans win. The main divergences: the core decides by **role**, not provider name, and a case's own ticket-source integration is its source of truth (D16–D19, D23); providers sit behind one typed adapter contract and a shared projector (N2); data freshness is recorded and shown (D13, D22); billing is an internal, provider-neutral domain (D14, D28). Kept as written for the reasoning.
+> **Built (roadmap Rev 6, 2026-10-05).** This sketch predates the code. The product is built and live; the authoritative design is the implementation plans in `implementation-plans/` (`01`–`09`) and the code. Where they differ, the plans win. The main divergences: the core decides by **role**, not provider name, and a case's own ticket-source integration is its source of truth (D16–D19, D23); providers sit behind one typed adapter contract and a shared projector (N2); data freshness is recorded and shown (D13, D22); billing is an internal, provider-neutral domain (D14, D28). Kept as written for the reasoning.
 
 Deliberately a sketch. If the verdict in [00-Verdict.md](00-Verdict.md) is "validate before building," then detailed schemas and full interface definitions are work performed before it is known whether anyone will pay. What follows is the set of decisions that are expensive to change later — the ones worth getting right on paper now — plus the minimum type shapes needed to make them concrete.
 

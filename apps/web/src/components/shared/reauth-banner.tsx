@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 
 interface ReauthBannerProps {
   /** Display name shown in the banner copy, e.g. "Zendesk", "Jira", "Linear". */
@@ -11,7 +12,7 @@ interface ReauthBannerProps {
 /** Generalized across Zendesk/Jira/Linear (roadmap step 17) — was Zendesk-only. */
 export function ReauthBanner({ provider, reconnectHref }: ReauthBannerProps) {
   return (
-    <Alert variant="warning">
+    <DismissibleAlert variant="warning">
       <AlertTriangle />
       <AlertDescription>
         <p>{provider} access has expired and needs to be reconnected before backfill can continue.</p>
@@ -19,6 +20,6 @@ export function ReauthBanner({ provider, reconnectHref }: ReauthBannerProps) {
           Reconnect {provider}
         </a>
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }

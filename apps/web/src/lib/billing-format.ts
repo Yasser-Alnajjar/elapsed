@@ -22,6 +22,17 @@ export function formatMoney(cents: number | null, currency = "USD"): string {
 
 /** "$514.2K" / "$1.2M": a money headline that has to fit a chip. */
 export function formatMoneyCompact(cents: number, currency = "USD"): string {
+  // Below a thousand, compact notation adds nothing, and the server's and the
+  // browser's ICU disagree on it ("$0" vs "$0.0"), which fails hydration. Plain
+  // currency formatting is the same in both.
+  if (Math.abs(cents) < 100_000) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    }).format(cents / 100);
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,

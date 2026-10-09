@@ -1,5 +1,16 @@
 import type { SourceRole } from "@sla/core";
-import { getOrganizationUsage, getWorkerSettingsForRead, isPlanId, isTrialExpired, PLANS, Prisma, type PrismaClient } from "@sla/db";
+import {
+  getOrganizationUsage,
+  getWorkerSettingsForRead,
+  catalogEntry,
+  isPlanId,
+  isTrialExpired,
+  listIntegrationAvailabilityPolicies,
+  PLANS,
+  policyUsesAllowlist,
+  Prisma,
+  type PrismaClient,
+} from "@sla/db";
 import { staleFields } from "./freshness-data";
 import { getLinkCoverage, NO_LINK_COVERAGE } from "./link-coverage-data";
 import { providerRole } from "./providers";
@@ -340,6 +351,23 @@ export async function getAdminTenantDetail(
     ]);
   const tenant = rows[0];
   if (!tenant) return null;
+  const [policies, listedRows] = await Promise.all([
+    listIntegrationAvailabilityPolicies(prisma),
+    prisma.integrationBetaAllowlist.findMany({ where: { organizationId }, select: { provider: true } }),
+  ]);
+  const listed = new Set(listedRows.map((row) => row.provider));
+  const betaAccess = policies
+    .filter((policy) => policyUsesAllowlist(policy) || listed.has(policy.provider))
+    .map((policy) => {
+      const entry = catalogEntry(policy.provider);
+      return {
+        provider: policy.provider,
+        name: entry.name,
+        listed: listed.has(policy.provider),
+        allowlistApplies: policyUsesAllowlist(policy),
+        rolloutBlock: entry.rolloutBlock ? { ...entry.rolloutBlock } : null,
+      };
+    });
 
   const lastRunDurationMs =
     workState?.lastStartedAt && workState.lastFinishedAt && workState.lastFinishedAt >= workState.lastStartedAt
@@ -394,6 +422,7 @@ export async function getAdminTenantDetail(
         }
       : null,
     casesWithNoMatchingPolicy,
+    betaAccess,
     entitlements: {
       enforced: workerSettings.entitlementsEnforced,
       usage,

@@ -36,6 +36,18 @@ export {
   IntegrationCredentialsUnreadableError,
 } from "./integration-credentials";
 export {
+  CUSTOM_CREDENTIALS_UNREADABLE_MESSAGE,
+  CustomCredentialsUnreadableError,
+  DRAFT_INTEGRATION_ID,
+  customSecretFieldsSet,
+  decryptCustomSecret,
+  decryptCustomSecrets,
+  encryptCustomSecret,
+  encryptCustomSecrets,
+  isCustomSecretCiphertext,
+} from "./custom-secrets";
+export type { CustomSecretBinding, CustomSecretContext } from "./custom-secrets";
+export {
   getEmailSettings,
   getEmailSettingsStatus,
   saveEmailSettings,
@@ -115,6 +127,38 @@ export type {
 export { recordSlaImportSummary } from "./sla-import-summary";
 export type { SlaImportSummaryInput } from "./sla-import-summary";
 export { isPerfMetricsEnabled, perfCount, withPerfScope } from "./perf-metrics";
+export {
+  INTEGRATION_CATALOG,
+  CATALOG_PROVIDERS,
+  catalogEntry,
+} from "./integration-catalog";
+export type {
+  IntegrationCategory,
+  IntegrationConnectionType,
+  IntegrationCatalogEntry,
+  IntegrationRolloutBlock,
+  IntegrationAvailabilityDefaults,
+} from "./integration-catalog";
+export {
+  INTEGRATION_UNAVAILABLE_CODES,
+  isIntegrationUnavailableCode,
+  IntegrationUnavailableError,
+  unavailableMessage,
+  defaultAvailabilityPolicy,
+  policyUsesAllowlist,
+  decideAvailability,
+  getIntegrationAvailabilityPolicy,
+  listIntegrationAvailabilityPolicies,
+  resolveIntegrationAvailability,
+  resolveOrganizationAvailability,
+  assertIntegrationAvailable,
+} from "./integration-availability";
+export type {
+  IntegrationUnavailableCode,
+  IntegrationAvailabilityPolicy,
+  IntegrationAvailabilityDecision,
+  AvailabilityDb,
+} from "./integration-availability";
 
 export { generateSecureToken, hashToken } from "./secure-token";
 export {

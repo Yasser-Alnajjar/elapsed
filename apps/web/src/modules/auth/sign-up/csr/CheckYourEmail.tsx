@@ -15,13 +15,16 @@ export const CheckYourEmail = ({ email }: { email: string }) => (
     description={`We sent a verification link to ${email}. Verify it, then sign in to continue.`}
     footer={
       <p>
-        <a href="/sign-in" className="font-medium text-foreground underline-offset-4 hover:underline">
+        <a
+          href="/sign-in"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
           Go to sign in
         </a>
       </p>
     }
   >
-    <div className="flex items-start gap-2 text-xs leading-4 text-muted-foreground">
+    <div className="flex items-start justify-center gap-2 text-xs leading-4 text-muted-foreground">
       <MailCheck aria-hidden className="mt-px size-3.5 shrink-0" />
       <ResendVerification email={email} />
     </div>

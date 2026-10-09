@@ -8,8 +8,7 @@ import {
   TriangleAlert,
   Workflow,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import type { IntegrationProvider } from "@/lib/types/integrations";
+import type { OAuthIntegrationProvider } from "@/lib/types/integrations";
 import type { PulsePanelProps } from "./ConnectedCardBody";
 import { GithubConnectForm } from "./GithubCard";
 import { IntercomConnectButton } from "./IntercomCard";
@@ -19,12 +18,11 @@ import { ZendeskConnectForm } from "./ZendeskCard";
 
 /** Everything that differs between the source-provider cards on the integrations page. */
 export interface SourceIntegrationSpec {
-  provider: IntegrationProvider;
+  provider: OAuthIntegrationProvider;
   label: string;
   subtitle: string;
   tag: string;
   icon: ReactNode;
-  badge?: ReactNode;
   /** Where an admin registers this provider's OAuth app. */
   help: { url: string; label: string };
   /** The read-only promise shown before connecting. */
@@ -165,7 +163,6 @@ export const SOURCE_INTEGRATION_SPECS: SourceIntegrationSpec[] = [
     subtitle: "Alternative helpdesk event stream",
     tag: "TICKETS",
     icon: <LifeBuoy className="size-4" />,
-    badge: <Badge variant="beta">Beta</Badge>,
     help: {
       url: "https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/setting-up-oauth",
       label: "Get your Intercom OAuth app credentials",
@@ -202,7 +199,6 @@ export const SOURCE_INTEGRATION_SPECS: SourceIntegrationSpec[] = [
     subtitle: "Pull request lifecycle",
     tag: "ENGINEERING",
     icon: <GitPullRequest className="size-4" />,
-    badge: <Badge variant="beta">Beta</Badge>,
     help: {
       url: "/docs/integrations/github#create-github-app",
       label: "Create your read-only GitHub App",

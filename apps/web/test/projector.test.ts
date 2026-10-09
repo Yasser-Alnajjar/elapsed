@@ -301,6 +301,85 @@ describe.skipIf(!TEST_DATABASE_URL)("projectCanonicalBatch (real Postgres)", () 
     expect(link.evidence).toEqual({ remoteLink: { id: 5 }, statusName: "In Progress" });
   });
 
+  describe("change detection (D32)", () => {
+    const known = { provider: "zendesk" as const, kind: "organization", externalId: "900" };
+    const withCustomer = (name = "Acme") =>
+      batch({ customers: [{ ...known, name }], cases: [ticketCase("1", { customer: known, assigneeName: "Ada", priority: "high" })] });
+
+    it("counts a new customer and a new case as changes", async () => {
+      expect(await projectCanonicalBatch(prisma, zendesk, withCustomer())).toMatchObject({ customersChanged: 1, casesChanged: 1, casesUpserted: 1 });
+    });
+
+    it("reports no change when the same batch is projected again, although every case is still processed", async () => {
+      await projectCanonicalBatch(prisma, zendesk, withCustomer());
+      const again = await projectCanonicalBatch(prisma, zendesk, withCustomer());
+      expect(again).toMatchObject({ customersUpserted: 1, customersChanged: 0, casesUpserted: 1, casesChanged: 0, eventsCreated: 0, eventsDeleted: 0, casesDeleted: 0 });
+    });
+
+    it.each([
+      ["assignee", { assigneeName: "Grace" }],
+      ["priority", { priority: "low" }],
+      ["subject", { subject: "Renamed" }],
+      ["channel", { channel: "chat" }],
+      ["closing time", { closedAt: new Date("2026-09-02T00:00:00Z") }],
+      ["tags", { tags: ["vip", "billing"] }],
+      ["attributes", { attributes: { status: "solved" } }],
+      ["requester", { requesterName: "Someone else" }],
+      ["tier", { tier: "gold" }],
+    ])("reports a changed %s", async (_name, change) => {
+      await projectCanonicalBatch(prisma, zendesk, withCustomer());
+      const result = await projectCanonicalBatch(
+        prisma,
+        zendesk,
+        batch({ customers: [{ ...known, name: "Acme" }], cases: [ticketCase("1", { customer: known, assigneeName: "Ada", priority: "high", ...change })] }),
+      );
+      expect(result.casesChanged).toBe(1);
+      expect(result.customersChanged).toBe(0);
+    });
+
+    it("reports a changed customer link, a cleared one and a renamed customer", async () => {
+      await projectCanonicalBatch(prisma, zendesk, withCustomer());
+      const cleared = await projectCanonicalBatch(prisma, zendesk, batch({ cases: [ticketCase("1", { assigneeName: "Ada", priority: "high" })] }));
+      expect(cleared.casesChanged).toBe(1);
+      const renamed = await projectCanonicalBatch(prisma, zendesk, batch({ customers: [{ ...known, name: "Acme Ltd" }] }));
+      expect(renamed).toMatchObject({ customersChanged: 1, casesChanged: 0 });
+    });
+
+    it("ignores a field the adapter omits and the key order of stored attributes", async () => {
+      await projectCanonicalBatch(prisma, zendesk, batch({ cases: [ticketCase("1", { attributes: { b: 1, a: { y: 2, x: 1 } } })] }));
+      const { requesterName: _requester, tier: _tier, tags: _tags, ...withoutOptional } = ticketCase("1");
+      const reordered = await projectCanonicalBatch(
+        prisma,
+        zendesk,
+        batch({ cases: [{ ...withoutOptional, attributes: { a: { x: 1, y: 2 }, b: 1 } }] }),
+      );
+      expect(reordered.casesChanged).toBe(0);
+    });
+
+    it("counts event creation and deletion, and a case deletion, as changes", async () => {
+      const raw = await rawEvent(zendesk, "ticket:1:h");
+      const withEvent = batch({ cases: [ticketCase("1")], eventGroups: [group("1", [raw], [event(raw)])] });
+      const created = await projectCanonicalBatch(prisma, zendesk, withEvent);
+      expect(created).toMatchObject({ casesChanged: 1, eventsCreated: 1 });
+      const removed = await projectCanonicalBatch(prisma, zendesk, batch({ cases: [ticketCase("1")], eventGroups: [group("1", [raw], [])] }));
+      expect(removed).toMatchObject({ casesChanged: 0, eventsCreated: 0, eventsDeleted: 1 });
+      const deleted = await projectCanonicalBatch(prisma, zendesk, batch({ deletedCaseExternalIds: ["1"] }));
+      expect(deleted.casesDeleted).toBe(1);
+    });
+
+    it("does not change a stored value or duplicate an event while detecting change (the upsert still touches `updatedAt`, as before)", async () => {
+      const raw = await rawEvent(zendesk, "ticket:1:h");
+      const input = batch({ cases: [ticketCase("1")], eventGroups: [group("1", [raw], [event(raw)])] });
+      await projectCanonicalBatch(prisma, zendesk, input);
+      const cases = async () => (await prisma.case.findMany()).map(({ updatedAt: _updatedAt, ...fields }) => fields);
+      const before = { cases: await cases(), events: await prisma.normalizedEvent.findMany() };
+      await projectCanonicalBatch(prisma, zendesk, input);
+      await projectCanonicalBatch(prisma, zendesk, input);
+      expect(await cases()).toEqual(before.cases);
+      expect(await prisma.normalizedEvent.findMany()).toEqual(before.events);
+    });
+  });
+
   describe("links", () => {
     const T0 = new Date("2026-09-01T10:00:00Z");
     const T1 = new Date("2026-09-02T10:00:00Z");

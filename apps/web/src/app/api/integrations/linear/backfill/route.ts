@@ -4,6 +4,7 @@ import { LinearReauthRequiredError, runLinearBackfill } from "@sla/linear";
 import { getPrismaClient } from "@sla/db";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
+import { requireIntegrationAvailable } from "@/lib/integration-availability";
 import { projectAndEvaluateSourceSyncs } from "@/lib/source-sync";
 
 export const maxDuration = 300;
@@ -13,6 +14,9 @@ export async function POST() {
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const denied = requireOwner(session);
   if (denied) return denied;
+  // D33: no import from a provider that is unavailable to this organization.
+  const unavailable = await requireIntegrationAvailable(session.user.organizationId, "linear");
+  if (unavailable) return unavailable;
 
   const prisma = getPrismaClient();
   const integration = await prisma.integration.findUnique({

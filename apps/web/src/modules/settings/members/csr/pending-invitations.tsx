@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, X } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 
 import { Actions } from "@/actions/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export function PendingInvitations({
   invitations,
   onRevoked,
 }: PendingInvitationsProps) {
+  const timeZone = useOrgTimezone();
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   async function handleRevoke(invitationId: string) {
@@ -53,8 +55,8 @@ export function PendingInvitations({
                   <p className="text-sm font-medium">{invitation.email}</p>
 
                   <p className="text-xs text-on-surface-variant">
-                    Sent {formatDateTime(invitation.createdAt)} · expires{" "}
-                    {formatDateTime(invitation.expiresAt)}
+                    Sent {formatDateTime(invitation.createdAt, timeZone)} · expires{" "}
+                    {formatDateTime(invitation.expiresAt, timeZone)}
                   </p>
                 </div>
 

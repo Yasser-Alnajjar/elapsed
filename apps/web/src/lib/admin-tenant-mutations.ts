@@ -1,3 +1,4 @@
+import { applySupportOverride } from "@sla/custom-ticket";
 import type { Prisma, PrismaClient } from "@sla/db";
 import { recordAdminAudit } from "./admin-audit";
 import {
@@ -156,6 +157,35 @@ export async function controlIntegration(
       organizationId: integration.organizationId,
       integrationId,
       metadata: { provider: integration.provider },
+    });
+  });
+}
+
+// The Custom REST Beta flag (N9, plan 09 8.7) became the Custom REST entry of
+// the generic Beta allowlist (D33): see `admin-integration-availability.ts`.
+
+// ---- Support-assisted guard override (N9, plan 09 6.11, U6) --------------------
+
+/**
+ * Applies the organization owner's recorded authorization for one guard
+ * override. The operator can neither create nor assert that authorization:
+ * this fails unless the owner recorded it for this exact override, it is
+ * unexpired and unused. The durable `GuardOverride` row and the platform-side
+ * `AdminAuditLog` entry commit together. The next sync pass then projects the
+ * previewed record set once.
+ */
+export async function applyGuardOverride(
+  prisma: PrismaClient,
+  params: { actorEmail: string; overrideId: string },
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const applied = await applySupportOverride(tx, { overrideId: params.overrideId, operatorEmail: params.actorEmail });
+    await recordAdminAudit(tx, {
+      actorEmail: params.actorEmail,
+      action: "apply_guard_override",
+      organizationId: applied.organizationId,
+      integrationId: applied.integrationId,
+      metadata: { guard: "mass_lifecycle_change", previewHash: applied.previewHash, overrideId: params.overrideId },
     });
   });
 }

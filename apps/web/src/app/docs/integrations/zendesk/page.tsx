@@ -245,7 +245,7 @@ export default function ZendeskIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Polled every 5 minutes (active cases) and every 60 minutes (full
+            Polled every 5 minutes (active cases) and every 30 minutes (full
             reconciliation). SLA policies and business-hours schedules are
             re-imported every cycle, so a policy edit in Zendesk is picked up
             automatically without reconnecting.

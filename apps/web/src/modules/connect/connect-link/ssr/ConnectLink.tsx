@@ -1,4 +1,4 @@
-import { ConnectLinkError, getPrismaClient, resolveConnectLink } from "@sla/db";
+import { ConnectLinkError, getPrismaClient, resolveConnectLink, resolveIntegrationAvailability } from "@sla/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";
@@ -15,11 +15,22 @@ export const ConnectLink = async ({ token }: { token: string }) => {
   }
 
   const providerLabel = link ? INTEGRATION_PROVIDER_LABELS[link.provider] : null;
+  // D33: a provider the platform has made unavailable cannot be connected, even through a valid link (which stays unused).
+  const availability = link ? await resolveIntegrationAvailability(getPrismaClient(), link.organizationId, link.provider) : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg items-center px-4">
       <Card className="w-full">
-        {link ? (
+        {link && availability && !availability.available ? (
+          <CardHeader>
+            <CardTitle>{providerLabel} can&apos;t be connected right now</CardTitle>
+            <CardDescription>
+              {availability.message}
+              {availability.statusMessage ? ` ${availability.statusMessage}` : ""} This link has not been used and
+              still works until {link.expiresAt.toUTCString()}.
+            </CardDescription>
+          </CardHeader>
+        ) : link ? (
           <>
             <CardHeader>
               <CardTitle>Connect {providerLabel} to Elapsed</CardTitle>

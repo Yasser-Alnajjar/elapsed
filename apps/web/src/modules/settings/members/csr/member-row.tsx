@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, X } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
@@ -32,6 +33,7 @@ const roleSchema = Yup.object({
 });
 
 export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
+  const timeZone = useOrgTimezone();
   const formik = useFormik<{ role: UserRole }>({
     initialValues: {
       role: member.role,
@@ -142,7 +144,7 @@ export function MemberRow({ member, isSelf, onSaved }: MemberRowProps) {
         </TableCell>
 
         <TableCell nowrap className="text-on-surface-variant font-mono text-xs">
-          {formatDateTime(member.createdAt)}
+          {formatDateTime(member.createdAt, timeZone)}
         </TableCell>
 
         <TableCell align="end">

@@ -1,4 +1,7 @@
+"use client";
+
 import { Clock, Server, ShieldCheck } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { Card } from "@/components/ui/card";
 import { formatLongDateTime } from "@/lib/format";
 import type { IntegrationDetailData } from "@/lib/types/integrations";
@@ -12,6 +15,7 @@ export function ConnectionSummaryCard({
   data: IntegrationDetailData;
   label: string;
 }) {
+  const timeZone = useOrgTimezone();
   const {
     provider,
     connectedAt,
@@ -51,7 +55,7 @@ export function ConnectionSummaryCard({
           <span className={labelClass}>Connection established</span>
           <span className="text-on-surface flex items-center gap-2 font-mono text-sm">
             <Clock className="size-4 shrink-0 text-on-surface-variant" />
-            {formatLongDateTime(connectedAt)}
+            {formatLongDateTime(connectedAt, timeZone)}
           </span>
         </div>
         <div className="flex min-w-0 flex-col gap-1">
@@ -69,7 +73,7 @@ export function ConnectionSummaryCard({
       <div className="bg-surface-container grid grid-cols-2 gap-4 rounded-lg p-4 lg:grid-cols-4">
         <Stat
           label="Last sync"
-          value={lastSyncAt ? formatLongDateTime(lastSyncAt) : "Never"}
+          value={lastSyncAt ? formatLongDateTime(lastSyncAt, timeZone) : "Never"}
         />
         <Stat
           label="Last sync result"
@@ -80,13 +84,13 @@ export function ConnectionSummaryCard({
           label="Last successful sync"
           value={
             lastSuccessfulSyncAt
-              ? formatLongDateTime(lastSuccessfulSyncAt)
+              ? formatLongDateTime(lastSuccessfulSyncAt, timeZone)
               : "Never"
           }
         />
         <Stat
           label="Failing since"
-          value={failingSince ? formatLongDateTime(failingSince) : "—"}
+          value={failingSince ? formatLongDateTime(failingSince, timeZone) : "—"}
           tone={failingSince ? "warning" : undefined}
         />
         <Stat

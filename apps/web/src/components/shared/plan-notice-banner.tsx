@@ -1,6 +1,10 @@
+"use client";
+
 import { CreditCard } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { RESOURCE_LABELS, type LimitedResource } from "@sla/db/plans";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 import { formatExactTimestamp } from "@/lib/format";
 import { UpgradeCtaLink } from "@/components/shared/entitlement-alerts";
 
@@ -16,28 +20,29 @@ export interface PlanNotice {
  * affected, because it is not: only adding new configuration is.
  */
 export function PlanNoticeBanner({ notice }: { notice: PlanNotice }) {
+  const timeZone = useOrgTimezone();
   if (notice.trialExpiredAt) {
     return (
-      <Alert variant="warning" className="mb-4">
+      <DismissibleAlert variant="warning" className="mb-4">
         <CreditCard />
         <AlertDescription>
-          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt)}. Cases, SLA monitoring, alerts and history keep working;{" "}
+          Your trial ended on {formatExactTimestamp(notice.trialExpiredAt, timeZone)}. Cases, SLA monitoring, alerts and history keep working;{" "}
           {notice.trialRestricted === false
             ? "choose a plan to keep adding members, integrations and SLA policies."
             : "adding members, integrations or SLA policies is paused until you upgrade."}{" "}
           <UpgradeCtaLink />
         </AlertDescription>
-      </Alert>
+      </DismissibleAlert>
     );
   }
   if (notice.overLimit.length === 0) return null;
   return (
-    <Alert variant="warning" className="mb-4">
+    <DismissibleAlert variant="warning" className="mb-4">
       <CreditCard />
       <AlertDescription>
         Your organization is over its plan:{" "}
         {notice.overLimit.map((row) => `${row.used} of ${row.limit} ${RESOURCE_LABELS[row.resource]}`).join(", ")}. Nothing is switched off. <UpgradeCtaLink />
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }

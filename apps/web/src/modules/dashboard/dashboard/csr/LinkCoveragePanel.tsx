@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { Link2 } from "lucide-react";
 
 import { formatExactTimestamp } from "@/lib/format";
@@ -14,6 +17,7 @@ const percent = (ratio: number) => Math.round(ratio * 100);
  * every case opened, not an estimate of which ones "should" have escalated.
  */
 export function LinkCoveragePanel({ coverage }: { coverage: LinkCoveragePanelData }) {
+  const timeZone = useOrgTimezone();
   const { cases, linkedCases, ratio, windowDays, probableOnlyCases, uncovered, uncoveredOverflowCount } = coverage;
 
   return (
@@ -69,7 +73,7 @@ export function LinkCoveragePanel({ coverage }: { coverage: LinkCoveragePanelDat
                       </Link>{" "}
                       <span className="text-on-surface">{row.subject ?? "(no subject)"}</span>
                       <p className="text-outline truncate text-xs">
-                        {row.customerName ?? "No customer"} · opened {formatExactTimestamp(row.openedAt)}
+                        {row.customerName ?? "No customer"} · opened {formatExactTimestamp(row.openedAt, timeZone)}
                         {row.hasProbableLink && " · probable link only"}
                       </p>
                     </div>

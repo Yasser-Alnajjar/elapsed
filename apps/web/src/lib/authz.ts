@@ -52,3 +52,32 @@ export function requireOwner(session: Session | null): NextResponse | null {
   }
   return null;
 }
+
+/**
+ * Emails allowed to apply a support-assisted guard override (N9, plan 09 6.11,
+ * U6): a distinct allowlist beside `PLATFORM_ADMIN_EMAILS`, so being a platform
+ * operator does not by itself carry this ability. Comma-separated, matched
+ * case-insensitively.
+ */
+function guardOverrideOperatorEmails(): Set<string> {
+  return new Set(
+    (process.env.GUARD_OVERRIDE_OPERATOR_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+export function isGuardOverrideOperator(session: Session | null): boolean {
+  if (!session) return false;
+  return isPlatformOperator(session) && guardOverrideOperatorEmails().has(session.user.email.toLowerCase());
+}
+
+/** Gate for applying a support-assisted override: a platform operator who is ALSO on the separate override allowlist. */
+export function requireGuardOverrideOperator(session: Session | null): NextResponse | null {
+  if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (!isGuardOverrideOperator(session)) {
+    return NextResponse.json({ error: "This action needs the separate guard-override permission" }, { status: 403 });
+  }
+  return null;
+}

@@ -19,6 +19,7 @@ import {
   resolveOrganizationCalendarFallback,
 } from "./calendar-fallback";
 import { toPolicyVersionDomain } from "./policy-domain";
+import { SLA_SUPPORT_SELECT, unsupportedKindsOf } from "./sla-support";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 
 export { toCalendarVersionDomain } from "./calendar-domain";
@@ -253,6 +254,8 @@ export async function runCommitmentPipeline(
       system: true,
       attributes: true,
       openedAt: true,
+      // What the source integration cannot support (N9, Q1); null for every provider that predates it.
+      ...SLA_SUPPORT_SELECT,
       // Scoped to the single-cycle kinds this pipeline creates: a persisted
       // Next Reply commitment must never be picked as the "sibling" below or
       // counted toward the calendar-version prefetch's completeness check.
@@ -266,11 +269,11 @@ export async function runCommitmentPipeline(
   // D5b: agent-created tickets start their first-response clock at the first
   // customer reply, not ticket creation (`resolveFirstResponseStartedAt`).
   // Only fetched for cases that still need a first-response commitment.
-  const casesNeedingFirstResponse = cases.filter((c) =>
-    missingCommitmentKinds(
-      c.commitments.map((cm) => cm.kind as CommitmentKind),
-    ).includes("first_response"),
-  );
+  const missingSupportedKinds = (c: (typeof cases)[number]): CommitmentKind[] => {
+    const unsupported = unsupportedKindsOf(c.sourceIntegration?.slaSupport);
+    return missingCommitmentKinds(c.commitments.map((cm) => cm.kind as CommitmentKind)).filter((kind) => !unsupported.has(kind));
+  };
+  const casesNeedingFirstResponse = cases.filter((c) => missingSupportedKinds(c).includes("first_response"));
   const firstResponseEventsByCaseId = new Map<string, NormalizedEvent[]>();
   if (casesNeedingFirstResponse.length > 0) {
     const rows = await prisma.normalizedEvent.findMany({
@@ -313,9 +316,8 @@ export async function runCommitmentPipeline(
   for (const caseRow of cases) {
     result.casesConsidered += 1;
     try {
-      const missingKinds = missingCommitmentKinds(
-        caseRow.commitments.map((c) => c.kind as CommitmentKind),
-      );
+      // Kinds the source integration cannot support are never created (N9, Q1).
+      const missingKinds = missingSupportedKinds(caseRow);
       if (missingKinds.length === 0) continue;
 
       const sibling = pickAnchorCommitment(caseRow.commitments);

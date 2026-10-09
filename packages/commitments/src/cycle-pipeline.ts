@@ -10,6 +10,7 @@ import {
 import { persistNextReplyCommitments, planCycleCommitments } from "./cycle-commitments";
 import { ACTIVE_COMMITMENT_WHERE } from "./active-commitment";
 import { toPolicyVersionDomain } from "./policy-domain";
+import { SLA_SUPPORT_SELECT, unsupportedKindsOf } from "./sla-support";
 import { chunk, loadPolicyContext, type PolicyContext } from "./tick-context";
 import { toNormalizedEventDomain } from "./evaluate-pipeline";
 import { SINGLE_CYCLE_KINDS, latestVersionPerPolicy, pickAnchorCommitment } from "./pipeline";
@@ -118,6 +119,8 @@ export async function runNextReplyCyclePipeline(
     },
     select: {
       id: true,
+      // What the source integration cannot support (N9, Q1); null for every provider that predates it.
+      ...SLA_SUPPORT_SELECT,
       // The same anchor kinds runCommitmentPipeline creates; a persisted
       // Next Reply commitment is never its own anchor.
       commitments: {
@@ -189,6 +192,8 @@ export async function runNextReplyCyclePipeline(
   for (const caseRow of cases) {
     result.casesConsidered += 1;
     try {
+      // A source that cannot support Next Reply gets no cycles, and its cancelled cycles are never restored (N9, Q1, R5).
+      if (unsupportedKindsOf(caseRow.sourceIntegration?.slaSupport).has("next_reply")) continue;
       const anchor = pickAnchorCommitment(caseRow.commitments);
       if (!anchor) continue;
 

@@ -6,11 +6,16 @@ import {
   type PrismaClient,
 } from "@sla/db";
 import type { CanonicalBatch, CaseFacts, CustomerIdentityRef, EventGroup, IntegrationRef, ProjectionFailure } from "./contract";
+import { caseFieldsChanged, STORED_CASE_FIELDS, type StoredCaseFields } from "./case-change";
 import { diffNormalizedEvents } from "./diff";
 
 export interface ProjectionResult {
   customersUpserted: number;
+  /** Customers the batch created or renamed: actual changes, unlike `customersUpserted`, which counts the ones processed. */
+  customersChanged: number;
   casesUpserted: number;
+  /** Cases the batch created or whose stored fields it changed, found by comparing with what was stored before the write (D32). `casesUpserted` counts the ones processed. */
+  casesChanged: number;
   casesDeleted: number;
   /** Events the batch derived, whether or not they needed writing. */
   eventsDerived: number;
@@ -35,7 +40,9 @@ export async function projectCanonicalBatch(
 ): Promise<ProjectionResult> {
   const result: ProjectionResult = {
     customersUpserted: 0,
+    customersChanged: 0,
     casesUpserted: 0,
+    casesChanged: 0,
     casesDeleted: 0,
     eventsDerived: 0,
     eventsCreated: 0,
@@ -44,15 +51,22 @@ export async function projectCanonicalBatch(
   };
 
   for (const customer of batch.customers) {
-    await upsertCustomerByIdentity(prisma, dbIdentityRef(integration, customer), customer.name);
+    const identity = dbIdentityRef(integration, customer);
+    const before = await findCustomerByIdentity(prisma, identity);
+    await upsertCustomerByIdentity(prisma, identity, customer.name);
     result.customersUpserted += 1;
+    if (!before || before.name !== customer.name) result.customersChanged += 1;
   }
 
   const caseIdByExternalId = new Map<string, string>();
+  const storedCases = await loadStoredCases(prisma, integration, batch.cases.map((facts) => facts.externalId));
   for (const facts of batch.cases) {
     try {
-      caseIdByExternalId.set(facts.externalId, await upsertCase(prisma, integration, facts));
+      const row = await upsertCase(prisma, integration, facts);
+      caseIdByExternalId.set(facts.externalId, row.id);
       result.casesUpserted += 1;
+      const stored = storedCases.get(facts.externalId);
+      if (!stored || caseFieldsChanged(stored, facts, row.customerId)) result.casesChanged += 1;
     } catch (error) {
       result.failures.push({ id: facts.externalId, error: errorMessage(error) });
     }
@@ -92,7 +106,34 @@ function dbIdentityRef(integration: IntegrationRef, ref: CustomerIdentityRef): D
   return { organizationId: integration.organizationId, provider: ref.provider, kind: ref.kind, externalId: ref.externalId };
 }
 
-async function upsertCase(prisma: PrismaClient, integration: IntegrationRef, facts: CaseFacts): Promise<string> {
+const STORED_CASE_CHUNK = 1000;
+
+/** What is stored for these cases before the batch writes them; read only, to tell a change from a re-write of the same values. */
+async function loadStoredCases(
+  prisma: PrismaClient,
+  integration: IntegrationRef,
+  externalIds: string[],
+): Promise<Map<string, StoredCaseFields>> {
+  const stored = new Map<string, StoredCaseFields>();
+  for (let i = 0; i < externalIds.length; i += STORED_CASE_CHUNK) {
+    const rows = await prisma.case.findMany({
+      where: {
+        organizationId: integration.organizationId,
+        sourceIntegrationId: integration.id,
+        externalId: { in: externalIds.slice(i, i + STORED_CASE_CHUNK) },
+      },
+      select: { externalId: true, ...STORED_CASE_FIELDS },
+    });
+    for (const { externalId, ...fields } of rows) stored.set(externalId, fields);
+  }
+  return stored;
+}
+
+async function upsertCase(
+  prisma: PrismaClient,
+  integration: IntegrationRef,
+  facts: CaseFacts,
+): Promise<{ id: string; customerId: string | null }> {
   const customer = facts.customer ? await findCustomerByIdentity(prisma, dbIdentityRef(integration, facts.customer)) : null;
   const shared = {
     customerId: customer?.id ?? null,
@@ -126,7 +167,7 @@ async function upsertCase(prisma: PrismaClient, integration: IntegrationRef, fac
       openedAt: facts.openedAt,
     },
   });
-  return row.id;
+  return { id: row.id, customerId: row.customerId };
 }
 
 async function resolveTargetCaseId(

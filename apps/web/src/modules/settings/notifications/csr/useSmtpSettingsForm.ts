@@ -4,17 +4,18 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
 import type { EmailSettingsFormInput } from "@/actions/client";
+import { notify } from "@/lib/notify";
 import type {
   EmailSecurity,
   EmailSettingsStatus,
 } from "@/lib/types/email-settings";
 
+/** Test connection / send test report their outcome as a toast; only `pending` is kept. */
 export interface SmtpActionState {
   pending: boolean;
-  result: { ok: boolean; message?: string; error?: string } | null;
 }
 
-const IDLE_STATE: SmtpActionState = { pending: false, result: null };
+const IDLE_STATE: SmtpActionState = { pending: false };
 
 /**
  * Non-blocking heads-up only — a real SMTP server can legitimately run any
@@ -61,7 +62,6 @@ export function useSmtpSettingsForm(status: EmailSettingsStatus) {
     useState<SmtpActionState>(IDLE_STATE);
   const [testSend, setTestSend] = useState<SmtpActionState>(IDLE_STATE);
   const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<SmtpActionState["result"]>(null);
 
   const portNumber = Number(port);
   const warning = useMemo(
@@ -85,35 +85,33 @@ export function useSmtpSettingsForm(status: EmailSettingsStatus) {
   }
 
   async function handleTestConnection() {
-    setTestConnection({ pending: true, result: null });
+    setTestConnection({ pending: true });
     const result = await Actions.Email.testConnection(buildInput());
-    setTestConnection({ pending: false, result });
+    setTestConnection({ pending: false });
+    notify.result({ ok: result.ok, message: (result.ok ? result.message : result.error) ?? "" });
   }
 
   async function handleSendTest() {
-    setTestSend({ pending: true, result: null });
+    setTestSend({ pending: true });
     const result = await Actions.Email.sendTestEmail(buildInput());
-    setTestSend({ pending: false, result });
+    setTestSend({ pending: false });
+    notify.result({ ok: result.ok, message: (result.ok ? result.message : result.error) ?? "" });
   }
 
   async function handleSave(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
-    setSaveResult(null);
 
     const { ok, body } = await Actions.Email.saveSettings(buildInput());
     setSaving(false);
 
     if (!ok) {
-      setSaveResult({
-        ok: false,
-        error: body.error ?? "Failed to save configuration",
-      });
+      notify.error(body.error ?? "Failed to save configuration.");
       return;
     }
 
     setPassword("");
-    setSaveResult({ ok: true, message: "Configuration saved." });
+    notify.success("Configuration saved.");
     router.refresh();
   }
 
@@ -133,7 +131,6 @@ export function useSmtpSettingsForm(status: EmailSettingsStatus) {
     testConnection,
     testSend,
     saving,
-    saveResult,
     anyPending,
     handleTestConnection,
     handleSendTest,

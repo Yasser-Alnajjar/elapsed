@@ -21,6 +21,12 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
   - Evaluations keep advancing time without the replies that happened during the outage, so at-risk and breach alerts can fire on stale data with no caveat.
 - **Isolation across tenants is incomplete.** One worker processes every organization serially. `@sla/http-retry` waits up to 60 s per request (`packages/http-retry/src/retry.ts:1-2`, `DEFAULT_MAX_TOTAL_WAIT_MS`), and no provider client sets a per-request timeout (no `AbortSignal` in `packages/*/src/client.ts`). A failing provider therefore stretches the tick for **every** tenant, including tenants that don't use it.
 
+> **Update (Rev 8, 2026-10-09). The paragraph above is the 2026-09-29 finding, kept as written; it no longer describes the code.** Verified against the current code:
+>
+> - `packages/http-retry/src/retry.ts` now sets a per-attempt timeout (`DEFAULT_ATTEMPT_TIMEOUT_MS = 30_000`, via `AbortSignal.timeout`), and the Zendesk and Intercom clients pass the signal to `fetch`. The retry policy is unchanged: up to 5 attempts (`DEFAULT_MAX_ATTEMPTS`) and up to 60 s of total waiting (`DEFAULT_MAX_TOTAL_WAIT_MS`). **The worst case for one request is therefore about 210 s** (5 × 30 s of attempts plus 60 s of waiting), not 60 s. Any budget that wraps provider calls (plan 09 §6) must be sized against that figure.
+> - Organizations are no longer processed by "one worker serially": scheduling is per organization with leases and bounded `ORGANIZATION_CONCURRENCY` (roadmap Appendix D invariant 11). A slow provider stretches that organization's own run and occupies one of the worker's concurrency slots; it no longer serializes every other tenant behind it (the N3.6 drill on production-scale data is still open).
+> - The roadmap marks N3.6 `[~]`: the timeout and per-integration duration are implemented; the production-scale drill is not done. See the roadmap's Appendix E, "Rev 8 additions".
+
 ## 3. Constraints
 
 - **Freshness is metadata, not time math.** It never changes `elapsedSeconds`, `status` or `breachedAt`. The engine's pure functions stay unchanged. "Store events, never computed time" holds.

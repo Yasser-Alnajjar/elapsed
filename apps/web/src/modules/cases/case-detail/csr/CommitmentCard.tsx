@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import {
   formatCommitmentDeadline,
   formatCommitmentKind,
@@ -21,6 +22,7 @@ export const CommitmentCard = ({
   commitment: CommitmentDetail;
   cycleNumber?: number;
 }) => {
+  const timeZone = useOrgTimezone();
   const remainingSeconds = useLiveRemaining(commitment);
 
   const targetSeconds = commitment.targetMinutes * 60;
@@ -119,7 +121,7 @@ export const CommitmentCard = ({
       <div className="mt-2 flex items-center justify-between font-mono text-xxs text-outline">
         <span>
           {isClosed
-            ? formatCommitmentDeadline(commitment)
+            ? formatCommitmentDeadline(commitment, timeZone)
             : `Elapsed Net: ${formatSeconds(liveElapsedSeconds)} (${percentConsumed.toFixed(1)}% consumed)`}
         </span>
         <span
@@ -136,7 +138,7 @@ export const CommitmentCard = ({
       </div>
       {!isClosed && (
         <p className="mt-1 font-mono text-xxs text-muted-foreground">
-          {formatCommitmentDeadline(commitment)}
+          {formatCommitmentDeadline(commitment, timeZone)}
         </p>
       )}
     </div>

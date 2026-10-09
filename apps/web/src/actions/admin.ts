@@ -8,7 +8,15 @@ import { getBillingProvider } from "@/lib/billing-provider";
 import { getOperatorMonitoringData } from "@/lib/admin-monitoring-data";
 import { getAdminUsageData } from "@/lib/admin-usage-data";
 import { getAdminTenantDetail, getAdminTenantsData } from "@/lib/admin-tenants-data";
-import type { AdminAuditData, AdminAuditFilters, AdminTenantDetail, AdminTenantsData, AdminUsageData } from "@/lib/types/admin";
+import { getAdminIntegrationsData } from "@/lib/admin-integration-availability";
+import type {
+  AdminAuditData,
+  AdminAuditFilters,
+  AdminIntegrationsData,
+  AdminTenantDetail,
+  AdminTenantsData,
+  AdminUsageData,
+} from "@/lib/types/admin";
 import type { AdminBillingOverviewData, AdminTenantBillingDetail } from "@/lib/types/admin-billing";
 import type { OperatorMonitoringData } from "@/lib/types/operator";
 
@@ -31,6 +39,12 @@ export const AdminActions = {
   async getUsage(): Promise<AdminUsageData> {
     await requirePlatformAdminPage();
     return getAdminUsageData(getPrismaClient());
+  },
+
+  /** Every provider's platform availability, allowlist, counts and health (N10, D33). */
+  async getIntegrations(): Promise<AdminIntegrationsData> {
+    await requirePlatformAdminPage();
+    return getAdminIntegrationsData(getPrismaClient());
   },
 
   async getTenants(): Promise<AdminTenantsData> {

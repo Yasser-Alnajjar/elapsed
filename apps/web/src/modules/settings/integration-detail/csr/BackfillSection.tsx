@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, History, Info } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { formatLongDateTime } from "@/lib/format";
 import type { IntegrationDetailData } from "@/lib/types/integrations";
 import { GithubBackfillButton } from "../../integrations/csr/GithubCard";
@@ -55,6 +56,7 @@ export function BackfillSection({
   backfillCompletedAt,
   ...backfill
 }: BackfillProps & { backfillCompletedAt: Date | null }) {
+  const timeZone = useOrgTimezone();
   return (
     <SectionCard
       icon={<History className="size-4" />}
@@ -77,7 +79,7 @@ export function BackfillSection({
         <div className={panelClass}>
           <span className={labelClass}>Baseline ingestion cycle</span>
           <span className="text-on-surface font-mono text-sm font-semibold">
-            Finished {formatLongDateTime(backfillCompletedAt)}
+            Finished {formatLongDateTime(backfillCompletedAt, timeZone)}
           </span>
         </div>
       )}

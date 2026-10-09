@@ -324,10 +324,21 @@ export function formatNextCycle(nextIso: string | null, nowMs: number): string {
   return `Next cycle in ~${plural(Math.round(diffMs / 3_600_000), "hour")}`;
 }
 
+/**
+ * Display-timezone note for every date/time formatter below: `timeZone` is the
+ * organization's display timezone (`Organization.timezone`, from
+ * `useOrgTimezone()` on the client or `getOrganizationTimezone()` on the
+ * server). It only changes how an instant is *shown* — never the stored UTC
+ * value, and never an SLA calculation (those use each calendar's own timezone).
+ * Passing it explicitly (rather than reading the runtime's zone) also keeps
+ * server and browser output identical, so there is no hydration mismatch.
+ */
+
 /** e.g. "Sep 14, 2026, 07:05:32" / "Never" for a null timestamp — a static, second-precision rendering of a worker-reported time. Deliberately not relative: it must not drift or need a client-side tick to stay correct. */
-export function formatExactTimestamp(iso: string | null): string {
+export function formatExactTimestamp(iso: string | null, timeZone: string): string {
   if (!iso) return "Never";
   return new Date(iso).toLocaleString("en-US", {
+    timeZone,
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -338,50 +349,62 @@ export function formatExactTimestamp(iso: string | null): string {
   });
 }
 
-export function formatDateTime(iso: string): string {
+/** e.g. "Sep 18, 2026, 01:30:00 AM Africa/Cairo" — `formatExactTimestamp` with the zone named, for places that must say which zone they show. */
+export function formatTimestampWithZone(iso: string | null, timeZone: string): string {
+  if (!iso) return "Never";
+  return `${formatExactTimestamp(iso, timeZone)} ${formatTimeZoneLabel(timeZone)}`;
+}
+
+export function formatDateTime(iso: string | Date, timeZone: string): string {
   return new Date(iso).toLocaleString("en-GB", {
+    timeZone,
     dateStyle: "medium",
     timeStyle: "short",
     hour12: true,
   });
 }
 
-/**
- * e.g. "September 14, 2026 at 7:05 AM". The zone is pinned so the server and
- * the browser render the same text; a runtime-local zone would differ between
- * them and cause a hydration mismatch.
- */
-export function formatLongDateTime(date: Date): string {
+/** e.g. "07:12:27 am" — the time of day at `date` in `timeZone`, for a live clock. */
+export function formatClockTime(date: Date, timeZone: string): string {
+  return date.toLocaleTimeString("en-GB", { timeZone, hour12: true });
+}
+
+/** e.g. "Africa/Cairo", or "UTC" — the label shown next to a clock in `timeZone`. */
+export function formatTimeZoneLabel(timeZone: string): string {
+  return timeZone;
+}
+
+/** e.g. "September 14, 2026 at 7:05 AM", in the organization's display timezone. */
+export function formatLongDateTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
     hour: "numeric",
     minute: "numeric",
-    timeZone: "Asia/Riyadh",
+    timeZone,
     numberingSystem: "latn",
   }).format(date);
 }
 
-/** The runtime's current UTC offset in `UTC±HH:MM` form, e.g. `UTC+03:00`. */
-function formatUtcOffset(date: Date): string {
-  const offsetMinutes = -date.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const abs = Math.abs(offsetMinutes);
-  const hours = String(Math.floor(abs / 60)).padStart(2, "0");
-  const minutes = String(abs % 60).padStart(2, "0");
-  return `UTC${sign}${hours}:${minutes}`;
+/** `timeZone`'s UTC offset at `date` in `UTC±HH:MM` form, e.g. `UTC+03:00` (DST-aware). */
+function formatUtcOffset(date: Date, timeZone: string): string {
+  const raw =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" })
+      .formatToParts(date)
+      .find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+  // "GMT" alone means a zero offset.
+  return raw === "GMT" ? "UTC+00:00" : raw.replace("GMT", "UTC").replace("\u2212", "-");
 }
 
 /**
  * `formatDateTime` with the display timezone's UTC offset appended, e.g.
- * "23 Sep 2026, 1:37 am (UTC+03:00)". `formatDateTime` renders in whatever
- * timezone the runtime is in (`toLocaleString` with no `timeZone`), which can
- * silently differ from a commitment's business calendar (often UTC) — this
- * makes that display timezone explicit wherever the two are shown together.
+ * "23 Sep 2026, 1:37 am (UTC+03:00)". The offset makes the zone explicit
+ * wherever the time is shown next to a commitment's business calendar, whose
+ * own timezone (used for the SLA arithmetic) may differ from the display one.
  */
-export function formatDateTimeWithOffset(iso: string): string {
-  return `${formatDateTime(iso)} (${formatUtcOffset(new Date(iso))})`;
+export function formatDateTimeWithOffset(iso: string, timeZone: string): string {
+  return `${formatDateTime(iso, timeZone)} (${formatUtcOffset(new Date(iso), timeZone)})`;
 }
 
 /**
@@ -389,22 +412,25 @@ export function formatDateTimeWithOffset(iso: string): string {
  * only from the evaluator's pause-aware fields: a paused clock has no due
  * time to show, so it says when the pause began instead of a fixed deadline.
  */
-export function formatCommitmentDeadline(commitment: {
-  status: string;
-  targetMinutes: number;
-  clockState: "running" | "paused" | "stopped";
-  pausedSince: string | null;
-  effectiveDueAt: string | null;
-}): string {
+export function formatCommitmentDeadline(
+  commitment: {
+    status: string;
+    targetMinutes: number;
+    clockState: "running" | "paused" | "stopped";
+    pausedSince: string | null;
+    effectiveDueAt: string | null;
+  },
+  timeZone: string,
+): string {
   const target = `Target ${formatMinutes(commitment.targetMinutes)}`;
   if (commitment.status === "breached" && commitment.effectiveDueAt) {
-    return `${target} · Breached ${formatDateTimeWithOffset(commitment.effectiveDueAt)}`;
+    return `${target} · Breached ${formatDateTimeWithOffset(commitment.effectiveDueAt, timeZone)}`;
   }
   if (commitment.clockState === "paused" && commitment.pausedSince) {
-    return `${target} · Paused since ${formatDateTimeWithOffset(commitment.pausedSince)}, no due time until the clock resumes`;
+    return `${target} · Paused since ${formatDateTimeWithOffset(commitment.pausedSince, timeZone)}, no due time until the clock resumes`;
   }
   if (commitment.clockState === "running" && commitment.effectiveDueAt) {
-    return `${target} · Due ${formatDateTimeWithOffset(commitment.effectiveDueAt)}`;
+    return `${target} · Due ${formatDateTimeWithOffset(commitment.effectiveDueAt, timeZone)}`;
   }
   return target;
 }

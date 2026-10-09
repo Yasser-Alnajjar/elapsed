@@ -1,42 +1,36 @@
 "use client";
 
 import { SettingsSectionHeader } from "@/components/settings/section-header";
-import { AlertCircle, Building2, CheckCircle2, Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Reveal } from "@/components/shared/reveal";
 import { TimezoneCombobox } from "@/components/shared/timezone-combobox";
+import { notify } from "@/lib/notify";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
 
 interface OrganizationViewProps {
   data: OrganizationSettingsData;
 }
 
-interface SaveResult {
-  ok: boolean;
-  message?: string;
-  error?: string;
-}
-
 /**
- * Organization settings (roadmap 5.8): name and a display timezone, used
- * only to group days on the dashboard (roadmap 6.5) — never read by SLA
- * calculations, which stay pinned to each calendar's own timezone. Editing
- * is owner-only (`data.canEdit`); every other signed-in member gets a
- * read-only view, matching Monitoring's convention.
+ * Organization settings (roadmap 5.8): name and the display timezone — how
+ * dates and times are shown across the app, the default in timezone pickers,
+ * the dashboard's day grouping (roadmap 6.5) and the monthly report's period.
+ * Never read by SLA calculations, which stay pinned to each business
+ * calendar's own timezone. Editing is owner-only (`data.canEdit`); every other
+ * signed-in member gets a read-only view, matching Monitoring's convention.
  */
 export function OrganizationView({ data }: OrganizationViewProps) {
   const router = useRouter();
   const [name, setName] = useState(data.name);
   const [timezone, setTimezone] = useState(data.timezone);
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<SaveResult | null>(null);
 
   const trimmedName = name.trim();
   const dirty = trimmedName !== data.name || timezone !== data.timezone;
@@ -46,20 +40,19 @@ export function OrganizationView({ data }: OrganizationViewProps) {
     if (!trimmedName) return;
 
     setSaving(true);
-    setResult(null);
 
     const { ok, body } = await Actions.Organization.update({ name: trimmedName, timezone });
 
     setSaving(false);
 
     if (!ok) {
-      setResult({ ok: false, error: body.error ?? "Failed to update organization" });
+      notify.error(body.error ?? "Failed to update organization.");
       return;
     }
 
     setName(body.name);
     setTimezone(body.timezone);
-    setResult({ ok: true, message: "Organization updated." });
+    notify.success("Organization updated.");
     router.refresh();
   }
 
@@ -68,7 +61,7 @@ export function OrganizationView({ data }: OrganizationViewProps) {
       <SettingsSectionHeader
         eyebrow="Workspace"
         title="Organization"
-        description="Manage this organization's name and display timezone."
+        description="Manage this organization's name and the display timezone used across Elapsed."
       />
 
       <Reveal delay={0}>
@@ -84,7 +77,7 @@ export function OrganizationView({ data }: OrganizationViewProps) {
                 </CardTitle>
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {data.canEdit
-                    ? "The timezone only groups days on the dashboard — it's never used in SLA calculations."
+                    ? "Dates and times are shown in this timezone, new timezone pickers start on it, and it sets the dashboard's day grouping and the monthly report's month. SLA calculations use each business calendar's own timezone instead."
                     : "View only — ask an organization owner to change these."}
                 </p>
               </div>
@@ -115,15 +108,6 @@ export function OrganizationView({ data }: OrganizationViewProps) {
                   disabled={!data.canEdit || saving}
                 />
               </div>
-
-              {result && (
-                <Alert variant={result.ok ? "success" : "destructive"}>
-                  {result.ok ? <CheckCircle2 /> : <AlertCircle />}
-                  <AlertDescription>
-                    {result.ok ? result.message : result.error}
-                  </AlertDescription>
-                </Alert>
-              )}
 
               {data.canEdit && (
                 <div className="flex justify-end">

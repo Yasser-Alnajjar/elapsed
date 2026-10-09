@@ -83,21 +83,19 @@ export function interpretCredentialsSignInResult(result: SignInResponse | undefi
   return { ok: false, error: result.error };
 }
 
-/** "4 minutes 47 seconds" / "5 minutes" / "47 seconds" — singular-aware, never negative. */
-export function formatCooldownSentence(remainingSeconds: number): string {
+/**
+ * Human-readable wait: whole minutes (rounded up) from one minute on,
+ * "less than a minute" below it — never raw seconds. Singular-aware.
+ *   353 → "5 minutes", 61 → "2 minutes", 60 → "1 minute", 45 → "less than a minute".
+ */
+export function formatRetryAfter(remainingSeconds: number): string {
   const total = Math.max(0, Math.ceil(remainingSeconds));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-
-  if (minutes === 0) return `${seconds} second${seconds === 1 ? "" : "s"}`;
-  if (seconds === 0) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-  return `${minutes} minute${minutes === 1 ? "" : "s"} ${seconds} second${seconds === 1 ? "" : "s"}`;
+  if (total < 60) return "less than a minute";
+  const minutes = Math.ceil(total / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
-/** "04:47" live-countdown clock format. */
-export function formatCooldownClock(remainingSeconds: number): string {
-  const total = Math.max(0, Math.ceil(remainingSeconds));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+/** Shared 429 copy for the account routes: "Too many attempts. Try again in 5 minutes." */
+export function tooManyAttemptsMessage(retryAfterSeconds: number): string {
+  return `Too many attempts. Try again in ${formatRetryAfter(retryAfterSeconds)}.`;
 }

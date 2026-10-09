@@ -11,7 +11,8 @@ import {
   DataTableRangeSummary,
 } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { formatUtcTimestamp } from "@/lib/admin-format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
+import { formatTimestampWithZone } from "@/lib/format";
 import {
   countByHealth,
   DEFAULT_TENANT_CONTROLS,
@@ -37,6 +38,7 @@ interface TenantsViewProps {
  * audited. Filtering and sorting happen here, over the list the server sent.
  */
 export function TenantsView({ data, initialQuery }: TenantsViewProps) {
+  const timeZone = useOrgTimezone();
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [controls, setControls] = useState<TenantListControls>({
@@ -127,7 +129,7 @@ export function TenantsView({ data, initialQuery }: TenantsViewProps) {
             total={data.tenants.length}
             label="tenants"
           />
-          <span>Snapshot as of {formatUtcTimestamp(data.asOf)}</span>
+          <span>Snapshot as of {formatTimestampWithZone(data.asOf, timeZone)}</span>
         </DataTableFooter>
       </DataTableCard>
     </div>

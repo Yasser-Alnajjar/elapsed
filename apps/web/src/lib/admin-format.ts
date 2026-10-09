@@ -1,5 +1,8 @@
 /**
- * Display formatting for the platform-admin console. Everything here is UTC
+ * Display formatting for the platform-admin console's tables and cards.
+ * (The top-bar clock is the one exception: it follows the operator's
+ * organization display timezone, via `formatClockTime` in `@/lib/format`.)
+ * Everything here is UTC
  * and static: operators compare timestamps across tenants and across their own
  * tools, so a relative ("2 min ago") or browser-local rendering would be a
  * different answer for every viewer. Rendering in UTC on the server and the
