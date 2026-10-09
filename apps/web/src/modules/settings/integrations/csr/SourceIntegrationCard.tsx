@@ -1,9 +1,12 @@
 "use client";
 
+import { PausedByElapsedBanner } from "@/components/shared/integration-availability-notice";
 import type {
   IntegrationConfigStatus,
   IntegrationConnectionView,
+  ProviderAvailabilityView,
 } from "@/lib/types/integrations";
+import { ReleaseStageBadge } from "./ReleaseStageBadge";
 import { ConnectedCardBody } from "./ConnectedCardBody";
 import { ConnectPrompt } from "./ConnectPrompt";
 import { IntegrationCardShell } from "./IntegrationCardShell";
@@ -21,11 +24,14 @@ export function SourceIntegrationCard({
   spec,
   view,
   config,
+  availability,
   delay,
 }: {
   spec: SourceIntegrationSpec;
   view: IntegrationConnectionView;
   config: IntegrationConfigStatus;
+  /** Platform availability (D33): the stage badge, and whether it can be connected or is paused by Elapsed. */
+  availability: ProviderAvailabilityView;
   delay: number;
 }) {
   const { provider, label, Connect } = spec;
@@ -38,7 +44,7 @@ export function SourceIntegrationCard({
       title={label}
       subtitle={spec.subtitle}
       tag={spec.tag}
-      badge={spec.badge}
+      badge={<ReleaseStageBadge stage={availability.releaseStage} />}
       status={
         <ProviderConnectionStatus
           view={view}
@@ -47,6 +53,7 @@ export function SourceIntegrationCard({
         />
       }
     >
+      {view.connected && !availability.available && <PausedByElapsedBanner providerLabel={label} availability={availability} />}
       <IntegrationConfigGate
         provider={provider}
         providerLabel={label}
@@ -77,7 +84,15 @@ export function SourceIntegrationCard({
             description={spec.connectDescription}
             disconnectedAt={view.disconnectedAt}
           >
-            <Connect />
+            {availability.available ? (
+              <Connect />
+            ) : (
+              // D33: no connect control while the provider is unavailable; the backend refuses it anyway.
+              <p className="text-on-surface-variant text-sm" data-testid="provider-unavailable">
+                {availability.message}
+                {availability.statusMessage ? ` ${availability.statusMessage}` : ""}
+              </p>
+            )}
           </ConnectPrompt>
         )}
       </IntegrationConfigGate>

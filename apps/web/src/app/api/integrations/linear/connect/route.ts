@@ -5,6 +5,7 @@ import { buildAuthorizeUrl } from "@sla/linear";
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 import { blockedConnectRedirect, gateIntegrationConnect } from "@/lib/entitlements";
+import { requireIntegrationAvailableOrRedirect } from "@/lib/integration-availability";
 import { getLinearOAuthConfig, LINEAR_STATE_COOKIE } from "@/lib/linear-env";
 import { signOAuthState } from "@/lib/oauth-state";
 
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const denied = requireOwner(session);
   if (denied) return denied;
+
+  // D33: the provider must be enabled and available to this organization.
+  const unavailable = await requireIntegrationAvailableOrRedirect(session.user.organizationId, "linear", request.url);
+  if (unavailable) return unavailable;
 
   // N6.3: a lapsed trial blocks a new connection (D27); an over-limit plan only warns, on the admin tenant page.
   const gate = await gateIntegrationConnect(session.user.organizationId, "linear");

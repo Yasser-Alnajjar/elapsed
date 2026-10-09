@@ -1,6 +1,16 @@
 import { formatUtcDate } from "./admin-format";
 import { formatIntervalMs } from "./format";
-import { PLAN_LABELS, PLAN_STATUS_LABELS, type AdminAuditRow, type PlanId, type PlanStatus } from "./types/admin";
+import {
+  BETA_ACCESS_LABELS,
+  PLAN_LABELS,
+  PLAN_STATUS_LABELS,
+  RELEASE_STAGE_LABELS,
+  type AdminAuditRow,
+  type BetaAccessMode,
+  type PlanId,
+  type PlanStatus,
+  type ReleaseStage,
+} from "./types/admin";
 import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "./types/integrations";
 
 /** One field that changed: how it read before and after. `null` is "nothing" (rendered as a dash). */
@@ -37,6 +47,13 @@ const WORKER_FIELDS: { key: string; label: string; format: FieldFormat }[] = [
   { key: "reconciliationIntervalMs", label: "Reconciliation", format: (v) => (typeof v === "number" ? formatIntervalMs(v) : null) },
 ];
 
+const AVAILABILITY_FIELDS: { key: string; label: string; format: FieldFormat }[] = [
+  { key: "enabled", label: "Enabled", format: (v) => (typeof v === "boolean" ? (v ? "Enabled" : "Disabled") : null) },
+  { key: "releaseStage", label: "Release stage", format: (v) => (text(v) ? (RELEASE_STAGE_LABELS[v as ReleaseStage] ?? String(v)) : null) },
+  { key: "betaAccess", label: "Beta access", format: (v) => (text(v) ? (BETA_ACCESS_LABELS[v as BetaAccessMode] ?? String(v)) : null) },
+  { key: "statusMessage", label: "Customer message", format: text },
+];
+
 function diff(metadata: unknown, fields: typeof PLAN_FIELDS): AuditDeltaEntry[] {
   if (!isObject(metadata) || !isObject(metadata.before) || !isObject(metadata.after)) return [];
   const { before, after } = metadata;
@@ -69,6 +86,18 @@ export function describeAuditChange(row: Pick<AdminAuditRow, "action" | "metadat
         if (hash) facts.push({ label: "Preview", value: hash.slice(0, 12) });
       }
       return { entries: [], facts };
+    }
+    case "update_integration_availability":
+    case "add_integration_allowlist":
+    case "remove_integration_allowlist": {
+      if (isObject(row.metadata)) {
+        const provider = text(row.metadata.provider);
+        if (provider) facts.push({ label: "Provider", value: INTEGRATION_PROVIDER_LABELS[provider as IntegrationProvider] ?? provider });
+        const reason = text(row.metadata.reason);
+        if (reason) facts.push({ label: "Reason", value: reason });
+        if (row.metadata.pausedPolling === true) facts.push({ label: "Polling", value: "Paused with the removal; resume it separately" });
+      }
+      return { entries: row.action === "update_integration_availability" ? diff(row.metadata, AVAILABILITY_FIELDS) : [], facts };
     }
     case "enable_custom_provider":
     case "disable_custom_provider": {

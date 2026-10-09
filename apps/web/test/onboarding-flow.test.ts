@@ -9,6 +9,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { catalogEntry } from "@sla/db/availability";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 
 vi.mock("next/navigation", () => ({
@@ -39,6 +40,8 @@ const status = (phases: Partial<Record<IntegrationProvider, Phase>>, counts?: Pa
       reauthRequired: false,
       subdomain: null,
       config: { configured: true, clientId: "id" },
+      // D33: every provider available, at its seeded release stage (Intercom and GitHub Beta).
+      availability: { available: true, releaseStage: catalogEntry(provider).defaults.releaseStage, code: null, message: null, statusMessage: null },
     };
   }),
   ticketsFetched: 0,

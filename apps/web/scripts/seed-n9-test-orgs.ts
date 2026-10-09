@@ -36,7 +36,16 @@ for (const spec of USERS) {
   const passwordHash = await bcrypt.hash(password, 12);
   let org = await prisma.organization.findFirst({ where: { name: spec.org } });
   if (!org) org = await prisma.organization.create({ data: { name: spec.org, trialEndsAt: new Date(Date.now() + 14 * 86_400_000) } });
-  await prisma.organization.update({ where: { id: org.id }, data: { customProviderEnabled: spec.flag } });
+  // Custom REST Beta access is an allowlist entry since D33 (was `Organization.customProviderEnabled`). Dev database only.
+  if (spec.flag) {
+    await prisma.integrationBetaAllowlist.upsert({
+      where: { provider_organizationId: { provider: "custom", organizationId: org.id } },
+      create: { provider: "custom", organizationId: org.id, addedByEmail: "seed:n9-test-orgs" },
+      update: {},
+    });
+  } else {
+    await prisma.integrationBetaAllowlist.deleteMany({ where: { provider: "custom", organizationId: org.id } });
+  }
   await prisma.user.upsert({
     where: { email: spec.email },
     create: { organizationId: org.id, email: spec.email, passwordHash, role: spec.role, name: spec.email.split("@")[0], emailVerifiedAt: new Date() },

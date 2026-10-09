@@ -43,6 +43,7 @@
   4. **Connect a work tracker** (Jira or Linear; optional).
   5. **Alerts** (Slack or email).
 - Beta labels stay on Intercom and GitHub until promoted (D17). Linear was promoted out of Beta on 2026-10-05 and carries no label.
+  - **Rev 9 (D33):** the label is derived from the provider's persisted release stage (`IntegrationAvailability`), set in `/admin/integrations`; the onboarding selector also shows an unavailable provider as Unavailable or Coming soon ([plan 10](10-integration-control-center.md) §5.5).
 - **Verify:** onboarding-status tests for all four matrix pairs; browser walkthrough of the Zendesk + Jira and Intercom + Jira paths in local dev with stubbed integrations.
 
 ### N5.2 — Partial value before a tracker is connected

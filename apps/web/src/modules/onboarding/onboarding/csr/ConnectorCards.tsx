@@ -15,7 +15,7 @@ interface ConnectorHeaderProps {
   name: string;
   badge: string;
   tagline: string;
-  /** Not promoted out of Beta yet (D17). */
+  /** In Beta (D17), from the provider's persisted release stage (D33). */
   beta?: boolean;
 }
 
@@ -47,6 +47,25 @@ export function ConnectorHeader({
         </span>
       </div>
     </div>
+  );
+}
+
+/** The connect control, or why it is not offered (D33): the backend refuses an unavailable provider anyway. */
+function ConnectOrUnavailable({
+  provider,
+  Connect,
+}: {
+  provider: ProviderOnboardingStatus;
+  Connect: ReturnType<typeof providerPresentation>["Connect"];
+}) {
+  const { availability } = provider;
+  if (availability.available) return <Connect returnTo="onboarding" />;
+  return (
+    <p className="font-body-sm text-body-sm text-on-surface-variant" data-testid="provider-unavailable">
+      {availability.releaseStage === "coming_soon" ? "Coming soon. " : ""}
+      {availability.message}
+      {availability.statusMessage ? ` ${availability.statusMessage}` : ""}
+    </p>
   );
 }
 
@@ -116,11 +135,11 @@ export function AlternativeConnectorCard({
   const {
     icon: Icon,
     tagline,
-    beta,
     help,
     readOnlyNote,
     Connect,
   } = providerPresentation(provider.provider);
+  const beta = provider.availability.releaseStage === "beta";
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface-container p-5 shadow-sm">
@@ -156,7 +175,7 @@ export function AlternativeConnectorCard({
           <p className="font-body-sm text-body-sm text-on-surface-variant">
             {readOnlyNote}
           </p>
-          <Connect returnTo="onboarding" />
+          <ConnectOrUnavailable provider={provider} Connect={Connect} />
         </div>
       </IntegrationConfigGate>
     </div>
@@ -170,9 +189,10 @@ export function PrimaryConnectorCard({
   footer,
   onConfigured,
 }: ProviderCardProps & { description: string; footer?: ReactNode }) {
-  const { icon, tagline, beta, help, Connect } = providerPresentation(
+  const { icon, tagline, help, Connect } = providerPresentation(
     provider.provider,
   );
+  const beta = provider.availability.releaseStage === "beta";
 
   return (
     <ConnectorCard>
@@ -200,7 +220,7 @@ export function PrimaryConnectorCard({
         <p className={DESCRIPTION_CLASS}>{description}</p>
 
         <div className="mt-4">
-          <Connect returnTo="onboarding" />
+          <ConnectOrUnavailable provider={provider} Connect={Connect} />
         </div>
       </IntegrationConfigGate>
 

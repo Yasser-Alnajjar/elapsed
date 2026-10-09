@@ -8,6 +8,7 @@ import { getLinearOAuthConfig, LINEAR_STATE_COOKIE } from "@/lib/linear-env";
 import { validateOAuthState } from "@/lib/oauth-state";
 import { authorizeConnectLinkCallback, isConnectLinkState } from "@/lib/connect-link";
 import { getAppUrl } from "@/lib/app-url";
+import { availabilityCheck, availabilityRedirectPath, unavailableResponse } from "@/lib/integration-availability";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -50,6 +51,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
     state = validation.state;
+  }
+
+  // D33: an OAuth flow started before the provider became unavailable must not
+  // complete. Checked before the code is exchanged, so no credentials are
+  // stored and a connect link is not consumed.
+  const availability = await availabilityCheck(state.organizationId, "linear");
+  if (!availability.available) {
+    return connectLink
+      ? unavailableResponse(availability)
+      : NextResponse.redirect(new URL(availabilityRedirectPath("linear", availability.code), getAppUrl()));
   }
 
   const config = await getLinearOAuthConfig(state.organizationId);

@@ -198,7 +198,7 @@ export function OnboardingFlow({ initialStatus }: OnboardingFlowProps) {
                   name={source.label}
                   badge="Connected"
                   tagline={`Ingesting ${sourcePresentation.caseNoun} and their timelines`}
-                  beta={sourcePresentation.beta}
+                  beta={source.availability.releaseStage === "beta"}
                 />
 
                 <OnboardingProgress

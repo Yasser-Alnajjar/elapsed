@@ -67,20 +67,25 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
       {groupSpecsByRole(SOURCE_INTEGRATION_SPECS, data).map(
         ({ role, specs }) => (
           <IntegrationGroup key={role} {...SOURCE_ROLE_GROUPS[role]}>
-            {specs.map((spec) => (
-              <SourceIntegrationCard
-                key={spec.provider}
-                spec={spec}
-                view={data[spec.provider]}
-                config={data[`${spec.provider}Config`]}
-                delay={SOURCE_INTEGRATION_SPECS.indexOf(spec) * CARD_STAGGER}
-              />
-            ))}
+            {specs
+              // A Beta restricted to other organizations is not offered here unless this organization is already connected (D33).
+              .filter((spec) => data.availability[spec.provider].code !== "integration_beta_restricted" || data[spec.provider].connected)
+              .map((spec) => (
+                <SourceIntegrationCard
+                  key={spec.provider}
+                  spec={spec}
+                  view={data[spec.provider]}
+                  config={data[`${spec.provider}Config`]}
+                  availability={data.availability[spec.provider]}
+                  delay={SOURCE_INTEGRATION_SPECS.indexOf(spec) * CARD_STAGGER}
+                />
+              ))}
             {role === "ticket_source" &&
               (data.customEnabled || data.custom.connected) && (
                 <CustomIntegrationCard
                   view={data.custom}
                   state={data.customState}
+                  availability={data.availability.custom}
                   delay={SOURCE_INTEGRATION_SPECS.length * CARD_STAGGER}
                 />
               )}
