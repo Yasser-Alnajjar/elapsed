@@ -74,6 +74,18 @@ export const CaseDetailView = ({
           </AlertDescription>
         </Alert>
       )}
+      {data.case.sourceNotices && data.case.sourceNotices.length > 0 && (
+        <Alert>
+          <ShieldAlert />
+          <AlertDescription>
+            <ul className="flex flex-col gap-1">
+              {data.case.sourceNotices.map((notice) => (
+                <li key={notice}>{notice}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
       <CaseHeader data={data} />
 
       <CommitmentSummary

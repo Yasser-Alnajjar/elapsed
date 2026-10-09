@@ -90,6 +90,7 @@ export {
   getDraft,
   loadReadyDraft,
   saveDraft,
+  seedDraftFromActive,
   type DraftView,
 } from "./drafts";
 export {

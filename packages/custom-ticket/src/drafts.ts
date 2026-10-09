@@ -140,3 +140,34 @@ export async function loadReadyDraft(
     throw new DraftNotReadyError("credentials_unreadable");
   }
 }
+
+/**
+ * Starts a draft from the currently active version so the owner can change it
+ * without re-entering credentials: the stored credentials are decrypted under
+ * the integration's binding and re-encrypted under the draft's. An existing
+ * draft is kept as it is. Returns null when there is no active integration.
+ */
+export async function seedDraftFromActive(prisma: PrismaClient, organizationId: string, now = new Date()): Promise<DraftView | null> {
+  const existing = await getDraft(prisma, organizationId, now);
+  if (existing) return existing;
+  const integration = await prisma.integration.findUnique({
+    where: { organizationId_provider: { organizationId, provider: "custom" } },
+    select: { id: true, status: true, credentials: true, activeConfigVersion: true },
+  });
+  if (!integration || integration.status === "disconnected" || integration.activeConfigVersion === null) return null;
+  const version = await prisma.customProviderConfigVersion.findUnique({
+    where: { integrationId_version: { integrationId: integration.id, version: integration.activeConfigVersion } },
+    select: { config: true },
+  });
+  const parsed = version ? parseConfig(version.config) : null;
+  if (!parsed || !parsed.ok) return null;
+  const fields = secretFieldNames(parsed.config.auth);
+  let secrets: Record<string, string>;
+  try {
+    secrets = decryptCustomSecrets((integration.credentials as { secrets?: unknown } | null)?.secrets, { organizationId, integrationId: integration.id }, fields);
+  } catch {
+    // Unreadable credentials (for example after a key rotation): seed the configuration only; the owner re-enters them.
+    return saveDraft(prisma, organizationId, { config: parsed.config as unknown as Record<string, unknown> }, now);
+  }
+  return saveDraft(prisma, organizationId, { config: parsed.config as unknown as Record<string, unknown>, secrets }, now);
+}

@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { PrismaClient } from "@sla/db";
 import { getIntegrationConfigStatus } from "@sla/db";
 import type { ZendeskCredentials } from "@sla/zendesk";
+import { getCustomStatus } from "./custom-provider/status";
 import { providerRole } from "./providers";
 import type {
   IntegrationConnectionView,
@@ -175,6 +176,7 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     github: toConnectionView("github", githubIntegration, githubRepo),
     custom: toConnectionView("custom", customIntegration),
     customEnabled: customFlag?.customProviderEnabled === true,
+    customState: customIntegration && customIntegration.credentials !== null ? (await getCustomStatus(prisma, organizationId)).state : null,
     slack: {
       connected: slackIntegration !== null,
       teamName: slackIntegration?.teamName ?? null,

@@ -55,6 +55,8 @@ export interface IntegrationsPageData {
   custom: IntegrationConnectionView;
   /** The operator's Beta flag for this organization (`Organization.customProviderEnabled`). */
   customEnabled: boolean;
+  /** The one customer-facing sync state of the Custom REST source (plan 09, 6.13), or null when it is not connected. */
+  customState: import("@/lib/custom-provider/status").CustomSyncState | null;
   slack: SlackConnectionView;
   zendeskConfig: IntegrationConfigStatus;
   jiraConfig: IntegrationConfigStatus;
