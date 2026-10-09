@@ -5,6 +5,7 @@
  * the activation guard (server) read that from.
  */
 import { describe, expect, it } from "vitest";
+import { catalogEntry } from "@sla/db/availability";
 import { PROVIDERS } from "../src/lib/providers";
 import { deriveOnboardingProgress, providerStatus } from "../src/lib/onboarding-progress";
 import { INTEGRATION_PROVIDER_LABELS, type IntegrationProvider } from "../src/lib/types/integrations";
@@ -27,8 +28,8 @@ const status = (phases: Partial<Record<IntegrationProvider, Phase>>): Onboarding
       reauthRequired: false,
       subdomain: null,
       config: { configured: true, clientId: "id" },
-      // D33: every provider available, as before platform availability existed.
-      availability: { available: true, releaseStage: "stable", code: null, message: null, statusMessage: null },
+      // D33: every provider available, at its seeded release stage (Intercom and GitHub Beta).
+      availability: { available: true, releaseStage: catalogEntry(provider).defaults.releaseStage, code: null, message: null, statusMessage: null },
     };
   }),
   ticketsFetched: 0,
