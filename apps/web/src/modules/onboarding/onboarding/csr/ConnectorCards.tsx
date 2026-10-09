@@ -61,7 +61,10 @@ function ConnectOrUnavailable({
   const { availability } = provider;
   if (availability.available) return <Connect returnTo="onboarding" />;
   return (
-    <p className="font-body-sm text-body-sm text-on-surface-variant" data-testid="provider-unavailable">
+    <p
+      className="font-body-sm text-body-sm text-on-surface-variant"
+      data-testid="provider-unavailable"
+    >
       {availability.releaseStage === "coming_soon" ? "Coming soon. " : ""}
       {availability.message}
       {availability.statusMessage ? ` ${availability.statusMessage}` : ""}
@@ -171,7 +174,7 @@ export function AlternativeConnectorCard({
         helpLabel={help?.label}
         onConfigured={onConfigured}
       >
-        <div className="flex flex-col items-start gap-2 sm:items-end">
+        <div className="flex flex-col items-start gap-2">
           <p className="font-body-sm text-body-sm text-on-surface-variant">
             {readOnlyNote}
           </p>
