@@ -141,4 +141,5 @@ The schema is additive. The `/operator` redirects mean reverting only restores t
 
 - **P1 (≈50 tenants):** usage vs. plan limits (→ N6); billing-provider status (→ N6); tenant data export and deletion workflow (after H-5's retention answer); support notes; operator alerts on long-unhealthy integrations beyond N3.9.
 - **Later (≈500):** admin roles in the DB; consent-based impersonation; feature flags; SLO dashboards; per-tenant worker sharding.
+  - **Rev 9 (2026-10-09, D33):** availability controls for **integration providers** (enabled, release stage, Beta allowlist) were pulled forward as N10 ([plan 10](10-integration-control-center.md)). General feature flags and database-backed admin roles stay Later; `PLATFORM_ADMIN_EMAILS` remains the only platform-admin authority.
 - **Never exposed to customers:** `WorkerSettings`, circuit-breaker controls, cross-tenant data, admin notes, the audit log, plan overrides, raw provider error internals, credentials.

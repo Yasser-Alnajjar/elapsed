@@ -2,8 +2,8 @@
 
 > **The single, living roadmap for Elapsed.** It says what we build next, what is in progress, and what is done. It is updated in place as the product evolves. Never start a second roadmap file.
 >
-> **Revision:** 8 · **Last updated:** 2026-10-09 · **Capacity:** 10–15 h/week
-> **Stage:** a live multi-tenant product with **10 customers**. The active forward plan is the [Provider-Neutral Roadmap (N1–N8, plus the parallel track N9)](#active-roadmap--provider-neutral-platform-n1n8). The [historical Phases 0–7](#historical-phases-07) are kept below as the record of completed work.
+> **Revision:** 9 · **Last updated:** 2026-10-09 · **Capacity:** 10–15 h/week
+> **Stage:** a live multi-tenant product with **10 customers**. The active forward plan is the [Provider-Neutral Roadmap (N1–N8, plus the parallel tracks N9 and N10)](#active-roadmap--provider-neutral-platform-n1n8). The [historical Phases 0–7](#historical-phases-07) are kept below as the record of completed work.
 > **Implementation plans:** each active phase has one plan next to this file (`01-provider-neutral-core.md` … `09-custom-ticket-provider.md`). **This roadmap owns order and status; the plans own the how.** Plans never track status.
 > **History:** the steps already delivered (0–44) are in [`roadmap-completed.md`](roadmap-completed.md). Parked ideas are in [`ignored.md`](ignored.md).
 
@@ -16,7 +16,7 @@ _Update this section every time a task or phase changes state._
 |                          |                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Stage**                | Live, multi-tenant, **10 customers** on the single EC2 deployment (see the H-1 limitation). **`main` holds the code for N1–N6 (internal billing, 2026-10-04).** What is *deployed* is not recorded in the repo: the last recorded production state is `7cb2b9b` on 2026-10-01, which contains N1 only. N2–N6 are "built, not deployed" until a deployment is recorded here. The validation-first gate (D11) and the first-customer [Launch Gate](#launch-gate) are **historical**. |
-| **Now**                  | **No code phase is in active build.** **N9 (Custom Ticket Provider) has a written documentation phase (Rev 8, 2026-10-09): D31 and plan 09 are written and the live documents corrected, and the owner's decisions (Q1–Q16, R1–R6, U1, U3–U6) are recorded. **The owner explicitly authorized implementation on 2026-10-09 ("start N9.1 to N9.14"); the tasks are being built on `phase/n9-custom-ticket-provider` in order, and each completed task is ticked below.** The copy-only change on `copy/docs-reconciliation-30min` is still pending the owner's review. Capacity is unproven: the live-case ceiling is a provisional, unvalidated 5,000 until the plan 09 §6.10 benchmark gate reports.** Code on `main` (verified 2026-10-05, Rev 7: `pnpm type-check` clean; full suite 258 files / 2,766 tests passing against a migrated `sla_test`): **N1** 18/19, **N2** 9/11, **N3** 7/9, **N4** 6/7, **N5** 7/8, **N6** 9/10. Every item left is blocked on something outside the repository (production deployment, a host run, a secret or third-party account, owner data) or is deliberately gated; see *Up next*. |
+| **Now**                  | **N10 (Integration Control Center, D33) is in build on `phase/n10-integration-control-center`** (owner approval 2026-10-09; documentation N10.0 recorded first, then N10.1–N10.7). **No other code phase is in active build.** **N9 (Custom Ticket Provider) has a written documentation phase (Rev 8, 2026-10-09): D31 and plan 09 are written and the live documents corrected, and the owner's decisions (Q1–Q16, R1–R6, U1, U3–U6) are recorded. **The owner explicitly authorized implementation on 2026-10-09 ("start N9.1 to N9.14"); the tasks are being built on `phase/n9-custom-ticket-provider` in order, and each completed task is ticked below.** The copy-only change on `copy/docs-reconciliation-30min` is still pending the owner's review. Capacity is unproven: the live-case ceiling is a provisional, unvalidated 5,000 until the plan 09 §6.10 benchmark gate reports.** Code on `main` (verified 2026-10-05, Rev 7: `pnpm type-check` clean; full suite 258 files / 2,766 tests passing against a migrated `sla_test`): **N1** 18/19, **N2** 9/11, **N3** 7/9, **N4** 6/7, **N5** 7/8, **N6** 9/10. Every item left is blocked on something outside the repository (production deployment, a host run, a secret or third-party account, owner data) or is deliberately gated; see *Up next*. |
 | **Up next**              | In order, each needing you (exact steps in [`docs/h-phase-close-out.md`](../docs/h-phase-close-out.md#remaining-owner-actions-rev-7-2026-10-05)): (1) **Deploy and verify** N2–N6 on the host after a backup, then re-run the replay. The 7 migrations after the last recorded production state (`7cb2b9b`) and an L1 replay across N3–N6 were verified on a local restore of the production backup on 2026-10-05; ship the **N2.10 contract migration as its own release** afterwards (re-verified the same day; the owner decides when). (2) **Host run:** the H-13 `backfill:breached-at` repair (9 rows). (3) **Owner-only data, secrets and accounts:** N4.7 (the 10 customers' plan records; `scripts/prod/n47-plan-records.sql` reports the counts), N5.8 / H-9 (real Zendesk, Intercom and Linear sandboxes), N1.13 (a live Intercom link capture), H-10 (security items on production), H-6 (Sentry). (4) **Measurement, after the release:** N3.6's production-scale drill, and N3.7 (needs production measurements, D22). (5) **Gated, not started:** **N6.5** payment-provider integration (Paymob is the sandbox/testing provider only and the production provider is not chosen, so it needs an explicit go-ahead); N7 (demand, D29); N8 (triggers, D21). H-8 is blocked upstream (typescript-eslint vs TypeScript 7). |
 | **Blocked on decisions** | **N9.1 is unblocked:** the owner authorized implementation on 2026-10-09. **Before Beta activation, one owner decision remains open:** plan 09 §15.1 U2 (the reviewed cleanup workflow for a rejected mass deletion). Plan 09 §15.2 lists proposed implementation details that are not owner decisions. **Otherwise none.** Every other D decision is closed (D28 closed 2026-10-05: Paymob as the sandbox/testing provider only). Not a recorded decision, but open: the **production** billing provider, which must be chosen before any production billing go-live. One owner confirmation is also pending: whether D27's "new cases" means manually created cases, since provider-ingested cases are never blocked (see the note under N6.4). |
 | **Recently completed**   | 2026-09-30 **N1** (PR #33). 2026-10-01 **N2** (PR #35), the EC2 production-backup replay (0 unintended differences) and **multi-worker scheduling with per-organization leases** (`b354b07`, merged; Appendix D invariant 11). 2026-10-02 **N3** code (freshness), **N4** (PR #36), **N5** (PR #37) and **N6.1–N6.4/N6.6** (entitlements, trial lifecycle). 2026-10-03 **N6 internal billing** (billing domain, billing UI, viewer-aware pricing and Review & Subscribe; PR #39) and the `normalized_events.sourceRawEventId` index (PR #38). 2026-10-04 table standardization (PR #40). Historical Phases 0–5 ✅; Phases 6 and 7 closed as historical on 2026-09-29. 2026-10-05 **Rev 7** local close-out pass: N2.6, N3.1 and N3.3 closed, N2.10 re-verified, and the provider leaks the N2.6 comparison found in the case UI fixed (see the changelog). |
@@ -39,7 +39,7 @@ _Update this section every time a task or phase changes state._
 
 ### Phase overview
 
-**Active roadmap: the forward plan.** Dependency chain: `historical Phases 0–7 → N1 → N2 → N3 → N4 → N5 → N6 → N7 → N8`. **N9 is a parallel track**, not a link in the chain: it needs only N2, N3 and D31 (see its entry for the branch-rule exception).
+**Active roadmap: the forward plan.** Dependency chain: `historical Phases 0–7 → N1 → N2 → N3 → N4 → N5 → N6 → N7 → N8`. **N9 is a parallel track**, not a link in the chain: it needs only N2, N3 and D31 (see its entry for the branch-rule exception). **N10 is also a parallel track**: it needs N4 and N9.8 and D33.
 
 | Phase                                                | Product outcome                                                                                      | Plan                                          | Needs                | Est.     | Priority | Status                            |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------------------- | -------- | -------- | --------------------------------- |
@@ -52,6 +52,7 @@ _Update this section every time a task or phase changes state._
 | [N7](#phase-n7--third-ticket-source)                 | Third ticket source with zero core changes (contract test)                                           | [07](07-third-ticket-source.md)               | N2, N3, D29          | 3–4 wk   | P2       | ⏸ Not started; Zoho Desk (D29), on an explicit go-ahead |
 | [N8](#phase-n8--scale)                               | Fix the scale limit that is measured to bite next                                                    | [08](08-scale.md)                             | N3 metrics, triggers | per item | P3       | ⏸ Trigger-based                   |
 | [N9](#phase-n9--custom-ticket-provider)              | Connect an unsupported helpdesk through a declarative, configuration-only `custom` ticket source (D31) | [09](09-custom-ticket-provider.md)            | N2, N3, D31          | set after the N9.1 spike | P2 (proposed) | 🚧 N9.1–N9.14 implemented on the phase branch, unverified against a database; Beta enablement blocked (N9.14-F1); flag stays off |
+| [N10](#phase-n10--integration-control-center)       | Platform operators enable/disable each provider, set its release stage and Beta allowlist, enforced on every backend path (D33) | [10](10-integration-control-center.md)        | N4, N9.8, D33        | ~1 wk    | P1       | 🚧 In build on `phase/n10-integration-control-center` (2026-10-09) |
 
 **Current production hygiene:** [Production Hygiene](#production-hygiene) tasks H-1 to H-13 run alongside the N-phases (not a phase).
 
@@ -136,6 +137,7 @@ From Rev 5, active-roadmap phases use `phase/n<number>-<short-name>` (e.g. `phas
 - Never delete or recreate the roadmap to reflect Git progress; update this file in place.
 - **Documented exceptions (Rev 6, 2026-10-05).** The rules above were not followed for **N3** (freshness, commit `eee09a7`, 2026-10-02) and **N6.1–N6.4** (entitlements and trial lifecycle, commit `94254cb`, 2026-10-02): both landed directly on `main` with no phase branch of their own (N6.1–N6.4 arrived inside the N5 merge). N6's billing steps N6.7–N6.10 followed the rules on `feature/billing` (PR #39). The final merge commit is recorded on a phase only where the roadmap names one; the phase PR numbers (N1 #33, N2 #35, N4 #36, N5 #37, billing #39) are the record for the others.
 - **Documented exception (Rev 8, 2026-10-09): N9.** `phase/n9-custom-ticket-provider` is started while N1–N6 still have open items (every one blocked on deployment, a host run, owner data or a third-party account, not on code) because N9 is a parallel track that needs only N2, N3 and D31. The owner approved the N9 branch and the smaller-PR convention on 2026-10-09. Creating the branch authorises documentation only; implementation needs the owner's separate approval of the Rev 8 documentation.
+- **Documented exception (Rev 9, 2026-10-09): N10.** `phase/n10-integration-control-center` is started while N9 is still open, for the same reason: N10 is a parallel track (needs N4, N9.8 and D33). The owner approved the branch, the PR to `main`, and syncing the implementation to `testing` only as far as the focused N10 tests need (D33 ruling 8).
 
 #### Phase lifecycle
 
@@ -275,6 +277,7 @@ Decisions that change product behavior. Tick one when it is decided and write th
   - **Amended by D31 (2026-10-09).** The original wording was "no generic connector framework". It is narrowed, not removed: a general-purpose connector framework, SDK, plugin system or marketplace is still prohibited. The single exception is the declarative `custom` ticket-source engine of D31, which interprets validated configuration data and never executes customer code. "Containing only what current code needs" is waived only for that engine's authentication and pagination modes. Every other D16 constraint (static compile-time registries, no dynamic loading, no provider-specific SLA engine, provider knowledge only at the adapter boundary) is unchanged.
 - [x] **D17** — Provider matrix roles. **Decided:** Zendesk + Jira = production baseline; Zendesk + Linear = matrix validation; Intercom + Jira and Intercom + Linear = provider-boundary proof. Intercom and Linear leave the Rev 4 "freeze" for the boundary work only. Passing tests never promotes a provider or pair; promotion out of Beta is a separate, explicit decision per pair.
   - **Amended 2026-10-05 (owner): Linear is promoted out of Beta.** The code and UI already reflect it (`beta: false` for Linear in `provider-presentation.tsx`; the Beta label was removed in commit `e487c64`, 2026-10-01). **Intercom and GitHub stay Beta.** The `{Zendesk, Linear}` and `{Intercom, Linear}` matrix pairs are unchanged: promoting a *provider* does not promote a *pair*.
+  - **Amended by D33 (2026-10-09): how a provider's stage is applied.** A provider's release stage (Stable, Beta, Coming Soon) is now persisted and changed by a platform operator in `/admin/integrations`, not in code. Promotion out of Beta is still a separate, explicit owner decision recorded here; the console only applies it. Seeded from today's state: Zendesk, Jira and **Linear Stable**; Intercom and GitHub Beta (open to all organizations); Custom REST Beta (allowlist).
 - [x] **D18** — GitHub. **Decided: frozen, Beta, `code_host` role, never an SLA source.**
 - [x] **D19** — Case source of truth. **Decided: the case's own ticket-source integration, not Zendesk globally.** Replaces Appendix D invariant 6 and the Rules line "Zendesk is the Case source of truth".
 - [x] **D20** — Billing. **Decided: trigger-based (N6), not immediate.** Manual plan and status records first (N4).
@@ -361,6 +364,7 @@ Decisions that change product behavior. Tick one when it is decided and write th
   **Data and retention:** a whitelist projection of mapped fields and required identifiers is stored, each stored payload capped at 64 KB; sample responses are never stored server-side; drafts and draft secrets expire after 14 days; sync-run history is kept 30 days. **Pruning of superseded raw snapshots is deferred and depends on H-5**: no raw event is deleted by this feature, and the latest snapshot a live case needs is always kept.
 
   **Rollout:** Beta (D17). An operator-controlled per-organization enable flag, default off, that never bypasses authorization or tenant isolation. A custom source counts against the existing support-integration allowance; plan limits and pricing do not change.
+  - **Amended by D33 (2026-10-09): where the flag lives.** The per-organization flag is the Custom REST entry of the generic Beta allowlist (`IntegrationBetaAllowlist`); `Organization.customProviderEnabled` is migrated into it, kept unread for one release, then dropped (N10-F1). Its approved behavior (plan 09 §8.7) is unchanged. N9.14-F1 is now **enforced in code**: until it is lifted, the backend refuses to add any organization to the Custom REST allowlist, open it to all organizations or promote it to Stable.
 
   **Deferred (each needs its own decision):** multiple custom integrations per organization, OAuth, webhooks, tracker or code-host roles, new canonical fields, arbitrary attributes in policy matching, templates or a marketplace, configuration import/export, policy or calendar import, a per-integration minimum polling interval (V1 follows the global worker tick), undelete of a soft-deleted case, and pruning of superseded raw snapshots (H-5).
 
@@ -369,6 +373,20 @@ Decisions that change product behavior. Tick one when it is decided and write th
   → **Unblocks N9 (documentation phase written and its decisions recorded; the owner's final diff review is pending; N9.1 is blocked until the owner explicitly approves proceeding).**
 
 - [x] **D32** — No-change syncs are not stored as history. **Decided 2026-10-09 (amends plan 09 §6.7, §6.12, §6.13; extends N9.9).** A successful sync that changed no data and recorded no failure creates **no** `IntegrationSyncRun`; failed, partial, aborted and ticket-failure runs are always stored with their codes, progress and details. "Last checked" is `Integration.lastSuccessfulSyncAt` and "last data update" is the new nullable `Integration.lastDataChangedAt` (additive migration, no backfill); neither is derived from history, and no-change runs never advance the latter. A data change is decided by before/after comparison in the shared projector (Case fields, Customer, events, deletions) plus link and import counts; the projector's writes and replay semantics are unchanged, so D24 holds (replay must show 0 differences). A persisted run is superseded by a later clean check (`lastSuccessfulSyncAt > run.finishedAt`), so an old failure cannot keep the page in **Needs attention**. Skipping the row does not remove the per-attempt `Integration` update or the projector's per-case upserts. Implemented as N9.15.
+
+- [x] **D33** — Integration availability controls (Integration Control Center). **Decided 2026-10-09 (owner approved rulings 1–8).** Plan: [`10-integration-control-center.md`](10-integration-control-center.md). Phase: [N10](#phase-n10--integration-control-center). Pulls "feature flags" forward from plan 04 §10 for integration providers only.
+
+  **Model.** Each provider has an operator-controlled `enabled` switch, **independent** of its release stage, and a stage of **Stable, Beta or Coming Soon** ("Disabled" is not a stage). A Beta provider is open to all organizations or to an explicit per-organization allowlist. Percentage rollout and an "internal organizations" concept are out of scope. Persisted in `IntegrationAvailability` and `IntegrationBetaAllowlist`; provider registration stays static and compile-time (D16): a static catalog in `@sla/db` supplies names, categories and defaults, and only runtime availability is data.
+
+  **Enforcement.** An integration operation runs only when its provider is **enabled and available to that organization**. One resolver answers that question for every path: connect, OAuth callback, connect links, OAuth-app configuration writes, manual backfill, webhooks, concierge exports, the Custom REST routes, worker ingest and the Custom REST in-flight check. Moving a provider to an allowlist or Coming Soon blocks operations for organizations that no longer qualify. Refusals carry one documented code (`integration_disabled`, `integration_coming_soon`, `integration_beta_restricted`; HTTP 403 for APIs, a redirect for OAuth GETs). Webhooks for an unavailable provider are acknowledged with **HTTP 200 and ignored**; the next poll after re-enablement recovers the changes from the stored cursor. Every check reads the database, so web and worker processes observe a change on their next check; no new infrastructure.
+
+  **Preservation.** Disabling never deletes or rewrites integration rows, credentials, cursors, imported data, cases, events, commitments or customer records, and never changes `Integration.status`. Work on stored data (normalization, commitments, evaluation, alerts) continues and the source goes stale (D22, D13). Platform unavailability is shown as "Paused by Elapsed", distinct from a customer's disconnect; customers may still disconnect but not reconnect. Re-enabling resumes from stored state and never resumes a separate operator pause or a customer disconnect.
+
+  **Authority and audit.** Only `PLATFORM_ADMIN_EMAILS` operators (no database-backed admin roles). Every change is one `AdminAuditLog` row with the operator, provider, before/after policy and a required reason; never a secret. Policy writes are compare-and-set on a version column (409 on a stale write).
+
+  **Custom REST.** Amends D31's rollout line (see there): the per-organization flag becomes the Custom REST allowlist, with plan 09 §8.7's behavior unchanged, and **N9.14-F1 is enforced by the backend**. **Slack** is out of scope and unchanged. **Linear** is seeded Stable (D17 amendment).
+
+  → **Unblocks N10.**
 
 ---
 
@@ -494,6 +512,7 @@ Phase N7 — Third ticket source           (starts on recorded demand)
 Phase N8 — Scale                         (each item starts on its trigger)
 
 Phase N9 — Custom ticket provider        (parallel track: needs N2, N3 and D31; not part of the chain above)
+Phase N10 — Integration Control Center   (parallel track: needs N4, N9.8 and D33)
 ```
 
 **Architectural constraints carried into every N-phase:**
@@ -708,6 +727,30 @@ Phase N9 — Custom ticket provider        (parallel track: needs N2, N3 and D31
   - [ ] **N9.14-F1** Beta enablement and public copy. Blocked on, in order: (1) applying the four N9 migrations to a database and running the plan 09 §8.4 verification and the regression/D24 replay for the shared changes (N9.3, N9.8a, N9.9, N9.10, N9.13) on `testing`/a restored backup; (2) an end-to-end run against a real or fixture API; (3) the §6.10 benchmark report (N9.7-F1) fixing the ceiling; (4) U2 (cleanup after a rejected mass deletion); (5) legal review of `n9-legal-review.md`. Then: public docs page, marketing and `plans.ts` copy with its test.
 
 **Deferred and dependent:** pruning of superseded raw snapshots waits on **H-5** and is not an N9 task. Multiple custom integrations, OAuth, webhooks and the other items listed under D31 need their own decisions.
+
+---
+
+### Phase N10 — Integration Control Center
+
+**Status:** 🚧 In build (2026-10-09) · **Estimate:** ~1 week · **Priority:** P1 · **Plan:** [`10-integration-control-center.md`](10-integration-control-center.md) · **Needs:** N4, N9.8, D33 · **Branch:** `phase/n10-integration-control-center` (parallel-track exception, see Branch rules)
+**Goal:** a platform operator controls each provider's availability (enabled, release stage, Beta allowlist) from `/admin/integrations`, without a deployment, and the backend refuses every provider operation that the policy does not allow, without deleting or altering any customer data.
+**Verification policy:** `pnpm type-check` and the web build on the phase branch; the focused N10 tests (plan 10 §10) on `testing`, synced only as far as they need (D33 ruling 8). No full-suite run unless the owner asks.
+**Phase is done when:**
+
+- every entry point in plan 10 §5.2–§5.3 calls the resolver, and the boundary test proves it;
+- disabling and re-enabling a provider is verified for one existing provider and for Custom REST, with no data changed;
+- the admin console shows and edits every provider, with audit rows and stale-write protection;
+- customers see Unavailable / Coming soon / Paused by Elapsed, never a false "Disconnected".
+
+- [x] **N10.0** _(done 2026-10-09)_ Documentation first: D33, the D17 and D31 amendments, this phase, plan 10, notes in plans 04, 05 and 09, the operator runbook [`docs/integration-availability.md`](../docs/integration-availability.md) and the customer guide.
+- [ ] **N10.1** Schema (`IntegrationAvailability`, `IntegrationBetaAllowlist`), additive migration seeded from today's state, static catalog and resolver in `@sla/db`.
+- [ ] **N10.2** Web enforcement on every route of plan 10 §5.2, including `ownerGuard`; route boundary test.
+- [ ] **N10.3** Worker enforcement (unavailable = skipped like a pause) and the Custom REST in-flight check through the resolver.
+- [ ] **N10.4** Admin API, mutations, audit, optimistic concurrency, the N9.14-F1 rollout block.
+- [ ] **N10.5** Admin console `/admin/integrations` and the tenant-detail allowlist panel.
+- [ ] **N10.6** Customer-facing availability: settings page, onboarding selector, derived Beta label.
+- [ ] **N10.7** Focused tests on `testing` (plan 10 §10).
+- [ ] **N10-F1** Contract migration dropping `Organization.customProviderEnabled`, after N10 is deployed (owner decides when).
 
 ---
 
@@ -1338,6 +1381,10 @@ What already exists as of 2026-09-19. This is the starting point for Phase 0. Th
 
 ## Changelog
 
+- **Rev 9 (2026-10-09):** N10 documentation, recorded before any N10 code.
+  - **Decisions:** added **D33** (integration availability controls) with the owner's rulings 1–8; amended **D17** (stage changes are applied in the admin console; Linear seeded Stable) and **D31** (the Custom REST flag becomes its Beta allowlist entry; N9.14-F1 enforced in code).
+  - **Phase:** added **N10 — Integration Control Center** as a parallel track with plan [`10-integration-control-center.md`](10-integration-control-center.md), status board and phase overview entries, and a branch-rule exception.
+  - **Other documents:** plan 04 §10 (feature flags pulled forward for providers only), plan 05 (Beta label source), plan 09 §8.7 and §9.3 (flag location), new operator runbook `docs/integration-availability.md`, customer guide (unavailable integrations). Conflicts and gaps found by the N10 audit are in Appendix E, "Rev 9 additions".
 - **Rev 8 (2026-10-09):** N9 documentation phase. **Documentation only: no code, schema, migration, test, UI, comment or runtime-default change.**
   - **Decisions:** added **D31** (custom ticket provider, declarative engine) and amended **D16** (narrowed to "no general-purpose connector framework"; the one exception is the `custom` engine). D31 is numbered 31 because D30 already existed.
   - **Phase:** added **N9 — Custom Ticket Provider** as a parallel track (needs N2, N3, D31) with plan [`09-custom-ticket-provider.md`](09-custom-ticket-provider.md), status board and phase overview entries. Implementation is **not** started and awaits the owner's approval of this documentation.
@@ -1752,6 +1799,7 @@ See D16–D24 in [Product Decisions](#product-decisions). In short:
 - **Organization timezone is display-only** (date/time display, timezone-picker defaults, dashboard day grouping, monthly report periods), never used in SLA math (W17). A business calendar's own timezone drives SLA arithmetic.
 - **Assignee is display-only** (D10, W11).
 - **Zendesk `position` ordering for imported policies** (D6, W5).
+- **Provider availability is persisted policy, not registration** (D33, Rev 9): registries stay static (D16); whether a provider may be used by an organization is read from `IntegrationAvailability` / `IntegrationBetaAllowlist` by one resolver on every provider path.
 
 ---
 
@@ -1794,3 +1842,17 @@ Each row was verified against the current code and documents on 2026-10-09. "Fix
 | This roadmap, "Branch rules" | A Phase PR "must pass remote CI"; individual tasks do not require separate PRs; do not start the next phase while one is open | `.github/workflows/ci.yml` runs only for `testing`; `CLAUDE.md` restricts testing on `main`; the owner wants smaller PRs and a parallel N9 | **Fixed:** the rules now state the CI limitation accurately, permit smaller PRs and record the N9 exception. The pre-merge verification policy is an open, separate decision; CI triggers are unchanged |
 | This roadmap, Active Roadmap intro | "Other helpdesks are not candidates unless a new decision says so" | D31 is that decision for the configuration-only `custom` source; N7 stays Zoho Desk | **Fixed** |
 | `docs/customer-guide.md` (§5 "never paste an API token", "strictly read-only", "five data-source integrations"), §22; `plans.ts` integrations lines; README; FAQ; marketing; Terms; Privacy | Zendesk and Intercom are the only ticket sources; OAuth only; no write requests | Correct for the code on `main` today; they will not be true once `custom` ships | **Not changed on purpose:** claims must be verified against the final implementation. Drafts, with Terms and Privacy marked for legal review, are in plan 09 appendix A; N9.14 |
+
+### Rev 9 additions (2026-10-09, the N10 audit)
+
+Each row was verified against the code and documents on 2026-10-09. "Resolved by D33" means the owner ruled on it before implementation.
+
+| Location | Says | Actual (verified) | Rev 9 status |
+| --- | --- | --- | --- |
+| The N10 brief's example states | "Linear: Enabled + Beta" | D17 amendment (2026-10-05): Linear is promoted out of Beta; `provider-presentation.tsx` has `beta: false` | **Resolved by D33 ruling 1:** Linear seeded Stable |
+| `implementation-plans/04-platform-admin-and-plan-records.md` §10 | "Feature flags" are Later (≈500 tenants) | N10 adds provider availability controls now | **Resolved by D33 ruling 2:** pulled forward for providers only; note added to plan 04 |
+| D31 rollout line; plan 09 §8.7, §9.3 | The Beta flag is `Organization.customProviderEnabled` | N10 moves it into the generic allowlist | **Resolved by D33 ruling 3:** amended in place; behavior unchanged |
+| N9.14-F1 | Beta enablement is blocked | Nothing in code prevented an operator from turning the flag on (`setCustomProviderFlag`) | **Resolved by D33 ruling 3:** enforced by the backend in N10.4 |
+| `apps/web/src/app/api/webhooks/{zendesk,jira}/[integrationId]/route.ts` | Plan 04 N4.5: a paused integration is not fetched | Webhook receivers ignore `pollingPausedAt` and still ingest | **Not changed by N10** (the operator pause is a separate, per-integration control); recorded here as a known gap |
+| OAuth `callback` routes and `connect-links/[token]/start` | A lapsed trial blocks a new connection (N6.3) | Only the `connect` routes call `gateIntegrationConnect`; callbacks and connect-link starts do not re-check | Availability is enforced on all of them in N10.2; the entitlement re-check is **not changed** (separate concern) |
+| `apps/web/src/app/docs/integrations/{intercom,github}/page.tsx` | Hard-coded "Beta" badge and copy | After N10 the in-app label follows the admin-console stage | **Not changed:** public pages are static copy; the runbook's promotion procedure includes updating them |

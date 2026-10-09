@@ -658,6 +658,8 @@ Every new model carries `organizationId` and is read through organization-scoped
 
 ### 8.7 Operator Beta flag **[approved: Q5]**
 
+> **Rev 9 (D33, 2026-10-09): where the flag lives.** "The flag" below is now an organization's entry on the Custom REST **Beta allowlist** (`IntegrationBetaAllowlist`, [plan 10](10-integration-control-center.md) §5.4), managed from `/admin/integrations` and the tenant-detail panel; `Organization.customProviderEnabled` is migrated into it. Every behavior in this section is unchanged: removing an organization pauses its custom integration, re-adding does not resume the pause, the in-flight check aborts within about 5 seconds (it now asks the shared availability resolver, which also covers a platform-wide disable), and the manual routes refuse (code `integration_beta_restricted`, replacing `beta_disabled`). The ordering rule of §12 is enforced by the backend: until N9.14-F1 is lifted, no organization can be added to the allowlist and the provider cannot be opened to all organizations or promoted to Stable.
+
 A per-organization enable flag set by a platform operator from `/admin` (audited in `AdminAuditLog`, the existing pattern), **default disabled** for every organization not explicitly enabled. It gates the routes, the UI and activation. It does **not** bypass authorization (owner-only) or tenant isolation, and is checked server-side on every custom route.
 
 **Turning the flag off.** Result: no new outbound request and no retry, existing data preserved and visible, no further sync.
@@ -719,7 +721,7 @@ This is the exact surface; it supersedes the shorter list in plan 07 §N7.4.
 | `CustomProviderConfigVersion` | `id`, `organizationId`, `integrationId`, `version`, `schemaVersion`, `config` (immutable, no secrets), `configHash`, `createdByUserId`, `createdAt`, `validatedAt`, `note`; unique `(integrationId, version)` |
 | `Integration` += `activeConfigVersion Int?` | Set by compare-and-set at activation and rollback |
 | `Integration` += `slaSupport Json?` | **[approved: Q1]** Denormalized at activation (§5.4); `null` for every existing provider |
-| `Organization` += `customProviderEnabled Boolean @default(false)` | The operator flag (§8.7) |
+| `Organization` += `customProviderEnabled Boolean @default(false)` | The operator flag (§8.7). **Superseded by D33 (Rev 9):** the flag is the Custom REST entry of `IntegrationBetaAllowlist`; the column is kept unread for one release and dropped by N10-F1 |
 | `IntegrationSyncRun` | §6.7; index `(integrationId, startedAt)`. Carries outcome, `partial` reason and progress separately from failure codes. **D32:** not written for a successful run that changed no data and recorded no failure |
 | `Integration` += `lastDataChangedAt DateTime?` | **[approved: D32]** The last run that actually changed data. Additive, nullable, no backfill (`null` = none recorded yet); advanced only by a run that changed data |
 | `GuardOverride` | **[design approved: U6; not implemented; no schema or code is built in the documentation phase]** §6.11: durable, tenant-scoped record of every override (customer and support-assisted paths): guard, preview hash, counts, reason, requesting and authorizing users, operator, `expiresAt`, `consumedAt`, outcome. Not pruned with the 30-day sync history |

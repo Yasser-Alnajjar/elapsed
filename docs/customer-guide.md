@@ -164,6 +164,23 @@ Every connection shares the same shape:
 - **Disconnecting:** always a soft disconnect. The connection stops syncing and its credentials are cleared, and everything that came from it — its cases, commitments, events, links, alerts, and the figures built on them — disappears from the app and from alerts and reports. Nothing is deleted: reconnecting the same integration brings all of it back.
 - **Reauthentication:** if a token expires, is revoked, or a refresh attempt fails, the integration is marked **"Needs reconnect"** on the Integrations page, and a banner with a one-click reconnect link appears wherever that provider's data would otherwise be shown (onboarding, the integration's own detail page).
 
+### When an integration is unavailable
+
+Elapsed can make an integration temporarily unavailable, for example during a provider incident or maintenance, or because a Beta integration is open only to selected organizations. You will see one of these on the Integrations page and in onboarding:
+
+- **Unavailable**: the integration can't be connected right now. If Elapsed added a note, it is shown on the card.
+- **Coming soon**: the integration is listed but can't be connected yet.
+- **Paused by Elapsed**: you are connected, but Elapsed has paused this integration. This is not a disconnect, and you don't need to do anything.
+
+While an integration is paused by Elapsed:
+
+- Nothing is deleted or changed. Your connection, credentials, cases, events, commitments and history stay as they are, and stay visible.
+- Elapsed makes no requests to that system, ignores its webhooks, and refuses new connections, reconnects and manual imports. These requests return the error code `integration_disabled`, `integration_coming_soon` or `integration_beta_restricted`.
+- SLA tracking continues on the data already received, and the integration is shown as **stale** (see the freshness notices), so at-risk alerts carry a stale-data marker and breach alerts wait until data is fresh again.
+- You can still disconnect it.
+
+When Elapsed makes the integration available again, syncing resumes from where it stopped and catches up on changes made in the meantime, including changes whose webhooks were ignored. If you had disconnected it yourself, it stays disconnected until you reconnect it.
+
 ### Custom REST (Beta)
 
 For a helpdesk Elapsed has no built-in integration for. It is a ticket source configured entirely from the **Integrations → Custom REST** page; no code is run and nothing is installed. It must be enabled for your organization by the platform operator first, one Custom REST source is allowed per organization, and only the organization **owner** can configure it.
