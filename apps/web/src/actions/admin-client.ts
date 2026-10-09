@@ -1,4 +1,11 @@
-import type { IntegrationControl, PlanRecord } from "@/lib/types/admin";
+import type {
+  AdminIntegrationsData,
+  AvailabilityImpact,
+  AvailabilityPolicyFields,
+  IntegrationControl,
+  PlanRecord,
+} from "@/lib/types/admin";
+import type { IntegrationProvider } from "@/lib/types/integrations";
 import type { AdminBillingActionInput } from "@/lib/billing-validation";
 import type { WorkerMonitoringData } from "@/lib/types/worker-settings";
 
@@ -14,11 +21,11 @@ interface AdminActionResult<T> {
   body: T & { error?: string };
 }
 
-async function send<T>(url: string, method: "POST" | "PATCH", payload: unknown): Promise<AdminActionResult<T>> {
+async function send<T>(url: string, method: "GET" | "POST" | "PATCH" | "DELETE", payload?: unknown): Promise<AdminActionResult<T>> {
   const response = await fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: payload === undefined ? undefined : JSON.stringify(payload),
   });
   const body = await response.json().catch(() => ({}));
   return { ok: response.ok, status: response.status, body };
@@ -40,9 +47,36 @@ export const AdminClientActions = {
     return send<{ ok: boolean }>(`/api/admin/integrations/${integrationId}`, "POST", { action });
   },
 
-  /** Turns the Custom REST Beta flag on or off for one organization; audited. */
-  setCustomProviderFlag(organizationId: string, enabled: boolean) {
-    return send<{ changed: boolean; pausedPolling: boolean }>(`/api/admin/tenants/${organizationId}/custom-provider`, "POST", { enabled });
+  /** Every provider's availability, allowlist, counts and health (N10). */
+  listIntegrationAvailability() {
+    return send<AdminIntegrationsData>("/api/admin/integrations", "GET");
+  },
+
+  /** Changes one provider's availability; compare-and-set on `expectedVersion`; audited. Errors carry `{ error, code }`. */
+  updateIntegrationAvailability(
+    provider: IntegrationProvider,
+    input: Partial<AvailabilityPolicyFields> & { expectedVersion: number; reason: string },
+  ) {
+    return send<{ changed: boolean; policy: AvailabilityPolicyFields & { version: number } }>(
+      `/api/admin/integrations/providers/${provider}`,
+      "PATCH",
+      input,
+    );
+  },
+
+  /** Read-only: who would lose access if this change were saved. */
+  previewAvailabilityImpact(provider: IntegrationProvider, change: Partial<AvailabilityPolicyFields> & { removeOrganizationId?: string }) {
+    return send<AvailabilityImpact>(`/api/admin/integrations/providers/${provider}/impact`, "POST", change);
+  },
+
+  /** Adds an organization to a provider's Beta allowlist; audited. */
+  addToBetaAllowlist(provider: IntegrationProvider, organizationId: string, reason: string) {
+    return send<{ ok: boolean }>(`/api/admin/integrations/providers/${provider}/allowlist`, "POST", { organizationId, reason });
+  },
+
+  /** Removes an organization from a provider's Beta allowlist; audited. */
+  removeFromBetaAllowlist(provider: IntegrationProvider, organizationId: string, reason: string) {
+    return send<{ pausedPolling: boolean }>(`/api/admin/integrations/providers/${provider}/allowlist/${organizationId}`, "DELETE", { reason });
   },
 
   /** One billing override on one organization; audited as `billing_override`. Errors carry `{ error, code }`. */

@@ -161,47 +161,8 @@ export async function controlIntegration(
   });
 }
 
-// ---- Custom REST Beta flag (N9, plan 09 8.7) -----------------------------------
-
-/**
- * Turns the `custom` source's Beta flag on or off for one organization, audited.
- * Turning it OFF also pauses polling on the organization's custom integration
- * (the N4.5 pause the worker already honors, recorded as a pause and not as a
- * failed sync), so the disabled flag cannot start another sync even before the
- * adapter's own flag check runs. Turning it back ON does not resume a pause:
- * the operator resumes polling with the existing control. Data stays visible
- * and monitored either way. A request that changes nothing writes nothing.
- */
-export async function setCustomProviderFlag(
-  prisma: PrismaClient,
-  params: { actorEmail: string; organizationId: string; enabled: boolean; now?: Date },
-): Promise<{ changed: boolean; pausedPolling: boolean }> {
-  const { actorEmail, organizationId, enabled } = params;
-  const now = params.now ?? new Date();
-
-  return prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } });
-    if (!organization) throw new AdminNotFoundError("Organization not found");
-    if (organization.customProviderEnabled === enabled) return { changed: false, pausedPolling: false };
-
-    await tx.organization.update({ where: { id: organizationId }, data: { customProviderEnabled: enabled } });
-    let pausedPolling = false;
-    if (!enabled) {
-      const paused = await tx.integration.updateMany({
-        where: { organizationId, provider: "custom", status: { not: "disconnected" }, pollingPausedAt: null },
-        data: { pollingPausedAt: now },
-      });
-      pausedPolling = paused.count > 0;
-    }
-    await recordAdminAudit(tx, {
-      actorEmail,
-      action: enabled ? "enable_custom_provider" : "disable_custom_provider",
-      organizationId,
-      metadata: { pausedPolling },
-    });
-    return { changed: true, pausedPolling };
-  });
-}
+// The Custom REST Beta flag (N9, plan 09 8.7) became the Custom REST entry of
+// the generic Beta allowlist (D33): see `admin-integration-availability.ts`.
 
 // ---- Support-assisted guard override (N9, plan 09 6.11, U6) --------------------
 
