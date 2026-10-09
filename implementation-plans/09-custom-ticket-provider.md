@@ -583,7 +583,20 @@ Applied to the base origin and to **every** request, in the web app and in the w
 7. **Limits:** response-size and decompression caps (`Accept-Encoding: identity` plus a streamed byte cap), timeouts, and abort on budget.
 8. **Proxy environment variables are ignored.**
 
-Recorded result: **pending** (N9.1). If any criterion fails, option B is used and the result is written here before anything depends on it. Limitations to document either way: a customer API behind a corporate proxy cannot be reached; no HTTP/2.
+**Recorded result (N9.1, 2026-10-09): all eight criteria pass with option A.** The spike is `packages/safe-http/spike/n9-1-spike.mjs` (`pnpm --filter @sla/safe-http spike`), run against local TLS servers with a private CA, `undici` 7.30.0, Node 22.17.0. Findings N9.2 must honour:
+
+| # | Result | What the evidence shows |
+| --- | --- | --- |
+| 1 Pinning | Pass | `Agent({ connect: { lookup } })` runs the resolution **and** the validation inside the connect path, so the address connected to is the address validated; a name that now answers with a denied address is refused (`EBLOCKED`) before any socket is opened. There is no separate "check, then connect" window. |
+| 2 TLS hostname | Pass | A certificate valid for `api.example.test` is rejected for `other.example.test` (`ERR_TLS_CERT_ALTNAME_INVALID`) even though both names resolve to the same validated address. |
+| 3 SNI | Pass | The server observed SNI `api.example.test`, not an IP. |
+| 4 Dual-stack | Pass | The hook must return the **whole validated set** and refuse when any record is denied; `autoSelectFamily` then falls back only among validated addresses (the hook is called with `options.all`, so it must support both the single and the array callback forms). |
+| 5 Per-run agent | Pass | A new `Agent` re-resolves and re-validates. Within one agent a pooled socket stays on the address validated when it was opened; the client therefore creates **one agent per ingest run**, closes it at the end, and sets a short `keepAliveTimeout`. Pools are never shared across runs or tenants. |
+| 6 Redirects | Pass | `undici.request` does not follow redirects; the 3xx is returned and treated as an error by the client. |
+| 7 Limits | Pass | Use `undici.request`, **not** `undici.fetch`: `request` does not decompress, so a hostile server that ignores `Accept-Encoding: identity` shows a `content-encoding` header the client rejects, and a streamed byte cap stops a 50 MB body at the cap. `AbortSignal` and `headersTimeout` abort within the bound. |
+| 8 Proxy variables | Pass | A plain `Agent` ignores `HTTP(S)_PROXY`; only `EnvHttpProxyAgent` reads them, and it is never used. |
+
+Decision: **option A is adopted; `undici@7.30.0` is added to `@sla/safe-http` as an exact-pinned dependency** (7.x because 8.x requires Node 22.19 or newer and the images use `node:22-alpine`). Option B is not needed. Limitations to document: a customer API behind a corporate proxy cannot be reached; no HTTP/2. The spike's address classification is an injected predicate because local servers cannot be public; N9.2 supplies the real one (`isPublicAddress`).
 
 ### 8.3 Request rules
 
