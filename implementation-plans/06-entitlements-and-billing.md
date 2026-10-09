@@ -43,7 +43,7 @@
 - **Seats:** `packages/db/src/members.ts`, `packages/db/src/invitations.ts`, `apps/web/src/app/api/settings/{members,invitations}`, `apps/web/src/app/api/invitations/accept`.
 - **Integrations:** `apps/web/src/app/api/integrations/*/connect`, callback routes.
 - **Policies:** `packages/commitments/src/native-policy.ts`, `apps/web/src/app/api/settings/sla-policies`, imported policies from `packages/zendesk/src/policies.ts`.
-- **Retention promise:** none implemented. `RawEvent` is append-only and unpruned. The "90-day case history" claim was removed from the pricing page (H-3, N6.6); the pricing page must not claim retention features.
+- **Retention promise:** none implemented. `RawEvent` is append-only and unpruned; D34 (2026-10-10) keeps it for the organization's lifetime on every plan, which is not a plan feature. The "90-day case history" claim was removed from the pricing page (H-3, N6.6); the pricing page must not claim retention features.
 - **Plan record:** `Organization.plan` / `planStatus` / `trialEndsAt` (N4.3).
 
 ## 4. Tasks, in implementation order
