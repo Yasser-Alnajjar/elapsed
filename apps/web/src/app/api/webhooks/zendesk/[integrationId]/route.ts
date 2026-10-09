@@ -29,7 +29,7 @@ export const maxDuration = 60;
  * On success this runs the full poll-cycle tail (ingest → normalize →
  * commitments → evaluation → notifications) for one ticket, synchronously,
  * which is what actually delivers "real-time freshness" — the 5-minute
- * active-set poll and 60-minute reconciliation sweep (roadmap step 7) keep
+ * active-set poll and 30-minute reconciliation sweep (roadmap step 7) keep
  * running unchanged as the safety net for missed or out-of-order deliveries.
  * Normalization and the pipeline tail run under `withOrganizationSlaLock`
  * (E-3): a concurrent worker cycle or another webhook for the same

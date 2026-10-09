@@ -1360,8 +1360,9 @@ enum CommitmentStatus {
 
 /// Singleton row (`id` is always `"singleton"`) holding the worker's
 /// persisted polling configuration and last-observed run state — see
-/// `@sla/db`'s `worker-settings.ts`. There is exactly one worker process for
-/// the whole deployment: the two intervals apply to every organization (each
+/// `@sla/db`'s `worker-settings.ts`. Several worker processes may run (each
+/// organization is leased to one at a time, see `OrganizationWorkState`), and
+/// they all read this one row: the two intervals apply to every organization (each
 /// organization's own next-due times live in `OrganizationWorkState`), so this
 /// config is deliberately global rather than living on `Organization`.
 /// `reconciliationIntervalMs` is capped at 30 minutes wherever it is read,
