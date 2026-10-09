@@ -150,7 +150,7 @@ Gated routes (in addition to their existing checks; the availability check runs 
 | `{provider}/backfill` (5) | 403 |
 | `webhooks/{zendesk,jira}/[integrationId]` | **200** `{ status: "ignored", reason: <code> }` after the secret check, before parsing; nothing stored (ruling 5) |
 | `concierge/{zendesk,jira}/export` | 403 |
-| `custom/*` via `ownerGuard` | 403, same codes (replaces `beta_disabled` with `integration_beta_restricted`; `beta_disabled` stays accepted by the client for one release) |
+| `custom/*` via `ownerGuard` | 403, same codes (`integration_beta_restricted` replaces `beta_disabled`; no client code read `beta_disabled`). `status` and `disconnect` pass `requireAvailable: false`: they make no outbound request, and a customer can always see and disconnect a paused source |
 
 A static **boundary test** lists every route under `app/api/integrations/**` and `app/api/webhooks/**` and `app/api/concierge/**/export` and fails if one that is not on the explicit exemption list (disconnect routes, Slack, connect-link revoke) does not call the availability helper.
 
@@ -218,7 +218,7 @@ Only Zendesk and Jira have webhook receivers. Both pollers read from persisted c
 | `POST /api/admin/integrations/providers/[provider]/impact` | proposed change | `{ organizationsLosingAccess, connectionsAffected }` (read-only) |
 | `POST /api/admin/integrations/providers/[provider]/allowlist` | `{ organizationId, reason }` | 201; 409 `rollout_blocked` / already listed |
 | `DELETE /api/admin/integrations/providers/[provider]/allowlist/[organizationId]` | `{ reason }` | 200 |
-| `POST /api/admin/tenants/[organizationId]/custom-provider` | `{ enabled }` | **kept** for one release, now a thin wrapper over allowlist add/remove (same rollout block) |
+| `POST /api/admin/tenants/[organizationId]/custom-provider` | `{ enabled, reason }` | **kept** for one release, now a thin wrapper over allowlist add/remove (same rollout block; a no-op answers `{ changed: false }`) |
 
 The existing per-integration controls route `/api/admin/integrations/[integrationId]` is unchanged.
 
@@ -260,6 +260,8 @@ No credential, token, secret or configuration payload is read or written by thes
 | **N10-F1** | Contract migration dropping `Organization.customProviderEnabled` | After N10 is deployed (owner decides when) |
 
 ## 10. Tests (focused, on `testing`, ruling 8)
+
+> **As built (2026-10-09).** Suites: `packages/db/test/integration-availability.test.ts` (unit), `packages/db/test/integration-availability.db.test.ts` (two pools), `packages/custom-ticket/test/ingest-availability.db.test.ts`, `apps/web/test/integration-availability-admin.test.ts`, `apps/web/test/integration-availability-routes.test.ts`, `apps/web/test/integration-availability-boundary.test.ts` (static), `apps/web/test/admin-integrations-view.test.ts` (static render; the repo has no DOM test environment, so the refresh-error and toast paths are not automated and were checked in a browser), `apps/worker/test/integration-availability.test.ts`. The four real-database suites are listed in `vitest.config.ts`.
 
 - **Resolver:** every state of §4.1, missing-row defaults, allowlist hit and miss.
 - **Admin authorization and persistence:** owner, member and signed-out get 401/403 on every new route; an operator's write persists and writes one audit row; no-op writes nothing; no secret in audit metadata.
