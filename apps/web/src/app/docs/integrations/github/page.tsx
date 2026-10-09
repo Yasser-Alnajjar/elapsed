@@ -278,7 +278,7 @@ export default function GithubIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Poll only — the same 5-minute (active cases) / 60-minute
+            Poll only — the same 5-minute (active cases) / 30-minute
             (reconciliation) schedule as every other integration, with no
             real-time webhook.
           </p>
