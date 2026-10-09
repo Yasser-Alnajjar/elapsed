@@ -16,7 +16,8 @@ export function SyncStateBanner({ status }: { status: CustomStatus }) {
   if (!status.connected || !status.state) return null;
   const copy = STATE_COPY[status.state];
   const latest = status.runs[0];
-  const progress = latest?.progress as { listingTickets?: number } | null;
+  const progress = latest?.progress as { listingTickets?: number; D?: number; L?: number; recordIds?: unknown } | null;
+  const deletionIds = Array.isArray(progress?.recordIds) ? progress.recordIds.filter((id): id is string => typeof id === "string") : [];
   const variant = copy.tone === "error" ? "destructive" : copy.tone === "success" ? "success" : "default";
   return (
     <div className="flex flex-col gap-2">
@@ -24,6 +25,11 @@ export function SyncStateBanner({ status }: { status: CustomStatus }) {
         <div className="flex flex-col gap-1">
           <p className="font-medium">{copy.title}</p>
           <p>{status.state === "needs_attention" && status.attention ? ATTENTION_COPY[status.attention] : copy.body}</p>
+          {status.attention === "mass_deletion" && typeof progress?.D === "number" && typeof progress?.L === "number" && (
+            <p className="text-xs">
+              {progress.D} of {progress.L} tracked tickets would have been deleted{deletionIds.length > 0 ? `: ${deletionIds.join(", ")}${progress.D > deletionIds.length ? ", …" : ""}` : ""}.
+            </p>
+          )}
           {status.state === "importing_history" && typeof progress?.listingTickets === "number" && <p className="text-xs">{progress.listingTickets} tickets read so far.</p>}
           {status.state === "catching_up" && status.lastSuccessfulSyncAt && <p className="text-xs">Current through {formatLongDateTime(new Date(status.lastSuccessfulSyncAt), timeZone)}.</p>}
         </div>

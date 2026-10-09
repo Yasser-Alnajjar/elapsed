@@ -17,7 +17,7 @@ export const STATE_COPY: Record<CustomSyncState, StateCopy> = {
   importing_history: {
     title: "Importing your history",
     tone: "neutral",
-    body: "Elapsed has not yet read all of your tickets. SLA clocks and breach alerts start after the first complete import. This can take a while for a large history and is not a fault.",
+    body: "Elapsed has not yet read all of your tickets. SLA clocks keep running from each ticket's own times, and commitments are tracked as tickets arrive. Until the first import completes, the data counts as stale: at-risk alerts carry a stale-data marker, and breach alerts are held, then sent once the import completes for breaches that are still confirmed. This can take a while for a large history and is not a fault.",
   },
   catching_up: {
     title: "Catching up",
@@ -52,6 +52,8 @@ export const ATTENTION_COPY: Record<AttentionCause, string> = {
   permission: "Your system denied access. Check the permissions of the account the credentials belong to.",
   provider: "Your system could not be reached or answered with an error. Elapsed retries on every sync.",
   safety_check: "A safety check stopped a sync before any change was applied. Review the flagged change below.",
+  mass_deletion:
+    "A sync would have deleted more of your tickets at once than the safety limit allows, so it stopped before changing anything. Nothing was deleted and your existing data stays visible and monitored, but new data from this source is held until this is resolved. Mass deletions are never applied automatically and cannot be overridden here. If the deletion signal is wrong, correct the deletion settings in the configuration; otherwise contact support with the ticket IDs below.",
   no_progress: "Elapsed could not read even one page in three syncs in a row. Check that your system responds in time, or narrow the first import.",
   cannot_finish_without_cursor:
     "Your system has no way to ask for only recent changes, and a full listing no longer fits in one sync. Add an updated-since parameter to the configuration.",

@@ -29,8 +29,13 @@ export const RECORD_FAILURE_RATIO = 0.25;
 export const LIFECYCLE_MIN = 10;
 export const LIFECYCLE_RATIO = 0.25;
 
-/** The working default before the benchmark gate fixes the ceiling (R4): conservative and explicitly unvalidated. */
-export const DEFAULT_LIVE_CASE_CEILING = 5_000;
+/**
+ * The largest tier that passed the plan 09 §6.10 benchmark on the reference
+ * laptop (2026-10-09, `implementation-plans/n9-benchmark-report.md`); 5,000
+ * failed it, so R4 lowers the default. Not yet confirmed on a
+ * production-equivalent host or accepted by the owner.
+ */
+export const DEFAULT_LIVE_CASE_CEILING = 1_000;
 const MAX_CONFIGURABLE_CEILING = 100_000;
 
 /** `CUSTOM_PROVIDER_LIVE_CASE_CEILING`, else the unvalidated default. Never a literal in the guard itself. */

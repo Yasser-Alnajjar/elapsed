@@ -20,6 +20,7 @@ import {
 } from "@sla/custom-ticket";
 import { Prisma, decryptCustomSecrets, encryptCustomSecrets, isUniqueConstraintError, type PrismaClient } from "@sla/db";
 import { privateHostsAllowed } from "@sla/safe-http";
+import { computeConfigDiff, type ConfigDiff } from "./config-diff";
 
 export type ActivationResult =
   | { status: "activated"; version: number; integrationId: string; cancelled: number }
@@ -27,12 +28,24 @@ export type ActivationResult =
   | { status: "not_ready"; code: DraftNotReadyError["code"] | "credentials_unreadable"; missing: string[] }
   | { status: "listing_too_large"; measurement: FullPassMeasurement }
   | { status: "needs_confirmation"; impact: ActivationImpact }
+  | { status: "needs_diff_review"; diff: ConfigDiff }
   | { status: "blocked"; reason: "next_reply_restore_blocked" | "auth_changed_reenter_credentials" | "version_not_found" | "not_connected" }
   | { status: "conflict" };
 
 const configHash = (config: unknown): string => createHash("sha256").update(JSON.stringify(config)).digest("hex");
 
 class ActivationConflict extends Error {}
+
+/**
+ * Plan 09, 6.8: a version that would change stored cases or events is
+ * activated only after the owner has seen that exact dry-run diff (its hash).
+ * Null when activation may proceed: a first activation, nothing stored yet, or
+ * a version that changes nothing.
+ */
+async function diffNeedingReview(prisma: PrismaClient, organizationId: string, proposed: CustomConfig, confirmDiffHash: string | undefined): Promise<ConfigDiff | null> {
+  const diff = await computeConfigDiff(prisma, organizationId, proposed);
+  return diff.hash !== null && diff.hash !== confirmDiffHash ? diff : null;
+}
 
 function impactNeedsConfirmation(impact: ActivationImpact): boolean {
   return impact.newlyUnsupportedKinds.length > 0 && (impact.cancellation?.total ?? 0) > 0;
@@ -51,7 +64,7 @@ function impactNeedsConfirmation(impact: ActivationImpact): boolean {
  */
 export async function activateDraft(
   prisma: PrismaClient,
-  input: { organizationId: string; userId: string; note?: string; confirmPreviewHash?: string; now?: Date },
+  input: { organizationId: string; userId: string; note?: string; confirmPreviewHash?: string; confirmDiffHash?: string; now?: Date },
 ): Promise<ActivationResult> {
   const now = input.now ?? new Date();
   let draft: { config: CustomConfig; secrets: Record<string, string> };
@@ -76,6 +89,9 @@ export async function activateDraft(
     const measurement = await measureFullPass(draft.config, draft.secrets);
     if (!measurement.completed) return { status: "listing_too_large", measurement };
   }
+
+  const diff = await diffNeedingReview(prisma, input.organizationId, draft.config, input.confirmDiffHash);
+  if (diff) return { status: "needs_diff_review", diff };
 
   const existing = await prisma.integration.findUnique({
     where: { organizationId_provider: { organizationId: input.organizationId, provider: "custom" } },
@@ -186,7 +202,7 @@ export async function activateDraft(
  */
 export async function rollbackToVersion(
   prisma: PrismaClient,
-  input: { organizationId: string; userId: string; toVersion: number; confirmPreviewHash?: string; now?: Date },
+  input: { organizationId: string; userId: string; toVersion: number; confirmPreviewHash?: string; confirmDiffHash?: string; now?: Date },
 ): Promise<ActivationResult> {
   const now = input.now ?? new Date();
   const integration = await prisma.integration.findUnique({
@@ -214,6 +230,9 @@ export async function rollbackToVersion(
   } catch {
     return { status: "not_ready", code: "credentials_unreadable", missing: [] };
   }
+
+  const diff = await diffNeedingReview(prisma, input.organizationId, parsed.config, input.confirmDiffHash);
+  if (diff) return { status: "needs_diff_review", diff };
 
   const targetSupport = storedSlaSupport(report);
   const assess = () =>

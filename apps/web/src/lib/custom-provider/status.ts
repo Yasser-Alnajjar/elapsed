@@ -17,6 +17,7 @@ export type AttentionCause =
   | "credentials"
   | "provider"
   | "safety_check"
+  | "mass_deletion"
   | "no_progress"
   | "cannot_finish_without_cursor"
   | "processing";
@@ -53,7 +54,11 @@ export function attentionCause(input: StateInput): AttentionCause | null {
     const hasCursor = (latest.progress as { hasIncrementalCursor?: unknown } | null)?.hasIncrementalCursor;
     return hasCursor === false ? "cannot_finish_without_cursor" : null;
   }
-  if (latest.outcome === "aborted") return latest.reasonCode === "flag_disabled" ? null : "safety_check";
+  if (latest.outcome === "aborted") {
+    if (latest.reasonCode === "flag_disabled") return null;
+    // Never overridable (R2) and held until resolved (U2, plan 09 6.11): its own cause, not "review the change below".
+    return latest.reasonCode === "mass_deletion" ? "mass_deletion" : "safety_check";
+  }
   if (latest.outcome === "failed") {
     const code = latest.reasonCode ?? "";
     if (code === "credentials_unreadable") return "credentials";

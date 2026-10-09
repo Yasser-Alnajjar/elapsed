@@ -4,6 +4,7 @@ import { NormalizationAbortedError, type CanonicalBatch, type NormalizeContext }
 import { privateHostsAllowed } from "@sla/safe-http";
 import { CUSTOM_SOURCE_ROLE, deriveBatch, type RawRow } from "./derive";
 import { firstFiringGuard, liveCaseCeiling, exceedsLifecycleChange, type GuardCounts } from "./guards";
+import { classifyProjectionPass, lockHoldLimitMs } from "./pass-class";
 import { CustomIngestError } from "./source-errors";
 import { RAW_PREFIX } from "./shared";
 import { parseConfig, type CustomConfig } from "./schema";
@@ -67,10 +68,13 @@ export async function normalizeCustom(ctx: NormalizeContext): Promise<CanonicalB
   const rows = await loadRawRows(prisma, integration.id);
   const derived = deriveBatch(active.config, rows);
 
-  const live = await prisma.case.findMany({
-    where: { organizationId: integration.organizationId, sourceIntegrationId: integration.id, deletedAt: null },
-    select: { externalId: true, closedAt: true },
-  });
+  const [live, state] = await Promise.all([
+    prisma.case.findMany({
+      where: { organizationId: integration.organizationId, sourceIntegrationId: integration.id, deletedAt: null },
+      select: { externalId: true, closedAt: true },
+    }),
+    prisma.integration.findUnique({ where: { id: integration.id }, select: { cursor: true, lastSuccessfulSyncAt: true } }),
+  ]);
   const liveById = new Map(live.map((c) => [c.externalId, c.closedAt !== null]));
 
   const attemptedIds = new Set<string>([...derived.caseExternalIds, ...derived.failures.map((f) => f.id), ...derived.deletedCaseExternalIds]);
@@ -110,6 +114,23 @@ export async function normalizeCustom(ctx: NormalizeContext): Promise<CanonicalB
   }
 
   const code = firstFiringGuard(counts, { lifecycleOverridden: override !== null });
+
+  // Which limit this pass is held to (§6.10, N9.7-F1). Reported only: it never changes what the pass does.
+  const passClass = classifyProjectionPass({
+    backfillCompletedAt: (state?.cursor as { backfillCompletedAt?: string | null } | null)?.backfillCompletedAt,
+    lastSuccessfulSyncAt: state?.lastSuccessfulSyncAt ?? null,
+    liveCases: counts.L,
+    newCases: counts.N,
+  });
+  ctx.logger?.info("custom_projection_pass", {
+    organizationId: integration.organizationId,
+    integrationId: integration.id,
+    passClass,
+    lockHoldLimitMs: lockHoldLimitMs(passClass),
+    liveCases: counts.L,
+    newCases: counts.N,
+    guard: code ?? null,
+  });
   if (code) {
     const ids =
       code === "mass_deletion" ? deletedLive : code === "mass_record_failure" ? derived.failures.map((f) => f.id) : code === "live_case_ceiling" ? newIds : flips;

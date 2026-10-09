@@ -1,0 +1,2991 @@
+{
+  "startedAt": "2026-10-09T21:16:26.882Z",
+  "profile": {
+    "name": "base",
+    "snapshotsPerTicket": 3,
+    "commentsPerTicket": 5,
+    "commentBodyChars": 400,
+    "closedRatio": 0.6
+  },
+  "reps": 5,
+  "firstImportReps": 5,
+  "splitReps": 3,
+  "environment": {
+    "node": "v22.17.0",
+    "platform": "darwin 27.0.0",
+    "cpu": "Apple M4",
+    "cpuCount": 10,
+    "memoryGb": 16,
+    "postgres": "PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "postgresSettings": {
+      "effective_cache_size": "524288 x 8kB",
+      "max_connections": "100",
+      "shared_buffers": "16384 x 8kB",
+      "synchronous_commit": "on",
+      "work_mem": "4096 x kB"
+    },
+    "coldCacheCommand": "/private/tmp/claude-501/-Users-yasseralnajjar-Workspace-ideas-elapsed/d486c43e-179c-45ef-952b-8320f3e85dba/scratchpad/cold.sh",
+    "database": "sla_bench_n9f1",
+    "liveCaseCeilingConfigured": "100000"
+  },
+  "tiers": {
+    "1000": {
+      "firstImportRuns": [
+        {
+          "wallMs": 4522,
+          "lockHoldMs": 3797,
+          "lockWaitMs": 2,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2752,
+              "queryCount": 4606,
+              "queryMs": 2628,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 327,
+              "queryCount": 4,
+              "queryMs": 306,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 21,
+              "queryCount": 1,
+              "queryMs": 17,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 43,
+              "queryCount": 3,
+              "queryMs": 34,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5625,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 390,
+              "queryCount": 8,
+              "queryMs": 402,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "NormalizedEvent": 5625,
+                "Case": 1000,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 249,
+              "queryCount": 892,
+              "queryMs": 210,
+              "rowsByModel": {
+                "Notification": 887,
+                "SlackIntegration": 0,
+                "OrganizationEmailSettings": 1,
+                "User": 1,
+                "Case": 886
+              }
+            },
+            "worker_notify": {
+              "durationMs": 705,
+              "queryCount": 1772,
+              "queryMs": 1146,
+              "rowsByModel": {
+                "Notification": 886,
+                "NotificationFailure": 886
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 1,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7287,
+          "failures": [],
+          "deliveriesRefused": 886,
+          "peakRssMb": 358,
+          "peakHeapMb": 155,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 886,
+          "seed": 101,
+          "cold": true,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4312,
+          "lockHoldMs": 3664,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2776,
+              "queryCount": 4606,
+              "queryMs": 2660,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 303,
+              "queryCount": 4,
+              "queryMs": 287,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 14,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 42,
+              "queryCount": 3,
+              "queryMs": 34,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5603,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 294,
+              "queryCount": 8,
+              "queryMs": 260,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5603,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 221,
+              "queryCount": 891,
+              "queryMs": 207,
+              "rowsByModel": {
+                "Notification": 886,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 885
+              }
+            },
+            "worker_notify": {
+              "durationMs": 641,
+              "queryCount": 1770,
+              "queryMs": 1046,
+              "rowsByModel": {
+                "Notification": 885,
+                "NotificationFailure": 885
+              }
+            }
+          },
+          "queryCount": 7283,
+          "failures": [],
+          "deliveriesRefused": 885,
+          "peakRssMb": 477,
+          "peakHeapMb": 279,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 885,
+          "seed": 51,
+          "cold": false,
+          "kind": "active_set_poll",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4215,
+          "lockHoldMs": 3584,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2657,
+              "queryCount": 4606,
+              "queryMs": 2550,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 274,
+              "queryCount": 4,
+              "queryMs": 260,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 14,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 41,
+              "queryCount": 3,
+              "queryMs": 33,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5590,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 359,
+              "queryCount": 8,
+              "queryMs": 324,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5590,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 233,
+              "queryCount": 869,
+              "queryMs": 220,
+              "rowsByModel": {
+                "Notification": 864,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 863
+              }
+            },
+            "worker_notify": {
+              "durationMs": 623,
+              "queryCount": 1726,
+              "queryMs": 1017,
+              "rowsByModel": {
+                "Notification": 863,
+                "NotificationFailure": 863
+              }
+            }
+          },
+          "queryCount": 7217,
+          "failures": [],
+          "deliveriesRefused": 863,
+          "peakRssMb": 517,
+          "peakHeapMb": 230,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 863,
+          "seed": 52,
+          "cold": false,
+          "kind": "active_set_poll",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4180,
+          "lockHoldMs": 3501,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2621,
+              "queryCount": 4606,
+              "queryMs": 2519,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 253,
+              "queryCount": 4,
+              "queryMs": 238,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 16,
+              "queryCount": 1,
+              "queryMs": 13,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 44,
+              "queryCount": 3,
+              "queryMs": 35,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5610,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 327,
+              "queryCount": 8,
+              "queryMs": 288,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5610,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 238,
+              "queryCount": 868,
+              "queryMs": 221,
+              "rowsByModel": {
+                "Notification": 863,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 862
+              }
+            },
+            "worker_notify": {
+              "durationMs": 672,
+              "queryCount": 1724,
+              "queryMs": 1109,
+              "rowsByModel": {
+                "Notification": 862,
+                "NotificationFailure": 862
+              }
+            }
+          },
+          "queryCount": 7214,
+          "failures": [],
+          "deliveriesRefused": 862,
+          "peakRssMb": 502,
+          "peakHeapMb": 212,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 862,
+          "seed": 53,
+          "cold": false,
+          "kind": "active_set_poll",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 3608,
+          "lockHoldMs": 2935,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2068,
+              "queryCount": 4606,
+              "queryMs": 1976,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 264,
+              "queryCount": 4,
+              "queryMs": 251,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 14,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 43,
+              "queryCount": 3,
+              "queryMs": 35,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5595,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 298,
+              "queryCount": 8,
+              "queryMs": 262,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5595,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 242,
+              "queryCount": 870,
+              "queryMs": 204,
+              "rowsByModel": {
+                "Notification": 865,
+                "SlackIntegration": 0,
+                "OrganizationEmailSettings": 1,
+                "User": 1,
+                "Case": 864
+              }
+            },
+            "worker_notify": {
+              "durationMs": 667,
+              "queryCount": 1728,
+              "queryMs": 1105,
+              "rowsByModel": {
+                "Notification": 864,
+                "NotificationFailure": 864
+              }
+            }
+          },
+          "queryCount": 7220,
+          "failures": [],
+          "deliveriesRefused": 864,
+          "peakRssMb": 506,
+          "peakHeapMb": 212,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 864,
+          "seed": 54,
+          "cold": false,
+          "kind": "active_set_poll",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4427,
+          "lockHoldMs": 3745,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2863,
+              "queryCount": 4606,
+              "queryMs": 2759,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 271,
+              "queryCount": 4,
+              "queryMs": 256,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 14,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 43,
+              "queryCount": 3,
+              "queryMs": 35,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5610,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 308,
+              "queryCount": 8,
+              "queryMs": 272,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5610,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 240,
+              "queryCount": 900,
+              "queryMs": 225,
+              "rowsByModel": {
+                "Notification": 895,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 894
+              }
+            },
+            "worker_notify": {
+              "durationMs": 675,
+              "queryCount": 1788,
+              "queryMs": 1117,
+              "rowsByModel": {
+                "Notification": 894,
+                "NotificationFailure": 894
+              }
+            }
+          },
+          "queryCount": 7310,
+          "failures": [],
+          "deliveriesRefused": 894,
+          "peakRssMb": 505,
+          "peakHeapMb": 214,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 894,
+          "seed": 55,
+          "cold": false,
+          "kind": "active_set_poll",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4464,
+          "lockHoldMs": 3808,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2910,
+              "queryCount": 4606,
+              "queryMs": 2800,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 290,
+              "queryCount": 4,
+              "queryMs": 275,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 14,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 41,
+              "queryCount": 3,
+              "queryMs": 34,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5570,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 303,
+              "queryCount": 8,
+              "queryMs": 269,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5570,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 244,
+              "queryCount": 888,
+              "queryMs": 230,
+              "rowsByModel": {
+                "Notification": 883,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 882
+              }
+            },
+            "worker_notify": {
+              "durationMs": 648,
+              "queryCount": 1764,
+              "queryMs": 1076,
+              "rowsByModel": {
+                "Notification": 882,
+                "NotificationFailure": 882
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 0,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7275,
+          "failures": [],
+          "deliveriesRefused": 882,
+          "peakRssMb": 504,
+          "peakHeapMb": 198,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 882,
+          "seed": 1,
+          "cold": false,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4329,
+          "lockHoldMs": 3584,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2664,
+              "queryCount": 4606,
+              "queryMs": 2559,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 286,
+              "queryCount": 4,
+              "queryMs": 271,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 19,
+              "queryCount": 1,
+              "queryMs": 15,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 42,
+              "queryCount": 3,
+              "queryMs": 34,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5629,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 304,
+              "queryCount": 8,
+              "queryMs": 264,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5629,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 264,
+              "queryCount": 880,
+              "queryMs": 250,
+              "rowsByModel": {
+                "Notification": 875,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 874
+              }
+            },
+            "worker_notify": {
+              "durationMs": 738,
+              "queryCount": 1748,
+              "queryMs": 1233,
+              "rowsByModel": {
+                "Notification": 874,
+                "NotificationFailure": 874
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 0,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7251,
+          "failures": [],
+          "deliveriesRefused": 874,
+          "peakRssMb": 503,
+          "peakHeapMb": 193,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 874,
+          "seed": 2,
+          "cold": false,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4384,
+          "lockHoldMs": 3780,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2913,
+              "queryCount": 4606,
+              "queryMs": 2807,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 280,
+              "queryCount": 4,
+              "queryMs": 266,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 17,
+              "queryCount": 1,
+              "queryMs": 13,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 40,
+              "queryCount": 3,
+              "queryMs": 31,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5631,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 293,
+              "queryCount": 8,
+              "queryMs": 262,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "BusinessCalendarVersion": 1,
+                "Integration": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5631,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 231,
+              "queryCount": 854,
+              "queryMs": 217,
+              "rowsByModel": {
+                "Notification": 849,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 848
+              }
+            },
+            "worker_notify": {
+              "durationMs": 596,
+              "queryCount": 1696,
+              "queryMs": 986,
+              "rowsByModel": {
+                "Notification": 848,
+                "NotificationFailure": 848
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 0,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7173,
+          "failures": [],
+          "deliveriesRefused": 848,
+          "peakRssMb": 463,
+          "peakHeapMb": 215,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 848,
+          "seed": 3,
+          "cold": false,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 5007,
+          "lockHoldMs": 4112,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2715,
+              "queryCount": 4606,
+              "queryMs": 2606,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 271,
+              "queryCount": 4,
+              "queryMs": 261,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 21,
+              "queryCount": 1,
+              "queryMs": 17,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 318,
+              "queryCount": 3,
+              "queryMs": 264,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5586,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 480,
+              "queryCount": 8,
+              "queryMs": 645,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "SLAPolicyVersion": 1,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "NormalizedEvent": 5586,
+                "Case": 1000,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 298,
+              "queryCount": 876,
+              "queryMs": 258,
+              "rowsByModel": {
+                "Notification": 871,
+                "SlackIntegration": 0,
+                "OrganizationEmailSettings": 1,
+                "User": 1,
+                "Case": 870
+              }
+            },
+            "worker_notify": {
+              "durationMs": 887,
+              "queryCount": 1740,
+              "queryMs": 1477,
+              "rowsByModel": {
+                "Notification": 870,
+                "NotificationFailure": 870
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 1,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7239,
+          "failures": [],
+          "deliveriesRefused": 870,
+          "peakRssMb": 461,
+          "peakHeapMb": 195,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 870,
+          "seed": 4,
+          "cold": false,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        },
+        {
+          "wallMs": 4222,
+          "lockHoldMs": 3476,
+          "lockWaitMs": 1,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": 2493,
+              "queryCount": 4606,
+              "queryMs": 2387,
+              "rowsByModel": {
+                "Integration": 2,
+                "CustomProviderConfigVersion": 1,
+                "RawEvent": 8000,
+                "Case": 1000,
+                "CustomerIdentity": 1000,
+                "Customer": 200,
+                "NormalizedEvent": 1000
+              }
+            },
+            "worker_commitment": {
+              "durationMs": 272,
+              "queryCount": 4,
+              "queryMs": 263,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 3000,
+                "Commitment": 2
+              }
+            },
+            "worker_re_resolution": {
+              "durationMs": 20,
+              "queryCount": 1,
+              "queryMs": 16,
+              "rowsByModel": {
+                "Case": 1000
+              }
+            },
+            "worker_next_reply": {
+              "durationMs": 46,
+              "queryCount": 3,
+              "queryMs": 37,
+              "rowsByModel": {
+                "Case": 1000,
+                "NormalizedEvent": 5591,
+                "Commitment": 0
+              }
+            },
+            "worker_evaluate": {
+              "durationMs": 375,
+              "queryCount": 8,
+              "queryMs": 342,
+              "rowsByModel": {
+                "Commitment": 2000,
+                "Integration": 1,
+                "BusinessCalendarVersion": 1,
+                "SLAPolicyVersion": 1,
+                "Case": 1000,
+                "NormalizedEvent": 5591,
+                "RawEvent": 2000,
+                "Evaluation": 1
+              }
+            },
+            "worker_notify_claim": {
+              "durationMs": 261,
+              "queryCount": 877,
+              "queryMs": 247,
+              "rowsByModel": {
+                "Notification": 872,
+                "OrganizationEmailSettings": 1,
+                "SlackIntegration": 0,
+                "User": 1,
+                "Case": 871
+              }
+            },
+            "worker_notify": {
+              "durationMs": 733,
+              "queryCount": 1742,
+              "queryMs": 1219,
+              "rowsByModel": {
+                "Notification": 871,
+                "NotificationFailure": 871
+              }
+            },
+            "worker_monthly_report": {
+              "durationMs": 0,
+              "queryCount": 1,
+              "queryMs": 0,
+              "rowsByModel": {
+                "Organization": 1
+              }
+            }
+          },
+          "queryCount": 7242,
+          "failures": [],
+          "deliveriesRefused": 871,
+          "peakRssMb": 324,
+          "peakHeapMb": 183,
+          "passClass": "initial_projection",
+          "liveCases": 0,
+          "newCases": 1000,
+          "alertsClaimed": 871,
+          "seed": 5,
+          "cold": false,
+          "kind": "reconciliation_sweep",
+          "seedRawRows": 8000
+        }
+      ],
+      "firstImport": {
+        "runs": 5,
+        "passClasses": [
+          "initial_projection"
+        ],
+        "alertsClaimed": 4345,
+        "wallMs": {
+          "median": 4384,
+          "p95": 5007
+        },
+        "lockHoldMs": {
+          "median": 3780,
+          "p95": 4112
+        },
+        "queryCount": {
+          "median": 7242,
+          "p95": 7275
+        },
+        "peakRssMb": 504,
+        "peakHeapMb": 215,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 2715,
+              "p95": 2913
+            },
+            "queryCount": 4606
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 280,
+              "p95": 290
+            },
+            "queryCount": 4
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 19,
+              "p95": 21
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 42,
+              "p95": 318
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 304,
+              "p95": 480
+            },
+            "queryCount": 8
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 261,
+              "p95": 298
+            },
+            "queryCount": 877
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 733,
+              "p95": 887
+            },
+            "queryCount": 1742
+          },
+          "worker_monthly_report": {
+            "durationMs": {
+              "median": 0,
+              "p95": 1
+            },
+            "queryCount": 1
+          }
+        },
+        "failures": [],
+        "alertsClaimedPerRun": [
+          882,
+          874,
+          848,
+          870,
+          871
+        ]
+      },
+      "firstImportPoll": {
+        "runs": 5,
+        "passClasses": [
+          "initial_projection"
+        ],
+        "alertsClaimed": 4368,
+        "wallMs": {
+          "median": 4215,
+          "p95": 4427
+        },
+        "lockHoldMs": {
+          "median": 3584,
+          "p95": 3745
+        },
+        "queryCount": {
+          "median": 7220,
+          "p95": 7310
+        },
+        "peakRssMb": 517,
+        "peakHeapMb": 279,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 2657,
+              "p95": 2863
+            },
+            "queryCount": 4606
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 271,
+              "p95": 303
+            },
+            "queryCount": 4
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 17,
+              "p95": 17
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 43,
+              "p95": 44
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 308,
+              "p95": 359
+            },
+            "queryCount": 8
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 238,
+              "p95": 242
+            },
+            "queryCount": 870
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 667,
+              "p95": 675
+            },
+            "queryCount": 1728
+          }
+        },
+        "failures": [],
+        "alertsClaimedPerRun": [
+          885,
+          863,
+          862,
+          864,
+          894
+        ]
+      },
+      "firstImportCold": {
+        "wallMs": 4522,
+        "lockHoldMs": 3797,
+        "lockWaitMs": 2,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": 2752,
+            "queryCount": 4606,
+            "queryMs": 2628,
+            "rowsByModel": {
+              "Integration": 2,
+              "CustomProviderConfigVersion": 1,
+              "RawEvent": 8000,
+              "Case": 1000,
+              "CustomerIdentity": 1000,
+              "Customer": 200,
+              "NormalizedEvent": 1000
+            }
+          },
+          "worker_commitment": {
+            "durationMs": 327,
+            "queryCount": 4,
+            "queryMs": 306,
+            "rowsByModel": {
+              "Case": 1000,
+              "NormalizedEvent": 3000,
+              "Commitment": 2
+            }
+          },
+          "worker_re_resolution": {
+            "durationMs": 21,
+            "queryCount": 1,
+            "queryMs": 17,
+            "rowsByModel": {
+              "Case": 1000
+            }
+          },
+          "worker_next_reply": {
+            "durationMs": 43,
+            "queryCount": 3,
+            "queryMs": 34,
+            "rowsByModel": {
+              "Case": 1000,
+              "NormalizedEvent": 5625,
+              "Commitment": 0
+            }
+          },
+          "worker_evaluate": {
+            "durationMs": 390,
+            "queryCount": 8,
+            "queryMs": 402,
+            "rowsByModel": {
+              "Commitment": 2000,
+              "Integration": 1,
+              "BusinessCalendarVersion": 1,
+              "SLAPolicyVersion": 1,
+              "NormalizedEvent": 5625,
+              "Case": 1000,
+              "RawEvent": 2000,
+              "Evaluation": 1
+            }
+          },
+          "worker_notify_claim": {
+            "durationMs": 249,
+            "queryCount": 892,
+            "queryMs": 210,
+            "rowsByModel": {
+              "Notification": 887,
+              "SlackIntegration": 0,
+              "OrganizationEmailSettings": 1,
+              "User": 1,
+              "Case": 886
+            }
+          },
+          "worker_notify": {
+            "durationMs": 705,
+            "queryCount": 1772,
+            "queryMs": 1146,
+            "rowsByModel": {
+              "Notification": 886,
+              "NotificationFailure": 886
+            }
+          },
+          "worker_monthly_report": {
+            "durationMs": 1,
+            "queryCount": 1,
+            "queryMs": 0,
+            "rowsByModel": {
+              "Organization": 1
+            }
+          }
+        },
+        "queryCount": 7287,
+        "failures": [],
+        "deliveriesRefused": 886,
+        "peakRssMb": 358,
+        "peakHeapMb": 155,
+        "passClass": "initial_projection",
+        "liveCases": 0,
+        "newCases": 1000,
+        "alertsClaimed": 886,
+        "seed": 101,
+        "cold": true,
+        "kind": "reconciliation_sweep",
+        "seedRawRows": 8000
+      },
+      "firstPass": {
+        "wallMs": 4222,
+        "lockHoldMs": 3476,
+        "lockWaitMs": 1,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": 2493,
+            "queryCount": 4606,
+            "queryMs": 2387,
+            "rowsByModel": {
+              "Integration": 2,
+              "CustomProviderConfigVersion": 1,
+              "RawEvent": 8000,
+              "Case": 1000,
+              "CustomerIdentity": 1000,
+              "Customer": 200,
+              "NormalizedEvent": 1000
+            }
+          },
+          "worker_commitment": {
+            "durationMs": 272,
+            "queryCount": 4,
+            "queryMs": 263,
+            "rowsByModel": {
+              "Case": 1000,
+              "NormalizedEvent": 3000,
+              "Commitment": 2
+            }
+          },
+          "worker_re_resolution": {
+            "durationMs": 20,
+            "queryCount": 1,
+            "queryMs": 16,
+            "rowsByModel": {
+              "Case": 1000
+            }
+          },
+          "worker_next_reply": {
+            "durationMs": 46,
+            "queryCount": 3,
+            "queryMs": 37,
+            "rowsByModel": {
+              "Case": 1000,
+              "NormalizedEvent": 5591,
+              "Commitment": 0
+            }
+          },
+          "worker_evaluate": {
+            "durationMs": 375,
+            "queryCount": 8,
+            "queryMs": 342,
+            "rowsByModel": {
+              "Commitment": 2000,
+              "Integration": 1,
+              "BusinessCalendarVersion": 1,
+              "SLAPolicyVersion": 1,
+              "Case": 1000,
+              "NormalizedEvent": 5591,
+              "RawEvent": 2000,
+              "Evaluation": 1
+            }
+          },
+          "worker_notify_claim": {
+            "durationMs": 261,
+            "queryCount": 877,
+            "queryMs": 247,
+            "rowsByModel": {
+              "Notification": 872,
+              "OrganizationEmailSettings": 1,
+              "SlackIntegration": 0,
+              "User": 1,
+              "Case": 871
+            }
+          },
+          "worker_notify": {
+            "durationMs": 733,
+            "queryCount": 1742,
+            "queryMs": 1219,
+            "rowsByModel": {
+              "Notification": 871,
+              "NotificationFailure": 871
+            }
+          },
+          "worker_monthly_report": {
+            "durationMs": 0,
+            "queryCount": 1,
+            "queryMs": 0,
+            "rowsByModel": {
+              "Organization": 1
+            }
+          }
+        },
+        "queryCount": 7242,
+        "failures": [],
+        "deliveriesRefused": 871,
+        "peakRssMb": 324,
+        "peakHeapMb": 183,
+        "passClass": "initial_projection",
+        "liveCases": 0,
+        "newCases": 1000,
+        "alertsClaimed": 871,
+        "seed": 5,
+        "cold": false,
+        "kind": "reconciliation_sweep",
+        "seedRawRows": 8000
+      },
+      "rawRows": 8000,
+      "rawPayloadBytes": 3845716,
+      "afterFirstPass": {
+        "cases": 1000,
+        "closed": 591,
+        "events": 5591,
+        "lastCaseUpdate": "2026-10-09T21:17:24.520Z",
+        "lastEvent": "2026-10-09T21:17:25.969Z"
+      },
+      "splitImport": {
+        "first": {
+          "runs": 3,
+          "passClasses": [
+            "initial_projection"
+          ],
+          "alertsClaimed": 2,
+          "wallMs": {
+            "median": 1737,
+            "p95": 1957
+          },
+          "lockHoldMs": {
+            "median": 1728,
+            "p95": 1949
+          },
+          "queryCount": {
+            "median": 2623,
+            "p95": 2634
+          },
+          "peakRssMb": 327,
+          "peakHeapMb": 167,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": {
+                "median": 1390,
+                "p95": 1539
+              },
+              "queryCount": 2606
+            },
+            "worker_commitment": {
+              "durationMs": {
+                "median": 145,
+                "p95": 170
+              },
+              "queryCount": 3
+            },
+            "worker_re_resolution": {
+              "durationMs": {
+                "median": 11,
+                "p95": 12
+              },
+              "queryCount": 1
+            },
+            "worker_next_reply": {
+              "durationMs": {
+                "median": 22,
+                "p95": 24
+              },
+              "queryCount": 3
+            },
+            "worker_evaluate": {
+              "durationMs": {
+                "median": 169,
+                "p95": 198
+              },
+              "queryCount": 8
+            },
+            "worker_notify_claim": {
+              "durationMs": {
+                "median": 3,
+                "p95": 27
+              },
+              "queryCount": 1
+            },
+            "worker_notify": {
+              "durationMs": {
+                "median": 0,
+                "p95": 3
+              },
+              "queryCount": 0
+            },
+            "worker_monthly_report": {
+              "durationMs": {
+                "median": 0,
+                "p95": 1
+              },
+              "queryCount": 1
+            }
+          },
+          "failures": []
+        },
+        "second": {
+          "runs": 3,
+          "passClasses": [
+            "initial_projection"
+          ],
+          "alertsClaimed": 1906,
+          "wallMs": {
+            "median": 2831,
+            "p95": 3994
+          },
+          "lockHoldMs": {
+            "median": 2365,
+            "p95": 3262
+          },
+          "queryCount": {
+            "median": 5842,
+            "p95": 5869
+          },
+          "peakRssMb": 331,
+          "peakHeapMb": 190,
+          "stages": {
+            "worker_normalize": {
+              "durationMs": {
+                "median": 1809,
+                "p95": 2619
+              },
+              "queryCount": 3906
+            },
+            "worker_commitment": {
+              "durationMs": {
+                "median": 144,
+                "p95": 151
+              },
+              "queryCount": 3
+            },
+            "worker_re_resolution": {
+              "durationMs": {
+                "median": 10,
+                "p95": 11
+              },
+              "queryCount": 1
+            },
+            "worker_next_reply": {
+              "durationMs": {
+                "median": 44,
+                "p95": 45
+              },
+              "queryCount": 3
+            },
+            "worker_evaluate": {
+              "durationMs": {
+                "median": 180,
+                "p95": 185
+              },
+              "queryCount": 8
+            },
+            "worker_notify_claim": {
+              "durationMs": {
+                "median": 193,
+                "p95": 257
+              },
+              "queryCount": 644
+            },
+            "worker_notify": {
+              "durationMs": {
+                "median": 468,
+                "p95": 723
+              },
+              "queryCount": 1276
+            },
+            "worker_monthly_report": {
+              "durationMs": {
+                "median": 0,
+                "p95": 0
+              },
+              "queryCount": 1
+            }
+          },
+          "failures": []
+        },
+        "runs": [
+          {
+            "seed": 201,
+            "first": {
+              "wallMs": 1737,
+              "lockHoldMs": 1728,
+              "lockWaitMs": 1,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 1390,
+                  "queryCount": 2606,
+                  "queryMs": 1318,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 4000,
+                    "Case": 500,
+                    "CustomerIdentity": 500,
+                    "Customer": 200,
+                    "NormalizedEvent": 500
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 134,
+                  "queryCount": 3,
+                  "queryMs": 130,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 9,
+                  "queryCount": 1,
+                  "queryMs": 8,
+                  "rowsByModel": {
+                    "Case": 500
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 22,
+                  "queryCount": 3,
+                  "queryMs": 17,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 2803,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 169,
+                  "queryCount": 8,
+                  "queryMs": 150,
+                  "rowsByModel": {
+                    "Commitment": 1000,
+                    "BusinessCalendarVersion": 1,
+                    "Integration": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 500,
+                    "NormalizedEvent": 2803,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 3,
+                  "queryCount": 1,
+                  "queryMs": 3,
+                  "rowsByModel": {
+                    "Notification": 1
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 0,
+                  "queryCount": 0,
+                  "queryMs": 0,
+                  "rowsByModel": {}
+                },
+                "worker_monthly_report": {
+                  "durationMs": 0,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 2623,
+              "failures": [],
+              "deliveriesRefused": 0,
+              "peakRssMb": 327,
+              "peakHeapMb": 165,
+              "passClass": "initial_projection",
+              "liveCases": 0,
+              "newCases": 500,
+              "alertsClaimed": 0
+            },
+            "second": {
+              "wallMs": 2831,
+              "lockHoldMs": 2365,
+              "lockWaitMs": 1,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 1809,
+                  "queryCount": 3906,
+                  "queryMs": 1711,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 8000,
+                    "Case": 2000,
+                    "CustomerIdentity": 1400,
+                    "NormalizedEvent": 3303
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 151,
+                  "queryCount": 3,
+                  "queryMs": 144,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 10,
+                  "queryCount": 1,
+                  "queryMs": 8,
+                  "rowsByModel": {
+                    "Case": 500
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 43,
+                  "queryCount": 3,
+                  "queryMs": 36,
+                  "rowsByModel": {
+                    "Case": 1000,
+                    "NormalizedEvent": 5606,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 176,
+                  "queryCount": 8,
+                  "queryMs": 174,
+                  "rowsByModel": {
+                    "Commitment": 2000,
+                    "Integration": 1,
+                    "BusinessCalendarVersion": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 1000,
+                    "NormalizedEvent": 5606,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 174,
+                  "queryCount": 629,
+                  "queryMs": 164,
+                  "rowsByModel": {
+                    "Notification": 624,
+                    "OrganizationEmailSettings": 1,
+                    "SlackIntegration": 0,
+                    "User": 1,
+                    "Case": 623
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 459,
+                  "queryCount": 1246,
+                  "queryMs": 762,
+                  "rowsByModel": {
+                    "Notification": 623,
+                    "NotificationFailure": 623
+                  }
+                },
+                "worker_monthly_report": {
+                  "durationMs": 0,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 5797,
+              "failures": [],
+              "deliveriesRefused": 623,
+              "peakRssMb": 331,
+              "peakHeapMb": 189,
+              "passClass": "initial_projection",
+              "liveCases": 500,
+              "newCases": 500,
+              "alertsClaimed": 623
+            }
+          },
+          {
+            "seed": 202,
+            "first": {
+              "wallMs": 1550,
+              "lockHoldMs": 1539,
+              "lockWaitMs": 1,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 1185,
+                  "queryCount": 2606,
+                  "queryMs": 1134,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 4000,
+                    "Case": 500,
+                    "CustomerIdentity": 500,
+                    "Customer": 200,
+                    "NormalizedEvent": 500
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 145,
+                  "queryCount": 3,
+                  "queryMs": 139,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 11,
+                  "queryCount": 1,
+                  "queryMs": 9,
+                  "rowsByModel": {
+                    "Case": 500
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 22,
+                  "queryCount": 3,
+                  "queryMs": 17,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 2800,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 148,
+                  "queryCount": 8,
+                  "queryMs": 131,
+                  "rowsByModel": {
+                    "Commitment": 1000,
+                    "BusinessCalendarVersion": 1,
+                    "Integration": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 500,
+                    "NormalizedEvent": 2800,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 27,
+                  "queryCount": 8,
+                  "queryMs": 27,
+                  "rowsByModel": {
+                    "Notification": 3,
+                    "OrganizationEmailSettings": 1,
+                    "SlackIntegration": 0,
+                    "User": 1,
+                    "Case": 2
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 3,
+                  "queryCount": 4,
+                  "queryMs": 6,
+                  "rowsByModel": {
+                    "Notification": 2,
+                    "NotificationFailure": 2
+                  }
+                },
+                "worker_monthly_report": {
+                  "durationMs": 0,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 2634,
+              "failures": [],
+              "deliveriesRefused": 2,
+              "peakRssMb": 325,
+              "peakHeapMb": 167,
+              "passClass": "initial_projection",
+              "liveCases": 0,
+              "newCases": 500,
+              "alertsClaimed": 2
+            },
+            "second": {
+              "wallMs": 2669,
+              "lockHoldMs": 2194,
+              "lockWaitMs": 1,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 1640,
+                  "queryCount": 3906,
+                  "queryMs": 1553,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 8000,
+                    "Case": 2000,
+                    "CustomerIdentity": 1400,
+                    "NormalizedEvent": 3300
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 126,
+                  "queryCount": 3,
+                  "queryMs": 122,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 10,
+                  "queryCount": 1,
+                  "queryMs": 8,
+                  "rowsByModel": {
+                    "Case": 503
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 44,
+                  "queryCount": 3,
+                  "queryMs": 35,
+                  "rowsByModel": {
+                    "Case": 1000,
+                    "NormalizedEvent": 5596,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 180,
+                  "queryCount": 8,
+                  "queryMs": 156,
+                  "rowsByModel": {
+                    "Commitment": 2000,
+                    "Integration": 1,
+                    "BusinessCalendarVersion": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 1000,
+                    "NormalizedEvent": 5596,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 193,
+                  "queryCount": 644,
+                  "queryMs": 182,
+                  "rowsByModel": {
+                    "Notification": 639,
+                    "OrganizationEmailSettings": 1,
+                    "SlackIntegration": 0,
+                    "User": 1,
+                    "Case": 638
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 468,
+                  "queryCount": 1276,
+                  "queryMs": 775,
+                  "rowsByModel": {
+                    "Notification": 638,
+                    "NotificationFailure": 638
+                  }
+                },
+                "worker_monthly_report": {
+                  "durationMs": 0,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 5842,
+              "failures": [],
+              "deliveriesRefused": 638,
+              "peakRssMb": 326,
+              "peakHeapMb": 190,
+              "passClass": "initial_projection",
+              "liveCases": 500,
+              "newCases": 500,
+              "alertsClaimed": 636
+            }
+          },
+          {
+            "seed": 203,
+            "first": {
+              "wallMs": 1957,
+              "lockHoldMs": 1949,
+              "lockWaitMs": 1,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 1539,
+                  "queryCount": 2606,
+                  "queryMs": 1469,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 4000,
+                    "Case": 500,
+                    "CustomerIdentity": 500,
+                    "Customer": 200,
+                    "NormalizedEvent": 500
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 170,
+                  "queryCount": 3,
+                  "queryMs": 159,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 12,
+                  "queryCount": 1,
+                  "queryMs": 10,
+                  "rowsByModel": {
+                    "Case": 500
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 24,
+                  "queryCount": 3,
+                  "queryMs": 20,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 2798,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 198,
+                  "queryCount": 8,
+                  "queryMs": 197,
+                  "rowsByModel": {
+                    "Commitment": 1000,
+                    "BusinessCalendarVersion": 1,
+                    "Integration": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 500,
+                    "NormalizedEvent": 2798,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 2,
+                  "queryCount": 1,
+                  "queryMs": 2,
+                  "rowsByModel": {
+                    "Notification": 1
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 0,
+                  "queryCount": 0,
+                  "queryMs": 0,
+                  "rowsByModel": {}
+                },
+                "worker_monthly_report": {
+                  "durationMs": 1,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 2623,
+              "failures": [],
+              "deliveriesRefused": 0,
+              "peakRssMb": 324,
+              "peakHeapMb": 151,
+              "passClass": "initial_projection",
+              "liveCases": 0,
+              "newCases": 500,
+              "alertsClaimed": 0
+            },
+            "second": {
+              "wallMs": 3994,
+              "lockHoldMs": 3262,
+              "lockWaitMs": 2,
+              "stages": {
+                "worker_normalize": {
+                  "durationMs": 2619,
+                  "queryCount": 3906,
+                  "queryMs": 2463,
+                  "rowsByModel": {
+                    "Integration": 2,
+                    "CustomProviderConfigVersion": 1,
+                    "RawEvent": 8000,
+                    "Case": 2000,
+                    "CustomerIdentity": 1400,
+                    "NormalizedEvent": 3298
+                  }
+                },
+                "worker_commitment": {
+                  "durationMs": 144,
+                  "queryCount": 3,
+                  "queryMs": 137,
+                  "rowsByModel": {
+                    "Case": 500,
+                    "NormalizedEvent": 1500,
+                    "Commitment": 1
+                  }
+                },
+                "worker_re_resolution": {
+                  "durationMs": 11,
+                  "queryCount": 1,
+                  "queryMs": 9,
+                  "rowsByModel": {
+                    "Case": 500
+                  }
+                },
+                "worker_next_reply": {
+                  "durationMs": 45,
+                  "queryCount": 3,
+                  "queryMs": 37,
+                  "rowsByModel": {
+                    "Case": 1000,
+                    "NormalizedEvent": 5598,
+                    "Commitment": 0
+                  }
+                },
+                "worker_evaluate": {
+                  "durationMs": 185,
+                  "queryCount": 8,
+                  "queryMs": 161,
+                  "rowsByModel": {
+                    "Commitment": 2000,
+                    "BusinessCalendarVersion": 1,
+                    "Integration": 1,
+                    "SLAPolicyVersion": 1,
+                    "Case": 1000,
+                    "NormalizedEvent": 5598,
+                    "RawEvent": 1000,
+                    "Evaluation": 1
+                  }
+                },
+                "worker_notify_claim": {
+                  "durationMs": 257,
+                  "queryCount": 653,
+                  "queryMs": 242,
+                  "rowsByModel": {
+                    "Notification": 648,
+                    "OrganizationEmailSettings": 1,
+                    "SlackIntegration": 0,
+                    "User": 1,
+                    "Case": 647
+                  }
+                },
+                "worker_notify": {
+                  "durationMs": 723,
+                  "queryCount": 1294,
+                  "queryMs": 1201,
+                  "rowsByModel": {
+                    "Notification": 647,
+                    "NotificationFailure": 647
+                  }
+                },
+                "worker_monthly_report": {
+                  "durationMs": 0,
+                  "queryCount": 1,
+                  "queryMs": 0,
+                  "rowsByModel": {
+                    "Organization": 1
+                  }
+                }
+              },
+              "queryCount": 5869,
+              "failures": [],
+              "deliveriesRefused": 647,
+              "peakRssMb": 324,
+              "peakHeapMb": 176,
+              "passClass": "initial_projection",
+              "liveCases": 500,
+              "newCases": 500,
+              "alertsClaimed": 647
+            }
+          }
+        ]
+      },
+      "steady_reconciliation_sweep": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 1523,
+          "p95": 1822
+        },
+        "lockHoldMs": {
+          "median": 1515,
+          "p95": 1811
+        },
+        "queryCount": {
+          "median": 3421,
+          "p95": 3421
+        },
+        "peakRssMb": 319,
+        "peakHeapMb": 231,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 1351,
+              "p95": 1687
+            },
+            "queryCount": 3406
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 4,
+              "p95": 5
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 3,
+              "p95": 6
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 46,
+              "p95": 75
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 61,
+              "p95": 285
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 7,
+              "p95": 9
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          },
+          "worker_monthly_report": {
+            "durationMs": {
+              "median": 0,
+              "p95": 4
+            },
+            "queryCount": 1
+          }
+        },
+        "failures": [],
+        "heapAfterGcMb": [
+          81,
+          81,
+          81,
+          81,
+          81
+        ]
+      },
+      "steady_active_set_poll": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 1921,
+          "p95": 2253
+        },
+        "lockHoldMs": {
+          "median": 1909,
+          "p95": 2244
+        },
+        "queryCount": {
+          "median": 3420,
+          "p95": 3420
+        },
+        "peakRssMb": 247,
+        "peakHeapMb": 139,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 1802,
+              "p95": 2132
+            },
+            "queryCount": 3406
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 4,
+              "p95": 6
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 3,
+              "p95": 4
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 54,
+              "p95": 66
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 21,
+              "p95": 33
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 6,
+              "p95": 8
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": [],
+        "heapAfterGcMb": [
+          80,
+          80,
+          80,
+          80,
+          80
+        ]
+      },
+      "deriveAlone": {
+        "loadMs": 32,
+        "deriveMs": 15,
+        "rawRows": 8000,
+        "cases": 1000,
+        "events": 5591,
+        "failures": 0
+      },
+      "changed_1pct": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 1183,
+          "p95": 1561
+        },
+        "lockHoldMs": {
+          "median": 1177,
+          "p95": 1556
+        },
+        "queryCount": {
+          "median": 3430,
+          "p95": 3430
+        },
+        "peakRssMb": 401,
+        "peakHeapMb": 345,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 1103,
+              "p95": 1472
+            },
+            "queryCount": 3416
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 3,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 46,
+              "p95": 49
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 18,
+              "p95": 22
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 4,
+              "p95": 5
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": []
+      },
+      "changed_5pct": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 2655,
+          "p95": 2728
+        },
+        "lockHoldMs": {
+          "median": 2643,
+          "p95": 2720
+        },
+        "queryCount": {
+          "median": 3470,
+          "p95": 3470
+        },
+        "peakRssMb": 347,
+        "peakHeapMb": 338,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 2519,
+              "p95": 2620
+            },
+            "queryCount": 3456
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 3,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 2,
+              "p95": 2
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 63,
+              "p95": 71
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 23,
+              "p95": 40
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 2,
+              "p95": 5
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": []
+      },
+      "changed_25pct": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 2381,
+          "p95": 2927
+        },
+        "lockHoldMs": {
+          "median": 2373,
+          "p95": 2918
+        },
+        "queryCount": {
+          "median": 3670,
+          "p95": 3670
+        },
+        "peakRssMb": 359,
+        "peakHeapMb": 372,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 2240,
+              "p95": 2811
+            },
+            "queryCount": 3656
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 3,
+              "p95": 5
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 2,
+              "p95": 4
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 71,
+              "p95": 85
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 27,
+              "p95": 40
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": []
+      },
+      "forcedRenormalize": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 1823,
+          "p95": 2373
+        },
+        "lockHoldMs": {
+          "median": 1815,
+          "p95": 2367
+        },
+        "queryCount": {
+          "median": 3421,
+          "p95": 3421
+        },
+        "peakRssMb": 394,
+        "peakHeapMb": 363,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 1723,
+              "p95": 2259
+            },
+            "queryCount": 3407
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 3,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 65,
+              "p95": 71
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 26,
+              "p95": 42
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": []
+      },
+      "forcedActivation": {
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 2447,
+          "p95": 3315
+        },
+        "lockHoldMs": {
+          "median": 2435,
+          "p95": 3305
+        },
+        "queryCount": {
+          "median": 3421,
+          "p95": 3421
+        },
+        "peakRssMb": 398,
+        "peakHeapMb": 383,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 2275,
+              "p95": 3102
+            },
+            "queryCount": 3406
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 3,
+              "p95": 4
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 66,
+              "p95": 92
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 82,
+              "p95": 99
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 2,
+              "p95": 3
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          },
+          "worker_monthly_report": {
+            "durationMs": {
+              "median": 0,
+              "p95": 1
+            },
+            "queryCount": 1
+          }
+        },
+        "failures": []
+      },
+      "dryRunDiff": {
+        "ms": {
+          "median": 120,
+          "p95": 134
+        },
+        "peakRssMb": 410,
+        "peakHeapMb": 313,
+        "casesChanged": 750,
+        "guard": null
+      },
+      "concurrency": [
+        {
+          "sweepWallMs": 2063,
+          "sweepLockHoldMs": 2055,
+          "webhookBlockedMs": 1864,
+          "neighbourAloneMs": 2103,
+          "neighbourConcurrentMs": 1222
+        },
+        {
+          "sweepWallMs": 1664,
+          "sweepLockHoldMs": 1657,
+          "webhookBlockedMs": 1466,
+          "neighbourAloneMs": 844,
+          "neighbourConcurrentMs": 953
+        },
+        {
+          "sweepWallMs": 1328,
+          "sweepLockHoldMs": 1322,
+          "webhookBlockedMs": 1129,
+          "neighbourAloneMs": 633,
+          "neighbourConcurrentMs": 711
+        }
+      ],
+      "guardAbort": {
+        "ticketsClosedAtSource": 409,
+        "runs": 5,
+        "passClasses": [
+          "recurring"
+        ],
+        "alertsClaimed": 0,
+        "wallMs": {
+          "median": 138,
+          "p95": 147
+        },
+        "lockHoldMs": {
+          "median": 133,
+          "p95": 142
+        },
+        "queryCount": {
+          "median": 20,
+          "p95": 20
+        },
+        "peakRssMb": 485,
+        "peakHeapMb": 355,
+        "stages": {
+          "worker_normalize": {
+            "durationMs": {
+              "median": 57,
+              "p95": 61
+            },
+            "queryCount": 6
+          },
+          "worker_commitment": {
+            "durationMs": {
+              "median": 2,
+              "p95": 5
+            },
+            "queryCount": 1
+          },
+          "worker_re_resolution": {
+            "durationMs": {
+              "median": 1,
+              "p95": 2
+            },
+            "queryCount": 1
+          },
+          "worker_next_reply": {
+            "durationMs": {
+              "median": 50,
+              "p95": 53
+            },
+            "queryCount": 3
+          },
+          "worker_evaluate": {
+            "durationMs": {
+              "median": 19,
+              "p95": 20
+            },
+            "queryCount": 6
+          },
+          "worker_notify_claim": {
+            "durationMs": {
+              "median": 1,
+              "p95": 1
+            },
+            "queryCount": 3
+          },
+          "worker_notify": {
+            "durationMs": {
+              "median": 0,
+              "p95": 0
+            },
+            "queryCount": 0
+          }
+        },
+        "failures": [
+          "normalize:custom: A safety check stopped this sync before any change was applied (mass_lifecycle_change)"
+        ],
+        "footprintBefore": {
+          "cases": 1000,
+          "closed": 591,
+          "events": 7141,
+          "lastCaseUpdate": "2026-10-09T21:19:05.696Z",
+          "lastEvent": "2026-10-09T21:18:33.851Z"
+        },
+        "footprintAfter": {
+          "cases": 1000,
+          "closed": 591,
+          "events": 7141,
+          "lastCaseUpdate": "2026-10-09T21:19:05.696Z",
+          "lastEvent": "2026-10-09T21:18:33.851Z"
+        },
+        "unchanged": true
+      }
+    }
+  },
+  "finishedAt": "2026-10-09T21:19:06.999Z"
+}

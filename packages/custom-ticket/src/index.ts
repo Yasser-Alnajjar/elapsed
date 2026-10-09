@@ -78,6 +78,15 @@ export {
   type GuardCode,
   type GuardCounts,
 } from "./guards";
+export {
+  FIRST_IMPORT_LOCK_HOLD_BOUND_MS,
+  ORGANIZATION_SWEEP_LIMIT_MS,
+  RECURRING_LOCK_HOLD_LIMIT_MS,
+  classifyProjectionPass,
+  lockHoldLimitMs,
+  type PassClassInput,
+  type ProjectionPassClass,
+} from "./pass-class";
 export { LIFECYCLE_GUARD, lifecyclePreviewHash, loadActiveConfig, loadRawRows, normalizeCustom } from "./normalize";
 export { CUSTOM_ACCESS_NOTE, customAdapter, customWebAdapter } from "./adapter";
 export { customTicketUrl, recognizeCustomTicketUrl } from "./ticket-url";
