@@ -18,7 +18,9 @@ export type MappingErrorCode =
   | "payload_too_large"
   | "duplicate_id"
   | "transform_failed"
-  | "unsafe_id";
+  | "unsafe_id"
+  | "creation_actor_unknown"
+  | "unknown_visibility";
 
 export class MappingError extends Error {
   readonly code: MappingErrorCode;

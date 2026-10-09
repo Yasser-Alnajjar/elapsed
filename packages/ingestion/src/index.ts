@@ -1,6 +1,7 @@
 export {
   IngestAbortedError,
   IntegrationNotConfiguredError,
+  NormalizationAbortedError,
   PERMISSION_DENIED_BRAND,
   PermissionDeniedError,
   ProviderUnavailableError,

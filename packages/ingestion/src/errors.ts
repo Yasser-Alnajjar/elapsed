@@ -83,3 +83,22 @@ export class IngestAbortedError extends Error {
     this.reason = reason;
   }
 }
+
+/**
+ * A normalization pass was stopped by a safety guard (N9, plan 09 6.4) before
+ * anything was projected. Existing cases, events and evaluations are untouched
+ * and the pass repeats until the cause is resolved. `code` is a fixed reason
+ * (`mass_deletion`, `mass_record_failure`, `mass_lifecycle_change`,
+ * `live_case_ceiling`); `details` holds counts and up to 20 record ids, never
+ * source text. The message is what the customer sees in `lastSyncError`.
+ */
+export class NormalizationAbortedError extends Error {
+  readonly code: string;
+  readonly details: Readonly<Record<string, unknown>>;
+  constructor(code: string, details: Record<string, unknown> = {}) {
+    super(`A safety check stopped this sync before any change was applied (${code})`);
+    this.name = "NormalizationAbortedError";
+    this.code = code;
+    this.details = details;
+  }
+}

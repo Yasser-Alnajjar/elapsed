@@ -93,6 +93,7 @@ model Organization {
   customProviderDrafts  CustomProviderDraft[]
   customConfigVersions  CustomProviderConfigVersion[]
   integrationSyncRuns   IntegrationSyncRun[]
+  guardOverrides        GuardOverride[]
 
   @@map("organizations")
 }
@@ -329,6 +330,7 @@ model Integration {
   cases          Case[]
   rawEvents      RawEvent[]
   syncRuns       IntegrationSyncRun[]
+  guardOverrides GuardOverride[]
   configVersions CustomProviderConfigVersion[]
 
   @@unique([organizationId, provider])
@@ -1522,4 +1524,42 @@ model IntegrationConnectLink {
 
   @@index([organizationId, provider, createdAt])
   @@map("integration_connect_links")
+}
+
+/// A durable, tenant-scoped record of every override of a normalization safety
+/// guard (N9, plan 09 6.11): the customer path (organization owner) and the
+/// support-assisted path. Only the mass lifecycle change guard can be
+/// overridden; a mass deletion never can. Single use, expiring, bound to the
+/// exact preview (a hash of the aborted pass's record set). Not pruned with
+/// the 30-day sync history and not `AdminAuditLog`, which is platform-side.
+model GuardOverride {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  integrationId      String
+  /// `mass_lifecycle_change` is the only value the engine honors.
+  guard              String
+  /// Hash of the guard and the sorted ids of the records the preview showed.
+  previewHash        String
+  /// `R`, `L`, ratio and the like: counts only.
+  counts             Json
+  reason             String
+  /// `customer` or `support_assisted`.
+  path               String
+  requestedByUserId  String
+  /// Support path: the organization owner who authorized this exact preview.
+  authorizedByUserId String?
+  operatorEmail      String?
+  /// When the confirmation completed; the engine honors only confirmed rows.
+  confirmedAt        DateTime?
+  expiresAt          DateTime
+  consumedAt         DateTime?
+  /// `applied`, `void` (the record set changed) or `expired`.
+  outcome            String?
+  createdAt          DateTime     @default(now())
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration        Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, guard, consumedAt])
+  @@index([organizationId, createdAt])
+  @@map("guard_overrides")
 }

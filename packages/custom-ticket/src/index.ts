@@ -49,11 +49,9 @@ export {
   MAX_PAGES_PER_RUN,
   MAX_RECORD_FAILURES_REPORTED,
   MAX_TICKETS_PER_RUN,
-  RAW_PREFIX,
   ZERO_PROGRESS_LIMIT,
   authHeaders,
   buildTicketEvents,
-  envOf,
   listingHash,
   runCustomIngest,
   sensitiveValues,
@@ -61,3 +59,23 @@ export {
   type RawEventInput,
   type TicketRawEvents,
 } from "./ingest";
+export { RAW_PREFIX, envOf } from "./shared";
+export { CUSTOM_PROVIDER, CUSTOM_SOURCE_ROLE, OPENING_MESSAGE_WINDOW_MS, deriveBatch, type DerivedBatch, type RawRow } from "./derive";
+export {
+  DEFAULT_LIVE_CASE_CEILING,
+  LIFECYCLE_MIN,
+  LIFECYCLE_RATIO,
+  MASS_DELETION_MIN,
+  MASS_DELETION_RATIO,
+  RECORD_FAILURE_MIN,
+  RECORD_FAILURE_RATIO,
+  exceedsCeiling,
+  exceedsLifecycleChange,
+  exceedsMassDeletion,
+  exceedsRecordFailure,
+  firstFiringGuard,
+  liveCaseCeiling,
+  type GuardCode,
+  type GuardCounts,
+} from "./guards";
+export { LIFECYCLE_GUARD, lifecyclePreviewHash, loadActiveConfig, loadRawRows, normalizeCustom } from "./normalize";

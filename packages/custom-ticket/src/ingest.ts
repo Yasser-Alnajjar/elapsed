@@ -19,7 +19,8 @@ import { computeSourceHash } from "./hash";
 import { MAX_STORED_PAYLOAD_BYTES, commentPaths, historyPaths, projectByPaths, ticketPaths } from "./projection";
 import { START, type Position } from "./requests";
 import { parseConfig, secretFieldNames, type AuthConfig, type CustomConfig } from "./schema";
-import { evaluateDate, evaluateText, type EvalEnv } from "./transforms";
+import { envOf, RAW_PREFIX } from "./shared";
+import { evaluateText } from "./transforms";
 import { validateConfig } from "./validate";
 
 export const MAX_PAGES_PER_RUN = 50;
@@ -27,9 +28,6 @@ export const MAX_TICKETS_PER_RUN = 5_000;
 export const MAX_RECORD_FAILURES_REPORTED = 50;
 export const ZERO_PROGRESS_LIMIT = 3;
 const MAX_VERIFICATIONS_PER_RUN = 25;
-
-/** Raw-event id prefixes the normalizer reads. */
-export const RAW_PREFIX = { ticket: "ticket:", comment: "comment:", history: "history:", deleted: "ticket_deleted:" } as const;
 
 export interface RawEventInput {
   providerEventId: string;
@@ -78,10 +76,6 @@ export function listingHash(config: CustomConfig): string {
 function formatUpdatedSince(date: Date, format: "iso8601" | "epoch_seconds" | "epoch_millis"): string {
   if (format === "iso8601") return date.toISOString();
   return String(format === "epoch_seconds" ? Math.floor(date.getTime() / 1000) : date.getTime());
-}
-
-export function envOf(config: CustomConfig): EvalEnv {
-  return { timezone: config.timezone ?? null };
 }
 
 /** A stored raw event's payload is capped; a larger one fails its record and is never truncated. */
