@@ -685,7 +685,7 @@ Phase N9 — Custom ticket provider        (parallel track: needs N2, N3 and D31
   - [ ] **N9.0-F2** Owner's review and approval of the five-file copy-only diff on `copy/docs-reconciliation-30min`.
   - [ ] **N9.0-F3** Resolve U2 (plan 09 §15.1) before Beta activation.
 - [x] **N9.1** _(done 2026-10-09: 8/8 criteria pass with `undici` 7.30.0; option A adopted; result in plan 09 §8.2)_ Security spike: prove destination pinning, TLS hostname verification, SNI and dual-stack handling with `undici`; otherwise use the `node:https` fallback. Result recorded in plan 09 before anything depends on it.
-- [ ] **N9.2** `@sla/safe-http`: shared address classification (extracted, `@sla/email` behavior unchanged), pinned HTTPS client, limits and budgets.
+- [x] **N9.2** _(done 2026-10-09; type-check clean; behavior checked with a throwaway local script, no repo tests added per CLAUDE.md)_ `@sla/safe-http`: shared address classification (extracted, `@sla/email` behavior unchanged), pinned HTTPS client, limits and budgets.
 - [ ] **N9.3** Redaction of credentials and URLs in logs, sync errors and Sentry (shared; regression coverage).
 - [ ] **N9.4** `@sla/custom-ticket`: strict Zod config schema, constrained JSONPath subset, fixed transforms, validators.
 - [ ] **N9.5** Additive migration (enum value, drafts, immutable config versions, sync runs, `slaSupport`, operator flag), strict per-value **authenticated** secrets helper bound to organization, integration and credential field, tenant-scope entries; exit: the encryption, redaction and existing-provider-compatibility verification of plan 09 §8.4 (Q16). The key-rotation limitation (owners re-enter custom credentials until N8-S7) is documented.
