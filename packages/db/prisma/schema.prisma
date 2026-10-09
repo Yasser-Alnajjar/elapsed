@@ -94,6 +94,7 @@ model Organization {
   customConfigVersions  CustomProviderConfigVersion[]
   integrationSyncRuns   IntegrationSyncRun[]
   guardOverrides        GuardOverride[]
+  customActivationAudits CustomActivationAudit[]
 
   @@map("organizations")
 }
@@ -331,6 +332,7 @@ model Integration {
   rawEvents      RawEvent[]
   syncRuns       IntegrationSyncRun[]
   guardOverrides GuardOverride[]
+  activationAudits CustomActivationAudit[]
   configVersions CustomProviderConfigVersion[]
 
   @@unique([organizationId, provider])
@@ -1565,4 +1567,28 @@ model GuardOverride {
   @@index([integrationId, guard, consumedAt])
   @@index([organizationId, createdAt])
   @@map("guard_overrides")
+}
+
+/// Who activated or rolled back which `custom` configuration version, and what it
+/// cost (N9, plan 09 5.5 and 5.6): the counts of commitments the activation
+/// cancelled and the preview hash the owner confirmed. Append-only, tenant
+/// scoped (there is no organization-level audit log; `AdminAuditLog` is
+/// platform-side). Holds counts and ids only, never configuration or secrets.
+model CustomActivationAudit {
+  id             String       @id @default(cuid())
+  organizationId String
+  integrationId  String
+  /// `activate` or `rollback`.
+  action         String
+  fromVersion    Int?
+  toVersion      Int
+  userId         String
+  /// `{ cancelledByKind, keptFinalized, remainsCancelled, previewHash }`: counts and a hash.
+  details        Json
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration    Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, createdAt])
+  @@map("custom_activation_audits")
 }

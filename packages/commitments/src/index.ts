@@ -77,3 +77,14 @@ export { attributeBreachLegs, findBreachesInPeriod, getPersistedBreachedAt, summ
 export type { BreachOccurrence, BreachWithLeg, ComplianceBreakdown } from "./breach-analytics";
 export { computeLinkCoverage, LINK_COVERAGE_WINDOW_DAYS, NO_LINK_COVERAGE } from "./link-coverage";
 export type { LinkCoverage } from "./link-coverage";
+export { SLA_SUPPORT_SELECT, unsupportedKindsOf } from "./sla-support";
+export {
+  NextReplyRestoreBlockedError,
+  StaleCancellationPreviewError,
+  assessActivationImpact,
+  cancelUnsupportedKindCommitments,
+  previewUnsupportedKindCancellation,
+  type ActivationImpact,
+  type CancellationPreview,
+  type KindPreview,
+} from "./unsupported-kinds";
