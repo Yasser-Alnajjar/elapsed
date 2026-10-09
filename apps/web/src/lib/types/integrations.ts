@@ -51,6 +51,12 @@ export interface IntegrationsPageData {
   intercomConfig: IntegrationConfigStatus;
   github: IntegrationConnectionView;
   githubConfig: IntegrationConfigStatus;
+  /** The `custom` REST source (N9): no OAuth app, so no config status. */
+  custom: IntegrationConnectionView;
+  /** The operator's Beta flag for this organization (`Organization.customProviderEnabled`). */
+  customEnabled: boolean;
+  /** The one customer-facing sync state of the Custom REST source (plan 09, 6.13), or null when it is not connected. */
+  customState: import("@/lib/custom-provider/status").CustomSyncState | null;
   slack: SlackConnectionView;
   zendeskConfig: IntegrationConfigStatus;
   jiraConfig: IntegrationConfigStatus;
@@ -77,7 +83,15 @@ export type IntegrationProvider =
   | "jira"
   | "linear"
   | "intercom"
-  | "github";
+  | "github"
+  | "custom";
+
+/**
+ * Every provider except `custom`, which has no OAuth app: the onboarding flow,
+ * the OAuth source cards and the per-provider detail page are built for these,
+ * and `custom` has its own wizard and page (N9).
+ */
+export type OAuthIntegrationProvider = Exclude<IntegrationProvider, "custom">;
 
 export const INTEGRATION_PROVIDERS: IntegrationProvider[] = [
   "zendesk",
@@ -85,7 +99,11 @@ export const INTEGRATION_PROVIDERS: IntegrationProvider[] = [
   "linear",
   "intercom",
   "github",
+  "custom",
 ];
+
+export const isOAuthIntegrationProvider = (value: string): value is OAuthIntegrationProvider =>
+  value !== "custom" && isIntegrationProvider(value);
 
 export function isIntegrationProvider(
   value: string,
@@ -100,6 +118,7 @@ export const INTEGRATION_PROVIDER_LABELS: Record<IntegrationProvider, string> =
     linear: "Linear",
     intercom: "Intercom",
     github: "GitHub",
+    custom: "Custom REST",
   };
 
 /**

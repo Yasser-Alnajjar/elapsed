@@ -57,6 +57,9 @@ export const ADMIN_AUDIT_ACTIONS = [
   "request_renormalize",
   "update_worker_settings",
   "billing_override",
+  "enable_custom_provider",
+  "disable_custom_provider",
+  "apply_guard_override",
 ] as const;
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
 
@@ -68,6 +71,9 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   request_renormalize: "Requested re-normalization",
   update_worker_settings: "Changed worker settings",
   billing_override: "Billing override",
+  enable_custom_provider: "Enabled Custom REST (Beta)",
+  disable_custom_provider: "Disabled Custom REST (Beta)",
+  apply_guard_override: "Applied a guard override (support-assisted)",
 };
 
 export interface AdminAuditRow {
@@ -247,6 +253,8 @@ export interface AdminTenantDetail {
   casesWithNoMatchingPolicy: number;
   work: AdminWorkRunSummary | null;
   entitlements: AdminEntitlements;
+  /** The operator's Beta flag for the `custom` source (N9, plan 09 8.7). Default off. */
+  customProviderEnabled: boolean;
 }
 
 /** One entitlement check that warned, blocked, or found a lapsed trial (N6.3, N6.4). */

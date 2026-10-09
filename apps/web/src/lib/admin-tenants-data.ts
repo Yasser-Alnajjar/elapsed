@@ -340,6 +340,7 @@ export async function getAdminTenantDetail(
     ]);
   const tenant = rows[0];
   if (!tenant) return null;
+  const customFlag = await prisma.organization.findUnique({ where: { id: organizationId }, select: { customProviderEnabled: true } });
 
   const lastRunDurationMs =
     workState?.lastStartedAt && workState.lastFinishedAt && workState.lastFinishedAt >= workState.lastStartedAt
@@ -394,6 +395,7 @@ export async function getAdminTenantDetail(
         }
       : null,
     casesWithNoMatchingPolicy,
+    customProviderEnabled: customFlag?.customProviderEnabled === true,
     entitlements: {
       enforced: workerSettings.entitlementsEnforced,
       usage,

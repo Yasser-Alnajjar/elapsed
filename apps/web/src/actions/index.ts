@@ -3,6 +3,7 @@ import { DashboardActions } from "./dashboard";
 import { CasesActions } from "./cases";
 import { OnboardingActions } from "./onboarding";
 import { IntegrationsActions } from "./integrations";
+import { CustomProviderActions } from "./custom-provider";
 import { SlaConfigurationActions } from "./sla-configuration";
 import { NotificationsActions } from "./notifications";
 import { WorkerSettingsActions } from "./worker-settings";
@@ -29,6 +30,7 @@ export const Actions = {
   Cases: CasesActions,
   Onboarding: OnboardingActions,
   Integrations: IntegrationsActions,
+  CustomProvider: CustomProviderActions,
   SlaConfiguration: SlaConfigurationActions,
   Notifications: NotificationsActions,
   WorkerSettings: WorkerSettingsActions,

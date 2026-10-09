@@ -9,7 +9,7 @@ import {
 import { postMessage } from "@sla/slack";
 import { sendEmail, type EmailConfig } from "@sla/email";
 import type { NotificationCandidate } from "@sla/commitments";
-import { formatSlackMessage, buildSlaAlertEmail } from "./format";
+import { alertCaveatFor, formatSlackMessage, buildSlaAlertEmail } from "./format";
 
 export function toEmailConfig(settings: NonNullable<Awaited<ReturnType<typeof getEmailSettings>>>): EmailConfig {
   return {
@@ -107,6 +107,8 @@ interface ClaimedNotification {
     caseUrl: string | null;
     /** The organization's display timezone, for alert timestamps. */
     timeZone: string;
+    /** Caveat for a figure computed on incomplete data (N9.13); null for a fully supported source. */
+    caveat: string | null;
   };
 }
 
@@ -178,7 +180,15 @@ export async function claimNotifications(
   const caseRows = await prisma.case.findMany({
     // A case whose source is disconnected is skipped without claiming, so it can still alert after a reconnect.
     where: { id: { in: [...new Set(toSend.map((c) => c.caseId))] }, deletedAt: null, ...CASE_SOURCE_CONNECTED },
-    select: { id: true, externalId: true, subject: true, customer: { select: { name: true } }, organization: { select: { timezone: true } } },
+    select: {
+      id: true,
+      externalId: true,
+      subject: true,
+      customer: { select: { name: true } },
+      organization: { select: { timezone: true } },
+      // What the source cannot support (N9); null for every provider that predates it.
+      sourceIntegration: { select: { slaSupport: true } },
+    },
   });
   const caseById = new Map(caseRows.map((c) => [c.id, c]));
 
@@ -199,6 +209,8 @@ export async function claimNotifications(
           customerName: caseRow.customer?.name ?? null,
           subject: caseRow.subject,
           timeZone: caseRow.organization?.timezone ?? "UTC",
+          // N9.13: a Resolution alert on a source without status history says so.
+          caveat: alertCaveatFor(candidate.kind, caseRow.sourceIntegration?.slaSupport ?? null),
           // 3.9/E-19: shared by both channels — Slack alerts previously carried
           // no case link at all.
           // N5.7: `ref`/`n` let the case page record the alert's first open (click-through).

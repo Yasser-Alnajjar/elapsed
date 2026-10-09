@@ -26,6 +26,8 @@ export interface SlaAlertData {
   startedText?: string;
   breachedText?: string;
   sourceStaleSinceText?: string;
+  /** A caveat for a figure computed on incomplete data (a source with no status history). */
+  caveatText?: string;
   /** Deep link to the case; omitted when the deployment has no public URL. */
   caseUrl?: string | null;
   /** Who the alert is sent on behalf of: the organization's configured "from name". */
@@ -72,6 +74,7 @@ export const slaAlertTemplate = defineEmailTemplate<SlaAlertData>({
     if (data.sourceStaleSinceText) rows.push({ label: "Source data stale since", value: data.sourceStaleSinceText });
     if (rows.length > 0) blocks.push({ type: "details", rows });
 
+    if (data.caveatText) blocks.push({ type: "note", text: [data.caveatText] });
     if (data.caseUrl) blocks.push({ type: "button", label: "View ticket", url: data.caseUrl });
     blocks.push({
       type: "note",

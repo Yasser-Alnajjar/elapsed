@@ -62,6 +62,19 @@ export function describeAuditChange(row: Pick<AdminAuditRow, "action" | "metadat
       if (row.integrationId) facts.push({ label: "Integration", value: row.integrationId });
       return { entries: [], facts };
     }
+    case "apply_guard_override": {
+      if (isObject(row.metadata)) {
+        facts.push({ label: "Guard", value: text(row.metadata.guard) ?? "mass_lifecycle_change" });
+        const hash = text(row.metadata.previewHash);
+        if (hash) facts.push({ label: "Preview", value: hash.slice(0, 12) });
+      }
+      return { entries: [], facts };
+    }
+    case "enable_custom_provider":
+    case "disable_custom_provider": {
+      if (isObject(row.metadata) && row.metadata.pausedPolling === true) facts.push({ label: "Polling", value: "Paused with the flag; resume it separately" });
+      return { entries: [], facts };
+    }
     default:
       return { entries: [], facts };
   }

@@ -23,6 +23,8 @@ function providerAppUrl({
       return "https://intercom.com";
     case "github":
       return repo ? `https://github.com/${repo}` : "https://github.com";
+    case "custom":
+      return "/settings/integrations/custom";
   }
 }
 

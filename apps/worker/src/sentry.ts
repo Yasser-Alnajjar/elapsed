@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { redactSentryEvent, redactString, redactValue } from "@sla/logger";
 
 /**
  * The worker is a bare Node process, not a framework with its own
@@ -18,6 +19,9 @@ export function initSentry(): void {
     dsn,
     tracesSampleRate: 0,
     environment: process.env.NODE_ENV ?? "production",
+    // Credentials, authorization headers and sensitive URLs never leave the process (N9.3).
+    beforeSend: (event) => redactSentryEvent(event),
+    beforeBreadcrumb: (breadcrumb) => redactValue(breadcrumb),
   });
   initialized = true;
 }
@@ -26,7 +30,7 @@ export function captureException(
   context?: Record<string, unknown>,
 ): void {
   if (!initialized) return;
-  Sentry.captureException(error, context ? { extra: context } : undefined);
+  Sentry.captureException(error, context ? { extra: redactValue(context) } : undefined);
 }
 
 export function captureMessage(
@@ -35,7 +39,7 @@ export function captureMessage(
 ): void {
   if (!initialized) return;
   const { level, ...extra } = context ?? {};
-  Sentry.captureMessage(message, { level, extra });
+  Sentry.captureMessage(redactString(message), { level, extra: redactValue(extra) });
 }
 
 /** Called during shutdown so a capture made just before exit actually reaches Sentry rather than being dropped mid-flight. */

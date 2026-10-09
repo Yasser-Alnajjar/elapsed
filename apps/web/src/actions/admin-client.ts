@@ -40,6 +40,11 @@ export const AdminClientActions = {
     return send<{ ok: boolean }>(`/api/admin/integrations/${integrationId}`, "POST", { action });
   },
 
+  /** Turns the Custom REST Beta flag on or off for one organization; audited. */
+  setCustomProviderFlag(organizationId: string, enabled: boolean) {
+    return send<{ changed: boolean; pausedPolling: boolean }>(`/api/admin/tenants/${organizationId}/custom-provider`, "POST", { enabled });
+  },
+
   /** One billing override on one organization; audited as `billing_override`. Errors carry `{ error, code }`. */
   billingAction(organizationId: string, input: AdminBillingActionInput) {
     return send<{ ok?: boolean; code?: string }>(`/api/admin/billing/${organizationId}`, "POST", input);

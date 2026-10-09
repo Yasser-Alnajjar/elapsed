@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ArrowRight, Webhook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { IntegrationsPageData } from "@/lib/types/integrations";
+import { CustomIntegrationCard } from "./CustomIntegrationCard";
 import { IntegrationsHeader } from "./IntegrationsHeader";
 import { IntegrationsMetrics } from "./IntegrationsMetrics";
 import { SecurityPrinciples } from "./SecurityPrinciples";
@@ -75,6 +76,14 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
                 delay={SOURCE_INTEGRATION_SPECS.indexOf(spec) * CARD_STAGGER}
               />
             ))}
+            {role === "ticket_source" &&
+              (data.customEnabled || data.custom.connected) && (
+                <CustomIntegrationCard
+                  view={data.custom}
+                  state={data.customState}
+                  delay={SOURCE_INTEGRATION_SPECS.length * CARD_STAGGER}
+                />
+              )}
           </IntegrationGroup>
         ),
       )}

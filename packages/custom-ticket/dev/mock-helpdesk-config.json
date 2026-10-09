@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "displayName": "Mock Helpdesk",
+  "connection": { "baseUrl": "http://127.0.0.1:4010" },
+  "auth": { "type": "api_key_header", "headerName": "X-Api-Key" },
+  "tickets": {
+    "request": {
+      "method": "GET",
+      "path": "/v2/tickets",
+      "query": { "updated_after": "{{updatedSince}}", "per_page": "{{limit}}" }
+    },
+    "itemsPath": "$.data[*]",
+    "pagination": {
+      "type": "cursor",
+      "cursorPath": "$.meta.next_cursor",
+      "param": "cursor",
+      "in": "query",
+      "pageSize": 10
+    },
+    "incremental": { "format": "iso8601", "lookbackSeconds": 300 }
+  },
+  "comments": {
+    "request": {
+      "method": "GET",
+      "path": "/v2/tickets/{{ticket.id}}/comments"
+    },
+    "itemsPath": "$.comments[*]",
+    "pagination": { "type": "none" }
+  },
+  "statusHistory": {
+    "request": { "method": "GET", "path": "/v2/tickets/{{ticket.id}}/history" },
+    "itemsPath": "$.entries[*]",
+    "pagination": { "type": "none" },
+    "mapping": {
+      "id": "$.id",
+      "changedAt": "$.at",
+      "toStatus": "$.to",
+      "fromStatus": "$.from"
+    }
+  },
+  "mapping": {
+    "id": "$.id",
+    "createdAt": "$.created_at",
+    "status": "$.state",
+    "title": "$.subject",
+    "priority": "$.priority",
+    "updatedAt": "$.updated_at",
+    "customerId": "$.account.id",
+    "customerName": "$.account.name",
+    "closedAt": "$.resolved_at",
+    "tags": "$.labels",
+    "channel": "$.source"
+  },
+  "commentMapping": {
+    "id": "$.id",
+    "createdAt": "$.at",
+    "authorRole": "$.author.type",
+    "isPublic": "$.public",
+    "body": "$.body",
+    "authorName": "$.author.name"
+  },
+  "valueMaps": {
+    "status": {
+      "new": "new",
+      "open": "open",
+      "waiting": "pending_customer",
+      "solved": "resolved"
+    },
+    "priority": { "p1": "urgent", "p2": "high", "p3": "normal", "p4": "low" },
+    "authorRole": { "requester": "customer", "agent": "agent" }
+  },
+  "unknownStatus": "fail",
+  "importWindowDays": 90,
+  "slaMode": "full",
+  "creationActor": { "type": "first_comment_author" },
+  "ticketUrlTemplate": "https://helpdesk.example.test/tickets/{id}"
+}

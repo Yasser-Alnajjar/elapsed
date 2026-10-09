@@ -9,7 +9,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { IntegrationProvider } from "@/lib/types/integrations";
+import type { OAuthIntegrationProvider } from "@/lib/types/integrations";
 import type { PulsePanelProps } from "./ConnectedCardBody";
 import { GithubConnectForm } from "./GithubCard";
 import { IntercomConnectButton } from "./IntercomCard";
@@ -19,7 +19,7 @@ import { ZendeskConnectForm } from "./ZendeskCard";
 
 /** Everything that differs between the source-provider cards on the integrations page. */
 export interface SourceIntegrationSpec {
-  provider: IntegrationProvider;
+  provider: OAuthIntegrationProvider;
   label: string;
   subtitle: string;
   tag: string;

@@ -1,4 +1,5 @@
 import type { Breadcrumb, ErrorEvent } from "@sentry/nextjs";
+import { redactSentryEvent, redactValue } from "@sla/logger";
 
 /**
  * Query parameters that carry credentials. `secret` is the legacy Jira
@@ -44,16 +45,17 @@ export function scrubSentryEvent(event: ErrorEvent): ErrorEvent {
     if (event.request.query_string) event.request.query_string = scrubQueryParams(event.request.query_string);
   }
   event.breadcrumbs = event.breadcrumbs?.map(scrubSentryBreadcrumb);
-  return event;
+  // Shared redaction (N9.3): credential keys, Bearer/Basic values, stored ciphertext, URL userinfo and registered secrets.
+  return redactSentryEvent(event);
 }
 
 /** `beforeBreadcrumb` counterpart, so an http/fetch breadcrumb never holds the raw URL either. */
 export function scrubSentryBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
   const data = breadcrumb.data;
-  if (!data) return breadcrumb;
+  if (!data) return redactValue(breadcrumb);
   const scrubbed = { ...data };
   for (const key of ["url", "http.query", "to", "from"]) {
     if (typeof scrubbed[key] === "string") scrubbed[key] = scrubSensitiveQuery(scrubbed[key]);
   }
-  return { ...breadcrumb, data: scrubbed };
+  return redactValue({ ...breadcrumb, data: scrubbed });
 }

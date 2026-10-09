@@ -10,6 +10,7 @@ import { formatUtcTimestamp } from "@/lib/admin-format";
 import type { AdminTenantDetail } from "@/lib/types/admin";
 import { AlertDeliverySection } from "./AlertDeliverySection";
 import { CoverageSection } from "./CoverageSection";
+import { CustomProviderPanel } from "./CustomProviderPanel";
 import { IntegrationCard } from "./IntegrationCard";
 import { EntitlementsPanel } from "./EntitlementsPanel";
 import { PlanRecordForm } from "./PlanRecordForm";
@@ -111,6 +112,8 @@ export function TenantDetailView({ data }: TenantDetailViewProps) {
           </AdminPanel>
 
           <EntitlementsPanel entitlements={data.entitlements} />
+
+          <CustomProviderPanel organizationId={tenant.organizationId} enabled={data.customProviderEnabled} />
 
           <WorkerRunPanel work={data.work} />
           <SafetyProtocolPanel />

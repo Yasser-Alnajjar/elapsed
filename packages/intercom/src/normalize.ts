@@ -188,7 +188,8 @@ export function sortPartsChronologically(parts: ConversationPartRecord[]): Conve
 
 /**
  * `RawEvent` → `NormalizedEvent` for one conversation. Regenerated from
- * scratch on every run (never diffed incrementally), mirroring
+ * scratch on every run (the derivation is recomputed in full; the projector then
+ * writes only the difference), mirroring
  * `deriveNormalizedEventsForTicket` in @sla/zendesk.
  *
  * Unlike Zendesk's audit `Change` events, an Intercom conversation part

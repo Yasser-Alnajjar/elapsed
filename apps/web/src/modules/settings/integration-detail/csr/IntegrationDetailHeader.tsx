@@ -8,6 +8,7 @@ import {
   GitBranch,
   GitPullRequest,
   LifeBuoy,
+  Plug,
   ShieldCheck,
   Ticket,
   Workflow,
@@ -28,6 +29,7 @@ const PROVIDER_ICONS: Record<IntegrationProvider, ReactNode> = {
   linear: <Workflow className="size-4" />,
   intercom: <LifeBuoy className="size-4" />,
   github: <GitPullRequest className="size-4" />,
+  custom: <Plug className="size-4" />,
 };
 
 /** Back link and ingress ID bar, then the provider's name, connection date and status pills. */

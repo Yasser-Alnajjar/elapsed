@@ -46,7 +46,7 @@ async function unlinkDeletedIssue(
  *
  * On success this runs the full poll-cycle tail (ingest → correlate →
  * normalize → commitments → evaluation → notifications) for one issue,
- * synchronously — the 5-minute active-set poll and 60-minute reconciliation
+ * synchronously — the 5-minute active-set poll and 30-minute reconciliation
  * sweep (roadmap step 7) keep running unchanged as the safety net for missed
  * or out-of-order deliveries. Correlation, normalization and the pipeline
  * tail run under `withOrganizationSlaLock` (E-3): a concurrent worker cycle
