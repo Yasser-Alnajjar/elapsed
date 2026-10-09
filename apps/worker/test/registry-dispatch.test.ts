@@ -35,6 +35,12 @@ vi.mock("@sla/db", async (importOriginal) => ({
   withOrganizationSlaLock: vi.fn((_p: unknown, _o: string, work: () => Promise<unknown>) => work()),
   recordSlaImportSummary: vi.fn(),
   getIntegrationConfig: vi.fn().mockResolvedValue({ clientId: "id", clientSecret: "secret" }),
+  // D33: every provider available unless a test says otherwise; these fakes have no availability tables.
+  resolveOrganizationAvailability: vi.fn(async () =>
+    Object.fromEntries(
+      ["zendesk", "jira", "linear", "intercom", "github", "custom"].map((provider) => [provider, { available: true, provider, releaseStage: "stable" }]),
+    ),
+  ),
 }));
 
 const h = vi.hoisted(() => {

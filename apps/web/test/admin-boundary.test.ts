@@ -171,6 +171,7 @@ describe("admin boundary (N4.6)", () => {
     expect(methods.map((m) => m[1])).toEqual([
       "getOverview",
       "getUsage",
+      "getIntegrations",
       "getTenants",
       "getTenantDetail",
       "getAuditLog",
