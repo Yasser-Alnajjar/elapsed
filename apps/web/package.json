@@ -22,6 +22,7 @@
     "@sla/intercom": "workspace:*",
     "@sla/jira": "workspace:*",
     "@sla/linear": "workspace:*",
+    "@sla/logger": "workspace:*",
     "@sla/notifications": "workspace:*",
     "@sla/slack": "workspace:*",
     "@sla/zendesk": "workspace:*",

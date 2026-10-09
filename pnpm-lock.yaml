@@ -75,6 +75,9 @@ importers:
       '@sla/linear':
         specifier: workspace:*
         version: link:../../packages/linear
+      '@sla/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
       '@sla/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
