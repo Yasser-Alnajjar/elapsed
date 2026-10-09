@@ -82,3 +82,37 @@ export { LIFECYCLE_GUARD, lifecyclePreviewHash, loadActiveConfig, loadRawRows, n
 export { CUSTOM_ACCESS_NOTE, customAdapter, customWebAdapter } from "./adapter";
 export { customTicketUrl, recognizeCustomTicketUrl } from "./ticket-url";
 export { renderCustomConversation } from "./conversation";
+export {
+  DRAFT_TTL_MS,
+  DraftInputError,
+  DraftNotReadyError,
+  deleteDraft,
+  getDraft,
+  loadReadyDraft,
+  saveDraft,
+  type DraftView,
+} from "./drafts";
+export {
+  measureFullPass,
+  openOutboundSession,
+  previewMapping,
+  sampleSource,
+  testConnection,
+  type ConnectionTest,
+  type FullPassMeasurement,
+  type OutboundSession,
+  type Preview,
+  type PreviewTicket,
+  type Sample,
+} from "./outbound";
+export {
+  MAX_REASON_LENGTH,
+  OVERRIDE_TTL_MS,
+  OverrideError,
+  applySupportOverride,
+  authorizeSupportOverride,
+  confirmCustomerOverride,
+  latestLifecycleAbort,
+  type AbortedPassPreview,
+  type OverrideErrorCode,
+} from "./overrides";

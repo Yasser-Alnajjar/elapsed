@@ -84,6 +84,9 @@ importers:
       '@sla/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
+      '@sla/safe-http':
+        specifier: workspace:*
+        version: link:../../packages/safe-http
       '@sla/slack':
         specifier: workspace:*
         version: link:../../packages/slack

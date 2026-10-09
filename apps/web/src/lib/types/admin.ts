@@ -59,6 +59,7 @@ export const ADMIN_AUDIT_ACTIONS = [
   "billing_override",
   "enable_custom_provider",
   "disable_custom_provider",
+  "apply_guard_override",
 ] as const;
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
 
@@ -72,6 +73,7 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   billing_override: "Billing override",
   enable_custom_provider: "Enabled Custom REST (Beta)",
   disable_custom_provider: "Disabled Custom REST (Beta)",
+  apply_guard_override: "Applied a guard override (support-assisted)",
 };
 
 export interface AdminAuditRow {
