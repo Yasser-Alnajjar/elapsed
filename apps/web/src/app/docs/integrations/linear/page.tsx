@@ -198,7 +198,7 @@ export default function LinearIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Poll only — the same 5-minute (active cases) / 60-minute
+            Poll only — the same 5-minute (active cases) / 30-minute
             (reconciliation) schedule as Zendesk and Jira, but with no real-time
             webhook. Expect Linear-sourced data to be current as of the last
             successful poll, not instantaneous.
