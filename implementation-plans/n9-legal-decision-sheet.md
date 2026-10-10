@@ -82,6 +82,55 @@ Interlock: the owner decisions are recorded, so the reviewer now receives them a
 - NAT Gateway (only if D1 says private subnet): about USD 0.045 per hour (about USD 33 per month) plus about USD 0.045 per GB processed, plus its Elastic IP. Not recommended for the current single-host topology.
 - No data-transfer change for the EIP option.
 
+**Step 1 discovery attempt (2026-10-10; read-only; owner approved Step 1 only): NOT PERFORMED, access unavailable.** No finding below is verified. This environment has no `ssh` client and no SSH key, no AWS CLI or SDK, and the only AWS-named credentials present are session-provided (their account, scope and region are not established as the production account), so I did not use them to query EC2. Nothing was run against the host or AWS; nothing changed.
+
+| # | Check | Result | Command set |
+| --- | --- | --- | --- |
+| 1 | Is 13.62.74.24 an Elastic IP or auto-assigned? | **NOT PERFORMED** | D1-a, D1-d |
+| 2 | Public or private subnet; outbound route | **NOT PERFORMED** | D1-a, D1-d |
+| 3 | IPv6 enabled / alternative outbound path | **NOT PERFORMED** | D1-a, D1-b |
+| 4 | Do web and worker use the same outbound IP | **NOT PERFORMED** | D1-b |
+| 5 | DNS and external allowlists affected by an IP change | **NOT PERFORMED** | D1-c |
+
+Run these read-only on the host (`ssh ubuntu@13.62.74.24`, from `~/elapsed`) and from a machine with AWS CLI read access, then paste the output into the table above:
+
+```bash
+# D1-a  host, metadata (IMDSv2): identity, subnet, public address, IPv6
+T=$(curl -sS -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
+M=http://169.254.169.254/latest/meta-data
+for k in instance-id placement/region public-ipv4 local-ipv4; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/$k)"; done
+MAC=$(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/network/interfaces/macs/ | head -1)
+for k in subnet-id vpc-id ipv6s public-ipv4s; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/network/interfaces/macs/${MAC}$k)"; done
+ip -4 route show default; ip -6 route show default; ip -6 addr show scope global
+curl -4sS https://checkip.amazonaws.com; curl -6sS -m 4 https://checkip.amazonaws.com || echo "no IPv6 egress from the host"
+
+# D1-b  containers: outbound address of web and of EACH worker replica, plus IPv6
+C="docker compose -f docker-compose.yml --env-file .env"   # the host uses .env (A-03); use .env.prod if that is what you run
+for svc in web worker; do
+  echo "== $svc"; $C exec -T $svc node -e 'Promise.allSettled([fetch("https://checkip.amazonaws.com"),fetch("https://ipv6.icanhazip.com")]).then(async r=>{for(const x of r)console.log(x.status==="fulfilled"?(await x.value.text()).trim():"failed: "+x.reason.cause?.code)})'
+done
+for id in $(docker ps -q --filter name=worker); do docker exec $id node -e 'fetch("https://checkip.amazonaws.com").then(r=>r.text()).then(t=>console.log("worker replica",t.trim()))'; done
+docker network ls -q | xargs docker network inspect --format '{{.Name}} ipv6={{.EnableIPv6}}'
+
+# D1-c  DNS and anything that names the address (read-only)
+dig +short A <your-production-domain>; dig +short AAAA <your-production-domain>; dig <your-production-domain> | grep -i ttl
+grep -E 'NEXTAUTH_URL|SSL_CERT_DIR' .env | sed 's/=.*@/=<...>@/'          # the domain only; do not print secrets
+# third parties: list where the raw address or domain is registered (no change): Zendesk/Jira/Linear/Intercom webhook URLs,
+# the ops SMTP relay allowlist, Sentry, any customer or partner firewall that names 13.62.74.24.
+
+# D1-d  AWS CLI, read-only (run with the production account's read credentials)
+aws ec2 describe-addresses --public-ips 13.62.74.24                        # Associations present = already an Elastic IP; error/empty = auto-assigned
+aws ec2 describe-instances --filters Name=ip-address,Values=13.62.74.24 \
+  --query 'Reservations[].Instances[].[InstanceId,SubnetId,VpcId,PublicIpAddress,Ipv6Address,NetworkInterfaces[].Association,SecurityGroups[].GroupId]'
+aws ec2 describe-subnets --subnet-ids <subnet-id> --query 'Subnets[].[MapPublicIpOnLaunch,Ipv6CidrBlockAssociationSet]'
+aws ec2 describe-route-tables --filters Name=association.subnet-id,Values=<subnet-id>   # 0.0.0.0/0 -> igw-... public; -> nat-... private
+aws ec2 describe-security-groups --group-ids <sg-id> --query 'SecurityGroups[].[IpPermissions,IpPermissionsEgress]'
+```
+
+How to read the results: an association in `describe-addresses` means no AWS change is needed (verify only). Default route to `igw-` with a public address on the primary interface means public subnet, and an Elastic IP is the design. Default route to `nat-` or no public address means private subnet: stop and re-plan with a NAT Gateway Elastic IP. A global IPv6 address plus a working `curl -6` from a container means a second outbound path exists and must be closed or accounted for before any address is published. Different addresses in D1-b for web and worker would mean more than one egress path.
+
+**Minimum required action (recommendation):** you (or I, once you provide SSH access, e.g. a session-scoped key, or pasted output) run D1-a to D1-d and paste the output. Only then choose between "verify only", "allocate and associate an Elastic IP" (Step 2, needs your separate approval) or "re-plan with a NAT Gateway".
+
 **Required AWS changes (NOT executed; Elastic IP path). Placeholders in angle brackets**
 - D1 (read-only discovery, no change; needs your authorization only to be run by me over SSH, or you run it):
   ```bash
