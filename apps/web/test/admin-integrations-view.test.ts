@@ -30,6 +30,7 @@ const row = (overrides: Partial<AdminIntegrationAvailabilityRow> = {}): AdminInt
   pausedConnections: 0,
   health: { healthy: 2, failing: 1, needsAttention: 1, stale: 0 },
   rolloutBlock: null,
+  allowlistAddBlock: null,
   ...overrides,
 });
 

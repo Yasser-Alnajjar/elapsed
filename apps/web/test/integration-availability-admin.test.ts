@@ -3,8 +3,9 @@
  * read or change integration availability; each change persists with exactly
  * one audit row (operator, provider, before/after, reason, never a secret); a
  * no-op writes nothing; concurrent edits never silently overwrite each other;
- * the N9.14-F1 rollout block refuses every widening of Custom REST while
- * narrowing stays possible; allowlists are per organization; disabling and
+ * the N9.14-F1 rollout block refuses opening Custom REST to all organizations
+ * and promoting it to Stable (D33-A1: an allowlist add stays possible while
+ * Beta/allowlist, scoped to one organization); narrowing stays possible; allowlists are per organization; disabling and
  * re-enabling never deletes or rewrites customer data.
  *
  * Needs a migrated database at TEST_DATABASE_URL whose name contains "test"
@@ -201,7 +202,7 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
     });
   });
 
-  describe("Custom REST rollout block (N9.14-F1, D33 ruling 3)", () => {
+  describe("Custom REST rollout block (N9.14-F1, D33 ruling 3 as amended by D33-A1)", () => {
     it.each([
       [{ releaseStage: "stable" }],
       [{ betaAccess: "all_organizations" }],
@@ -216,12 +217,61 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
       expect(await prisma.integrationAvailability.findUniqueOrThrow({ where: { provider: "custom" } })).toMatchObject({ releaseStage: "beta", betaAccess: "allowlist", version: 0 });
     });
 
-    it("refuses adding any organization to the allowlist, through the new and the legacy route", async () => {
-      expect(await (await addToList("custom", acme)).json()).toMatchObject({ code: "rollout_blocked" });
+    it("adds one organization to the allowlist under Beta/allowlist: scoped to it, audited once, policy untouched (D33-A1)", async () => {
+      const response = await addToList("custom", acme);
+      expect(response.status).toBe(201);
+      const listed = await prisma.integrationBetaAllowlist.findMany({ where: { provider: "custom" } });
+      expect(listed.map((row) => row.organizationId)).toEqual([acme]);
+      const rows = await auditRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ action: "add_integration_allowlist", organizationId: acme, actorEmail: OPERATOR });
+      expect(await prisma.integrationAvailability.findUniqueOrThrow({ where: { provider: "custom" } })).toMatchObject({ enabled: true, releaseStage: "beta", betaAccess: "allowlist", version: 0 });
+      // Only that organization qualifies; another one still does not.
+      expect((await resolve(prisma, acme, "custom")).available).toBe(true);
+      expect(await resolve(prisma, globex, "custom")).toMatchObject({ available: false, code: "integration_beta_restricted" });
+    });
+
+    it("the legacy tenant route adds under the same rule; a repeat is a no-op", async () => {
+      const first = await legacyRoute.POST(request(`/api/admin/tenants/${acme}/custom-provider`, "POST", { enabled: true, reason: "x" }), params({ organizationId: acme }));
+      expect(first.status).toBe(200);
+      expect(await first.json()).toMatchObject({ changed: true });
+      const again = await legacyRoute.POST(request(`/api/admin/tenants/${acme}/custom-provider`, "POST", { enabled: true, reason: "x" }), params({ organizationId: acme }));
+      expect(await again.json()).toMatchObject({ changed: false });
+      expect(await prisma.integrationBetaAllowlist.count()).toBe(1);
+      expect(await auditRows()).toHaveLength(1);
+    });
+
+    it("refuses an add with 409 rollout_blocked when Custom REST is not Beta with an allowlist, and writes nothing", async () => {
+      expect((await patch("custom", { expectedVersion: 0, releaseStage: "coming_soon", reason: "hold" })).status).toBe(200);
+      const audited = (await auditRows()).length;
+      const refused = await addToList("custom", acme);
+      expect(refused.status).toBe(409);
+      expect(await refused.json()).toMatchObject({ code: "rollout_blocked" });
       const legacy = await legacyRoute.POST(request(`/api/admin/tenants/${acme}/custom-provider`, "POST", { enabled: true, reason: "x" }), params({ organizationId: acme }));
       expect(legacy.status).toBe(409);
       expect(await prisma.integrationBetaAllowlist.count()).toBe(0);
-      expect(await auditRows()).toHaveLength(0);
+      expect(await auditRows()).toHaveLength(audited);
+    });
+
+    it("refuses opening to all organizations or Stable even with organizations on the list, and keeps the list", async () => {
+      expect((await addToList("custom", acme)).status).toBe(201);
+      const audited = (await auditRows()).length;
+      for (const change of [{ betaAccess: "all_organizations" }, { releaseStage: "stable" }]) {
+        const response = await patch("custom", { expectedVersion: 0, ...change, reason: "widen" });
+        expect(response.status).toBe(409);
+        expect(await response.json()).toMatchObject({ code: "rollout_blocked" });
+      }
+      expect(await auditRows()).toHaveLength(audited);
+      expect(await prisma.integrationBetaAllowlist.count()).toBe(1);
+    });
+
+    it("keeps requiring an operator and a reason for the add", async () => {
+      auth.session = sessionFor("someone@customer.test", "owner");
+      expect((await addToList("custom", acme)).status).toBe(403);
+      auth.session = sessionFor(OPERATOR, "owner");
+      const noReason = await allowlistRoute.POST(request("/api/admin/integrations/providers/custom/allowlist", "POST", { organizationId: acme }), params({ provider: "custom" }));
+      expect(noReason.status).toBe(400);
+      expect(await prisma.integrationBetaAllowlist.count()).toBe(0);
     });
 
     it("still allows narrowing: disable, Coming Soon, and removing an organization (which also pauses its polling)", async () => {

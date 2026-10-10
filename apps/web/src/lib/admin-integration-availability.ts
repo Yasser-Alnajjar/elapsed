@@ -122,8 +122,10 @@ export function parseAvailabilityChange(body: unknown): AvailabilityChangeInput 
 
 /**
  * While the catalog carries a rollout block (Custom REST: N9.14-F1), refuse
- * any change that would widen availability beyond an allowlist. Narrowing
- * (disable, Coming Soon, removing organizations) stays allowed.
+ * any change that would widen availability beyond an allowlist (all
+ * organizations, Stable). Narrowing (disable, Coming Soon, removing
+ * organizations) stays allowed, and so does adding one organization to the
+ * allowlist of a Beta/allowlist provider (D33-A1, `allowlistAddBlock`).
  */
 function assertRolloutAllowed(provider: IntegrationProvider, before: AvailabilityPolicyFields, after: AvailabilityPolicyFields) {
   const block = catalogEntry(provider).rolloutBlock;
@@ -133,6 +135,23 @@ function assertRolloutAllowed(provider: IntegrationProvider, before: Availabilit
   if (widensStage || widensAccess) {
     throw new AvailabilityConflictError("rollout_blocked", `Blocked by ${block.id}: ${block.reason}`);
   }
+}
+
+/**
+ * Why an organization may not be added to a provider's allowlist right now, or
+ * null when it may. Only a provider under a rollout block is restricted, and
+ * only to Beta with an allowlist: any other policy (Stable, Coming Soon, all
+ * organizations) is outside what the block allows, so the allowlist is not
+ * where that provider's access is decided. One rule for the API and the UI.
+ */
+export function allowlistAddBlock(
+  provider: IntegrationProvider,
+  policy: Pick<AvailabilityPolicyFields, "releaseStage" | "betaAccess">,
+): { id: string; reason: string } | null {
+  const block = catalogEntry(provider).rolloutBlock;
+  if (!block) return null;
+  if (policy.releaseStage === "beta" && policy.betaAccess === "allowlist") return null;
+  return { id: block.id, reason: `${block.reason} Organizations can be added only while the stage is Beta and access is Allowlist.` };
 }
 
 // ---- Reads -------------------------------------------------------------------
@@ -194,6 +213,7 @@ export async function getAdminIntegrationsData(prisma: PrismaClient, now: Date =
       pausedConnections,
       health,
       rolloutBlock: entry.rolloutBlock ? { ...entry.rolloutBlock } : null,
+      allowlistAddBlock: allowlistAddBlock(policy.provider, policy),
     };
   });
   return { rows, organizations };
@@ -297,16 +317,21 @@ export async function updateIntegrationAvailability(
   });
 }
 
-/** Adds one organization to a provider's Beta allowlist. Refused while the provider carries a rollout block. */
+/**
+ * Adds one organization to a provider's Beta allowlist (scoped to that
+ * organization only; the provider's policy is untouched). A provider under a
+ * rollout block accepts it only while Beta with an allowlist (D33-A1).
+ */
 export async function addToBetaAllowlist(
   prisma: PrismaClient,
   params: { actorEmail: string; provider: IntegrationProvider; organizationId: string; reason: string },
 ): Promise<void> {
   const { actorEmail, provider, organizationId, reason } = params;
-  const block = catalogEntry(provider).rolloutBlock;
-  if (block) throw new AvailabilityConflictError("rollout_blocked", `Blocked by ${block.id}: ${block.reason}`);
 
   await prisma.$transaction(async (tx) => {
+    const policy = await getIntegrationAvailabilityPolicy(tx, provider);
+    const block = allowlistAddBlock(provider, policy);
+    if (block) throw new AvailabilityConflictError("rollout_blocked", `Blocked by ${block.id}: ${block.reason}`);
     const organization = await tx.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
     if (!organization) throw new AdminNotFoundError("Organization not found");
     const existing = await tx.integrationBetaAllowlist.findUnique({

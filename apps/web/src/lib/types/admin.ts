@@ -373,7 +373,10 @@ export interface AdminIntegrationAvailabilityRow extends AvailabilityPolicyField
   /** Connections the current policy makes unavailable to their organization (paused by Elapsed). */
   pausedConnections: number;
   health: { healthy: number; failing: number; needsAttention: number; stale: number };
+  /** Blocks opening to all organizations and promotion to Stable (N9.14-F1). */
   rolloutBlock: { id: string; reason: string } | null;
+  /** Set when adding an organization to the allowlist is refused right now (see `allowlistAddBlock`). */
+  allowlistAddBlock: { id: string; reason: string } | null;
 }
 
 export interface AdminIntegrationsData {
@@ -394,5 +397,6 @@ export interface AdminTenantBetaAccess {
   listed: boolean;
   /** The provider's policy currently restricts it to its allowlist (Beta, allowlist, enabled). */
   allowlistApplies: boolean;
-  rolloutBlock: { id: string; reason: string } | null;
+  /** Set when adding this organization to the provider's allowlist is refused right now. */
+  allowlistAddBlock: { id: string; reason: string } | null;
 }

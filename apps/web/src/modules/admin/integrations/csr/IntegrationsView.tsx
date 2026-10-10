@@ -191,8 +191,8 @@ function ProviderCard({ row, onEdit, onAllowlist }: { row: AdminIntegrationAvail
         <p className="border-warning/30 bg-warning/[0.07] text-muted-foreground flex items-start gap-2 rounded border px-3 py-2 text-xs leading-4">
           <Lock className="text-warning-text mt-0.5 size-3.5 shrink-0" aria-hidden />
           <span>
-            <span className="text-foreground font-semibold">Rollout blocked ({row.rolloutBlock.id}).</span> {row.rolloutBlock.reason} Disabling, Coming soon and removing
-            organizations still work.
+            <span className="text-foreground font-semibold">Rollout blocked ({row.rolloutBlock.id}).</span> {row.rolloutBlock.reason} Adding or removing individual
+            organizations (Beta with an allowlist), disabling and Coming soon still work.
           </span>
         </p>
       )}

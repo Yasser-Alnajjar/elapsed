@@ -11,6 +11,7 @@ import {
   Prisma,
   type PrismaClient,
 } from "@sla/db";
+import { allowlistAddBlock } from "./admin-integration-availability";
 import { staleFields } from "./freshness-data";
 import { getLinkCoverage, NO_LINK_COVERAGE } from "./link-coverage-data";
 import { providerRole } from "./providers";
@@ -365,7 +366,7 @@ export async function getAdminTenantDetail(
         name: entry.name,
         listed: listed.has(policy.provider),
         allowlistApplies: policyUsesAllowlist(policy),
-        rolloutBlock: entry.rolloutBlock ? { ...entry.rolloutBlock } : null,
+        allowlistAddBlock: allowlistAddBlock(policy.provider, policy),
       };
     });
 
