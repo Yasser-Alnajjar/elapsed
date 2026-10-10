@@ -207,3 +207,32 @@ describe("priority, duplicates and bad records", () => {
     expect(batch.deletedCaseExternalIds).toEqual([]);
   });
 });
+
+describe("deletion signals are permanent in V1 (the premise of OD-01 / plan 09 U2)", () => {
+  const marker = (id: string, at: string): RawRow => ({ id: `d-${id}`, providerEventId: `${RAW_PREFIX.deleted}${id}:x`, payload: { t: id }, fetchedAt: new Date(at) });
+
+  it("a ticket restored at the source AFTER a stored deletion marker stays deleted: a newer snapshot does not clear it", () => {
+    const rows: RawRow[] = [
+      ticketRow(ticket(), 1, new Date("2026-10-01T00:00:00Z")),
+      marker("T-1", "2026-10-02T00:00:00Z"),
+      ticketRow(ticket({ subject: "restored" }), 2, new Date("2026-10-03T00:00:00Z")), // the source brought it back
+    ];
+    const batch = deriveBatch(configWith(), rows);
+    expect(batch.deletedCaseExternalIds).toEqual(["T-1"]);
+    expect(batch.cases).toEqual([]);
+  });
+
+  it("a status/flag based deletion IS reversible at the source: a newer snapshot without the deleted status derives a live case", () => {
+    const withStatus = configWith((c) => {
+      c.valueMaps.status.gone = "closed";
+      c.deletion = { statusValues: ["gone"] };
+    });
+    const gone = ticketRow(ticket({ state: "gone" }), 1, new Date("2026-10-01T00:00:00Z"));
+    expect(deriveBatch(withStatus, [gone]).deletedCaseExternalIds).toEqual(["T-1"]);
+    const restored = ticketRow(ticket({ state: "open" }), 2, new Date("2026-10-03T00:00:00Z"));
+    const batch = deriveBatch(withStatus, [gone, restored]);
+    expect(batch.deletedCaseExternalIds).toEqual([]);
+    expect(batch.cases.map((c) => c.externalId)).toEqual(["T-1"]);
+  });
+});
+
