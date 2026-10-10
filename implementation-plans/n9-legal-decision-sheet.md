@@ -6,6 +6,8 @@ Three separate things: **Part A** is for the owner (O-1 to O-3, engineering reco
 
 ## A. Owner decisions (no lawyer needed; made first, they fix the facts the clauses state)
 
+**Status: O-1, O-2 and O-3 are PENDING. The recommendations below are engineering proposals, not decisions; none is treated as made until the owner confirms it explicitly (recorded in validation master §2.4). The qualified legal review in Part B is a separate required gate and is not satisfied by Part A.**
+
 | # | Decision | Recommendation |
 | --- | --- | --- |
 | O-1 | Retention: align the **copy** to the implemented behavior (no expiry), or **build** a purge | Align the copy now. A purge conflicts with the append-only replay log and is H-5 work; do not build it for the pilot |

@@ -133,6 +133,23 @@ Status at hand-over:
 - **BLOCKED on a prerequisite (10):** B-05, B-06, D-01, D-02, D-03, D-04, D-06, D-05, D-07, D-08.
 - **Owner-gated actions that modify production (5):** C-11, C-13, C-16, D-06, D-05; plus your N4.7 data entry before C-17.
 
+**Closure ledger (current, branch tips `main` 27822e3, `claude/sharp-euler-gm4not` 27822e3, `testing` 718d742; the hand-over lines above are the original 2026-10 baseline and are kept for the record).** Closed means the evidence is in this file; nothing else is claimed.
+
+| Item | State | Evidence |
+| --- | --- | --- |
+| B-01 to B-16 (Phase B) | **CLOSED** (B-10, B-12, B-14 carry the recorded browser limitation) | RESULT blocks; Checkpoint B release box ticked |
+| D-01 benchmark gate | **CLOSED as a provisional Beta safeguard** (C = 1,000; real-host rerun still required before raising it) | D-01 RESULT; `docs/validation/evidence/d-01-benchmark/`; OD-08 decided |
+| OD-01 / U2 | **CLOSED for the pilot** (option (b); option (a) to be reconsidered before GA) | §2.5; `docs/custom-provider-deletion-recovery.md`; `custom-attention-copy.test.ts`; `ingest-runs.db.test.ts` |
+| D-08 focused tests | **CLOSED on the code/test side** (D24 replay and the real 120 s clock stay with Phase C) | D-08 Follow-ups 3 and 4: 31 files, 598 tests passed; tests on `testing` (merge 23f265b) and `main` (b533624). Not re-run in this pass, by instruction |
+| BL-04 / BL-10 (repository side) | **CLOSED** | Compose passes `CUSTOM_PROVIDER_LIVE_CASE_CEILING` (worker) and `GUARD_OVERRIDE_OPERATOR_EMAILS` (web); `guard-override-operator.test.ts` |
+| Production deployment of the two settings | **NOT DONE, awaiting explicit approval** | `docs/custom-beta-deployment.md` (prepared, not executed) |
+| D-07 qualified legal review (BL-09) | **OPEN, separate required gate** | `implementation-plans/n9-legal-decision-sheet.md` Part B; live Terms/Privacy untouched; no legal approval claimed |
+| O-1, O-2, O-3 (owner decisions on retention copy, egress IP, POST endpoints) | **PENDING owner confirmation** (the sheet's recommendations are not decisions) | §2.4 rows O-1 to O-3 |
+| N9.14-F1 rollout block | **PRESERVED** | `INTEGRATION_CATALOG.custom.rolloutBlock`; tests `integration-availability.test.ts`, `integration-availability-admin.test.ts`. Allowlist management stays available; all-organizations and Stable stay refused |
+| Phase C, D-02 to D-06, other external items | **NOT STARTED / BLOCKED** | unchanged |
+
+Beta (N9.14-F1) is NOT open. It needs, additionally: D-07 reviewer decisions, owner decisions O-1 to O-3, the approved production deployment and its verification, and then a reviewed code change lifting the rollout block (separate decision).
+
 ### 2.2 Blockers that need infrastructure, provider access or an owner decision
 
 | #             | Blocker                                                                                                                                                                                                                                 | Blocks                                                               | Kind                                                    |
@@ -188,6 +205,9 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 | ID    | Decision                                                                                                                                                                                                                               | Needed by                             | Your decision / date |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------- |
 | OD-01 | **U2** (plan 09 §15.1): cleanup after a rejected mass deletion, or written acceptance. **DECIDED 2026-10-10: option (b) for the Beta pilot only**, with the corrected distinction (a status/flag signal clears when fixed at the source; a verified-404 marker is permanent). Operator procedure: `docs/custom-provider-deletion-recovery.md`; deletion-abort message is specific (8b123a5). Option (a) must be reconsidered before GA | N9.14-F1 (Beta) | **Decided 2026-10-10.** The procedure documents a gap (no tool yet to apply a legitimate mass deletion or undo a marker); see §2.5 |
+| O-1 | **Retention copy** (n9-legal-decision-sheet Part A): align the live Privacy retention/deletion statement to the implemented behavior (no expiry; raw events permanent), or build a purge. Recommendation (not a decision): align the copy | D-07, L-01/L-02 | **PENDING owner confirmation** |
+| O-2 | **Outbound IP**: say it is not fixed, or provide a fixed egress address. Recommendation: state "not fixed" for the pilot | D-07, Q-5, F-15 | **PENDING owner confirmation** |
+| O-3 | **POST search endpoints** in V1: keep with the P-2 wording, or restrict to GET. Recommendation: keep | D-07, P-2, L-03 | **PENDING owner confirmation** |
 | OD-02 | **D27**: which "new cases" are blocked after a trial ends (DC-11), and whether the documented gap stays                                                                                                                                | N6.4 closure, entitlement enforcement |                      |
 | OD-03 | **Production billing provider** (D28 leaves it open)                                                                                                                                                                                   | N6.5, any production billing          |                      |
 | OD-04 | **Pre-merge verification policy** (Q9 deferred): CI runs only for `testing`                                                                                                                                                            | Branch rules; E-02                    |                      |
