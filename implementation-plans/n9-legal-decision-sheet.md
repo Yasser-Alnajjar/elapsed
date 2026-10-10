@@ -84,15 +84,18 @@ Interlock: the owner decisions are recorded, so the reviewer now receives them a
 
 **Step 1 discovery attempt (2026-10-10; read-only; owner approved Step 1 only): NOT PERFORMED, access unavailable.** No finding below is verified. This environment has no `ssh` client and no SSH key, no AWS CLI or SDK, and the only AWS-named credentials present are session-provided (their account, scope and region are not established as the production account), so I did not use them to query EC2. Nothing was run against the host or AWS; nothing changed.
 
-| # | Check | Result | Command set |
-| --- | --- | --- | --- |
-| 1 | Is 13.62.74.24 an Elastic IP or auto-assigned? | **NOT PERFORMED** | H1, A1, A2 |
-| 2 | Public or private subnet; outbound route | **NOT PERFORMED** | H1, H2, A3, A4, A5 |
-| 3 | IPv6 enabled / alternative outbound path | **NOT PERFORMED** | H1, H2, H3, A3, A4 |
-| 4 | Do web and worker use the same outbound IP | **NOT PERFORMED** | H3 |
-| 5 | DNS and external allowlists affected by an IP change | **NOT PERFORMED** | H4, A7, your own allowlist records |
+**Step 1 host results (2026-10-10; owner ran Part H H0 to H4 on the production host and pasted the output; Part A not yet run).** Verified means shown by that output.
 
-**Second attempt (2026-10-10, owner re-authorized with the agent key `~/.ssh/elapsed-agent`): BLOCKED.** In this execution environment `~/.ssh` is empty (no `elapsed-agent` private or public key, no `known_hosts`) and there is no `ssh`/`scp` client. No connection was attempted and no key was created or installed. Every check remains NOT PERFORMED; the owner-run procedure below is unchanged.
+| # | Check | Status | Evidence (owner-run output) |
+| --- | --- | --- | --- |
+| 1 | Is 13.62.74.24 an Elastic IP? | **NOT VERIFIED** (needs A1; the host metadata cannot distinguish an Elastic IP from an auto-assigned address) | IMDS `public-ipv4` and `public-ipv4s` both 13.62.74.24 |
+| 2 | Instance, VPC, subnet, outbound path | **Partly verified.** Instance `i-093d3f4c0c8a99951` (t3.medium), `eu-north-1a`, private address 172.31.21.151, subnet `subnet-0eb9b091e0bd405f3`, VPC `vpc-091ddb9eba8355fb1`; default route `via 172.31.16.1 dev ens5`. The 172.31.0.0/16 addressing suggests a default VPC (inference). **Public path verified by behavior:** the host and every container egress as 13.62.74.24, the instance's own public address, which cannot happen behind a NAT gateway (it would show the gateway's address). Route table (A4), subnet flags (A3) and ACLs (A5) not yet read | H1, H2, H3 |
+| 3 | IPv6 / alternative outbound path | **Verified: none.** IMDS `ipv6s` and `subnet-ipv6-cidr-blocks` return 404; no IPv6 default route and no global IPv6 address on the host; containers: `ENETUNREACH` to an IPv6 endpoint; Docker networks `ipv6=false`. (The host `curl -6 checkip.amazonaws.com` failed with a DNS error because that name has no AAAA record; that single test was inconclusive, the other evidence is not) | H1, H2, H3 |
+| 4 | Do web and every worker replica use the same outbound IP | **Verified: yes.** web, and all 3 worker replicas, egress as 13.62.74.24 (IPv4); IPv6 unreachable for all | H3 |
+| 5 | DNS and external allowlists | **Finding:** the app is served by **IP, not by a domain**. `NEXTAUTH_URL` host is `13.62.74.24`; `dig` returns only the literal; there is no DNS record or TTL involved. Third-party allowlists and registered webhook/OAuth URLs: **NOT VERIFIABLE from the server** | H4 |
+| 6 | Security groups, NACLs, exposed ports | **NOT VERIFIED** (needs A5 and the host's listening ports) | not run |
+
+**Consequence for Step 2 (not a recommendation to change anything yet).** Because the application's own public URL (`NEXTAUTH_URL`) is the raw IP 13.62.74.24, every OAuth redirect URI, webhook URL and customer link points at it. If A1 shows 13.62.74.24 is an auto-assigned address, it cannot be promoted to an Elastic IP: allocating one gives a different address, and moving the application to it would break those URLs until they are all re-registered (a domain would remove that coupling). If A1 shows it is already an Elastic IP, no AWS change is needed. A1 therefore decides everything and must run first.
 
 Step 1 is two read-only procedures. Do not send SSH keys, AWS keys, session tokens or `.env` contents to anyone, including in chat; only the redacted outputs described below are needed. Nothing here allocates, associates, changes or restarts anything.
 
