@@ -1268,11 +1268,15 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    (1) add B= status ___ audit row ___ allowlist after= ___   (2a) all_organizations= ___ ___   (2b) stable= ___ ___   stage/access/version unchanged? [ ]   audit rows before/after= ___ / ___   (3) narrowing= ___ audit rows= ___ version= ___
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 10:42-10:49 UTC
+Where:       local e2e stack, sla_e2e_test, web on branch e2e/d33-allowlist-policy (D33-A1), worker stopped
+Evidence:    (1) add org B = success, one add_integration_allowlist audit row for B at 10:42:30, allowlist = A + B only
+             (2a) all_organizations = 409 rollout_blocked (N9.14-F1 reason)   (2b) stable = 409 rollout_blocked (N9.14-F1 reason)
+             stage/access/version unchanged? [x] (beta / allowlist / 0)   audit rows before/after = 2 / 3 (before inferred, see Deviations)
+             (3) narrowing (status message) = success, update_integration_availability row at 10:48:39, version 0 -> 1, audit count 4
+             cleanup: B removed and status message cleared; allowlist = A only, version 2
+Deviations:  The before snapshot was not taken. The before count of 2 is inferred from the audit rows that predate B-15 (B-13's remove_integration_allowlist and resume_polling). No audit row exists for either refused attempt. The two refused changes were sent from the browser console because the dialog disables those options.
 ```
 
 ### B-16 — Unsupported commitment kinds: dry-run, confirmation, cancellation, rollback guard (plan 09 §5.5, §5.6; Q14, R5, U3 option (a))
