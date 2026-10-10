@@ -22,7 +22,7 @@ ORDER BY "startedAt" DESC
 LIMIT 3;
 ```
 
-`progress` holds `L` (live cases), `D` (deleted and live), the threshold inputs and up to 20 ticket ids (`recordIds`). The customer sees the specific message in the integration banner (`mass_deletion`).
+`progress` holds the guard counts (`L` live cases, `B` tickets attempted, `F` failed, `D` deleted and still live, `R` lifecycle flips, `N` new, `C` ceiling) and up to 20 ticket ids (`recordIds`). The statements below are exercised against a real database by `packages/custom-ticket/test/ingest-runs.db.test.ts`. The customer sees the specific message in the integration banner (`mass_deletion`).
 
 ## 2. Find out which kind of deletion signal fired
 
@@ -49,7 +49,7 @@ An id with a marker is kind (ii). An id without one is kind (i).
 2. **Any kind (ii):** the marker stays. Do not touch raw events. Decide with the customer whether the tickets are truly gone at the source.
    - Truly gone and few enough to be under the threshold: nothing to do; the guard passes once `D` is back under `max(3, 5% of L)`.
    - Gone but over the threshold, or wrongly marked (a transient 404 that later recovered): escalate (below).
-3. **While waiting:** the integration can be paused by an operator (polling pause, no data change) or disconnected (soft; data kept). Tell the customer the dashboard shows data up to the last good sync and that alerts for this source are held.
+3. **While waiting:** an operator can pause polling for the integration (**Pause polling** on `/admin/tenants/<id>`; **Resume polling** undoes it; no data change) or the customer can disconnect it (soft; data kept). Removing the organization from the Custom REST allowlist also pauses polling and is not undone by re-adding it (`docs/integration-availability.md`). Tell the customer the dashboard shows data up to the last good sync and that alerts for this source are held.
 4. **Record** the case in the support ticket: integration id, run timestamps, `D`, `L`, ids, kind (i)/(ii), who decided what.
 
 ## What this procedure cannot do (documented gap)

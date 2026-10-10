@@ -86,7 +86,7 @@ export const INTEGRATION_CATALOG = {
     rolloutBlock: {
       id: "N9.14-F1",
       reason:
-        "Custom REST cannot be opened to all organizations or promoted to Stable until N9.14-F1 closes: database verification and replay, an end-to-end run, the capacity benchmark that fixes the live-case ceiling, U2 and legal review (roadmap N9). Individual organizations can still be added to the Beta allowlist.",
+        "Custom REST cannot be opened to all organizations or promoted to Stable until N9.14-F1 closes. The capacity benchmark (Beta ceiling 1,000) and U2 (option (b), pilot only) are decided; the qualified legal review of the Terms and Privacy text and the remaining Beta verification are not. Individual organizations can still be added to the Beta allowlist.",
     },
   },
 } as const satisfies Record<IntegrationProvider, IntegrationCatalogEntry>;
