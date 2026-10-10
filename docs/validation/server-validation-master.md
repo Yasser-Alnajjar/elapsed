@@ -186,7 +186,7 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 
 | ID    | Decision                                                                                                                                                                                                                               | Needed by                             | Your decision / date |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------- |
-| OD-01 | **U2** (plan 09 §15.1): cleanup workflow after a rejected mass deletion, or written acceptance that a deletion abort blocks the integration until fixed at the source                                                                  | N9.14-F1 (Beta)                       |                      |
+| OD-01 | **U2** (plan 09 §15.1): cleanup workflow after a rejected mass deletion, or written acceptance that a deletion abort blocks the integration until fixed at the source                                                                  | N9.14-F1 (Beta)                       | Open. Analysis and recommendation: §2.5 (2026-10-10) |
 | OD-02 | **D27**: which "new cases" are blocked after a trial ends (DC-11), and whether the documented gap stays                                                                                                                                | N6.4 closure, entitlement enforcement |                      |
 | OD-03 | **Production billing provider** (D28 leaves it open)                                                                                                                                                                                   | N6.5, any production billing          |                      |
 | OD-04 | **Pre-merge verification policy** (Q9 deferred): CI runs only for `testing`                                                                                                                                                            | Branch rules; E-02                    |                      |
@@ -199,6 +199,35 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 | OD-11 | Accept C-14's drift-capture method as the "post-deploy replay" (DC-13)                                                                                                                                                                 | N2.11 closure wording                 |                      |
 | OD-12 | Whether H-10's "authorization audit current" needs a re-audit of the 28 routes added since the 71-route audit (DC-09)                                                                                                                  | H-10                                  |                      |
 | OD-13 | Monthly reports go live with the release (`worker_settings.monthlyReportEnabled` defaults to `true`, DC-19): send from the first reconciliation tick, or hold them with the kill switch (a production SQL write, C-11's optional step) | C-11                                  |                      |
+
+### 2.5 OD-01 analysis (U2: what happens after a rejected mass deletion) — 2026-10-10
+
+Status: **NEEDS OWNER DECISION.** Plan 09 §15.1 lists U2 as the one owner decision still open and says it must be resolved, or accepted in writing, before Beta. Neither option can be chosen by engineering: (a) is a new product workflow, and (b) is a written risk acceptance. This section gives the evidence and a recommendation; nothing was implemented and no decision record was changed.
+
+**Existing behavior (verified in code and tests).**
+
+| Fact | Evidence |
+| --- | --- |
+| The deletion guard aborts when `D > max(3, 0.05 x L)`. The pass writes nothing, the watermark does not move, and the abort repeats on every pass until D falls back under the threshold. | `packages/custom-ticket/src/guards.ts`, `normalize.ts`; guard tests (D-08 row 8) |
+| It cannot be overridden: the override machinery targets only the lifecycle guard (R2), and `latestLifecycleAbort` returns nothing for a deletion abort. | `overrides.ts`; `overrides.test.ts` ("a mass-deletion … abort offers nothing to override") |
+| Existing data stays visible and monitored; the source goes stale. | plan 09 §6.4, §6.13 |
+| A deletion has two kinds of source signal. **(i) A deletion status or flag in the ticket snapshot** is evaluated on the latest snapshot, so restoring the ticket at the source creates a newer snapshot and the signal disappears: the abort clears itself on the next pass. **(ii) A verified 404 from the ticket-detail request** writes a permanent `ticket_deleted:` raw event. Raw events are append-only and the derivation treats any marker as final, so a ticket restored at the source stays deleted and the abort does not clear. | `derive-history.test.ts` ("deletion signals are permanent in V1"); `ingest.ts` lines 474 to 498; plan 09 §6.5 |
+| The customer copy for any guard abort is the same sentence: "A safety check stopped a sync before any change was applied. Review the flagged change below." Only the lifecycle guard has something to review or confirm; for a deletion abort there is no action. | `apps/web/src/lib/custom-provider/state-copy.ts` line 54; `OverridePanel.tsx` |
+
+**Consequence for the two options.**
+
+- **Option (b)** as worded in the plan ("a deletion abort blocks the integration until the cause is removed at the source") is accurate only for signal kind (i). For kind (ii), removing the cause at the source does **not** clear the block; with no override and no deletion of raw events permitted (plan 09 §7), only a platform-operator database action or disconnect (soft; data kept) is available. A written acceptance should therefore say so explicitly.
+- **Option (a)** needs a design: who may apply a mass deletion, with what preview and confirmation, whether it is customer-owner or operator-assisted, what is audited, and how it differs from the lifecycle override that R2 deliberately kept away from deletions. It also needs a decision on whether markers from a restored ticket should be reversible (undelete is deferred in V1).
+
+**Recommendation (for the owner to accept, change or reject; not a decision).**
+
+1. Accept option (b) for the Beta pilot only (one or two design partners, operator-enabled per organization, plan 09 §14), **restated precisely**: a deletion abort blocks that integration's syncs; data stays visible; recovery is by restoring the deletion signal at the source if it is a status or flag signal, and by a documented operator procedure if it is a verified-404 marker.
+2. During Beta, recommend that pilots use a status or flag deletion signal and not `verifyWithDetail`, because kind (i) is self-healing. Engineering can state this in the setup guidance; it changes no behavior.
+3. Before the pilot starts, write the operator procedure for kind (ii) (what to check, who approves, how it is audited). It must not delete raw events; the likely shape is a new, narrowly scoped, audited operator action, which is itself small option-(a) work.
+4. Make the customer copy specific: a deletion abort should say that a large number of tickets were reported deleted, that nothing was changed, and what to check, instead of "review the flagged change". This is a copy change (N9.12, verified in N9.14), not a behavior change.
+5. Revisit option (a) before general availability, using what the pilot shows about how often a legitimate mass deletion happens.
+
+**What would close OD-01:** the owner records "accept (b) for Beta as restated, with the procedure in item 3 written first" or "build (a) first", with a date. Until then N9.14-F1 and the Beta ordering rule stay open.
 
 ---
 
@@ -2313,6 +2342,12 @@ Evidence:    upload lines=   artifacts listed? [ ]   readable stack event id=
 RESULT
 Status:      [ ] PASS   [ ] FAIL   [x] BLOCKED (BL-09)   [ ] SKIPPED
 Evidence:    reviewer/date=   outcome per clause=
+Follow-up 2026-10-10 (Claude Code): the review package is prepared in `implementation-plans/n9-legal-review.md` (section "Review package for the legal reviewer"): 15 verified facts with code references, 9 proposed clauses (P-1 to P-9), 6 issues in the existing copy (L-01 to L-06), 7 questions for counsel and an empty decision record. NOT a legal review and not legal advice; no clause is approved. D-07 stays BLOCKED (BL-09) until a qualified reviewer fills in the decision record.
+             Findings the reviewer and the owner must see (live copy not edited):
+             L-01/L-02: `PrivacyView.tsx` §4 states a fixed 90-day retention and deletion "according to our standard retention schedule" on disconnect or account closure; `docs/data-retention-and-on-call.md` says there is no retention window in the schema or code, data is kept until removal is requested, and disconnect is a soft hide. This concerns every provider, not only Custom REST, and is a candidate inaccurate public statement (needs an owner decision and counsel; H-5).
+             L-03: Terms §2 and Privacy §2 say the service is read-only against every connected source; for Custom REST a customer-designated POST search endpoint is permitted (the client sends only GET or POST), and the draft addition "only sends read requests" omits that.
+             F-15: Elapsed's outbound IP address is not documented or fixed, so a customer that allowlists IPs cannot be told one.
+             Missing evidence for closure: the reviewer's written decision per clause (section 6 of the package), and an owner decision on L-01/L-02.
 ```
 
 ### D-08 — N9 focused tests of plan 09 §13 and §8.4 items 3–7
@@ -2332,8 +2367,36 @@ Evidence:    reviewer/date=   outcome per clause=
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [x] BLOCKED (BL-04)   [ ] SKIPPED
+Status:      [ ] PASS   [ ] FAIL   [x] BLOCKED (BL-04)   [ ] SKIPPED   (PARTIAL: tests written and passing, 4 of the 22 §13 rows still have no dedicated test; status stays open; see Follow-up)
 Evidence:    test files=   §13 rows covered _/22   failures=
+Follow-up 2026-10-10 (Claude Code, cloud session; branch claude/sharp-euler-gm4not, test-only commits dc6ad09, 5db1cb1, 3586f4c; NOT on origin/testing, see Deviations):
+             test files written (13): packages/safe-http/test/{address,url,json,budget,client}.test.ts; packages/custom-ticket/test/{guards,path-and-dates,derive-history,pagination,overrides,validate-and-sla-modes}.test.ts; packages/db/test/custom-secrets.test.ts; packages/commitments/test/unsupported-kinds.test.ts
+             focused run (`npx vitest run` of exactly those files, DATABASE_URL unset, no database used): see the count line below   failures=0
+             §13 coverage, by row (C = covered by a new test, P = partly, E = covered by an existing suite or an end-to-end record, N = no dedicated test):
+               1 SSRF and the client: C (IPv4/IPv6 matrix, metadata names, mixed records, rebinding at connect time, TLS wrong certificate and SNI, redirects and loops, cross-origin next URL and Link, userinfo, ports, IP literals, size and compressed-body caps, timeouts, CRLF headers, credential-looking keys, method and POST designation). Gaps: P for "wrong SNI beyond the host name", HTTP/2 not applicable
+               2 Mapping: P (path subset, prototype keys, wildcard, timezone required, DST gap and overlap, unknown status and the open fallback, unknown priority). N for transform determinism and payload_too_large
+               3 Current state versus history: C (never fabricated, case_closed only at a source timestamp, updatedAt never substituted, identical output for different fetch times, real history at its timestamps)
+               4 SLA exclusion: P (slaSupport parsing, per-kind exclusion in validation, stored support). N for the worker, connect-time and webhook gating and for "D24 replay shows 0 differences" (C-14 covers replay)
+               5 SLA modes: C at configuration and derivation level (Resolution-only, Full, Q7 acknowledgement never defaulted, private notes, creation actor)
+               6 Failure guard (Q2): C for the boundary table; P for the non-abort path (failed records excluded, rest derived); stored state of failed tickets unchanged: E (B-09)
+               7 Lifecycle guard: C for the boundary table and "R < 10 never aborts"; E for "abort before projection, nothing written" (B-12 and the D-01 abort pass: content fingerprint identical)
+               8 Deletion guard: C for the boundary table (including L = 101); E/N for "abort leaves everything unchanged" (not exercised end to end)
+               9 Ceiling (Q13): C for L + N = C versus C + 1 and the configured value; N for "no rewrite, ingest does not start while over"
+              10 Budget (Q4): C (120 s, attempts bounded by the remainder, no attempt at zero remaining, in-flight request aborted at expiry, retry and Retry-After clamped); N for "partial page not written, cursor at last completed page, resume"
+              11 Partial runs and failures: E (B-09, B-11 end-to-end records; apps/web/test/custom-provider-failure-details and custom-sync-state-supersession); N for the §6.12 A-to-E table at unit level, three zero-progress runs = no_progress, and resume without duplicates
+              12 Activation blocking (R6): N (no test for "no updated-since and a listing that does not fit one run is refused")
+              13 Customer-facing states (R6): E (apps/web/test/custom-sync-state-supersession.test.ts, B-07 PASS); P otherwise
+              14 Commitment cancellation and rollback (Q14, R5): C (dry-run writes nothing and shows counts including breached with closedAt null, stale hash rejected, only unfinalized commitments of the newly unsupported kind cancelled, finalized and other kinds untouched, nothing deleted, second run no-op, rollback to a version re-supporting Next Reply REFUSED, the cycle planner would restore a cancelled Next Reply which is why the rollback is refused). N for "version activation and cancellation commit together" (transaction) and "D24 replay checks (a)-(e)"; N for runCommitmentPipeline creating nothing for a cancelled first_response/resolution
+              15 Override (Q15, R1, R2): C (only the lifecycle guard is skipped; ceiling, deletion and failure guards still fire; reason, bound hash, single use, 24 h expiry, void on a changed set, support path needs the owner's authorization and a distinct operator, operator cannot create it). N for member refusal and AdminAuditLog at route level (member refusal: E, B-12 closing run, 403)
+              16 Beta flag (Q5): C at client level (stop before a run sends nothing, in-flight abort within the check interval, stop during back-off); E for routes and ingest (B-06 suites, B-13)
+              17 Secrets (Q8, Q16): C (enc:v1 only, every malformed form one generic outcome, binding to organization, integration and field, unset or wrong key fails closed without an oracle, existing providers' paths unchanged); E for "sentinel never appears" (B-10)
+              18 Synchronization: C (page, offset, cursor, next_url, Link header, loop detection, same-origin enforcement, 429 Retry-After clamped, child-page cap); N for resume after a crash mid-page and look-back overlap deduplication
+              19 Deletion signals: C (absence never deletes, a source signal does, a restored ticket stays hidden when the marker came from a verified 404, a status or flag deletion is reversible at the source); N for writing the marker on a verified 404
+              20 Tenant isolation: E (B-05: classification and seeds on main, 2 of 2 files, 87 tests)
+              21 No-change runs (D32): E (B-07: sync-history-no-change.db, custom-sync-state-supersession)
+              22 Regression: E (B-07 PASS, 26 files, 293 tests)
+             Rows with NO dedicated automated test: 12 (activation blocking) and the unit-level parts of 11. Rows partly without: 2, 4, 8, 9, 10, 14, 18, 19. D-08's pass condition ("every §13 row has at least one test and all pass") is therefore NOT yet met.
+Deviations:  (1) Written on the branch that contains main, not on origin/testing: origin/testing is 52 commits behind main and has no packages/custom-ticket or packages/safe-http sources, so these tests cannot run there until main is merged into testing, which CLAUDE.md allows only when the owner asks. The commits are test-only and can be cherry-picked. (2) The test counts above were produced on this branch only. (3) packages/safe-http now has a test/ directory; no test-runner script was added to packages/safe-http/package.json (it already has `test: vitest run`).
 ```
 
 ---
