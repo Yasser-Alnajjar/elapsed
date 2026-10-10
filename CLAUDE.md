@@ -1,5 +1,8 @@
 # Repository workflow: `main` vs `testing`
 
+> You are on the `testing` branch: the dedicated test workspace. The
+> "On `testing`" section below is the one that applies here.
+
 Testing work is isolated from normal development. `main` is for product
 development; the `testing` branch is the dedicated workspace for the test suite.
 

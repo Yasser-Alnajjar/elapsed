@@ -80,6 +80,10 @@ const realDatabaseSuites = [
   "apps/web/test/admin-mutations.test.ts",
   "packages/db/test/billing.db.test.ts",
   "apps/web/test/billing-routes.test.ts",
+  "packages/db/test/integration-availability.db.test.ts",
+  "packages/custom-ticket/test/ingest-availability.db.test.ts",
+  "apps/web/test/integration-availability-admin.test.ts",
+  "apps/web/test/integration-availability-routes.test.ts",
 ];
 
 export default defineConfig({

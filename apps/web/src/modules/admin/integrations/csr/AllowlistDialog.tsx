@@ -165,11 +165,11 @@ function AllowlistForm({
           </div>
         )}
 
-        {row.rolloutBlock ? (
+        {row.allowlistAddBlock ? (
           <p className="border-warning/30 bg-warning/[0.07] text-muted-foreground flex items-start gap-2 rounded border px-3 py-2 text-xs leading-4">
             <Lock className="text-warning-text mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>
-              Adding organizations is blocked by {row.rolloutBlock.id}: {row.rolloutBlock.reason}
+              Adding organizations is blocked by {row.allowlistAddBlock.id}: {row.allowlistAddBlock.reason}
             </span>
           </p>
         ) : (
@@ -217,7 +217,7 @@ function AllowlistForm({
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Close
         </Button>
-        {!row.rolloutBlock && (
+        {!row.allowlistAddBlock && (
           <Button type="button" onClick={() => void add()} disabled={busy || !organizationId || !reasonOk}>
             Add to allowlist
           </Button>

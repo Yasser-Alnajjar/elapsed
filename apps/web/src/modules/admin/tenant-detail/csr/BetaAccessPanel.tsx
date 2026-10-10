@@ -64,10 +64,10 @@ export function BetaAccessPanel({ organizationId, access }: { organizationId: st
                     </span>
                   </div>
                   {!entry.allowlistApplies && <MonoLabel>Allowlist not in effect for this provider right now</MonoLabel>}
-                  {entry.rolloutBlock && !entry.listed ? (
+                  {entry.allowlistAddBlock && !entry.listed ? (
                     <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
                       <Lock className="text-warning-text mt-0.5 size-3 shrink-0" aria-hidden />
-                      Adding is blocked by {entry.rolloutBlock.id}.
+                      Adding is blocked by {entry.allowlistAddBlock.id}.
                     </p>
                   ) : (
                     <Button
