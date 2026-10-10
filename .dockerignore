@@ -13,3 +13,7 @@ packages/db/generated
 
 # Prospect CSV exports and concierge reports (apps/concierge/README.md)
 apps/concierge/data
+
+# Database dumps and operator backups (also gitignored); never copy into image layers
+backups
+**/backups

@@ -41,10 +41,10 @@ docker compose -f docker-compose.yml --env-file .env exec -T postgres sh -c 'psq
 
 ## 2. Take the backup
 
-Change the `pre-n3` label to describe what the backup is for.
+Change the `pre-n3` label to describe what the backup is for. The command runs inside `( ... )` on purpose: a bare `umask 077` would stay active in your shell, and a later `git pull`/merge in the same shell would write source files as 0600, which the worker image cannot read (2026-10-10 incident, `docs/custom-beta-deployment.md`).
 
 ```bash
-mkdir -p backups && chmod 700 backups && umask 077 && STAMP=$(date -u +%Y%m%dT%H%M%SZ) && docker compose -f docker-compose.yml --env-file .env exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d elapsed_db --format=custom --no-owner' < /dev/null > "backups/pre-n3-elapsed_db-$STAMP.dump" && echo "backups/pre-n3-elapsed_db-$STAMP.dump"
+( umask 077 && mkdir -p backups && chmod 700 backups && STAMP=$(date -u +%Y%m%dT%H%M%SZ) && docker compose -f docker-compose.yml --env-file .env exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d elapsed_db --format=custom --no-owner' < /dev/null > "backups/pre-n3-elapsed_db-$STAMP.dump" && echo "backups/pre-n3-elapsed_db-$STAMP.dump" )
 ```
 
 It prints the file path. Note it down; the steps below call it `<DUMP>`.
