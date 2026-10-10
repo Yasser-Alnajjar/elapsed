@@ -67,3 +67,7 @@ PERF_METRICS=1 PERF_ORG_ID=<organizationId> pnpm --filter @sla/worker perf:basel
 ```
 
 Always set `PERF_ORG_ID` for the worker script: an unscoped run cycles every organization in the database, including any with live integrations.
+
+## Relation to the N3.6 drill (2026-10-10, documentation only)
+
+The figures above are single-organization measurements on a laptop (Apple M4, 16 GB), not measurements of the production host (t3.medium, 2 vCPU, 3.7 GiB, per the owner-reported ledger A-10) and not a multi-tenant outage drill. They do not define the scale of the N3.6 two-hour drill: the target number of organizations and cases for that drill is undefined and needs an owner decision. See the roadmap's N3.6 entry.

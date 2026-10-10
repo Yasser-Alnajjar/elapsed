@@ -88,6 +88,8 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
 - **Outage drill test** (worker test, stubbed `fetch`): two orgs, one Zendesk integration that hangs or returns 503, one Intercom integration that is healthy. Record the healthy org's tick time and whether the tick exceeds 25% of the active-poll interval.
 - **Verify:** drill test passes; operator monitoring shows the durations.
 
+> **Update (Rev 10, 2026-10-10; documentation only, nothing built or run).** Verified against the code: `lastSyncDurationMs` is written per integration, and per-organization duration is emitted only as the structured log `organization_finished` (`durationMs`, `ingestMs`, `pipelineMs`, `apps/worker/src/cycle.ts`). **`WorkerSettings.lastActivePollDurationMs` and `lastReconciliationDurationMs` have no writers**, so the metrics the bullet above promises, and the roadmap's "tick p95 / interval" metric, are not available; the roadmap's remark that there is no global tick to persist is consistent with this. Before the production-scale drill can satisfy "other tenants within ±10%", the owner must either approve implementing the writers or approve an alternative metric (for example the `organization_finished` log). The drill itself is proposed for an isolated staging or bench environment only, never against a real customer's provider; the environment, host and target scale are undecided and need the owner. N3.7 keeps its D22 gate. See the roadmap's N3.6 entry and ledger D-02.
+
 ### N3.7 — Circuit breaker, only if N3.6 justifies it
 - **Trigger:** the drill or production metrics show one failing integration adding more than 25% of the active-poll interval to the tick, or a real outage did.
 - **Design:**
