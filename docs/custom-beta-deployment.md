@@ -4,8 +4,8 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 
 ## Preconditions and what this deployment does NOT do
 
-- **Explicit owner authorization for the production deployment is required and has NOT been given.** Do not run any command below, change `.env`, or restart services until it is.
-- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review, (O-2, the fixed outbound IP, is no longer a gate: owner decision 2026-10-10, Option A, deferred indefinitely) and this deployment with its verification (validation master, closure ledger). O-1 and O-3 are decided and only await the reviewer's wording.
+- **Owner authorization:** the production deployment was authorized and run by the owner on 2026-10-10 (see "Execution record"). Any further run of the commands below, any `.env` change or any restart needs a new explicit approval.
+- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains Beta/allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. The block does not stop individual organizations being added to the allowlist; none has been added. Remaining launch prerequisites are listed at the end of this file. O-2 (the fixed outbound IP) is not a gate (owner decision 2026-10-10, Option A, deferred indefinitely).
 
 ## What changes
 
