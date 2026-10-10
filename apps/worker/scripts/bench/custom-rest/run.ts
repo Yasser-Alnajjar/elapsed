@@ -160,7 +160,7 @@ async function main() {
   const report: Record<string, any> = {
     generatedAt: new Date().toISOString(),
     database: dbName,
-    options: { tiers, runs, firstRuns, snapshots, comments, cpus: cpus || "unpinned", maxOldSpaceMb: heapMb || "default", secondOrgCases: secondOrg },
+    options: { tiers, runs, firstRuns, snapshots, comments, cpus: cpus || "unpinned", liveCaseCeiling: process.env.CUSTOM_PROVIDER_LIVE_CASE_CEILING ?? "unset (default 5000)", maxOldSpaceMb: heapMb || "default", secondOrgCases: secondOrg },
     tiers: {} as Record<string, any>,
   };
 
