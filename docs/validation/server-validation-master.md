@@ -1210,7 +1210,7 @@ snap > ~/elapsed-validation/b13-after.txt; diff ~/elapsed-validation/b13-before.
 mock '{"mode":"normal"}'
 ```
 
-Then: try **re-adding** organization A in the console (it must be refused, see B-15); re-add it in this disposable database only by re-running `pnpm --filter @sla/web exec tsx scripts/seed-n9-test-orgs.ts`; after two worker runs confirm `paused` is still `t` (re-adding does not resume); finally use **Resume polling** on the tenant page and confirm the next run ingests (`lastSuccessfulSyncAt` advances).
+Then: try **re-adding** organization A in the console (allowed under D33-A1 while Custom REST is Beta with an allowlist; it must still not resume polling); re-add it in this disposable database only by re-running `pnpm --filter @sla/web exec tsx scripts/seed-n9-test-orgs.ts`; after two worker runs confirm `paused` is still `t` (re-adding does not resume); finally use **Resume polling** on the tenant page and confirm the next run ingests (`lastSuccessfulSyncAt` advances).
 **Pass:** the run ends `aborted` with `flag_disabled`, and `finishedAt` minus the audit row's `createdAt` is ≤ **10 s** (documented: about 5 s); the audit action is `remove_integration_allowlist`; the `diff` shows only `paused` changing (`f` → `t`): cases, events, commitments and cursor identical; case pages still show the data with the stale / "Paused by Elapsed" marker; re-adding does not resume; Resume polling does.
 **On failure:** record which property failed.
 
@@ -1276,38 +1276,75 @@ Evidence:    impact preview= not reported   diff(0->1)= identical (taken while Z
 Deviations:  The first baseline attempt was empty (helper functions missing in that tab) and was retaken before any change. Not captured: the impact-preview counts, the "Paused by Elapsed" card text, the owner A connect refusal. The worker-side skip for built-in providers rests on B-06 (apps/worker/test/integration-availability.test.ts).
 ```
 
-### B-15 — Custom REST rollout block (N9.14-F1 enforced by the backend)
+### B-15 — Custom REST rollout block (N9.14-F1 enforced by the backend; amended by D33-A1)
 
 |               |                                                                                                                                                      |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Related       | N10.4, D33 ruling 3, N9.14-F1                                                                                                                        |
-| Source        | Plan 10 §5.4 "Rollout block"; `docs/integration-availability.md` "Rollout block: Custom REST"; `packages/db/src/integration-catalog.ts` (`N9.14-F1`) |
-| Why           | The block is the only thing that keeps Custom REST from being enabled before its gate                                                                |
+| Related       | N10.4, D33 ruling 3 as amended by D33-A1 (2026-10-10), N9.14-F1                                                                                      |
+| Source        | Plan 10 §5.4 "Rollout block", ruling 3-A1; `docs/integration-availability.md` "Rollout block: Custom REST"; `packages/db/src/integration-catalog.ts` (`N9.14-F1`) |
+| Why           | The block is the only thing that keeps Custom REST from being opened to all organizations or promoted to Stable before its gate; the allowlist stays the bounded, operator-controlled form of Beta |
 | Environment   | E3                                                                                                                                                   |
-| Prerequisites | B-08                                                                                                                                                 |
-| State         | Attempts writes that must be refused                                                                                                                 |
+| Prerequisites | B-08; the E2E web stack running the D33-A1 code (branch `e2e/d33-allowlist-policy`; restart the web server after switching)                           |
+| State         | Writes `sla_e2e_test`: one allowlist add, one narrowing change (and the cleanup below)                                                              |
 | Depends on    | B-08                                                                                                                                                 |
-| Closes        | Evidence that N9.14-F1 is enforced while open                                                                                                        |
+| Closes        | Evidence that N9.14-F1 still blocks All organizations and Stable, and that an allowlist add is scoped to one organization and audited               |
 
-In `/admin/integrations` → Custom REST, as the operator, attempt each and record the response: (1) add organization B to the allowlist; (2) set Beta access to **All organizations**; (3) set the stage to **Stable**. Then:
+**Policy under test (D33-A1).** While `stage = beta` and `access = allowlist`, an operator can add or remove individual organizations. Opening to **All organizations** and promoting to **Stable** stay refused with `rollout_blocked` (409) until N9.14-F1 closes.
+
+Take the **before** snapshot first (helper tab):
 
 ```bash
-lsql sla_e2e_test <<'SQL'
-select count(*) as custom_allowlist from integration_beta_allowlist where provider = 'custom';
-select "releaseStage", "betaAccess", version from integration_availability where provider = 'custom';
-select count(*) as audit_rows_last_10_min from admin_audit_logs where "createdAt" > now() - interval '10 minutes' and metadata::text like '%custom%';
+lsql sla_e2e_test <<'SQL' | tee ~/elapsed-validation/b15-before.txt
+select a."organizationId", o.name from integration_beta_allowlist a join organizations o on o.id = a."organizationId" where a.provider = 'custom' order by o.name;
+select "releaseStage", "betaAccess", enabled, "statusMessage", version from integration_availability where provider = 'custom';
+select count(*) as audit_rows_before from admin_audit_logs where metadata::text like '%custom%';
 SQL
 ```
 
-**Pass:** all three refused with `rollout_blocked` (409) and the console shows the block reason; allowlist count, stage (`beta`), access (`allowlist`) and `version` unchanged; no audit row written for the refused attempts. A narrowing change (e.g. setting a status message only) succeeds and writes one audit row.
+Then, in `/admin/integrations` → Custom REST, as the operator (`n9-owner-b@example.test`):
+
+1. **Allowed:** click **Allowlist**, choose organization B, enter a reason, **Add to allowlist**. Expect success (HTTP 201).
+2. **Refused:** open **Edit availability**: **All organizations** and **Stable** are disabled in the dialog, so send each change to the API from the browser console (same session; set `v` to the `version` from the snapshot):
+
+```js
+const v = 0; // replace with the current version
+for (const change of [{ betaAccess: "all_organizations" }, { releaseStage: "stable" }]) {
+  const r = await fetch("/api/admin/integrations/providers/custom", {
+    method: "PATCH", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ expectedVersion: v, reason: "B-15 refused attempt", ...change }),
+  });
+  console.log(JSON.stringify(change), r.status, await r.text());
+}
+```
+
+   Record each status and body.
+3. Run the **after** queries (before the narrowing test):
+
+```bash
+lsql sla_e2e_test <<'SQL'
+select a."organizationId", o.name, a."addedByEmail" from integration_beta_allowlist a join organizations o on o.id = a."organizationId" where a.provider = 'custom' order by o.name;
+select "releaseStage", "betaAccess", enabled, "statusMessage", version from integration_availability where provider = 'custom';
+select action, "organizationId", "createdAt", metadata::text from admin_audit_logs where metadata::text like '%custom%' order by "createdAt" desc limit 5;
+select count(*) as audit_rows_after from admin_audit_logs where metadata::text like '%custom%';
+SQL
+```
+
+4. **Narrowing:** **Edit availability**, set only a status message, reason, save. Then re-run the last query only.
+5. **Cleanup (optional, recommended before B-16):** remove organization B from the allowlist in the console (one more audit row) and clear the status message (one more), so the allowlist is organization A only again.
+
+**Pass:** (1) succeeds with 201 and writes exactly **one** `add_integration_allowlist` audit row whose `organizationId` is B; the allowlist is then exactly the before set plus B, and no other organization is added; `releaseStage`, `betaAccess`, `enabled` and `version` are unchanged by the add. (2) both PATCH attempts return **409 `rollout_blocked`** with the N9.14-F1 reason, and `stage` stays `beta`, `access` stays `allowlist`, `version` is unchanged and no audit row exists for them (the audit count rose by exactly 1 since the before snapshot). (3) the narrowing change succeeds, writes one `update_integration_availability` row and raises `version` by 1.
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    (1)=   (2)=   (3)=   allowlist/stage/version unchanged? [ ]   audit rows=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 10:42-10:49 UTC
+Where:       local e2e stack, sla_e2e_test, web on branch e2e/d33-allowlist-policy (D33-A1), worker stopped
+Evidence:    (1) add org B = success, one add_integration_allowlist audit row for B at 10:42:30, allowlist = A + B only
+             (2a) all_organizations = 409 rollout_blocked (N9.14-F1 reason)   (2b) stable = 409 rollout_blocked (N9.14-F1 reason)
+             stage/access/version unchanged? [x] (beta / allowlist / 0)   audit rows before/after = 2 / 3 (before inferred, see Deviations)
+             (3) narrowing (status message) = success, update_integration_availability row at 10:48:39, version 0 -> 1, audit count 4
+             cleanup: B removed and status message cleared; allowlist = A only, version 2
+Deviations:  The before snapshot was not taken. The before count of 2 is inferred from the audit rows that predate B-15 (B-13's remove_integration_allowlist and resume_polling). No audit row exists for either refused attempt. The two refused changes were sent from the browser console because the dialog disables those options.
 ```
 
 ### B-16 — Unsupported commitment kinds: dry-run, confirmation, cancellation, rollback guard (plan 09 §5.5, §5.6; Q14, R5, U3 option (a))
