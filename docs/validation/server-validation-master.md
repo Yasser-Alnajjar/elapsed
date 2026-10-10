@@ -150,6 +150,11 @@ Status at hand-over:
 | BL-11         | `typescript-eslint` does not support TypeScript 7 (A-11 re-checks)                                                                                                                                                                      | H-8, 7.10 lint half                                                  | Upstream                                                |
 | OD-01 … OD-12 | Owner decisions, §2.4                                                                                                                                                                                                                   | various                                                              | Owner                                                   |
 
+
+> **Update 2026-10-10 (Claude Code, evidence from `origin/main` at 1b1e084; the original rows above are kept as written).**
+> **BL-03 is resolved:** the eight N10.7 suites are on `main` (merged by PR #50, 4316f87). B-06 was reproduced from the repository on a tree merged with `origin/main`: 8/8 files, 76 tests passed, 0 skipped (B-06 follow-up).
+> **BL-04 is half stale.** Resolved: the classification entries for the 7 N9/N10 models and the tenant-isolation seeds are on `main` (0495f1f, merged by PR #51); B-05 passes on current code (2/2 files, 87 tests). Still open: the plan 09 §13 focused tests (D-08). `packages/safe-http` has no `test/` directory and `packages/custom-ticket/test` holds three files (`ingest-availability.db.test.ts`, `mapping-diagnostics.test.ts`, `supersession.test.ts`); no SSRF matrix, §6.4 guard-boundary, key-failure or Q14/R5 rollback tests were found, so D-08 stays BLOCKED until those are written on `testing` when you ask for it.
+
 ### 2.3 Documentation conflicts, stale claims and unsupported completion claims
 
 Recorded, **not resolved** here. Each needs your decision or a documentation update in E-03.
@@ -847,7 +852,8 @@ Where:       branch/worktree=claude/sharp-euler-gm4not at 292cb26 (no `testing` 
 Evidence:    `npx vitest run apps/web/test/tenant-scope-classification.test.ts apps/web/test/tenant-isolation.test.ts`: files passed 2/2, 87 tests passed (vitest v5.0.0)   unclassified models listed=none
              classification in tenant-scope-classification.test.ts (lines 67-74): CustomActivationAudit, CustomProviderConfigVersion, CustomProviderDraft, GuardOverride, IntegrationBetaAllowlist, IntegrationSyncRun = direct; IntegrationAvailability = global (platform-level)
              tenant-isolation.test.ts seeds customActivationAudit, customProviderConfigVersion, customProviderDraft, guardOverride, integrationBetaAllowlist and integrationSyncRun for both organizations (lines 410-435)
-Deviations:  CONFLICT, reported and not resolved here: BL-04 (§2.2) and this check's Prerequisites say the 7 models have no classification or isolation seeds and the work must be written on `testing`, but this branch already contains both (last change to the classification test: 0495f1f). The pass criteria are met on current code, so the check is recorded PASS; BL-04's text and D-08's BLOCKED (BL-04) row were not changed. Follow-up 2026-10-10 (after `git fetch`): 0495f1f (2026-10-10 11:25 +03:00) IS on origin/main (merged by PR #51, 1b1e084) and the same seven classification entries and isolation seeds are in main's two test files; it is NOT on origin/testing or origin/testing-n10. An earlier note here suggested the entries might exist only on this branch; that was wrong (the local main was stale). BL-04 and D-08 are stale relative to main; an owner decision is needed before they are edited. Only these two test files were run, per instruction (no B-07, no full suite).
+Deviations:  CONFLICT, reported and not resolved here: BL-04 (§2.2) and this check's Prerequisites say the 7 models have no classification or isolation seeds and the work must be written on `testing`, but this branch already contains both (last change to the classification test: 0495f1f). The pass criteria are met on current code, so the check is recorded PASS; BL-04's text and D-08's BLOCKED (BL-04) row were not changed. Follow-up 2026-10-10 (after `git fetch`): 0495f1f (2026-10-10 11:25 +03:00) IS on origin/main (merged by PR #51, 1b1e084) and the same seven classification entries and isolation seeds are in main's two test files; it is NOT on origin/testing or origin/testing-n10. An earlier note here suggested the entries might exist only on this branch; that was wrong (the local main was stale). BL-04 and D-08 are stale relative to main; an owner decision is needed before they are edited.
+             Follow-up (same day): re-run on commit bb85aef (this branch merged with origin/main 1b1e084): 2/2 files, 87 tests passed. Decision applied in the §2.2 update note: BL-04's classification/isolation half is resolved by 0495f1f; D-08 (the §13 tests) is NOT resolved and stays BLOCKED. Only these two test files were run, per instruction (no B-07, no full suite).
 ```
 
 ### B-06 — N10 focused suites (plan 10 §10)
@@ -884,6 +890,8 @@ Run by/date: Yasser Alnajjar, 2026-10-10 08:14 UTC
 Where:       testing-n10 sha=10245941, db=sla_validation_test (68 migrations, no pending)
 Evidence:    files 8/8   tests passed=72   failed=0   skipped=0 (4 real-database suites ran against Postgres: admin 23, routes 10, db 3, custom ingest 3)
 Deviations:  None. Closes the reproducibility half of DC-02 for the local branch; the suites are still not on any remote branch (BL-03), so they are not yet on `main` or `origin/testing`.
+Follow-up 2026-10-10 (Claude Code, cloud session): why PASS and BLOCKED both appeared: the PASS is the run on the local `testing-n10` branch; BLOCKED (BL-03) described that the files were not on any remote branch. Since then PR #50 (4316f87) merged `testing-n10` into `main`, so the files are in the repository and BL-03 is resolved.
+             Reproduced from the repository: branch claude/sharp-euler-gm4not merged with origin/main (bb85aef); db=sla_validation_test (68 migrations, `test:db:prepare`: no pending); `npx vitest run` of the 8 files listed above: Test Files 8 passed (8), Tests 76 passed (76), 0 failed, 0 skipped (72 documented + D33-A1 additions from 0edad35/5d06593).
 ```
 
 ### B-07 — Regression suites for the shared N9/N10 changes that already exist
@@ -1284,6 +1292,8 @@ Run by/date: Yasser Alnajjar, 2026-10-10 10:24-10:28 UTC
 Where:       local e2e stack, sla_e2e_test, fixture tenant `halcyon` (1 Zendesk + 1 Jira integration, connected), worker stopped
 Evidence:    impact preview= not reported   diff(0->1)= identical (taken while Zendesk was disabled: integrations, cases, events, commitments and raw events unchanged, both integrations still `connected`)   diff(0->2)= identical (after re-enable)   audit rows= 2 `update_integration_availability`, both with a reason (10:27:20, 10:27:54)   version/enabled= 2 / t   card while disabled= not reported   connect refused? [ ] not reported
 Deviations:  The first baseline attempt was empty (helper functions missing in that tab) and was retaken before any change. Not captured: the impact-preview counts, the "Paused by Elapsed" card text, the owner A connect refusal. The worker-side skip for built-in providers rests on B-06 (apps/worker/test/integration-availability.test.ts).
+Follow-up 2026-10-10 (Claude Code, rebuilt local e2e stack sla_e2e_test, worker stopped, operator = n9-owner-b via the API, not the browser): impact preview POST /api/admin/integrations/providers/zendesk/impact {"enabled":false} = {"organizationsLosingAccess":[],"connectionsAffected":0} (this database has no Zendesk connection); PATCH disable with a reason and status message = 200, version 0 -> 1; owner A GET /api/integrations/zendesk/connect?subdomain=acme = 307 to /settings/integrations?availability=integration_disabled&provider=zendesk (connect refused); PATCH re-enable with a reason = 200, version 2, enabled=t; 2 `update_integration_availability` audit rows with a reason. After re-enable, the same connect request passes the availability gate and returns 500 "Zendesk is not configured for this organization" (the local database has no Zendesk OAuth client; not a defect of the gate).
+             Still not verified: the "Paused by Elapsed" card text and the 'not Disconnected' rendering (browser-only), and data preservation across the disable (this database has no Zendesk data; the earlier fixture run above stands).
 ```
 
 ### B-15 — Custom REST rollout block (N9.14-F1 enforced by the backend; amended by D33-A1)
@@ -1404,6 +1414,8 @@ Required for the release (C-11): **B-01, B-02, B-03, B-07 PASS** (with only the 
 ```text
 CHECKPOINT B:  [ ] release prerequisites met   [ ] Beta prerequisites met   [ ] stopped — reason:
 ```
+
+Status 2026-10-10 (not a sign-off; the boxes above stay open). Release prerequisites: B-01, B-02, B-03 PASS; **B-07 not run (needs the owner's explicit authorization): the only open release prerequisite.** Beta prerequisites: B-05, B-06, B-08 to B-16 have PASS results (B-10, B-12, B-14 carry the browser limitation recorded in their Deviations); D-01 BLOCKED (BL-01, BL-02, OD-08), D-07 BLOCKED (BL-09), D-08 BLOCKED (§13 tests unwritten), OD-01 undecided.
 
 ---
 
