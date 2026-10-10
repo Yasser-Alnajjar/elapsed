@@ -2,12 +2,12 @@
 
 **One file for every outstanding validation needed to close Elapsed's documented work: instructions, commands, pass criteria and the results you record.** Fill in the `RESULT` block under each check in place and send this file back. No other spreadsheet or report is needed.
 
-| | |
-| --- | --- |
-| Prepared | 2026-10-09 (UTC), repository audit at `main` = `0e48d28` (merge of PR #49, N10) |
-| Scope | Every roadmap phase (historical 0–7, Production Hygiene H-1–H-13, N1–N10), the Launch Gate, decisions D1–D33, plans 01–10, runbooks, scripts, CI, migrations and the code paths they describe |
-| Not in scope | Building features, writing tests, changing application behavior, approved decisions or performance limits. Where a check needs any of those first, it is marked **BLOCKED** with the prerequisite |
-| Owner of execution | You. Run checks one by one, in phase order, and stop at every checkpoint that fails |
+|                    |                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prepared           | 2026-10-09 (UTC), repository audit at `main` = `0e48d28` (merge of PR #49, N10)                                                                                                                   |
+| Scope              | Every roadmap phase (historical 0–7, Production Hygiene H-1–H-13, N1–N10), the Launch Gate, decisions D1–D33, plans 01–10, runbooks, scripts, CI, migrations and the code paths they describe     |
+| Not in scope       | Building features, writing tests, changing application behavior, approved decisions or performance limits. Where a check needs any of those first, it is marked **BLOCKED** with the prerequisite |
+| Owner of execution | You. Run checks one by one, in phase order, and stop at every checkpoint that fails                                                                                                               |
 
 ---
 
@@ -27,7 +27,7 @@ Deviations:  <anything you did differently from the commands>
 ```
 
 - **PASS** only when every listed pass criterion holds. A command exiting 0 is not a pass by itself.
-- **FAIL**: stop, fill in the block, and follow the check's *On failure* section. Do not continue past the next checkpoint.
+- **FAIL**: stop, fill in the block, and follow the check's _On failure_ section. Do not continue past the next checkpoint.
 - **BLOCKED**: a prerequisite is missing. Write which one.
 - Paste outputs **after** removing organization names, emails, ticket subjects and tokens. Counts, timings, migration names, commit SHAs and status codes are fine.
 
@@ -43,15 +43,15 @@ Deviations:  <anything you did differently from the commands>
 
 ### 0.3 Environment classes
 
-| Code | Environment | Used for |
-| --- | --- | --- |
-| **E1** | Local static check (no database) | type-check, builds, `git` inspection |
-| **E2** | Isolated disposable test database (local Docker Postgres from `docker-compose.dev.yml`) | migrations on an empty schema, focused test suites |
-| **E3** | Local Docker/full stack (web + worker + mock provider + disposable DB) | end-to-end workflows |
-| **E4** | Staging / production-equivalent server or a restored production backup on an isolated database | replay, drills, benchmarks |
-| **E5** | External provider sandbox or test account | live OAuth walkthroughs, Sentry |
-| **E6** | Production, safe operational check (read-only, or an explicitly gated owner action) | inventory, health, backups, deployment |
-| **E7** | No new check: adequate evidence already exists | cited in §3 |
+| Code   | Environment                                                                                    | Used for                                           |
+| ------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **E1** | Local static check (no database)                                                               | type-check, builds, `git` inspection               |
+| **E2** | Isolated disposable test database (local Docker Postgres from `docker-compose.dev.yml`)        | migrations on an empty schema, focused test suites |
+| **E3** | Local Docker/full stack (web + worker + mock provider + disposable DB)                         | end-to-end workflows                               |
+| **E4** | Staging / production-equivalent server or a restored production backup on an isolated database | replay, drills, benchmarks                         |
+| **E5** | External provider sandbox or test account                                                      | live OAuth walkthroughs, Sentry                    |
+| **E6** | Production, safe operational check (read-only, or an explicitly gated owner action)            | inventory, health, backups, deployment             |
+| **E7** | No new check: adequate evidence already exists                                                 | cited in §3                                        |
 
 ### 0.4 Shell helpers
 
@@ -89,12 +89,12 @@ Phase D (external access / missing infrastructure): independent; each item start
 Phase E (final acceptance and documentation closure): after every other check has a RESULT
 ```
 
-| Can run in parallel | Must wait |
-| --- | --- |
-| A-01, A-02, A-11 (local) with A-03–A-10 (host) | Every host check after A-03 needs A-03's confirmed `ENV_FILE` and `APP_DB` |
-| All of Phase B with Phase C1 (different machines/databases) | C-04 needs C-03; C-05 needs C-04; C-06/C-07 need C-05 |
-| Phase D items with everything else | C-11 (release) needs CHECKPOINT B **and** CHECKPOINT C1 **and** your gate |
-| | E-02 needs your explicit decision to sync `main` into `testing` |
+| Can run in parallel                                         | Must wait                                                                  |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| A-01, A-02, A-11 (local) with A-03–A-10 (host)              | Every host check after A-03 needs A-03's confirmed `ENV_FILE` and `APP_DB` |
+| All of Phase B with Phase C1 (different machines/databases) | C-04 needs C-03; C-05 needs C-04; C-06/C-07 need C-05                      |
+| Phase D items with everything else                          | C-11 (release) needs CHECKPOINT B **and** CHECKPOINT C1 **and** your gate  |
+|                                                             | E-02 needs your explicit decision to sync `main` into `testing`            |
 
 ---
 
@@ -116,16 +116,17 @@ Phase E (final acceptance and documentation closure): after every other check ha
 
 ### 2.1 Checks by phase and environment
 
-| Phase | E1 | E2 | E3 | E4 | E5 / external | E6 | Total |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| A — preflight | 3 | – | – | – | – | 8 | **11** |
-| B — isolated | 2 | 5 | 9 | – | – | – | **16** |
-| C — server | – | – | – | 9 | – | 9 | **18** |
-| D — external / missing infrastructure | – | 1 | – | 2 | 4 | 1 | **8** |
-| E — final acceptance | 1 | 1 | – | – | – | – | **2** (+ E-03, a documentation procedure) |
-| **Total** | 6 | 7 | 9 | 11 | 4 | 18 | **55 checks + E-03** |
+| Phase                                 | E1  | E2  | E3  | E4  | E5 / external | E6  | Total                                     |
+| ------------------------------------- | --- | --- | --- | --- | ------------- | --- | ----------------------------------------- |
+| A — preflight                         | 3   | –   | –   | –   | –             | 8   | **11**                                    |
+| B — isolated                          | 2   | 5   | 9   | –   | –             | –   | **16**                                    |
+| C — server                            | –   | –   | –   | 9   | –             | 9   | **18**                                    |
+| D — external / missing infrastructure | –   | 1   | –   | 2   | 4             | 1   | **8**                                     |
+| E — final acceptance                  | 1   | 1   | –   | –   | –             | –   | **2** (+ E-03, a documentation procedure) |
+| **Total**                             | 6   | 7   | 9   | 11  | 4             | 18  | **55 checks + E-03**                      |
 
 Status at hand-over:
+
 - **Adequate evidence, no check:** the items in §3.
 - **Partly evidenced by the auditor's pre-run (no database, no tests):** B-01 (type-check PASS; `validate` still yours) and B-04 (part 1 PASS; part 2 yours).
 - **Outstanding:** all 55 checks need your run or your action.
@@ -134,65 +135,65 @@ Status at hand-over:
 
 ### 2.2 Blockers that need infrastructure, provider access or an owner decision
 
-| # | Blocker | Blocks | Kind |
-| --- | --- | --- | --- |
-| BL-01 | The plan 09 §6.10 benchmark harness does not exist. The roadmap points to `packages/custom-ticket/bench/`, which is not in the repository; `apps/worker/scripts/bench/run.ts` is the multi-worker soak harness, not the §6.10 benchmark | D-01, N9.7-F1, N9.14-F1 | Missing infrastructure (test tooling, `testing` branch) |
-| BL-02 | No production-equivalent host specification is recorded (the EC2 size is "not recorded in the repo", `docs/capacity-limits.md`) | D-01, D-02 | Infrastructure (A-10 records it) |
-| BL-03 | The N10.7 test files exist only on your local `testing-n10` branch: none of the 8 suites is on `main` or `origin/testing`, and `origin/testing-n10` does not exist | B-06, N10.7 | Branch not pushed |
-| BL-04 | The N9 focused tests (plan 09 §13, §8.4 items 1–7) are not written; `tenant-scope-classification` and `tenant-isolation` have no entries for the 7 N9/N10 models | B-05, D-08, N9.5 exit, N9.14-F1 (1) | Test authoring on `testing` (you must ask for it) |
-| BL-05 | No outage-injection harness for N3.6's production-scale 2-hour drill (the fake provider in `apps/worker/scripts/bench` only adds latency) and no staging host | D-02, N3.6, N3 "Phase is done when" | Missing infrastructure |
-| BL-06 | Zendesk sandbox login + OAuth client (required); Intercom and Linear sandbox workspaces with OAuth apps | D-03, D-04, N5.8, H-9, 6.8, N1.13 | External provider accounts |
-| BL-07 | Sentry auth token (`project:releases`, `org:read`), org and project slug; a replacement `SENTRY_DSN` | D-06, H-6 | Secret / access |
-| BL-08 | Replacement of the leaked `OPS_ALERT_SMTP_PASSWORD` (and the ops SMTP account decision) and `SENTRY_DSN` at their providers | D-05, H-10 | Third-party secrets |
-| BL-09 | Legal review of `implementation-plans/n9-legal-review.md` | D-07, N9.14-F1 (5) | External (legal) |
-| BL-10 | `GUARD_OVERRIDE_OPERATOR_EMAILS` and `CUSTOM_PROVIDER_LIVE_CASE_CEILING` are read by the code but not passed to any container by `docker-compose.yml`, so neither can be set in production today | The support-assisted override path; applying the benchmarked ceiling | Configuration gap (record; not fixed here) |
-| BL-11 | `typescript-eslint` does not support TypeScript 7 (A-11 re-checks) | H-8, 7.10 lint half | Upstream |
-| OD-01 … OD-12 | Owner decisions, §2.4 | various | Owner |
+| #             | Blocker                                                                                                                                                                                                                                 | Blocks                                                               | Kind                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| BL-01         | The plan 09 §6.10 benchmark harness does not exist. The roadmap points to `packages/custom-ticket/bench/`, which is not in the repository; `apps/worker/scripts/bench/run.ts` is the multi-worker soak harness, not the §6.10 benchmark | D-01, N9.7-F1, N9.14-F1                                              | Missing infrastructure (test tooling, `testing` branch) |
+| BL-02         | No production-equivalent host specification is recorded (the EC2 size is "not recorded in the repo", `docs/capacity-limits.md`)                                                                                                         | D-01, D-02                                                           | Infrastructure (A-10 records it)                        |
+| BL-03         | The N10.7 test files exist only on your local `testing-n10` branch: none of the 8 suites is on `main` or `origin/testing`, and `origin/testing-n10` does not exist                                                                      | B-06, N10.7                                                          | Branch not pushed                                       |
+| BL-04         | The N9 focused tests (plan 09 §13, §8.4 items 1–7) are not written; `tenant-scope-classification` and `tenant-isolation` have no entries for the 7 N9/N10 models                                                                        | B-05, D-08, N9.5 exit, N9.14-F1 (1)                                  | Test authoring on `testing` (you must ask for it)       |
+| BL-05         | No outage-injection harness for N3.6's production-scale 2-hour drill (the fake provider in `apps/worker/scripts/bench` only adds latency) and no staging host                                                                           | D-02, N3.6, N3 "Phase is done when"                                  | Missing infrastructure                                  |
+| BL-06         | Zendesk sandbox login + OAuth client (required); Intercom and Linear sandbox workspaces with OAuth apps                                                                                                                                 | D-03, D-04, N5.8, H-9, 6.8, N1.13                                    | External provider accounts                              |
+| BL-07         | Sentry auth token (`project:releases`, `org:read`), org and project slug; a replacement `SENTRY_DSN`                                                                                                                                    | D-06, H-6                                                            | Secret / access                                         |
+| BL-08         | Replacement of the leaked `OPS_ALERT_SMTP_PASSWORD` (and the ops SMTP account decision) and `SENTRY_DSN` at their providers                                                                                                             | D-05, H-10                                                           | Third-party secrets                                     |
+| BL-09         | Legal review of `implementation-plans/n9-legal-review.md`                                                                                                                                                                               | D-07, N9.14-F1 (5)                                                   | External (legal)                                        |
+| BL-10         | `GUARD_OVERRIDE_OPERATOR_EMAILS` and `CUSTOM_PROVIDER_LIVE_CASE_CEILING` are read by the code but not passed to any container by `docker-compose.yml`, so neither can be set in production today                                        | The support-assisted override path; applying the benchmarked ceiling | Configuration gap (record; not fixed here)              |
+| BL-11         | `typescript-eslint` does not support TypeScript 7 (A-11 re-checks)                                                                                                                                                                      | H-8, 7.10 lint half                                                  | Upstream                                                |
+| OD-01 … OD-12 | Owner decisions, §2.4                                                                                                                                                                                                                   | various                                                              | Owner                                                   |
 
 ### 2.3 Documentation conflicts, stale claims and unsupported completion claims
 
 Recorded, **not resolved** here. Each needs your decision or a documentation update in E-03.
 
-| ID | Where | Claim | What the repository shows | Effect on this plan |
-| --- | --- | --- | --- | --- |
-| DC-01 | Roadmap Status Board "Now", phase overview, N10 status line | N10 "not pushed, no PR yet"; N10.1–N10.6 "committed on the phase branch, not pushed" | `main` = `0e48d28`, "Merge pull request #49 … phase/n10-integration-control-center" | N10 is on `main`; status lines are stale (E-03) |
-| DC-02 | Roadmap N10.7; plan 10 §10 "As built" | 8 suites / 72 tests passing; "the four real-database suites are listed in `vitest.config.ts`" | None of the 8 files is on `main` or `origin/testing`; `vitest.config.ts` on `main` lists none of them | N10.7 evidence is not in the repository (BL-03, B-06) |
-| DC-03 | Roadmap N9.7-F1 | "Harness: `packages/custom-ticket/bench/`" | Path does not exist | BL-01 |
-| DC-04 | Roadmap N9.0-F2, Rev 8 changelog | The copy-only change on `copy/docs-reconciliation-30min` "awaits review" | `origin/copy/docs-reconciliation-30min` is an ancestor of `main` (merged) | N9.0-F2 needs only your confirmation (OD-09) |
-| DC-05 | `docs/h-phase-close-out.md` "Remaining owner actions", Release row | 7 pending migrations (`20261001100000` … `20261004100000`) after `7cb2b9b`; safety evidence from 2026-10-05 | 13 migrations after `7cb2b9b` (adds 5 N9 and 1 N10). The 6 new ones were never applied to a production-backup restore | C-05, C-07, C-08 re-establish the evidence |
-| DC-06 | `docs/deployment.md`, `deployment-runbook.md`, `h-phase-close-out.md` (H-1, H-4, H-10, N4.7 commands), `scripts/prod/h10-verify.sh`, `scripts/prod/n47-plan-records.sql` header, `scripts/restore-drill.sh`, `scripts/backup.sh` defaults | Host uses `.env.prod` and the container's `$POSTGRES_DB` | `docs/production-backup-runbook.md` and `n2-replay-runbook.md` ([host] notes): the host uses `.env` and the data is in `elapsed_db`; `$POSTGRES_DB` (`sla_breach_monitoring`) is empty. **`h10-verify.sh` check 3 queries `$POSTGRES_DB`, so it can PASS vacuously; `backup.sh` without `DB_NAME` dumps the empty database** | Every host command here names `$ENV_FILE` / `$APP_DB` explicitly; A-07 checks the scheduled dumps; C-15 replaces check 3 |
-| DC-07 | Roadmap 7.3 (ticked) | "The drill timing belongs in `docs/restore-drills.log` — add the line if it isn't committed yet" | `docs/restore-drills.log` has never been committed | C-02 |
-| DC-08 | Roadmap Status Board "10 customers"; H-1 evidence | 10 live customers | H-1's read-only query of `elapsed_db` found 12 organizations: 11 `seed-org-*` fixtures and 1 dev sandbox. The 10 customers' data was never located | OD-07; A-09 re-counts |
-| DC-09 | `h-phase-close-out.md` "H-10 code audit" | "all 71 API routes re-audited" | 99 `route.ts` files now (N4–N10 added 28). N4/N10 routes have their own authz tests; the N9 custom routes have never been exercised | B-09–B-16 exercise them; H-10's "authorization audit current" needs OD-12 |
-| DC-10 | Plan 09 §8.6, N9.5 | New models need tenant-scope classification and isolation seeding | 0 entries for `IntegrationSyncRun`, `CustomProviderDraft`, `CustomProviderConfigVersion`, `GuardOverride`, `CustomActivationAudit`, `IntegrationAvailability`, `IntegrationBetaAllowlist` | BL-04, B-05 |
-| DC-11 | Roadmap D27 + Status Board "Blocked on decisions" | D27 interpretation (2026-10-05): "new cases" = newly ingested cases; Status Board: pending confirmation whether it means manually created cases | The two statements disagree; the code blocks neither | OD-02 |
-| DC-12 | Roadmap N1.18 text | "the production-backup replay is not done" | Rev 6 reconciliation and N2.11: the host replay ran 2026-10-01 (L1 0 / 5,440, L2 0 / 7,413) | Stale wording only; N1 evidence is adequate (§3) |
-| DC-13 | `h-phase-close-out.md` Release row | "After deploying, re-run the replay on the host" | Not defined how, once live data has moved past the baseline | C-14 proposes a measurable form (drift capture); OD-11 |
-| DC-14 | `apps/web/test/custom-sync-state-supersession.test.ts` on `main` | Sets `Organization.customProviderEnabled` | That column is unread since N10 (availability comes from `integration_beta_allowlist`); the D33 update of this suite is on `testing-n10` only | Expected failure recorded in B-07 |
-| DC-15 | Roadmap Status Board "Code on `main` (verified 2026-10-05, Rev 7) … 258 files / 2,766 tests" | Current verification | N9 (PR #48) and N10 (PR #49) merged afterwards; no full-suite run on the merged HEAD is recorded | B-01, B-02, E-02 |
-| DC-16 | Roadmap N9 phase line "N9.1–N9.14 implemented … unverified against a database" | | N10.1 records the N9 and N10 migrations applied to a fresh scratch database on 2026-10-09 (not a production restore; no route or flow run) | Partly stale; B-03, B-09–B-16, C-05 |
-| DC-17 | `n2-replay-runbook.md` §1, `restore-drill.sh`, `data-retention-and-on-call.md` "Documentation gap" | `docker-compose.prod.yml` | Removed from the repository; production runs `docker-compose.yml` | Commands here use `docker-compose.yml` |
-| DC-18 | `.github/workflows/ci.yml` comment on the `postgres` service | "Only for the tenant-isolation suite … every other test uses fakes" | `vitest.config.ts` lists 76 real-database suites | Informational; no check |
-| DC-19 | `h-phase-close-out.md` Release row ("Plan the customer-facing effects first: D13 … trial lifecycle and soft limits") | Lists the customer-facing effects of the release | Omits N5.6: migration `20261002140000` adds `worker_settings.monthlyReportEnabled` **default `true`**, and no UI sets it, so every organization (fixtures included) gets a monthly report email and Slack message after the release | OD-13; C-08 records the value |
-| DC-20 | `scripts/prod/h10-verify.sh` check 1; `h-phase-close-out.md` finding 1 | Compares each leaked key with the current value **of the same name** | D8's update consolidated `OPS_ALERT_SMTP_*` into `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password reused as `DEPLOYMENT_SMTP_PASSWORD` is not detected | C-15 adds a cross-name comparison |
+| ID    | Where                                                                                                                                                                                                                                     | Claim                                                                                                                                           | What the repository shows                                                                                                                                                                                                                                                                                                    | Effect on this plan                                                                                                      |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| DC-01 | Roadmap Status Board "Now", phase overview, N10 status line                                                                                                                                                                               | N10 "not pushed, no PR yet"; N10.1–N10.6 "committed on the phase branch, not pushed"                                                            | `main` = `0e48d28`, "Merge pull request #49 … phase/n10-integration-control-center"                                                                                                                                                                                                                                          | N10 is on `main`; status lines are stale (E-03)                                                                          |
+| DC-02 | Roadmap N10.7; plan 10 §10 "As built"                                                                                                                                                                                                     | 8 suites / 72 tests passing; "the four real-database suites are listed in `vitest.config.ts`"                                                   | None of the 8 files is on `main` or `origin/testing`; `vitest.config.ts` on `main` lists none of them                                                                                                                                                                                                                        | N10.7 evidence is not in the repository (BL-03, B-06)                                                                    |
+| DC-03 | Roadmap N9.7-F1                                                                                                                                                                                                                           | "Harness: `packages/custom-ticket/bench/`"                                                                                                      | Path does not exist                                                                                                                                                                                                                                                                                                          | BL-01                                                                                                                    |
+| DC-04 | Roadmap N9.0-F2, Rev 8 changelog                                                                                                                                                                                                          | The copy-only change on `copy/docs-reconciliation-30min` "awaits review"                                                                        | `origin/copy/docs-reconciliation-30min` is an ancestor of `main` (merged)                                                                                                                                                                                                                                                    | N9.0-F2 needs only your confirmation (OD-09)                                                                             |
+| DC-05 | `docs/h-phase-close-out.md` "Remaining owner actions", Release row                                                                                                                                                                        | 7 pending migrations (`20261001100000` … `20261004100000`) after `7cb2b9b`; safety evidence from 2026-10-05                                     | 13 migrations after `7cb2b9b` (adds 5 N9 and 1 N10). The 6 new ones were never applied to a production-backup restore                                                                                                                                                                                                        | C-05, C-07, C-08 re-establish the evidence                                                                               |
+| DC-06 | `docs/deployment.md`, `deployment-runbook.md`, `h-phase-close-out.md` (H-1, H-4, H-10, N4.7 commands), `scripts/prod/h10-verify.sh`, `scripts/prod/n47-plan-records.sql` header, `scripts/restore-drill.sh`, `scripts/backup.sh` defaults | Host uses `.env.prod` and the container's `$POSTGRES_DB`                                                                                        | `docs/production-backup-runbook.md` and `n2-replay-runbook.md` ([host] notes): the host uses `.env` and the data is in `elapsed_db`; `$POSTGRES_DB` (`sla_breach_monitoring`) is empty. **`h10-verify.sh` check 3 queries `$POSTGRES_DB`, so it can PASS vacuously; `backup.sh` without `DB_NAME` dumps the empty database** | Every host command here names `$ENV_FILE` / `$APP_DB` explicitly; A-07 checks the scheduled dumps; C-15 replaces check 3 |
+| DC-07 | Roadmap 7.3 (ticked)                                                                                                                                                                                                                      | "The drill timing belongs in `docs/restore-drills.log` — add the line if it isn't committed yet"                                                | `docs/restore-drills.log` has never been committed                                                                                                                                                                                                                                                                           | C-02                                                                                                                     |
+| DC-08 | Roadmap Status Board "10 customers"; H-1 evidence                                                                                                                                                                                         | 10 live customers                                                                                                                               | H-1's read-only query of `elapsed_db` found 12 organizations: 11 `seed-org-*` fixtures and 1 dev sandbox. The 10 customers' data was never located                                                                                                                                                                           | OD-07; A-09 re-counts                                                                                                    |
+| DC-09 | `h-phase-close-out.md` "H-10 code audit"                                                                                                                                                                                                  | "all 71 API routes re-audited"                                                                                                                  | 99 `route.ts` files now (N4–N10 added 28). N4/N10 routes have their own authz tests; the N9 custom routes have never been exercised                                                                                                                                                                                          | B-09–B-16 exercise them; H-10's "authorization audit current" needs OD-12                                                |
+| DC-10 | Plan 09 §8.6, N9.5                                                                                                                                                                                                                        | New models need tenant-scope classification and isolation seeding                                                                               | 0 entries for `IntegrationSyncRun`, `CustomProviderDraft`, `CustomProviderConfigVersion`, `GuardOverride`, `CustomActivationAudit`, `IntegrationAvailability`, `IntegrationBetaAllowlist`                                                                                                                                    | BL-04, B-05                                                                                                              |
+| DC-11 | Roadmap D27 + Status Board "Blocked on decisions"                                                                                                                                                                                         | D27 interpretation (2026-10-05): "new cases" = newly ingested cases; Status Board: pending confirmation whether it means manually created cases | The two statements disagree; the code blocks neither                                                                                                                                                                                                                                                                         | OD-02                                                                                                                    |
+| DC-12 | Roadmap N1.18 text                                                                                                                                                                                                                        | "the production-backup replay is not done"                                                                                                      | Rev 6 reconciliation and N2.11: the host replay ran 2026-10-01 (L1 0 / 5,440, L2 0 / 7,413)                                                                                                                                                                                                                                  | Stale wording only; N1 evidence is adequate (§3)                                                                         |
+| DC-13 | `h-phase-close-out.md` Release row                                                                                                                                                                                                        | "After deploying, re-run the replay on the host"                                                                                                | Not defined how, once live data has moved past the baseline                                                                                                                                                                                                                                                                  | C-14 proposes a measurable form (drift capture); OD-11                                                                   |
+| DC-14 | `apps/web/test/custom-sync-state-supersession.test.ts` on `main`                                                                                                                                                                          | Sets `Organization.customProviderEnabled`                                                                                                       | That column is unread since N10 (availability comes from `integration_beta_allowlist`); the D33 update of this suite is on `testing-n10` only                                                                                                                                                                                | Expected failure recorded in B-07                                                                                        |
+| DC-15 | Roadmap Status Board "Code on `main` (verified 2026-10-05, Rev 7) … 258 files / 2,766 tests"                                                                                                                                              | Current verification                                                                                                                            | N9 (PR #48) and N10 (PR #49) merged afterwards; no full-suite run on the merged HEAD is recorded                                                                                                                                                                                                                             | B-01, B-02, E-02                                                                                                         |
+| DC-16 | Roadmap N9 phase line "N9.1–N9.14 implemented … unverified against a database"                                                                                                                                                            |                                                                                                                                                 | N10.1 records the N9 and N10 migrations applied to a fresh scratch database on 2026-10-09 (not a production restore; no route or flow run)                                                                                                                                                                                   | Partly stale; B-03, B-09–B-16, C-05                                                                                      |
+| DC-17 | `n2-replay-runbook.md` §1, `restore-drill.sh`, `data-retention-and-on-call.md` "Documentation gap"                                                                                                                                        | `docker-compose.prod.yml`                                                                                                                       | Removed from the repository; production runs `docker-compose.yml`                                                                                                                                                                                                                                                            | Commands here use `docker-compose.yml`                                                                                   |
+| DC-18 | `.github/workflows/ci.yml` comment on the `postgres` service                                                                                                                                                                              | "Only for the tenant-isolation suite … every other test uses fakes"                                                                             | `vitest.config.ts` lists 76 real-database suites                                                                                                                                                                                                                                                                             | Informational; no check                                                                                                  |
+| DC-19 | `h-phase-close-out.md` Release row ("Plan the customer-facing effects first: D13 … trial lifecycle and soft limits")                                                                                                                      | Lists the customer-facing effects of the release                                                                                                | Omits N5.6: migration `20261002140000` adds `worker_settings.monthlyReportEnabled` **default `true`**, and no UI sets it, so every organization (fixtures included) gets a monthly report email and Slack message after the release                                                                                          | OD-13; C-08 records the value                                                                                            |
+| DC-20 | `scripts/prod/h10-verify.sh` check 1; `h-phase-close-out.md` finding 1                                                                                                                                                                    | Compares each leaked key with the current value **of the same name**                                                                            | D8's update consolidated `OPS_ALERT_SMTP_*` into `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password reused as `DEPLOYMENT_SMTP_PASSWORD` is not detected                                                                                                                                                                     | C-15 adds a cross-name comparison                                                                                        |
 
 ### 2.4 Owner decisions needed (fill in)
 
-| ID | Decision | Needed by | Your decision / date |
-| --- | --- | --- | --- |
-| OD-01 | **U2** (plan 09 §15.1): cleanup workflow after a rejected mass deletion, or written acceptance that a deletion abort blocks the integration until fixed at the source | N9.14-F1 (Beta) | |
-| OD-02 | **D27**: which "new cases" are blocked after a trial ends (DC-11), and whether the documented gap stays | N6.4 closure, entitlement enforcement | |
-| OD-03 | **Production billing provider** (D28 leaves it open) | N6.5, any production billing | |
-| OD-04 | **Pre-merge verification policy** (Q9 deferred): CI runs only for `testing` | Branch rules; E-02 | |
-| OD-06 | **H-8**: wait for upstream, or a lint-only TypeScript 6 pin | H-8, 7.10 | |
-| OD-05 | Release go-ahead for N2–N10 (C-11), and separately for the N2.10 contract release (C-16) and the H-13 production backfill (C-13) | C-11, C-13, C-16 | |
-| OD-07 | Where the 10 live customers' data is (DC-08), and whether the 11 `seed-org-*` fixture organizations stay in the production database (H-10 asks "no dev seed data in production") | H-1/D15 limitation, N4.7, H-10 | |
-| OD-08 | Approve the benchmark method of plan 09 §6.10 (tiers, repetitions, environment) and, after D-01, the ceiling `C` | N9.7-F1 | |
-| OD-09 | **N9.0-F1** (final review of the Rev 8 Markdown diff) and **N9.0-F2** (the copy change is already merged, DC-04: confirm or revert) | N9.0 follow-ups | |
-| OD-10 | The proposed 24-hour expiry of override confirmations (plan 09 §15.2) | N9.11 copy, D-08 tests | |
-| OD-11 | Accept C-14's drift-capture method as the "post-deploy replay" (DC-13) | N2.11 closure wording | |
-| OD-12 | Whether H-10's "authorization audit current" needs a re-audit of the 28 routes added since the 71-route audit (DC-09) | H-10 | |
-| OD-13 | Monthly reports go live with the release (`worker_settings.monthlyReportEnabled` defaults to `true`, DC-19): send from the first reconciliation tick, or hold them with the kill switch (a production SQL write, C-11's optional step) | C-11 | |
+| ID    | Decision                                                                                                                                                                                                                               | Needed by                             | Your decision / date |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------- |
+| OD-01 | **U2** (plan 09 §15.1): cleanup workflow after a rejected mass deletion, or written acceptance that a deletion abort blocks the integration until fixed at the source                                                                  | N9.14-F1 (Beta)                       |                      |
+| OD-02 | **D27**: which "new cases" are blocked after a trial ends (DC-11), and whether the documented gap stays                                                                                                                                | N6.4 closure, entitlement enforcement |                      |
+| OD-03 | **Production billing provider** (D28 leaves it open)                                                                                                                                                                                   | N6.5, any production billing          |                      |
+| OD-04 | **Pre-merge verification policy** (Q9 deferred): CI runs only for `testing`                                                                                                                                                            | Branch rules; E-02                    |                      |
+| OD-06 | **H-8**: wait for upstream, or a lint-only TypeScript 6 pin                                                                                                                                                                            | H-8, 7.10                             |                      |
+| OD-05 | Release go-ahead for N2–N10 (C-11), and separately for the N2.10 contract release (C-16) and the H-13 production backfill (C-13)                                                                                                       | C-11, C-13, C-16                      |                      |
+| OD-07 | Where the 10 live customers' data is (DC-08), and whether the 11 `seed-org-*` fixture organizations stay in the production database (H-10 asks "no dev seed data in production")                                                       | H-1/D15 limitation, N4.7, H-10        |                      |
+| OD-08 | Approve the benchmark method of plan 09 §6.10 (tiers, repetitions, environment) and, after D-01, the ceiling `C`                                                                                                                       | N9.7-F1                               |                      |
+| OD-09 | **N9.0-F1** (final review of the Rev 8 Markdown diff) and **N9.0-F2** (the copy change is already merged, DC-04: confirm or revert)                                                                                                    | N9.0 follow-ups                       |                      |
+| OD-10 | The proposed 24-hour expiry of override confirmations (plan 09 §15.2)                                                                                                                                                                  | N9.11 copy, D-08 tests                |                      |
+| OD-11 | Accept C-14's drift-capture method as the "post-deploy replay" (DC-13)                                                                                                                                                                 | N2.11 closure wording                 |                      |
+| OD-12 | Whether H-10's "authorization audit current" needs a re-audit of the 28 routes added since the 71-route audit (DC-09)                                                                                                                  | H-10                                  |                      |
+| OD-13 | Monthly reports go live with the release (`worker_settings.monthlyReportEnabled` defaults to `true`, DC-19): send from the first reconciliation tick, or hold them with the kill switch (a production SQL write, C-11's optional step) | C-11                                  |                      |
 
 ---
 
@@ -200,21 +201,21 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 
 These are not re-run. Each relies on the evidence cited in its source; a later release may still need the deployment confirmation in C-12.
 
-| Item | Evidence (source) |
-| --- | --- |
-| Phases 0–5, 6.1–6.7, 7.1, 7.2, 7.4, 7.5, 7.8, 7.9 | Roadmap historical phases (ticked with dates, tests named); 7.2 verified on the EC2 host by the owner 2026-09-29 |
-| 7.3 backups and restore | Restore proven: production-backup runbook restore check (2026-10-02) and local restores of the 2026-10-02 backup (2026-10-05). **Gap:** the drill timing log was never committed → C-02 only |
-| 7.7 / H-7 capacity | `docs/capacity-limits.md` (measured on dev hardware, stated as such). The dashboard's linear growth is a recorded limit with a proposed follow-up, not a task |
-| H-1, H-4 | Closed 2026-09-30 by owner decision **with accepted limitations** (fixtures and one dev-sandbox tenant). Not re-run; see OD-07 |
-| H-2, H-3, H-5, H-11, H-12 | Roadmap Production Hygiene entries and `h-phase-close-out.md` (H-11 production repair verified by the owner) |
-| N1.0–N1.12, N1.14–N1.18 | 2026-10-01 host replay (N2.11): L1 0 differences / 5,440 records, L2 0 / 7,413; boundary allowlist empty; matrix smoke 4/4 |
-| N2.1–N2.9 | Same replay; N2.6 browser comparison on fixtures (Rev 7) |
-| N3.1–N3.5, N3.8, N3.9 | Restore-based backfill check and L1 replay 2026-10-05; named tests; browser checks |
-| N4.1–N4.6, N5.1–N5.7, N6.1–N6.4, N6.6–N6.10 | Named test suites passing in the Rev 7 full run (2026-10-05). Deployment state is checked by A-04/C-12 |
-| N9.1 | Spike result recorded in plan 09 §8.2 (8/8 criteria) |
-| N10.0 | Documentation present (D33, plan 10, runbook) |
-| D1–D33 | Decisions recorded; D27 has the open point OD-02 |
-| Multi-worker leases (Appendix D invariant 11) | Real-DB suites `work-loop.db`, `fenced-prisma.db`, `organization-work-state.db`; in production since `7cb2b9b` (contains `b354b07`). The `apps/worker/scripts/bench` soak results were never recorded, but no document requires them |
+| Item                                              | Evidence (source)                                                                                                                                                                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phases 0–5, 6.1–6.7, 7.1, 7.2, 7.4, 7.5, 7.8, 7.9 | Roadmap historical phases (ticked with dates, tests named); 7.2 verified on the EC2 host by the owner 2026-09-29                                                                                                                     |
+| 7.3 backups and restore                           | Restore proven: production-backup runbook restore check (2026-10-02) and local restores of the 2026-10-02 backup (2026-10-05). **Gap:** the drill timing log was never committed → C-02 only                                         |
+| 7.7 / H-7 capacity                                | `docs/capacity-limits.md` (measured on dev hardware, stated as such). The dashboard's linear growth is a recorded limit with a proposed follow-up, not a task                                                                        |
+| H-1, H-4                                          | Closed 2026-09-30 by owner decision **with accepted limitations** (fixtures and one dev-sandbox tenant). Not re-run; see OD-07                                                                                                       |
+| H-2, H-3, H-5, H-11, H-12                         | Roadmap Production Hygiene entries and `h-phase-close-out.md` (H-11 production repair verified by the owner)                                                                                                                         |
+| N1.0–N1.12, N1.14–N1.18                           | 2026-10-01 host replay (N2.11): L1 0 differences / 5,440 records, L2 0 / 7,413; boundary allowlist empty; matrix smoke 4/4                                                                                                           |
+| N2.1–N2.9                                         | Same replay; N2.6 browser comparison on fixtures (Rev 7)                                                                                                                                                                             |
+| N3.1–N3.5, N3.8, N3.9                             | Restore-based backfill check and L1 replay 2026-10-05; named tests; browser checks                                                                                                                                                   |
+| N4.1–N4.6, N5.1–N5.7, N6.1–N6.4, N6.6–N6.10       | Named test suites passing in the Rev 7 full run (2026-10-05). Deployment state is checked by A-04/C-12                                                                                                                               |
+| N9.1                                              | Spike result recorded in plan 09 §8.2 (8/8 criteria)                                                                                                                                                                                 |
+| N10.0                                             | Documentation present (D33, plan 10, runbook)                                                                                                                                                                                        |
+| D1–D33                                            | Decisions recorded; D27 has the open point OD-02                                                                                                                                                                                     |
+| Multi-worker leases (Appendix D invariant 11)     | Real-DB suites `work-loop.db`, `fenced-prisma.db`, `organization-work-state.db`; in production since `7cb2b9b` (contains `b354b07`). The `apps/worker/scripts/bench` soak results were never recorded, but no document requires them |
 
 Gated or not started, so **no validation is owed now**: N6.5 (needs a go-ahead and OD-03), N7 (Zoho Desk, go-ahead), N8-S1–S8 (triggers; C-15 collects the trigger measurements), N9.12-F1 (implementation work, not validation), N10-F1 (the contract migration is not written; after N10 is deployed, OD-05), the Launch Gate (superseded, kept unticked by rule), `plans/07-Phase-Status.md` outreach metrics (historical).
 
@@ -224,16 +225,16 @@ Gated or not started, so **no validation is owed now**: N6.5 (needs a go-ahead a
 
 ### A-01 — Local repository and toolchain state
 
-| | |
-| --- | --- |
-| Related | All later local checks; CLAUDE.md branch rules |
-| Source | `package.json` (`engines.node >=22 <23`, `packageManager pnpm@10.33.0`); `CLAUDE.md` |
-| Why | Commands below assume this commit and toolchain; uncommitted work must be preserved |
-| Environment | E1 · your machine |
-| Prerequisites | A checkout of `Yasser-Alnajjar/elapsed` |
-| State | READ-ONLY |
-| Depends on | – |
-| Closes | Nothing alone; establishes the baseline commit for Phase B |
+|               |                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------ |
+| Related       | All later local checks; CLAUDE.md branch rules                                       |
+| Source        | `package.json` (`engines.node >=22 <23`, `packageManager pnpm@10.33.0`); `CLAUDE.md` |
+| Why           | Commands below assume this commit and toolchain; uncommitted work must be preserved  |
+| Environment   | E1 · your machine                                                                    |
+| Prerequisites | A checkout of `Yasser-Alnajjar/elapsed`                                              |
+| State         | READ-ONLY                                                                            |
+| Depends on    | –                                                                                    |
+| Closes        | Nothing alone; establishes the baseline commit for Phase B                           |
 
 ```bash
 cd /path/to/elapsed
@@ -248,25 +249,25 @@ node -v; pnpm -v; docker compose version --short
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    origin/main sha=        node=        pnpm=        compose=        local modified files=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local machine, branch main
+Evidence:    origin/main sha=8dc2fe8958b15cdd87fad32ddbba5ff907d96bff (HEAD equal)   node=v22.17.0   pnpm=10.33.0   compose=5.1.3   local modified files=1 (this validation file)
+Deviations:  None.
 ```
 
 ### A-02 — Remote and local branch inventory
 
-| | |
-| --- | --- |
-| Related | N10.7, N9.0-F2, E-02; DC-02, DC-04 |
-| Source | Roadmap N10.7 status; Branch rules "Testing branch"; `CLAUDE.md` |
-| Why | The N10 tests and the `testing` sync state decide whether B-06 and E-02 can run |
-| Environment | E1 |
-| Prerequisites | A-01 |
-| State | READ-ONLY (`git fetch` updates remote-tracking refs only) |
-| Depends on | A-01 |
-| Closes | Confirms or corrects DC-02 and DC-04 |
+|               |                                                                                 |
+| ------------- | ------------------------------------------------------------------------------- |
+| Related       | N10.7, N9.0-F2, E-02; DC-02, DC-04                                              |
+| Source        | Roadmap N10.7 status; Branch rules "Testing branch"; `CLAUDE.md`                |
+| Why           | The N10 tests and the `testing` sync state decide whether B-06 and E-02 can run |
+| Environment   | E1                                                                              |
+| Prerequisites | A-01                                                                            |
+| State         | READ-ONLY (`git fetch` updates remote-tracking refs only)                       |
+| Depends on    | A-01                                                                            |
+| Closes        | Confirms or corrects DC-02 and DC-04                                            |
 
 ```bash
 git ls-remote --heads origin
@@ -288,25 +289,26 @@ for f in packages/db/test/integration-availability.test.ts packages/db/test/inte
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    testing-n10 local? [ ] yes [ ] no   files present: _/8   testing behind main by: ___ commits   copy branch merged? [ ]
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local machine
+Evidence:    testing-n10 local? [x] yes (10245941, same commit as testing-n9-closure)   files present: 8/8   testing behind main by: 36 commits (origin/testing does not contain main)   copy branch merged? [x] yes
+             remote heads: main, testing, phase/n9-custom-ticket-provider, phase/n10-integration-control-center, copy/docs-reconciliation-30min, claude/confident-edison-j4kvts (same commit as main); no origin/testing-n10
+Deviations:  BL-03 refined: the 8 N10 suites exist locally on testing-n10 (so B-06 can run) but on no remote branch. The remote branch claude/confident-edison-j4kvts is new since the auditor's list.
 ```
 
 ### A-03 — Production host inventory: deployed commit, compose and env files, application database
 
-| | |
-| --- | --- |
-| Related | Status Board "What is deployed is not recorded"; DC-06, DC-17 |
-| Source | Roadmap Status Board "Stage"; `docs/production-backup-runbook.md` "Where things are"; `docs/n2-replay-runbook.md` §0 [host] |
-| Why | Every host command depends on the env file name and the application database; every replay depends on the deployed commit |
-| Environment | E6 · PRODUCTION host |
-| Prerequisites | SSH access |
-| State | READ-ONLY. Prints key names, the database **name**, `NEXTAUTH_URL` and `POSTGRES_DB` (not secrets); never a password |
-| Depends on | – |
-| Closes | Records the deployed commit (`PROD_SHA`) needed by C-04 and the Status Board |
+|               |                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Related       | Status Board "What is deployed is not recorded"; DC-06, DC-17                                                               |
+| Source        | Roadmap Status Board "Stage"; `docs/production-backup-runbook.md` "Where things are"; `docs/n2-replay-runbook.md` §0 [host] |
+| Why           | Every host command depends on the env file name and the application database; every replay depends on the deployed commit   |
+| Environment   | E6 · PRODUCTION host                                                                                                        |
+| Prerequisites | SSH access                                                                                                                  |
+| State         | READ-ONLY. Prints key names, the database **name**, `NEXTAUTH_URL` and `POSTGRES_DB` (not secrets); never a password        |
+| Depends on    | –                                                                                                                           |
+| Closes        | Records the deployed commit (`PROD_SHA`) needed by C-04 and the Status Board                                                |
 
 ```bash
 cd ~/elapsed
@@ -324,26 +326,27 @@ docker image ls --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedAt}}' | hea
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host
-Evidence:    PROD_SHA=            host modified files=     ENV_FILE=      APP_DB=      NEXTAUTH_URL=
-             services:
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
+Where:       production host (t3.medium), ~/elapsed
+Evidence:    PROD_SHA=8dc2fe8 (docs-only commit on top of 0e48d28, so the code is the N10 merge)   host modified files=0
+             ENV_FILE=.env (only env file; .env.prod absent)   APP_DB=elapsed_db   NEXTAUTH_URL="https://13.62.74.24"
+             services: postgres (healthy), web (healthy), worker x3 (healthy), nginx; images built 2026-10-09 23:49-23:56 UTC
+Deviations:  `migrate` is not listed as an exited service in `dc ps` (one-shot container output not shown).
 ```
 
 ### A-04 — Production migration state
 
-| | |
-| --- | --- |
-| Related | Release of N2–N10; DC-05 |
-| Source | `docs/h-phase-close-out.md` "Remaining owner actions" (Release row); `docs/production-backup-runbook.md` §1 |
-| Why | Fixes the exact pending migration set that C-05 must reproduce on a restore |
-| Environment | E6 · PRODUCTION (read-only SQL) |
-| Prerequisites | A-03 |
-| State | READ-ONLY (`ro_sql`) |
-| Depends on | A-03 |
-| Closes | Records the production schema state (Status Board) |
+|               |                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| Related       | Release of N2–N10; DC-05                                                                                    |
+| Source        | `docs/h-phase-close-out.md` "Remaining owner actions" (Release row); `docs/production-backup-runbook.md` §1 |
+| Why           | Fixes the exact pending migration set that C-05 must reproduce on a restore                                 |
+| Environment   | E6 · PRODUCTION (read-only SQL)                                                                             |
+| Prerequisites | A-03                                                                                                        |
+| State         | READ-ONLY (`ro_sql`)                                                                                        |
+| Depends on    | A-03                                                                                                        |
+| Closes        | Records the production schema state (Status Board)                                                          |
 
 ```bash
 ro_sql <<'SQL'
@@ -365,26 +368,26 @@ ls packages/db/prisma/migrations | grep -v toml | awk -v last="<LAST>" '$0 > las
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host, APP_DB=
-Evidence:    applied=   failed=   newest=
-             pending (names):
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
+Where:       host, APP_DB=elapsed_db
+Evidence:    applied=68   failed=0   newest=20261009120000_n10_integration_availability (finished 2026-10-09 23:56:49 UTC)
+             pending (names): none. The release premise of this check (55 applied, 13 pending) is stale: N2-N10 migrations are already applied in production
+Deviations:  Pending-list step on the local machine not needed (nothing pending). See "Phase A findings" below: DC-05, C-05, C-07, C-08, C-11 need rework.
 ```
 
 ### A-05 — Production health endpoints
 
-| | |
-| --- | --- |
-| Related | Launch Gate "health-gated startup"; 7.1; `docs/deployment.md` "Health checks and observability" |
-| Source | `apps/web/src/app/api/health/route.ts`; `apps/worker/Dockerfile` `HEALTHCHECK`; `docs/deployment.md` |
-| Why | Baseline before any release; detects a stalled or degraded worker |
-| Environment | E6 · PRODUCTION |
-| Prerequisites | A-03 (`NEXTAUTH_URL`) |
-| State | READ-ONLY |
-| Depends on | A-03 |
-| Closes | Baseline for C-12 |
+|               |                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| Related       | Launch Gate "health-gated startup"; 7.1; `docs/deployment.md` "Health checks and observability"      |
+| Source        | `apps/web/src/app/api/health/route.ts`; `apps/worker/Dockerfile` `HEALTHCHECK`; `docs/deployment.md` |
+| Why           | Baseline before any release; detects a stalled or degraded worker                                    |
+| Environment   | E6 · PRODUCTION                                                                                      |
+| Prerequisites | A-03 (`NEXTAUTH_URL`)                                                                                |
+| State         | READ-ONLY                                                                                            |
+| Depends on    | A-03                                                                                                 |
+| Closes        | Baseline for C-12                                                                                    |
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' "<NEXTAUTH_URL>/api/health"
@@ -398,25 +401,27 @@ docker ps --format '{{.Names}} {{.Status}}'
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    web=   worker(s) status=   workState.leased=   overdue=   integrations.withErrors=
-Deviations:
+Evidence:    web=200 {"status":"ok","checks":{"database":"ok"}} (https://13.62.74.24/api/health, curl -k)
+             worker(s) status=running x3 (1 watchdog leader)   workState.leased=1   expiredLeases=0   overdueActive=1 (maxActiveLagMs about 1.4 s)   overdueReconciliation=0   integrations.withErrors=0
+             containers: web, postgres, worker 1-3 healthy; nginx up (no healthcheck)
+Deviations:  First web attempt used a literal <NEXTAUTH_URL> placeholder (my error); re-run with the real URL. -k needed (IP address, certificate presumably self-signed).
 ```
 
 ### A-06 — Production runtime configuration (names and set/empty only)
 
-| | |
-| --- | --- |
-| Related | H-10 ("no development services/settings in production"), H-6, `data-retention-and-on-call.md` (`SENTRY_DSN`, `OPS_ALERT_*` "not verified"), BL-10, N9 Beta flag safety |
-| Source | `docs/data-retention-and-on-call.md` "On-call note"; `docker-compose.yml`; `.env.example` |
-| Why | Closes four "not verified" statements and confirms no private-host override reaches production |
-| Environment | E6 · PRODUCTION |
-| Prerequisites | A-03 |
-| State | READ-ONLY. Prints `NAME=set` / `NAME=empty` only |
-| Depends on | A-03 |
-| Closes | `data-retention-and-on-call.md` "not verified" lines for Sentry and ops alerts |
+|               |                                                                                                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | H-10 ("no development services/settings in production"), H-6, `data-retention-and-on-call.md` (`SENTRY_DSN`, `OPS_ALERT_*` "not verified"), BL-10, N9 Beta flag safety |
+| Source        | `docs/data-retention-and-on-call.md` "On-call note"; `docker-compose.yml`; `.env.example`                                                                              |
+| Why           | Closes four "not verified" statements and confirms no private-host override reaches production                                                                         |
+| Environment   | E6 · PRODUCTION                                                                                                                                                        |
+| Prerequisites | A-03                                                                                                                                                                   |
+| State         | READ-ONLY. Prints `NAME=set` / `NAME=empty` only                                                                                                                       |
+| Depends on    | A-03                                                                                                                                                                   |
+| Closes        | `data-retention-and-on-call.md` "not verified" lines for Sentry and ops alerts                                                                                         |
 
 ```bash
 for svc in web worker; do echo "== $svc"; dc exec -T "$svc" sh -c '
@@ -434,26 +439,61 @@ dc ps worker --format '{{.Name}}' | wc -l      # number of worker replicas
 ```text
 RESULT
 Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host
-Evidence:    web:
-             worker:
-             worker replicas=
-Deviations:
+Run by/date: 2026-10-10 (partial review; not a final result)
+Where:       production host, ~/elapsed; running Compose containers
+Evidence:    web: SENTRY_DSN=set; DEPLOYMENT_SMTP_HOST=set; PLATFORM_ADMIN_EMAILS=set;
+             GUARD_OVERRIDE_OPERATOR_EMAILS=unset; CUSTOM_PROVIDER_LIVE_CASE_CEILING=unset;
+             CUSTOM_PROVIDER_ALLOW_PRIVATE_HOSTS=unset; SMTP_ALLOW_PRIVATE_HOSTS=unset;
+             NODE_ENV=set; ORGANIZATION_CONCURRENCY=unset; WORKER_LEASE_TTL_MS=unset
+             worker: SENTRY_DSN=set; OPS_ALERT_SLACK_WEBHOOK_URL=empty;
+             OPS_ALERT_EMAIL=set; DEPLOYMENT_SMTP_HOST=set; PLATFORM_ADMIN_EMAILS=unset;
+             GUARD_OVERRIDE_OPERATOR_EMAILS=unset; CUSTOM_PROVIDER_LIVE_CASE_CEILING=unset;
+             CUSTOM_PROVIDER_ALLOW_PRIVATE_HOSTS=unset; SMTP_ALLOW_PRIVATE_HOSTS=unset;
+             ORGANIZATION_CONCURRENCY=set; WORKER_LEASE_TTL_MS=set; NODE_ENV=unset
+             worker runtime log: organizationConcurrency=3; leaseTtlMs=60000;
+             claimPollMs=1000; databasePoolMax=10; opsAlertConfigured=true
+             worker replicas=3; reviewed containers were healthy
+Deviations:  Partial evidence only. Full A-06 pass criteria are not yet met/verified;
+             investigate worker NODE_ENV and complete the remaining checks before marking PASS.
 ```
+
+**Progress update — 2026-10-10 (partial; this does not mark A-06 PASS)**
+
+Completed sub-checks:
+
+- [x] Located the code and Compose references for the environment variables listed above.
+- [x] Confirmed `PLATFORM_ADMIN_EMAILS` is passed to the `web` service in Compose and is set at runtime.
+- [x] Confirmed `CUSTOM_PROVIDER_ALLOW_PRIVATE_HOSTS` and `SMTP_ALLOW_PRIVATE_HOSTS` are unset/empty in the inspected `web` and `worker` containers. Keep both disabled unless a documented need is reviewed.
+- [x] Confirmed three worker replicas were running and healthy in the reviewed container output.
+- [x] Reviewed logs showing PostgreSQL became ready after its restart and workers subsequently processed Intercom/Jira work successfully.
+- [x] Confirmed `.dockerignore` excludes `.env` from the Docker build context; this is appropriate for secret hygiene.
+
+Still open:
+
+- [ ] Verify the complete A-06 command output and satisfy its explicit pass criteria.
+- [ ] Investigate why `NODE_ENV` is unset in the worker runtime before changing configuration.
+- [ ] Inspect the default/intent for `GUARD_OVERRIDE_OPERATOR_EMAILS` and `CUSTOM_PROVIDER_LIVE_CASE_CEILING`.
+- [ ] Verify the worker's `dotenv -e ../../.env` target (`/repo/.env`) exists at runtime and understand mounts/startup behavior.
+- [ ] Finish the other A checks; no A-03/A-04/A-05/A-07/A-08/A-09/A-10 item is marked complete by this partial review alone. (Superseded: those checks were run 2026-10-10, see their RESULT blocks.)
+
+**Follow-up — 2026-10-10 (host run; A-06 still not marked PASS)**
+
+- Worker `NODE_ENV`: set only in `apps/web/Dockerfile` (`ENV NODE_ENV=production`); not in `docker-compose.yml` or `apps/worker/Dockerfile`; absent from the worker's PID 1 environment. The worker starts with `node /usr/local/bin/pnpm start`. The A-06 pass criterion `NODE_ENV=set` is therefore not met for the worker. Still to check: which worker/package code branches on `NODE_ENV`.
+- `/repo/.env` does not exist in the worker container and the worker has no bind mounts, so the worker's configuration comes only from Compose. The `dotenv -e ../../.env` target is absent (harmless only if the dotenv tool tolerates a missing file; the worker is running healthy).
+- `GUARD_OVERRIDE_OPERATOR_EMAILS` appears in `.env.example` and `apps/web/src/lib/authz.ts` only; `CUSTOM_PROVIDER_LIVE_CASE_CEILING` in `.env.example` (commented) and `packages/custom-ticket/src/guards.ts` only. Neither is in `docker-compose.yml`: BL-10 is confirmed.
 
 ### A-07 — Scheduled backups: cron, retention, off-site copy, latest dump is the application database
 
-| | |
-| --- | --- |
-| Related | 7.3, Launch Gate "Backups tested by a real restore", H-5 ("cron and off-site copy … not verified"), DC-06 |
-| Source | `docs/deployment.md` "Scheduled backups"; `scripts/backup.sh` (`DB_NAME` defaults to `$POSTGRES_DB`); `docs/production-backup-runbook.md` trap 1 |
-| Why | If cron runs `backup.sh` without `DB_NAME=elapsed_db`, every scheduled dump is the empty database and "succeeds" |
-| Environment | E6 · PRODUCTION |
-| Prerequisites | A-03 |
-| State | READ-ONLY (`pg_restore --list` only reads the file). The cron line may contain a bucket name: redact it in the evidence |
-| Depends on | A-03 |
-| Closes | H-5 "not verified" backup line; part of 7.3 |
+|               |                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | 7.3, Launch Gate "Backups tested by a real restore", H-5 ("cron and off-site copy … not verified"), DC-06                                        |
+| Source        | `docs/deployment.md` "Scheduled backups"; `scripts/backup.sh` (`DB_NAME` defaults to `$POSTGRES_DB`); `docs/production-backup-runbook.md` trap 1 |
+| Why           | If cron runs `backup.sh` without `DB_NAME=elapsed_db`, every scheduled dump is the empty database and "succeeds"                                 |
+| Environment   | E6 · PRODUCTION                                                                                                                                  |
+| Prerequisites | A-03                                                                                                                                             |
+| State         | READ-ONLY (`pg_restore --list` only reads the file). The cron line may contain a bucket name: redact it in the evidence                          |
+| Depends on    | A-03                                                                                                                                             |
+| Closes        | H-5 "not verified" backup line; part of 7.3                                                                                                      |
 
 ```bash
 crontab -l 2>/dev/null | grep -n 'backup' || echo "no backup line in this user's crontab"
@@ -469,25 +509,28 @@ tail -5 /var/log/sla-backup.log 2>/dev/null || echo "no /var/log/sla-backup.log"
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [ ] PASS   [x] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    cron has DB_NAME? [ ]  off-site? [ ]  latest dump age=   size=   TABLE DATA=
-Deviations:
+Evidence:    cron has DB_NAME? [ ] no (no backup line in user crontab or sudo crontab; /etc/cron.d has only certbot and e2scrub; only OS dpkg-db-backup timer)
+             off-site? [ ] no   /var/log/sla-backup.log: absent
+             latest scheduled dump: sla-20261001T104033Z.dump, about 9 days old, 4.5 MB, TABLE DATA=29 (application database, but stale)
+             other dumps: sla-20260929T213644Z.dump (3.4 MB), pre-n3-elapsed_db-20261002T033846Z.dump (4.9 MB); no dump between 10-02 and C-01 on 10-10
+Deviations:  FAIL per the check's own criteria: no scheduled backup exists at all. N4-N10 migrations were applied with no backup after 10-02. Mitigated by C-01 (2026-10-10). Fixing the cron line is an owner action (open).
 ```
 
 ### A-08 — Host log rotation and container log configuration
 
-| | |
-| --- | --- |
-| Related | H-5 Decision 5; `data-retention-and-on-call.md` "Container logs … host `daemon.json` not verified" |
-| Source | `docs/data-retention-and-on-call.md` "What is kept" |
-| Why | Unbounded container logs can fill the disk; the document marks it unverified |
-| Environment | E6 · PRODUCTION |
-| Prerequisites | A-03 |
-| State | READ-ONLY |
-| Depends on | A-03 |
-| Closes | The "not verified" container-log line |
+|               |                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| Related       | H-5 Decision 5; `data-retention-and-on-call.md` "Container logs … host `daemon.json` not verified" |
+| Source        | `docs/data-retention-and-on-call.md` "What is kept"                                                |
+| Why           | Unbounded container logs can fill the disk; the document marks it unverified                       |
+| Environment   | E6 · PRODUCTION                                                                                    |
+| Prerequisites | A-03                                                                                               |
+| State         | READ-ONLY                                                                                          |
+| Depends on    | A-03                                                                                               |
+| Closes        | The "not verified" container-log line                                                              |
 
 ```bash
 cat /etc/docker/daemon.json 2>/dev/null || echo "no /etc/docker/daemon.json"
@@ -499,25 +542,26 @@ df -h / /var/lib/docker 2>/dev/null
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    log driver/options=          disk use=
-Deviations:
+Evidence:    log driver/options=json-file with no max-size / max-file on web, postgres, nginx, worker 1-3; no /etc/docker/daemon.json
+             disk use=77% of 48 GB (36 GB used, 12 GB free)
+Deviations:  Finding for H-5/5: container logs are unbounded and disk is close to the 80% stop line. Passes this check (below 80%).
 ```
 
 ### A-09 — Tenant and provider inventory (counts only)
 
-| | |
-| --- | --- |
-| Related | H-1 limitation, D15, N4.7, H-10 manual line "no dev seed data", DC-08, N9/N10 deployment impact |
-| Source | `scripts/prod/h1-provider-pairs.sql`; `scripts/prod/n47-plan-records.sql`; roadmap H-1 |
-| Why | Establishes whether production holds the 10 customers, the fixtures, any Custom REST flags |
-| Environment | E6 · PRODUCTION (read-only SQL) |
-| Prerequisites | A-03 |
-| State | READ-ONLY; prints counts only |
-| Depends on | A-03 |
-| Closes | Input to OD-07 and N4.7 |
+|               |                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Related       | H-1 limitation, D15, N4.7, H-10 manual line "no dev seed data", DC-08, N9/N10 deployment impact |
+| Source        | `scripts/prod/h1-provider-pairs.sql`; `scripts/prod/n47-plan-records.sql`; roadmap H-1          |
+| Why           | Establishes whether production holds the 10 customers, the fixtures, any Custom REST flags      |
+| Environment   | E6 · PRODUCTION (read-only SQL)                                                                 |
+| Prerequisites | A-03                                                                                            |
+| State         | READ-ONLY; prints counts only                                                                   |
+| Depends on    | A-03                                                                                            |
+| Closes        | Input to OD-07 and N4.7                                                                         |
 
 ```bash
 ro_sql < scripts/prod/h1-provider-pairs.sql
@@ -534,26 +578,27 @@ If the second block errors on `"deletedAt"`, run it without that `filter` and no
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    fixture orgs=   non-fixture orgs=   integrations by provider/status=
-             cases total/live=
-Deviations:
+Evidence:    fixture orgs=0   non-fixture orgs=1
+             integrations by provider/status= intercom connected 1, jira connected 1 (the single organization pairs intercom with jira, 0 unhealthy)
+             cases total/live=24/24
+Deviations:  Production now holds 1 organization, not the 10 customers of DC-08 and not the 12 organizations of the H-1 query: the 11 seed-org-* fixtures are gone. OD-07 still open (where the 10 customers' data is). Count of 1 is within the check's accepted range.
 ```
 
 ### A-10 — Production host hardware profile
 
-| | |
-| --- | --- |
-| Related | N9.7-F1 ("production-equivalent host"), N3.6, `capacity-limits.md` ("EC2 instance size is not recorded") |
-| Source | Plan 09 §6.10 "Environment"; `docs/capacity-limits.md` "Where" |
-| Why | D-01 and D-02 must run on hardware equal to or recorded against production |
-| Environment | E6 · PRODUCTION |
-| Prerequisites | – |
-| State | READ-ONLY |
-| Depends on | – |
-| Closes | BL-02 |
+|               |                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| Related       | N9.7-F1 ("production-equivalent host"), N3.6, `capacity-limits.md` ("EC2 instance size is not recorded") |
+| Source        | Plan 09 §6.10 "Environment"; `docs/capacity-limits.md` "Where"                                           |
+| Why           | D-01 and D-02 must run on hardware equal to or recorded against production                               |
+| Environment   | E6 · PRODUCTION                                                                                          |
+| Prerequisites | –                                                                                                        |
+| State         | READ-ONLY                                                                                                |
+| Depends on    | –                                                                                                        |
+| Closes        | BL-02                                                                                                    |
 
 ```bash
 nproc; lscpu | grep -E 'Model name|^CPU\(s\)'; free -h; df -h /
@@ -566,25 +611,26 @@ docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemUsage}}'
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    instance type=   vCPU=   RAM=   disk=   container mem (web/worker/postgres)=
-Deviations:
+Evidence:    instance type=t3.medium   vCPU=2 (Xeon Platinum 8259CL 2.5 GHz)   RAM=3.7 GiB (2 GiB swap, 161 MiB used)   disk=48 GB (12 GB free)
+             container mem (web/worker/postgres)= 156 MiB / about 195-220 MiB each (x3) / 49 MiB
+Deviations:  Closes BL-02 (host spec recorded). A 2 vCPU / 3.7 GiB host is small for D-01/D-02 benchmarks.
 ```
 
 ### A-11 — Upstream lint blocker re-check (H-8)
 
-| | |
-| --- | --- |
-| Related | H-8, 7.10 (lint half) |
-| Source | Roadmap H-8 ("typescript-eslint 8.71.0 still declares typescript <6.1.0") |
-| Why | Decides whether H-8 is still blocked |
-| Environment | E1 (npm registry read) |
-| Prerequisites | – |
-| State | READ-ONLY |
-| Depends on | – |
-| Closes | H-8 only if support exists **and** a lint step is then added (implementation, out of scope) |
+|               |                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Related       | H-8, 7.10 (lint half)                                                                       |
+| Source        | Roadmap H-8 ("typescript-eslint 8.71.0 still declares typescript <6.1.0")                   |
+| Why           | Decides whether H-8 is still blocked                                                        |
+| Environment   | E1 (npm registry read)                                                                      |
+| Prerequisites | –                                                                                           |
+| State         | READ-ONLY                                                                                   |
+| Depends on    | –                                                                                           |
+| Closes        | H-8 only if support exists **and** a lint step is then added (implementation, out of scope) |
 
 ```bash
 pnpm view typescript-eslint@latest version peerDependencies
@@ -595,19 +641,30 @@ grep -m1 '"typescript"' package.json
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    typescript-eslint version=   peer typescript=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local machine
+Evidence:    typescript-eslint version=8.71.1   peer typescript=>=4.8.4 <6.1.0 (repo uses ^7.0.2)
+Deviations:  H-8 is still blocked upstream (BL-11, OD-06).
 ```
+
+### Phase A findings — 2026-10-10 (host run)
+
+1. **The N2-N10 release is already applied in production.** 68 migrations applied, newest `20261009120000_n10_integration_availability` (2026-10-09 23:56 UTC), deployed at `8dc2fe8`. DC-05 is stale, and C-04/C-05/C-07/C-08/C-11 assume a pre-release database; they need rework as "verify the deployed release" checks (decision pending).
+2. **No scheduled backups exist** (A-07 FAIL). The last scheduled dump is 2026-10-01. Owner action: add a cron line with `DB_NAME=elapsed_db` and an off-site copy.
+3. **Production holds 1 organization** (Intercom + Jira, 24 cases), no `seed-org-*` fixtures (A-09; DC-08, OD-07).
+4. **Container logs are unbounded and the disk is at 77%** (A-08).
+5. **Worker has no `NODE_ENV`; `GUARD_OVERRIDE_OPERATOR_EMAILS` and `CUSTOM_PROVIDER_LIVE_CASE_CEILING` are not passed to any container** (A-06, BL-10).
+6. **Host spec recorded: t3.medium, 2 vCPU, 3.7 GiB** (A-10, BL-02).
 
 ### CHECKPOINT A
 
 Continue only if **all** hold: A-03 identified one env file, the application database and `PROD_SHA`; A-04 shows no failed migration; A-05 healthy; A-06 shows no private-host override in production; A-07 shows that a valid backup of the application database exists (or you have just taken one with C-01). Otherwise stop and send this file back.
 
 ```text
-CHECKPOINT A:  [ ] passed — continue   [ ] stopped — reason:
+CHECKPOINT A:  [x] passed — continue   [ ] stopped — reason:
+               Passed on 2026-10-10 on these conditions: A-07 FAILED (no scheduled backup) and was covered by the manual backup C-01, whose
+               live-table-count check (44 expected) and off-host copy are still open. A-01, A-02, A-06 (complete) and A-11 have not been run.
 ```
 
 ---
@@ -618,16 +675,16 @@ CHECKPOINT A:  [ ] passed — continue   [ ] stopped — reason:
 
 ### B-01 — Prisma client generation and workspace type-check
 
-| | |
-| --- | --- |
-| Related | DC-15; N9/N10 merge; roadmap "Task completion verification" |
-| Source | `package.json` `type-check`; `.github/workflows/ci.yml` (generate, then type-check) |
-| Why | No type-check of the merged HEAD (`0e48d28`) is recorded |
-| Environment | E1 |
-| Prerequisites | A-01; `pnpm install --frozen-lockfile` |
-| State | Writes only `packages/db/generated/` (git-ignored) |
-| Depends on | A-01 |
-| Closes | Part of DC-15; prerequisite for every other B check |
+|               |                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------- |
+| Related       | DC-15; N9/N10 merge; roadmap "Task completion verification"                         |
+| Source        | `package.json` `type-check`; `.github/workflows/ci.yml` (generate, then type-check) |
+| Why           | No type-check of the merged HEAD (`0e48d28`) is recorded                            |
+| Environment   | E1                                                                                  |
+| Prerequisites | A-01; `pnpm install --frozen-lockfile`                                              |
+| State         | Writes only `packages/db/generated/` (git-ignored)                                  |
+| Depends on    | A-01                                                                                |
+| Closes        | Part of DC-15; prerequisite for every other B check                                 |
 
 ```bash
 pnpm install --frozen-lockfile
@@ -650,16 +707,16 @@ Deviations:
 
 ### B-02 — Package, web and worker builds
 
-| | |
-| --- | --- |
-| Related | DC-15; N10 verification policy ("web build on the phase branch"); release readiness |
-| Source | `package.json` (`build`, `web:build`, `worker:build`); `.github/workflows/ci.yml` env block |
-| Why | The merged HEAD has no recorded build |
-| Environment | E1 |
-| Prerequisites | B-01 |
-| State | Writes build output only (`dist/`, `.next/`, git-ignored) |
-| Depends on | B-01 |
-| Closes | DC-15 (with B-01) |
+|               |                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Related       | DC-15; N10 verification policy ("web build on the phase branch"); release readiness         |
+| Source        | `package.json` (`build`, `web:build`, `worker:build`); `.github/workflows/ci.yml` env block |
+| Why           | The merged HEAD has no recorded build                                                       |
+| Environment   | E1                                                                                          |
+| Prerequisites | B-01                                                                                        |
+| State         | Writes build output only (`dist/`, `.next/`, git-ignored)                                   |
+| Depends on    | B-01                                                                                        |
+| Closes        | DC-15 (with B-01)                                                                           |
 
 The placeholder values are CI's (`.github/workflows/ci.yml`); nothing connects to them. `web:build` loads `../../.env` without overriding exported variables.
 
@@ -685,16 +742,16 @@ Deviations:
 
 ### B-03 — All 68 migrations on an empty disposable database; no schema drift
 
-| | |
-| --- | --- |
-| Related | N9.5 ("not applied to a database"), N10.1, DC-16; release migration safety |
-| Source | Roadmap N9.5, N10.1; `package.json` `test:db:prepare` |
-| Why | Proves the migration chain, including the `ALTER TYPE … ADD VALUE 'custom'` and the N10 seed, applies in order on PostgreSQL 16 and matches `schema.prisma` |
-| Environment | E2 |
-| Prerequisites | B-01; local Docker Postgres (§0.4) |
-| State | Creates and later drops the disposable database `sla_validation_test` |
-| Depends on | B-01 |
-| Closes | N9.5 "not applied to a database" (empty-schema half) |
+|               |                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.5 ("not applied to a database"), N10.1, DC-16; release migration safety                                                                                  |
+| Source        | Roadmap N9.5, N10.1; `package.json` `test:db:prepare`                                                                                                       |
+| Why           | Proves the migration chain, including the `ALTER TYPE … ADD VALUE 'custom'` and the N10 seed, applies in order on PostgreSQL 16 and matches `schema.prisma` |
+| Environment   | E2                                                                                                                                                          |
+| Prerequisites | B-01; local Docker Postgres (§0.4)                                                                                                                          |
+| State         | Creates and later drops the disposable database `sla_validation_test`                                                                                       |
+| Depends on    | B-01                                                                                                                                                        |
+| Closes        | N9.5 "not applied to a database" (empty-schema half)                                                                                                        |
 
 ```bash
 ldc exec -T postgres dropdb -U user --if-exists sla_validation_test
@@ -724,16 +781,16 @@ Deviations:
 
 ### B-04 — N2.10 contract artefacts still apply to the current schema
 
-| | |
-| --- | --- |
-| Related | N2.10, N2.11 |
-| Source | Roadmap N2.10 ("Re-verified 2026-10-05 … `schema.patch` still applies"); `packages/db/prisma/contract/20261001110000_…/README.md` |
-| Why | Six migrations have landed since the 2026-10-05 re-verification |
-| Environment | E1 + E2 |
-| Prerequisites | B-03 |
-| State | Part 1 read-only; part 2 writes `sla_validation_test` and a temporary worktree |
-| Depends on | B-03 |
-| Closes | Schema-level half of the N2.10 re-verification (the data half is C-09) |
+|               |                                                                                                                                   |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N2.10, N2.11                                                                                                                      |
+| Source        | Roadmap N2.10 ("Re-verified 2026-10-05 … `schema.patch` still applies"); `packages/db/prisma/contract/20261001110000_…/README.md` |
+| Why           | Six migrations have landed since the 2026-10-05 re-verification                                                                   |
+| Environment   | E1 + E2                                                                                                                           |
+| Prerequisites | B-03                                                                                                                              |
+| State         | Part 1 read-only; part 2 writes `sla_validation_test` and a temporary worktree                                                    |
+| Depends on    | B-03                                                                                                                              |
+| Closes        | Schema-level half of the N2.10 re-verification (the data half is C-09)                                                            |
 
 ```bash
 # Part 1 (static)
@@ -762,16 +819,16 @@ Deviations:
 
 ### B-05 — Tenant-scope classification and isolation for the N9/N10 models
 
-| | |
-| --- | --- |
-| Related | N9.5 exit, plan 09 §8.6, H-10 "tenant isolation covers every model", DC-10 |
-| Source | Plan 09 §8.6 ("the first test fails for any model without a classification"); roadmap N9.5 ("to be added on `testing`") |
-| Why | Seven new models have no classification or isolation seeding |
-| Environment | E2 |
+|               |                                                                                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.5 exit, plan 09 §8.6, H-10 "tenant isolation covers every model", DC-10                                                                                                |
+| Source        | Plan 09 §8.6 ("the first test fails for any model without a classification"); roadmap N9.5 ("to be added on `testing`")                                                   |
+| Why           | Seven new models have no classification or isolation seeding                                                                                                              |
+| Environment   | E2                                                                                                                                                                        |
 | Prerequisites | **BLOCKED (BL-04)** until classification entries and isolation seeds for the 7 models are written on `testing` (ask for it). Running it before that only confirms the gap |
-| State | Truncates every table of `sla_validation_test` (the suite refuses databases without `test` in the name) |
-| Depends on | B-03 |
-| Closes | N9.5 tenant-scope exit; H-10 "tenant isolation covers every model" (code half) |
+| State         | Truncates every table of `sla_validation_test` (the suite refuses databases without `test` in the name)                                                                   |
+| Depends on    | B-03                                                                                                                                                                      |
+| Closes        | N9.5 tenant-scope exit; H-10 "tenant isolation covers every model" (code half)                                                                                            |
 
 ```bash
 export TEST_DATABASE_URL="postgresql://user:password@localhost:5432/sla_validation_test?schema=public"
@@ -792,16 +849,16 @@ Deviations:
 
 ### B-06 — N10 focused suites (plan 10 §10)
 
-| | |
-| --- | --- |
-| Related | N10.7, N10 "Phase is done when" bullets 1–3, DC-02 |
-| Source | Plan 10 §10 "As built"; roadmap N10.7 |
-| Why | The recorded pass (8 suites / 72 tests) is not reproducible from the repository |
-| Environment | E2 |
+|               |                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| Related       | N10.7, N10 "Phase is done when" bullets 1–3, DC-02                                                            |
+| Source        | Plan 10 §10 "As built"; roadmap N10.7                                                                         |
+| Why           | The recorded pass (8 suites / 72 tests) is not reproducible from the repository                               |
+| Environment   | E2                                                                                                            |
 | Prerequisites | **BLOCKED (BL-03)** unless A-02 found all 8 files on your local `testing-n10`. Push it or tell me where it is |
-| State | Truncates `sla_validation_test` |
-| Depends on | B-03, A-02 |
-| Closes | N10.7 (and with it N10's phase status, together with B-13–B-15) |
+| State         | Truncates `sla_validation_test`                                                                               |
+| Depends on    | B-03, A-02                                                                                                    |
+| Closes        | N10.7 (and with it N10's phase status, together with B-13–B-15)                                               |
 
 ```bash
 git worktree add ~/elapsed-validation/testing-n10 testing-n10 && cd ~/elapsed-validation/testing-n10
@@ -819,25 +876,25 @@ npx vitest run packages/db/test/integration-availability.test.ts packages/db/tes
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED (BL-03)   [ ] SKIPPED
-Run by/date:
-Where:       testing-n10 sha=
-Evidence:    files _/8   tests passed=   failed=   skipped=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED (BL-03)   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 08:14 UTC
+Where:       testing-n10 sha=10245941, db=sla_validation_test (68 migrations, no pending)
+Evidence:    files 8/8   tests passed=72   failed=0   skipped=0 (4 real-database suites ran against Postgres: admin 23, routes 10, db 3, custom ingest 3)
+Deviations:  None. Closes the reproducibility half of DC-02 for the local branch; the suites are still not on any remote branch (BL-03), so they are not yet on `main` or `origin/testing`.
 ```
 
 ### B-07 — Regression suites for the shared N9/N10 changes that already exist
 
-| | |
-| --- | --- |
-| Related | N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15 (D32), N10.3; D13(b); plan 09 §10 "focused regression coverage" |
-| Source | Roadmap N9.3/N9.8a/N9.9/N9.10/N9.13 ("Not run: … regression"); plan 09 §10, §13 "Regression" row |
-| Why | Every shared-code task records its regression run as "for `testing`"; none is recorded |
-| Environment | E2 |
-| Prerequisites | B-03; a testing authorization (see the branch policy above) |
-| State | Truncates `sla_validation_test` |
-| Depends on | B-03 |
-| Closes | The "regression" half of N9.14-F1 (1) for the existing suites; the D24 replay half is C-07 |
+|               |                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Related       | N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15 (D32), N10.3; D13(b); plan 09 §10 "focused regression coverage" |
+| Source        | Roadmap N9.3/N9.8a/N9.9/N9.10/N9.13 ("Not run: … regression"); plan 09 §10, §13 "Regression" row       |
+| Why           | Every shared-code task records its regression run as "for `testing`"; none is recorded                 |
+| Environment   | E2                                                                                                     |
+| Prerequisites | B-03; a testing authorization (see the branch policy above)                                            |
+| State         | Truncates `sla_validation_test`                                                                        |
+| Depends on    | B-03                                                                                                   |
+| Closes        | The "regression" half of N9.14-F1 (1) for the existing suites; the D24 replay half is C-07             |
 
 ```bash
 export TEST_DATABASE_URL="postgresql://user:password@localhost:5432/sla_validation_test?schema=public"
@@ -867,16 +924,16 @@ Deviations:
 
 ### B-08 — Local end-to-end stack (disposable database, web, worker, mock helpdesk)
 
-| | |
-| --- | --- |
-| Related | N9.14-F1 (2) "an end-to-end run against a real or fixture API"; N9.11/N9.12 "not exercised"; N10 browser checks |
-| Source | `packages/custom-ticket/dev/mock-helpdesk.mjs` and `mock-helpdesk-config.json`; `apps/web/scripts/seed-n9-test-orgs.ts`; `.env.example` (`CUSTOM_PROVIDER_ALLOW_PRIVATE_HOSTS`) |
-| Why | Shared setup for B-09–B-16 |
-| Environment | E3 |
-| Prerequisites | B-01; local Docker Postgres; `openssl` |
-| State | Creates `sla_e2e_test`; writes `~/elapsed-validation/e2e.env` (throwaway secrets, mode 600, outside the repo) and `apps/web/.local/n9-test-credentials.txt` (git-ignored) |
-| Depends on | B-01 |
-| Closes | Setup only |
+|               |                                                                                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.14-F1 (2) "an end-to-end run against a real or fixture API"; N9.11/N9.12 "not exercised"; N10 browser checks                                                                 |
+| Source        | `packages/custom-ticket/dev/mock-helpdesk.mjs` and `mock-helpdesk-config.json`; `apps/web/scripts/seed-n9-test-orgs.ts`; `.env.example` (`CUSTOM_PROVIDER_ALLOW_PRIVATE_HOSTS`) |
+| Why           | Shared setup for B-09–B-16                                                                                                                                                      |
+| Environment   | E3                                                                                                                                                                              |
+| Prerequisites | B-01; local Docker Postgres; `openssl`                                                                                                                                          |
+| State         | Creates `sla_e2e_test`; writes `~/elapsed-validation/e2e.env` (throwaway secrets, mode 600, outside the repo) and `.local/n9-test-credentials.txt` (git-ignored)       |
+| Depends on    | B-01                                                                                                                                                                            |
+| Closes        | Setup only                                                                                                                                                                      |
 
 ```bash
 ldc exec -T postgres dropdb -U user --if-exists sla_e2e_test && ldc exec -T postgres createdb -U user sla_e2e_test
@@ -906,7 +963,9 @@ pnpm web:dev 2>&1 | tee ~/elapsed-validation/web.log                            
 pnpm worker:dev 2>&1 | tee ~/elapsed-validation/worker.log                                        # terminal 3
 ```
 
-**Pass:** `curl -s localhost:3000/api/health` returns `{"status":"ok",...}`; `curl -s localhost:4010/__state | head -c 200` returns JSON; the three accounts are in `apps/web/.local/n9-test-credentials.txt`; you can sign in as `n9-owner-a@example.test` and see your organization (this proves web uses `sla_e2e_test`).
+> **Worker check (2026-10-10 run).** The sign-in test only proves the **web** uses `sla_e2e_test`. A worker started from another directory or without `source ~/elapsed-validation/e2e.env` silently uses the repository's `.env` database instead, polls that database's own Custom REST integrations (against the mock) and never touches `sla_e2e_test`: no sync-run rows and 0 cases appear. Start the worker from the same worktree as web and confirm it with `grep -m1 -o '"organizationId":"[a-z0-9]*"' ~/elapsed-validation/worker.log` against `select id from organizations` in `sla_e2e_test`.
+
+**Pass:** `curl -s localhost:3000/api/health` returns `{"status":"ok",...}`; `curl -s localhost:4010/__state | head -c 200` returns JSON; the three accounts are in `.local/n9-test-credentials.txt`; you can sign in as `n9-owner-a@example.test` and see your organization (this proves web uses `sla_e2e_test`).
 **On failure:** if sign-in fails with the seeded account, web is not using `sla_e2e_test` (check that `DATABASE_URL` was exported in that terminal); stop B-09+.
 
 ```text
@@ -914,22 +973,22 @@ RESULT
 Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
 Run by/date:
 Where:       commit
-Evidence:    health=   mock state ok? [ ]   sign-in as owner A ok? [ ]
+Evidence:    health={"status":"ok","checks":{"database":"ok"}}   mock state ok? [x] ({"mode":"normal","delayMs":0,"tickets":40,"open":27})   sign-in as owner A ok? [ ] not yet confirmed
 Deviations:
 ```
 
 ### B-09 — Custom REST end-to-end: draft, test, sample, preview, validate, activate, history import with partial runs
 
-| | |
-| --- | --- |
-| Related | N9.11, N9.12, N9.6, N9.7, N9.8, N9.9, N9.14-F1 (2); plan 09 §4, §6.1, §6.12, §6.13; Q12, R3, R6 |
-| Source | Roadmap N9.11 ("Not run: any route against a database or a real API"), N9.12 ("not exercised in a browser"), N9.6 ("`runCustomIngest` … has not been run") |
-| Why | No custom route, activation, worker ingest or partial run has ever run |
-| Environment | E3 |
-| Prerequisites | B-08 running |
-| State | Writes `sla_e2e_test` only |
-| Depends on | B-08 |
-| Closes | N9.14-F1 item (2) "end-to-end run against a fixture API" (together with B-10–B-16) |
+|               |                                                                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.11, N9.12, N9.6, N9.7, N9.8, N9.9, N9.14-F1 (2); plan 09 §4, §6.1, §6.12, §6.13; Q12, R3, R6                                                            |
+| Source        | Roadmap N9.11 ("Not run: any route against a database or a real API"), N9.12 ("not exercised in a browser"), N9.6 ("`runCustomIngest` … has not been run") |
+| Why           | No custom route, activation, worker ingest or partial run has ever run                                                                                     |
+| Environment   | E3                                                                                                                                                         |
+| Prerequisites | B-08 running                                                                                                                                               |
+| State         | Writes `sla_e2e_test` only                                                                                                                                 |
+| Depends on    | B-08                                                                                                                                                       |
+| Closes        | N9.14-F1 item (2) "end-to-end run against a fixture API" (together with B-10–B-16)                                                                         |
 
 The mock is slowed so that the first import cannot finish inside one 120 s run (140 tickets, 14 listing pages and 280 child requests at 1.5 s each). All 140 tickets fall inside the configuration's 90-day import window (the mock spaces tickets 0.6 days apart).
 
@@ -943,8 +1002,10 @@ select status, "activeConfigVersion", "lastSuccessfulSyncAt" is not null as sync
 select count(*) as cases, count(*) filter (where "closedAt" is not null) as closed from cases where system = 'custom' and "deletedAt" is null;
 SQL
 }
-mock '{"mode":"slow","delayMs":1500,"ticketCount":140}'
+mock '{"mode":"normal","delayMs":0,"ticketCount":140}'   # normal for steps 1-3; switch to slow only right before Activate (see the note below)
 ```
+
+> **Correction (2026-10-10 run).** Test connection, Sample, Preview and Validate must run with the mock in `normal` mode. Preview has a 60 s total budget (`openOutboundSession`, `totalMs` 60,000) and reads up to 2 pages of tickets with 2 child requests each; at 1.5 s per request it times out (`custom_outbound_check_failed ... code: timeout`) and the wizard reports "Preview: 0 tickets read, 0 would be created, 0 would fail", which looks like an empty source rather than a timeout. Run `mock '{"mode":"slow","delayMs":1500,"ticketCount":140}'` after Validate and before **Activate**. Preview is also rate limited (a second attempt within about a minute returns 429).
 
 1. Signed in as **owner A**, create a native SLA policy in **Settings → SLA → Configuration** with First Response, Next Reply and Resolution targets (custom sources use native policies, D31). Record the targets.
 2. Open `http://localhost:3000/settings/integrations/custom`. In the **Advanced JSON** tab paste `packages/custom-ticket/dev/mock-helpdesk-config.json`; enter the API key `mock-key-123` in the credential field.
@@ -961,33 +1022,39 @@ SQL
 ```
 
 **Pass:**
+
 - Step 3: test connection `ok`, no validation error, activation succeeds.
 - While importing: every stored run is `partial` with reason `budget_exhausted` (or `run_cap_reached`) and `took` ≤ about 125 s; `synced = f` (a partial run never advances `lastSuccessfulSyncAt`), `consecutiveFailures = 0`, `failing = f`, `err` empty; the integration page shows **"Importing history"** (or "Catching up"), never "Needs attention" or a failure; `cases` grows between runs.
 - After the import: `cases = 140`, `closed = 46` (every third mock ticket is solved), a run `ok` (or no new row once D32 skips a no-change run), `synced = t`, page **"Up to date"**; `dup_cases = 0`, `dup_raw = 0`; events > 0; commitments exist for `first_response`, `next_reply` and `resolution`.
-**On failure:** record the step, the run rows and the UI state; stop B-10–B-16 if activation failed.
+  **On failure:** record the step, the run rows and the UI state; stop B-10–B-16 if activation failed.
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       commit
-Evidence:    test connection=   activate ok? [ ]   partial runs (count, reason, max took)=   counters during import=
-             UI during import=        final cases/closed=     dup_cases=   dup_raw=   commitments by kind/status=   UI after=
-Deviations:
+Status:      [x] PASS (after the fix below; the first run of the unpatched code FAILED)   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local e2e stack (sla_e2e_test, worktree of 8dc2fe8 + uncommitted patch to packages/safe-http/src/client.ts), mock helpdesk with 140 tickets
+Evidence:    test connection=ok   Sample ok   Preview (normal mode)= 20 tickets read, 20 would be created, 0 would fail   Validate ok   activate ok? [x]
+             partial runs (count, reason, max took)= unpatched code: run 1 = failed/timeout, 2:00.57, 0 tickets read, but 90 cases committed, consecutiveFailures=1, failing=t, page "Needs attention"; patched code: run 2 = partial/budget_exhausted, 2:00.03, 30 tickets, failureCount 0; run 3 = ok, 1:03.96, 20 tickets
+             counters during import= unpatched: failing=t, err "Custom source request failed (timeout)"; patched: consecutiveFailures=0, failing=f, err empty
+             UI during import= unpatched: "Needs attention" (not "Importing history"); patched run: UI not recorded
+             final cases/closed=140/46   dup_cases=0   dup_raw=0   events=650   commitments by kind/status= first_response met 62, breached 78; resolution at_risk 9, breached 131; next_reply breached 19   UI after= not recorded
+Deviations:  FINDING (fixed in the working tree, uncommitted): a request still in flight when the 120 s run budget ended was recorded as `timeout`, so a run that was making progress was `failed` (consecutiveFailures 1, failing, "Needs attention", 0 tickets read although 90 cases were committed). Plan 09 Q12 requires `partial`/`budget_exhausted`. Fix: packages/safe-http/src/client.ts, an attempt whose timeout was clipped by the remaining budget now throws `budget_exhausted` (an unclipped 30 s timeout stays `timeout`). No regression test added (branch policy); the page copy still shows "Needs attention" only for the pre-fix run.
+             Also: Preview reports "0 tickets read" when it times out (mock in slow mode), indistinguishable from an empty source. Preview, Validate and the other checks must run with the mock in `normal` mode; B-09 instructions corrected. The worker must run from the same worktree and database as web (B-08 note).
+             The unsynced-state UI strings ("Importing history", "Up to date") were not captured.
 ```
 
 ### B-10 — Secret sentinel and redaction scan (plan 09 §8.4 items 1–2, 6)
 
-| | |
-| --- | --- |
-| Related | N9.5 exit (§8.4), N9.3, Q16 |
-| Source | Plan 09 §8.4 "Verification required before Beta" |
-| Why | §8.4 verification has not been run |
-| Environment | E3 |
-| Prerequisites | B-09 PASS. The sentinel is the mock's key `mock-key-123` |
-| State | READ-ONLY |
-| Depends on | B-09 (the scan is repeated once more at the end of the next check, after its error paths write `lastSyncError` and sync history) |
-| Closes | §8.4 items (1) and (2) for database, logs, sync history and API responses; items (3)–(7) stay with D-08 |
+|               |                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.5 exit (§8.4), N9.3, Q16                                                                                                      |
+| Source        | Plan 09 §8.4 "Verification required before Beta"                                                                                 |
+| Why           | §8.4 verification has not been run                                                                                               |
+| Environment   | E3                                                                                                                               |
+| Prerequisites | B-09 PASS. The sentinel is the mock's key `mock-key-123`                                                                         |
+| State         | READ-ONLY                                                                                                                        |
+| Depends on    | B-09 (the scan is repeated once more at the end of the next check, after its error paths write `lastSyncError` and sync history) |
+| Closes        | §8.4 items (1) and (2) for database, logs, sync history and API responses; items (3)–(7) stay with D-08                          |
 
 ```bash
 source ~/elapsed-validation/e2e.env
@@ -1010,25 +1077,25 @@ In the browser's developer tools (Network), reload the custom integration page a
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    counts (7 rows)=        secret prefixes=        web.log=   worker.log=   API responses clean? [ ]   repeated after B-11? [ ]
-Deviations:
+Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (database and log scan pass; browser response check and the repeat after B-11 are open)
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local e2e stack, sla_e2e_test
+Evidence:    counts (7 rows)= integrations 0, drafts 0, config_versions 0, sync_runs 0, raw_events 0, admin_audit 0, activation_audit 0   secret prefixes= apiKey enc:v1:   web.log=0   worker.log=0   API responses clean? [ ] not yet   repeated after B-11? [x] yes, all 7 counts 0, web.log 0, worker.log 0
+Deviations:  None so far.
 ```
 
 ### B-11 — Failure classes, recovery and freshness (plan 09 §6.12, §8.3, §8.5; R3)
 
-| | |
-| --- | --- |
-| Related | N9.6, N9.9, N9.15; D13(b); N3.1 health columns |
-| Source | Plan 09 §6.12 rule ("a real provider, authentication, transport or processing failure keeps the applicable failure policy"); §13 "Partial runs and failures" and "SSRF and the client" (redirects); `SyncRunOutcome` in `schema.prisma` |
-| Why | The failure policy of the custom source has never run end to end |
-| Environment | E3 |
-| Prerequisites | B-09 PASS (import complete, mock `normal`) |
-| State | Writes `sla_e2e_test`; changes the mock's mode |
-| Depends on | B-09 |
-| Closes | End-to-end evidence for N9.6/N9.9 failure handling (unit coverage stays with D-08) |
+|               |                                                                                                                                                                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.6, N9.9, N9.15; D13(b); N3.1 health columns                                                                                                                                                                                          |
+| Source        | Plan 09 §6.12 rule ("a real provider, authentication, transport or processing failure keeps the applicable failure policy"); §13 "Partial runs and failures" and "SSRF and the client" (redirects); `SyncRunOutcome` in `schema.prisma` |
+| Why           | The failure policy of the custom source has never run end to end                                                                                                                                                                        |
+| Environment   | E3                                                                                                                                                                                                                                      |
+| Prerequisites | B-09 PASS (import complete, mock `normal`)                                                                                                                                                                                              |
+| State         | Writes `sla_e2e_test`; changes the mock's mode                                                                                                                                                                                          |
+| Depends on    | B-09                                                                                                                                                                                                                                    |
+| Closes        | End-to-end evidence for N9.6/N9.9 failure handling (unit coverage stays with D-08)                                                                                                                                                      |
 
 For each mode, wait for the next worker run to finish (watch `worker.log`), then run `st` (defined in B-09).
 
@@ -1043,32 +1110,33 @@ mock '{"mode":"normal"}'; sleep 90; st         # recovery
 Finally re-run B-10's commands (the error paths above wrote `lastSyncError` and sync-run rows) and tick "repeated after B-11" in B-10's RESULT.
 
 **Pass:**
+
 - `error500`, `badjson`, `redirect`: outcome `failed`; `consecutiveFailures` increases and `failing = t`; `synced` timestamp unchanged; `err` names no URL, header or key; for `redirect`, `mock.log` shows no request to port 1.
 - `forbidden`: outcome `failed` and `status = permission_denied` (the 403 transition).
 - recovery: a clean run sets `status = connected`, clears `consecutiveFailures` and `failing`, and advances `lastSuccessfulSyncAt`; the page returns to "Up to date" (a superseded failure no longer shows "Needs attention", D32).
-**On failure:** record the mode and the observed values; blocks Beta (N9.14-F1).
+  **On failure:** record the mode and the observed values; blocks Beta (N9.14-F1).
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    error500=          forbidden=          badjson=          redirect=          recovery=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local e2e stack, worker running the patched safe-http (partial/budget fix)
+Evidence:    error500= failed/provider_unavailable (1:15.7), consecutiveFailures 1, failing=t, err "Custom source request failed (provider_unavailable)", synced still t   forbidden= failed/permission_denied (0.5 s each), integration status -> permission_denied, consecutiveFailures 6, failing=t   badjson= failed/bad_response, consecutiveFailures 9, status stays permission_denied   redirect= failed/redirect, consecutiveFailures 12, mock.log requests to port 1 = 0   recovery= status connected, consecutiveFailures 0, failing=f, err empty (no new sync-run row for the recovering run, D32 no-change skip)
+Deviations:  Not captured: the UI strings ("Needs attention" while failing, "Up to date" after recovery), and the lastSuccessfulSyncAt value itself was not compared before and after (only that it stayed set). After a 403 the status stays permission_denied through later bad_response and redirect failures until a clean run (observed, plausible by design). No URL, header or key appears in any err text.
 ```
 
 ### B-12 — Lifecycle guard abort, owner override, refused paths (plan 09 §6.4, §6.11; Q11, Q15, R1, R2, U1, U6)
 
-| | |
-| --- | --- |
-| Related | N9.7 guards, N9.11 override routes, N9.12 `OverridePanel` |
-| Source | Plan 09 §6.4 (lifecycle guard aborts only when `R ≥ 10` and `R > 0.25 × L`), §6.11 |
-| Why | No guard or override has run against a database |
-| Environment | E3 |
-| Prerequisites | B-11 done (mock `normal`, 140 tickets, `L` = 140 live cases) |
-| State | Writes `sla_e2e_test` |
-| Depends on | B-11 |
-| Closes | End-to-end evidence for the lifecycle guard and the customer override path |
+|               |                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------- |
+| Related       | N9.7 guards, N9.11 override routes, N9.12 `OverridePanel`                          |
+| Source        | Plan 09 §6.4 (lifecycle guard aborts only when `R ≥ 10` and `R > 0.25 × L`), §6.11 |
+| Why           | No guard or override has run against a database                                    |
+| Environment   | E3                                                                                 |
+| Prerequisites | B-11 done (mock `normal`, 140 tickets, `L` = 140 live cases)                       |
+| State         | Writes `sla_e2e_test`                                                              |
+| Depends on    | B-11                                                                               |
+| Closes        | End-to-end evidence for the lifecycle guard and the customer override path         |
 
 `closeFirst` closes the first N unsolved mock tickets and stamps them as updated now. With `L = 140` the guard needs `R > 35`; N = 45 is above it and below the 94 unsolved tickets.
 
@@ -1100,26 +1168,26 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    L=   N=   abort outcome/reason=   open before/after abort=   member refused? [ ]
-             override row (guard/path/consumed/ttl)=         open after override=        support path status=
-Deviations:
+Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (all measured criteria pass; open only for the member-refusal check, which was not reported)
+Run by/date: Yasser Alnajjar, 2026-10-10 09:38-09:56 UTC
+Where:       local e2e stack, sla_e2e_test, worker on the patched safe-http
+Evidence:    L=140   N=90 (the command `closeFirst:45` ran twice, 09:38:09 and 09:38:37; the mock then had 4 open of 140; the guard needs R > 35, so the check still holds)   abort outcome/reason=aborted/mass_lifecycle_change, repeated unchanged on three later runs (09:39:39, 09:40:17, 09:40:55; waiting did not clear it)   open before/after abort=94/94   member refused? [ ] not reported
+             override row (guard/path/consumed/ttl)= mass_lifecycle_change / customer / consumed=t, outcome=applied / 23:59:59.971 (24 h, OD-10)   open after override=4 (94 -> 4, equal to the 90 closed at the source; the run after the override was ok, 90 records)   support path status=403 (operator, GUARD_OVERRIDE_OPERATOR_EMAILS empty)
+Deviations:  N was 90, not 45 (command run twice). Preview contents (guard, R, L, ratio, record ids) were not reported. The pasted browser output contained a local session cookie of the throwaway e2e database; it was not stored here.
 ```
 
 ### B-13 — Availability during an in-flight request: allowlist removal aborts within about 5 s, data preserved, pause not resumed (plan 09 §8.7, plan 10 §5.4)
 
-| | |
-| --- | --- |
-| Related | N10.3, N10.4, N9 Q5; N10 "Phase is done when" bullet 2 (Custom REST half) |
-| Source | Plan 09 §8.7 "Turning the flag off"; `docs/integration-availability.md` "In-flight and queued work", "Procedure: Beta allowlist" |
-| Why | The 5-second abort, the discarded response and the pause semantics have only been described |
-| Environment | E3 |
-| Prerequisites | B-12 done; operator account `n9-owner-b@example.test` |
-| State | Writes `sla_e2e_test` |
-| Depends on | B-12 |
-| Closes | Custom REST half of N10's done-when "disable/re-enable … with no data changed" |
+|               |                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N10.3, N10.4, N9 Q5; N10 "Phase is done when" bullet 2 (Custom REST half)                                                        |
+| Source        | Plan 09 §8.7 "Turning the flag off"; `docs/integration-availability.md` "In-flight and queued work", "Procedure: Beta allowlist" |
+| Why           | The 5-second abort, the discarded response and the pause semantics have only been described                                      |
+| Environment   | E3                                                                                                                               |
+| Prerequisites | B-12 done; operator account `n9-owner-b@example.test`                                                                            |
+| State         | Writes `sla_e2e_test`                                                                                                            |
+| Depends on    | B-12                                                                                                                             |
+| Closes        | Custom REST half of N10's done-when "disable/re-enable … with no data changed"                                                   |
 
 ```bash
 snap() { lsql sla_e2e_test <<'SQL'
@@ -1148,26 +1216,26 @@ Then: try **re-adding** organization A in the console (it must be refused, see B
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    abort outcome/reason=   finishedAt − audit = ___ s   diff=
-             console re-add=   paused after re-add=   resume ingests? [ ]
-Deviations:
+Status:      [x] PASS (with the caveats under Deviations)   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 10:08-10:21 UTC
+Where:       local e2e stack, sla_e2e_test, worker on the patched safe-http
+Evidence:    abort outcome/reason= aborted/flag_disabled (run started 10:10:20, ended 10:11:45.852)   finishedAt - audit = 1.4 s (audit remove_integration_allowlist at 10:11:44.409)   diff= events_md5 identical, cursor_md5 identical, `paused` f -> t, cases_md5 differed (see Deviations)
+             console re-add= not reported   paused after re-add= t (seed script re-added the allowlist row; paused stayed t, no new run)   resume ingests? [x] yes: Resume polling -> paused=f, lastSuccessfulSyncAt advanced 10:08:05 -> 10:20:16 (no new sync-run row: no-change run, D32)
+Deviations:  (1) cases_md5 changed across the removal because that hash covers whole case rows including `updatedAt`, and the worker rewrites every case's `updatedAt` on every 30 s cycle even while the integration is paused (observed: 10:14:16 -> 10:14:46 with `cases_content_md5` identical and no sync run). A content-only comparison (updatedAt excluded) was identical over that interval but was not repeated across a fresh removal. (2) Observation: the 30 s rewrite of `cases.updatedAt` for every case, with no data change, is wasteful and would make an `updatedAt`-based freshness cue unreliable. (3) The hung request used its full 30 s limit and was recorded failed/timeout (10:08:35), which is correct (not clipped by the budget). (4) The console re-add refusal was not recorded; B-15 covers the same block.
 ```
 
 ### B-14 — Built-in provider disable/re-enable preserves data and shows "Paused by Elapsed" (N10 done-when)
 
-| | |
-| --- | --- |
-| Related | N10.2, N10.5, N10.6; N10 "Phase is done when" bullets 2 and 4; D33 "Preservation" |
-| Source | Plan 10 §6.1–§6.3; `docs/integration-availability.md` "What is never touched" |
-| Why | The existing-provider half of N10's done-when has no evidence in the repository (N10.7's suites are on `testing-n10` only) |
-| Environment | E3 |
+|               |                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N10.2, N10.5, N10.6; N10 "Phase is done when" bullets 2 and 4; D33 "Preservation"                                                                                                                                                                                                                                                                                |
+| Source        | Plan 10 §6.1–§6.3; `docs/integration-availability.md` "What is never touched"                                                                                                                                                                                                                                                                                    |
+| Why           | The existing-provider half of N10's done-when has no evidence in the repository (N10.7's suites are on `testing-n10` only)                                                                                                                                                                                                                                       |
+| Environment   | E3                                                                                                                                                                                                                                                                                                                                                               |
 | Prerequisites | B-08. **Stop the worker (terminal 3) before seeding and keep it stopped**: the fixture organization carries fake Zendesk and Jira tokens and a worker run would call the real provider APIs with them. The worker-side skip for built-in providers is covered by B-06 (`apps/worker/test/integration-availability.test.ts`); the Custom REST worker path by B-13 |
-| State | Writes `sla_e2e_test` (fixture seed) |
-| Depends on | B-08 (independent of B-09–B-13; run it after them so the worker can stay stopped) |
-| Closes | Existing-provider half of N10 done-when bullet 2 and bullet 4 |
+| State         | Writes `sla_e2e_test` (fixture seed)                                                                                                                                                                                                                                                                                                                             |
+| Depends on    | B-08 (independent of B-09–B-13; run it after them so the worker can stay stopped)                                                                                                                                                                                                                                                                                |
+| Closes        | Existing-provider half of N10 done-when bullet 2 and bullet 4                                                                                                                                                                                                                                                                                                    |
 
 ```bash
 source ~/elapsed-validation/e2e.env
@@ -1201,25 +1269,25 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    impact preview=   diff(0→1)=   diff(0→2)=   audit rows=   version/enabled=   card while disabled=   connect refused? [ ]
-Deviations:
+Status:      [x] PASS (data preservation, audit and version); UI items not captured   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 10:24-10:28 UTC
+Where:       local e2e stack, sla_e2e_test, fixture tenant `halcyon` (1 Zendesk + 1 Jira integration, connected), worker stopped
+Evidence:    impact preview= not reported   diff(0->1)= identical (taken while Zendesk was disabled: integrations, cases, events, commitments and raw events unchanged, both integrations still `connected`)   diff(0->2)= identical (after re-enable)   audit rows= 2 `update_integration_availability`, both with a reason (10:27:20, 10:27:54)   version/enabled= 2 / t   card while disabled= not reported   connect refused? [ ] not reported
+Deviations:  The first baseline attempt was empty (helper functions missing in that tab) and was retaken before any change. Not captured: the impact-preview counts, the "Paused by Elapsed" card text, the owner A connect refusal. The worker-side skip for built-in providers rests on B-06 (apps/worker/test/integration-availability.test.ts).
 ```
 
 ### B-15 — Custom REST rollout block (N9.14-F1 enforced by the backend)
 
-| | |
-| --- | --- |
-| Related | N10.4, D33 ruling 3, N9.14-F1 |
-| Source | Plan 10 §5.4 "Rollout block"; `docs/integration-availability.md` "Rollout block: Custom REST"; `packages/db/src/integration-catalog.ts` (`N9.14-F1`) |
-| Why | The block is the only thing that keeps Custom REST from being enabled before its gate |
-| Environment | E3 |
-| Prerequisites | B-08 |
-| State | Attempts writes that must be refused |
-| Depends on | B-08 |
-| Closes | Evidence that N9.14-F1 is enforced while open |
+|               |                                                                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N10.4, D33 ruling 3, N9.14-F1                                                                                                                        |
+| Source        | Plan 10 §5.4 "Rollout block"; `docs/integration-availability.md` "Rollout block: Custom REST"; `packages/db/src/integration-catalog.ts` (`N9.14-F1`) |
+| Why           | The block is the only thing that keeps Custom REST from being enabled before its gate                                                                |
+| Environment   | E3                                                                                                                                                   |
+| Prerequisites | B-08                                                                                                                                                 |
+| State         | Attempts writes that must be refused                                                                                                                 |
+| Depends on    | B-08                                                                                                                                                 |
+| Closes        | Evidence that N9.14-F1 is enforced while open                                                                                                        |
 
 In `/admin/integrations` → Custom REST, as the operator, attempt each and record the response: (1) add organization B to the allowlist; (2) set Beta access to **All organizations**; (3) set the stage to **Stable**. Then:
 
@@ -1244,16 +1312,16 @@ Deviations:
 
 ### B-16 — Unsupported commitment kinds: dry-run, confirmation, cancellation, rollback guard (plan 09 §5.5, §5.6; Q14, R5, U3 option (a))
 
-| | |
-| --- | --- |
-| Related | N9.8a, N9.11 activation/rollback, N9.12 `ImpactPanel` |
-| Source | Roadmap N9.8a ("Not run: … the dry-run/confirm UI and the activation transaction"); plan 09 §5.5, §5.6 |
-| Why | The first code that cancels `first_response`/`resolution` commitments has never run |
-| Environment | E3 |
-| Prerequisites | B-09 PASS (version 1, `slaMode: "full"`, commitments of all three kinds) |
-| State | Writes `sla_e2e_test` |
-| Depends on | B-09 (run after B-12/B-13 so their data is settled; resume polling first) |
-| Closes | End-to-end evidence for N9.8a; U3 option (a) enforcement |
+|               |                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Related       | N9.8a, N9.11 activation/rollback, N9.12 `ImpactPanel`                                                  |
+| Source        | Roadmap N9.8a ("Not run: … the dry-run/confirm UI and the activation transaction"); plan 09 §5.5, §5.6 |
+| Why           | The first code that cancels `first_response`/`resolution` commitments has never run                    |
+| Environment   | E3                                                                                                     |
+| Prerequisites | B-09 PASS (version 1, `slaMode: "full"`, commitments of all three kinds)                               |
+| State         | Writes `sla_e2e_test`                                                                                  |
+| Depends on    | B-09 (run after B-12/B-13 so their data is settled; resume polling first)                              |
+| Closes        | End-to-end evidence for N9.8a; U3 option (a) enforcement                                               |
 
 ```bash
 lsql sla_e2e_test <<'SQL' > ~/elapsed-validation/b16-before.txt
@@ -1306,16 +1374,16 @@ export PROD_SHA=<from A-03>
 
 ### C-01 — Fresh production backup and off-host copy
 
-| | |
-| --- | --- |
-| Related | Release prerequisite; N2.10/N2.11; H-13; D24 replay input |
-| Source | `docs/production-backup-runbook.md` §1–§3; `h-phase-close-out.md` Release row ("Back up first") |
-| Why | Every C1 check runs on this dump; it is also the rollback point for C-11 |
-| Environment | E6 · PRODUCTION (`pg_dump` reads; the dump file is written to the host disk) |
-| Prerequisites | CHECKPOINT A; disk space (A-08) |
-| State | READ-ONLY on the database; writes `backups/pre-validation-elapsed_db-<STAMP>.dump` (the `pre-` prefix is never pruned by cron) |
-| Depends on | A-03, A-07, A-08 |
-| Closes | Input for C-02–C-10 |
+|               |                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | Release prerequisite; N2.10/N2.11; H-13; D24 replay input                                                                      |
+| Source        | `docs/production-backup-runbook.md` §1–§3; `h-phase-close-out.md` Release row ("Back up first")                                |
+| Why           | Every C1 check runs on this dump; it is also the rollback point for C-11                                                       |
+| Environment   | E6 · PRODUCTION (`pg_dump` reads; the dump file is written to the host disk)                                                   |
+| Prerequisites | CHECKPOINT A; disk space (A-08)                                                                                                |
+| State         | READ-ONLY on the database; writes `backups/pre-validation-elapsed_db-<STAMP>.dump` (the `pre-` prefix is never pruned by cron) |
+| Depends on    | A-03, A-07, A-08                                                                                                               |
+| Closes        | Input for C-02–C-10                                                                                                            |
 
 ```bash
 # on the host (helpers from §0.4)
@@ -1340,26 +1408,27 @@ scp -i /path/to/your-key.pem "ubuntu@13.62.74.24:~/elapsed/backups/pre-validatio
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:40 UTC
 Where:       host
-Evidence:    dump=                size=     TABLE DATA=    live cases=   integrations=   migrations=   DUMP_TS=
-             off-host copy done? [ ]
-Deviations:
+Evidence:    dump=backups/pre-validation-elapsed_db-20261010T074145Z.dump   size=256 KB   TABLE DATA=44   live cases=24   integrations=2   migrations=68   DUMP_TS=2026-10-10T07:41:45Z
+             off-host copy done? [x] yes (copied to ~/elapsed-validation/replay/ on the local machine; restore in C-03 succeeded)
+             live public tables=44 (equals TABLE DATA; confirmed 2026-10-10)
+Deviations:  None. Size is KB-range because production now holds 1 organization and 24 cases (earlier dumps held about 12 organizations).
 ```
 
 ### C-02 — Host restore drill with recorded timing (closes the 7.3 evidence gap)
 
-| | |
-| --- | --- |
-| Related | 7.3, Launch Gate "Backups tested by a real restore", DC-07 |
-| Source | `docs/deployment.md` "Test the restore"; `scripts/restore-drill.sh`; roadmap 7.3 ("add the line if it isn't committed yet") |
-| Why | The recovery-time figure was never committed |
-| Environment | E6 · PRODUCTION host, **scratch database `sla_restore_drill` only** (the script never touches `elapsed_db` and never stops web or worker) |
-| Prerequisites | C-01; no other `sla_restore_drill` on the host that you still need (the script drops it at start and exit) |
-| State | Creates and drops `sla_restore_drill` in the production Postgres instance (CPU and I/O for the restore duration); appends one line to `docs/restore-drills.log` in the host checkout |
-| Depends on | C-01 |
-| Closes | 7.3 evidence (after you commit the log line) |
+|               |                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | 7.3, Launch Gate "Backups tested by a real restore", DC-07                                                                                                                           |
+| Source        | `docs/deployment.md` "Test the restore"; `scripts/restore-drill.sh`; roadmap 7.3 ("add the line if it isn't committed yet")                                                          |
+| Why           | The recovery-time figure was never committed                                                                                                                                         |
+| Environment   | E6 · PRODUCTION host, **scratch database `sla_restore_drill` only** (the script never touches `elapsed_db` and never stops web or worker)                                            |
+| Prerequisites | C-01; no other `sla_restore_drill` on the host that you still need (the script drops it at start and exit)                                                                           |
+| State         | Creates and drops `sla_restore_drill` in the production Postgres instance (CPU and I/O for the restore duration); appends one line to `docs/restore-drills.log` in the host checkout |
+| Depends on    | C-01                                                                                                                                                                                 |
+| Closes        | 7.3 evidence (after you commit the log line)                                                                                                                                         |
 
 ```bash
 COMPOSE_FILE=docker-compose.yml ENV_FILE="$ENV_FILE" scripts/restore-drill.sh "backups/pre-validation-elapsed_db-<STAMP>.dump"
@@ -1371,25 +1440,25 @@ tail -1 docs/restore-drills.log
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host
-Evidence:    drill line=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10 07:44 UTC
+Where:       production host, scratch database sla_restore_drill, commit 8dc2fe8
+Evidence:    drill line= 2026-10-10T07:44:43Z dump=pre-validation-elapsed_db-20261010T074145Z.dump size=256K restore_seconds=1 tables=44 cases=24
+Deviations:  `docs/restore-drills.log` now exists only in the host checkout (uncommitted; the host working tree is no longer clean). The line still has to be added to the repository (7.3).
 ```
 
 ### C-03 — Restore the dump into `sla_restore_drill` on your machine
 
-| | |
-| --- | --- |
-| Related | D24 replay gate; N2.11; N3–N10 shared changes |
-| Source | `docs/n2-replay-runbook.md` §1; roadmap Rev 7 (2026-10-05 local restore of the production backup) |
-| Why | The replay needs a restore that is not on the production host |
-| Environment | E4 (restored production data on an isolated local database) |
-| Prerequisites | C-01 copy; local Docker Postgres |
-| State | Creates `sla_restore_drill` locally (customer data) |
-| Depends on | C-01 |
-| Closes | Input for C-04–C-10 |
+|               |                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| Related       | D24 replay gate; N2.11; N3–N10 shared changes                                                     |
+| Source        | `docs/n2-replay-runbook.md` §1; roadmap Rev 7 (2026-10-05 local restore of the production backup) |
+| Why           | The replay needs a restore that is not on the production host                                     |
+| Environment   | E4 (restored production data on an isolated local database)                                       |
+| Prerequisites | C-01 copy; local Docker Postgres                                                                  |
+| State         | Creates `sla_restore_drill` locally (customer data)                                               |
+| Depends on    | C-01                                                                                              |
+| Closes        | Input for C-04–C-10                                                                               |
 
 ```bash
 ldc exec -T postgres dropdb -U user --if-exists sla_restore_drill && ldc exec -T postgres createdb -U user sla_restore_drill
@@ -1404,25 +1473,58 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       local
-Evidence:    cases=   integrations=   migrations=   newest=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local (docker-compose.dev.yml postgres), database sla_restore_drill
+Evidence:    cases=24   integrations=2   migrations=68   newest=20261009120000_n10_integration_availability (all equal to C-01 and A-04)
+Deviations:  None.
+```
+
+### Rework of C-04 to C-10 for an already-released production (2026-10-10)
+
+A-04 showed all 68 migrations applied in production, so the 2026-10-10 dump (C-01) is **already at `main`'s schema**. The original C-04 to C-08 flow (capture with the deployed code, then migrate, then capture with `main`) has nothing to migrate on it. Run C-03 as written (it verifies the restore of the current dump), then run C-04 to C-10 **unchanged except for the overrides below**, on the last pre-release dump, which still holds the pre-release schema and a larger dataset:
+
+| Item | Original text | Use instead |
+| --- | --- | --- |
+| Dataset | `pre-validation-elapsed_db-<STAMP>.dump` | `~/elapsed/backups/sla-20261001T104033Z.dump` on the host (4.5 MB, 29 tables, A-07). Copy it to `~/elapsed-validation/replay/` like C-01 and restore it into `sla_restore_drill` with the C-03 commands (replacing the current restore) |
+| `DUMP_TS` | stamp of C-01 | `2026-10-01T10:40:33Z` |
+| `PROD_SHA` (C-04 base) | A-03's deployed commit | `7cb2b9b` (the code that produced that dump; has `replay:capture`, `replay:compare`, `backfill:breached-at`) |
+| `MAIN_SHA` | current `main` | unchanged (`0e48d28` code, or the current `main`) |
+| C-05 pass | applies A-04's pending list | applies exactly the migrations newer than the restore's newest, in order (expected: the 13 listed in A-04's old expectation, `20261001100000` ... `20261009120000`) and not `20261001110000_contract_customer_identity_and_case_source`; then `diff exit=0` |
+| C-08 pass | counts as written | Counts reflect the October 1 data (fixture organizations present), so record them rather than comparing with today's production |
+
+**C-05b (new, on the current dump after the C-04 to C-10 sequence):** restore the 2026-10-10 dump with the C-03 commands, then confirm that production's schema equals `main`'s:
+
+```bash
+cd ~/elapsed-validation/main
+DATABASE_URL="$DRILL_URL" pnpm --filter @sla/db exec prisma migrate deploy        # expect "No pending migrations"
+DATABASE_URL="$DRILL_URL" pnpm --filter @sla/db exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code; echo "diff exit=$?"
+DATABASE_URL="$DRILL_URL" pnpm --filter @sla/commitments replay:capture -- --as-of 2026-10-10T07:41:45Z --out ~/elapsed-validation/replay/current.jsonl
+```
+
+**Pass:** no pending migration, `diff exit=0`, the capture finishes (record records and the drift line). Record under C-05's RESULT block as "C-05b".
+
+```text
+RESULT (C-05b)
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Evidence:    pending=0 ("No pending migrations to apply", 68 migrations found)   diff exit=0 ("No difference detected")
+             capture: 58 commitments, 24 cases, 1 organization as of 2026-10-10T07:41:45Z; C-class drift 0 status, 0 breachedAt of 58
+Deviations:  main worktree was 8dc2fe8 (docs-only change over 0e48d28). Drift is already 0/0, so the 9 breachedAt rows in H-13 are no longer present in production data (C-13/C-10 expectation changes; see C-10 on the old dump).
 ```
 
 ### C-04 — L1 baseline with the deployed code
 
-| | |
-| --- | --- |
-| Related | D24; N2.11 ("re-run this replay"); N9.3/N9.8a/N9.9/N9.10/N9.13/N9.15 "D24 replay"; N10.3 (worker path) |
-| Source | `docs/n2-replay-runbook.md` §2; `packages/commitments/src/scripts/replay-capture.ts` (`--as-of`, `--out`; refuses databases other than `sla_restore_drill`) |
-| Why | The baseline must come from the code production runs, before any migration |
-| Environment | E4 |
-| Prerequisites | C-03; `PROD_SHA` from A-03 |
-| State | Read-only on `sla_restore_drill`; writes the capture file (customer data) |
-| Depends on | C-03 |
-| Closes | Input for C-07 |
+|               |                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | D24; N2.11 ("re-run this replay"); N9.3/N9.8a/N9.9/N9.10/N9.13/N9.15 "D24 replay"; N10.3 (worker path)                                                      |
+| Source        | `docs/n2-replay-runbook.md` §2; `packages/commitments/src/scripts/replay-capture.ts` (`--as-of`, `--out`; refuses databases other than `sla_restore_drill`) |
+| Why           | The baseline must come from the code production runs, before any migration                                                                                  |
+| Environment   | E4                                                                                                                                                          |
+| Prerequisites | C-03; `PROD_SHA` from A-03                                                                                                                                  |
+| State         | Read-only on `sla_restore_drill`; writes the capture file (customer data)                                                                                   |
+| Depends on    | C-03                                                                                                                                                        |
+| Closes        | Input for C-07                                                                                                                                              |
 
 ```bash
 git worktree add ~/elapsed-validation/base "$PROD_SHA" && cd ~/elapsed-validation/base
@@ -1436,25 +1538,26 @@ cd - && sha256sum ~/elapsed-validation/replay/baseline.jsonl
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       local, base=PROD_SHA
-Evidence:    records=   drift status=   drift breachedAt=   of commitments=   sha256=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, base=7cb2b9b (code of that dump), dump of 2026-10-01
+Evidence:    records: 3,923 commitments, 1,517 cases, 12 organizations   drift status=0   drift breachedAt=9   of commitments=3923
+             sha256=c180d2225611892f3b6b719791e3279fd8030fde1f6d181685fc452d403ac011
+Deviations:  Run on the 2026-10-01 dump (rework note) because the 2026-10-10 dump is already post-release.
 ```
 
 ### C-05 — Apply the pending migrations to the restore with `main`
 
-| | |
-| --- | --- |
-| Related | Release N2–N10; DC-05; N9.5 ("not applied to a database"), N10.1 (fold of `customProviderEnabled`) |
-| Source | `h-phase-close-out.md` Release row; `n2-replay-runbook.md` §3 |
-| Why | The 6 N9/N10 migrations have never been applied on top of production data |
-| Environment | E4 |
-| Prerequisites | C-04 |
-| State | Migrates `sla_restore_drill` |
-| Depends on | C-04 |
-| Closes | Migration-safety evidence for the release (replaces the 2026-10-05 evidence for 7 migrations, DC-05) |
+|               |                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| Related       | Release N2–N10; DC-05; N9.5 ("not applied to a database"), N10.1 (fold of `customProviderEnabled`)   |
+| Source        | `h-phase-close-out.md` Release row; `n2-replay-runbook.md` §3                                        |
+| Why           | The 6 N9/N10 migrations have never been applied on top of production data                            |
+| Environment   | E4                                                                                                   |
+| Prerequisites | C-04                                                                                                 |
+| State         | Migrates `sla_restore_drill`                                                                         |
+| Depends on    | C-04                                                                                                 |
+| Closes        | Migration-safety evidence for the release (replaces the 2026-10-05 evidence for 7 migrations, DC-05) |
 
 ```bash
 cd /path/to/elapsed && git worktree add ~/elapsed-validation/main "$MAIN_SHA" && cd ~/elapsed-validation/main
@@ -1468,26 +1571,26 @@ DATABASE_URL="$DRILL_URL" pnpm --filter @sla/db exec prisma migrate diff --from-
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       local, main=MAIN_SHA
-Evidence:    applied (names)=
-             diff exit=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, main=8dc2fe8 (code of 0e48d28 plus docs), on the 2026-10-01 dump
+Evidence:    applied (names)= 20261001100000_sla_import_summary_provider, 20261001120000_provider_freshness, 20261002100000_platform_admin_and_plan_records, 20261002140000_n5_onboarding_and_retention, 20261003100000_n6_entitlements, 20261003120000_normalized_event_source_raw_event_index, 20261004100000_n6_internal_billing, 20261009100000_n9_custom_ticket_provider, 20261009100100_n9_guard_override, 20261009100200_n9_custom_integration_provider, 20261009100300_n9_custom_activation_audit, 20261009110000_n9_last_data_changed_at, 20261009120000_n10_integration_availability (13, in order; contract migration 20261001110000 not applied)
+             diff exit=0 ("No difference detected")
+Deviations:  Migrated the 2026-10-01 restore (rework note). This is migration-safety evidence on 12 organizations and 1,528 cases; production itself had already applied the same 13.
 ```
 
 ### C-06 — L2 normalization replay (twice)
 
-| | |
-| --- | --- |
-| Related | D24; N2.3/N2.11; N9.15 projector change counts (D32: "replay must show 0 differences") |
-| Source | `docs/n2-replay-runbook.md` §3; `apps/worker/scripts/l2-replay.ts` (`--out-dir`; refuses databases other than `sla_restore_drill`) |
-| Why | The projector and adapters changed after the last L2 (2026-10-01) |
-| Environment | E4 |
-| Prerequisites | C-05 |
-| State | Writes `sla_restore_drill` (re-normalization) and fingerprint files |
-| Depends on | C-05 |
-| Closes | L2 half of the D24 gate for the release |
+|               |                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | D24; N2.3/N2.11; N9.15 projector change counts (D32: "replay must show 0 differences")                                             |
+| Source        | `docs/n2-replay-runbook.md` §3; `apps/worker/scripts/l2-replay.ts` (`--out-dir`; refuses databases other than `sla_restore_drill`) |
+| Why           | The projector and adapters changed after the last L2 (2026-10-01)                                                                  |
+| Environment   | E4                                                                                                                                 |
+| Prerequisites | C-05                                                                                                                               |
+| State         | Writes `sla_restore_drill` (re-normalization) and fingerprint files                                                                |
+| Depends on    | C-05                                                                                                                               |
+| Closes        | L2 half of the D24 gate for the release                                                                                            |
 
 ```bash
 cd ~/elapsed-validation/main
@@ -1500,26 +1603,26 @@ DATABASE_URL="$DRILL_URL" INTEGRATION_TOKEN_ENCRYPTION_KEY=x pnpm --filter @sla/
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    run 1: records=   differences=   recordFailures=   ids identical=
-             run 2: records=   differences=   recordFailures=   ids identical=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, main=8dc2fe8, on the migrated 2026-10-01 restore
+Evidence:    run 1: records=7413   differences=0   recordFailures=0   ids identical=yes (9,743 / 9,743; 12 organizations, 1,528 cases projected)
+             run 2: records=7413   differences=0   recordFailures=0   ids identical=yes (9,743 / 9,743)
+Deviations:  None. Record count equals the 2026-10-01 host replay (7,413).
 ```
 
 ### C-07 — L1 replay: capture with `main`, compare with the baseline
 
-| | |
-| --- | --- |
-| Related | D24 for every shared change since `PROD_SHA` (N3–N6 re-confirmed; N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15, N10.3) |
-| Source | `docs/n2-replay-runbook.md` §3; `replay-compare.ts` (exit 1 on any unapproved class-A difference) |
-| Why | No D24 replay covers the N9/N10 code (roadmap N9.8a, N9.9, N9.13: "Not run: the D24 replay") |
-| Environment | E4 |
-| Prerequisites | C-06 |
-| State | Read-only on `sla_restore_drill`; writes the capture file |
-| Depends on | C-06 |
-| Closes | The D24 replay requirement of N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15 for existing providers (N9.14-F1 item (1), replay half) |
+|               |                                                                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Related       | D24 for every shared change since `PROD_SHA` (N3–N6 re-confirmed; N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15, N10.3)             |
+| Source        | `docs/n2-replay-runbook.md` §3; `replay-compare.ts` (exit 1 on any unapproved class-A difference)                            |
+| Why           | No D24 replay covers the N9/N10 code (roadmap N9.8a, N9.9, N9.13: "Not run: the D24 replay")                                 |
+| Environment   | E4                                                                                                                           |
+| Prerequisites | C-06                                                                                                                         |
+| State         | Read-only on `sla_restore_drill`; writes the capture file                                                                    |
+| Depends on    | C-06                                                                                                                         |
+| Closes        | The D24 replay requirement of N9.3, N9.8a, N9.9, N9.10, N9.13, N9.15 for existing providers (N9.14-F1 item (1), replay half) |
 
 ```bash
 cd ~/elapsed-validation/main
@@ -1532,25 +1635,25 @@ pnpm --filter @sla/commitments replay:compare -- ~/elapsed-validation/replay/bas
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    records=   differences=   class A unapproved=   class B=   drift before/after=   compare exit=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, before=7cb2b9b, after=8dc2fe8, as-of 2026-10-01T10:40:33Z
+Evidence:    records=5440 compared   differences=0   class A unapproved=0   class B=0   drift before/after=0 status, 9 breachedAt of 3923 / identical   compare exit=0
+Deviations:  The capture and compare were run twice with identical output (the second run overwrote after.jsonl); no effect on the result.
 ```
 
 ### C-08 — Post-migration data assertions on the restore
 
-| | |
-| --- | --- |
-| Related | N10.1 seed and fold, D33 "deploy changes no behavior", N9.8 (`slaSupport` null for existing providers), D32 (`lastDataChangedAt` no backfill), N5.6/N6.3 defaults |
-| Source | Migration `20261009120000_n10_integration_availability`; D31/D32/D33; `schema.prisma` `WorkerSettings` defaults |
-| Why | Proves the release leaves existing tenants' behavior and switches as documented, and exposes the defaults that do change behavior |
-| Environment | E4 |
-| Prerequisites | C-05 |
-| State | READ-ONLY |
-| Depends on | C-05 (can run before or after C-06/C-07) |
-| Closes | N10.1 fold on production data; input to C-11's customer-impact list |
+|               |                                                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N10.1 seed and fold, D33 "deploy changes no behavior", N9.8 (`slaSupport` null for existing providers), D32 (`lastDataChangedAt` no backfill), N5.6/N6.3 defaults |
+| Source        | Migration `20261009120000_n10_integration_availability`; D31/D32/D33; `schema.prisma` `WorkerSettings` defaults                                                   |
+| Why           | Proves the release leaves existing tenants' behavior and switches as documented, and exposes the defaults that do change behavior                                 |
+| Environment   | E4                                                                                                                                                                |
+| Prerequisites | C-05                                                                                                                                                              |
+| State         | READ-ONLY                                                                                                                                                         |
+| Depends on    | C-05 (can run before or after C-06/C-07)                                                                                                                          |
+| Closes        | N10.1 fold on production data; input to C-11's customer-impact list                                                                                               |
 
 ```bash
 lsql sla_restore_drill <<'SQL'
@@ -1570,26 +1673,26 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    availability rows=        flagged/allowlist=     slaSupport/dataChanged/custom=     runs/overrides=
-             monthlyReportEnabled=   entitlementsEnforced=   grace=   intervals=   orgs with trial end=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, migrated 2026-10-01 restore
+Evidence:    availability rows=6: zendesk/jira/linear stable+allowlist, intercom/github beta+all_organizations, custom beta+allowlist; all enabled=t, version 0 (as B-03)   flagged/allowlist=0/0   slaSupport/dataChanged/custom=0/0/0   runs/overrides=0/0
+             monthlyReportEnabled=t   entitlementsEnforced=f   grace=3   intervals=active 5000 ms, reconciliation 3600000 ms   orgs with trial end=0
+Deviations:  For C-11/OD-13: monthlyReportEnabled defaults to true (production already carries this column since 2026-10-09, so the setting is live there; see C-12).
 ```
 
 ### C-09 — N2.10 contract migration on the restore, through `prisma migrate deploy`, and rollback
 
-| | |
-| --- | --- |
-| Related | N2.10, N2.11 |
-| Source | Roadmap N2.10 (preconditions; "Re-verified 2026-10-05"); contract `README.md` ("move this directory into `prisma/migrations/`, apply `schema.patch` …") |
-| Why | Six migrations landed since the last re-verification; the migration's timestamp (`20261001110000`) is older than migrations already applied, so Prisma's acceptance of it is proven only by doing it |
-| Environment | E4 |
-| Prerequisites | C-07 PASS (run after the replay; it alters the restore) |
-| State | Alters, then restores, `sla_restore_drill`; creates a throwaway worktree |
-| Depends on | C-07 |
-| Closes | Re-verification of N2.10 on current `main` (release still needs C-16) |
+|               |                                                                                                                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N2.10, N2.11                                                                                                                                                                                         |
+| Source        | Roadmap N2.10 (preconditions; "Re-verified 2026-10-05"); contract `README.md` ("move this directory into `prisma/migrations/`, apply `schema.patch` …")                                              |
+| Why           | Six migrations landed since the last re-verification; the migration's timestamp (`20261001110000`) is older than migrations already applied, so Prisma's acceptance of it is proven only by doing it |
+| Environment   | E4                                                                                                                                                                                                   |
+| Prerequisites | C-07 PASS (run after the replay; it alters the restore)                                                                                                                                              |
+| State         | Alters, then restores, `sla_restore_drill`; creates a throwaway worktree                                                                                                                             |
+| Depends on    | C-07                                                                                                                                                                                                 |
+| Closes        | Re-verification of N2.10 on current `main` (release still needs C-16)                                                                                                                                |
 
 ```bash
 C=packages/db/prisma/contract/20261001110000_contract_customer_identity_and_case_source
@@ -1622,25 +1725,28 @@ pre | tee ~/elapsed-validation/replay/n210-post.txt; diff ~/elapsed-validation/r
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    preconditions=        type-check=   deploy applied out-of-order? [ ]   contracted diff=   rollback diff=   md5 identical? [ ]
-Deviations:
+Status:      [ ] PASS   [x] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, main=8dc2fe8 in a throwaway worktree, on the migrated 2026-10-01 restore
+Evidence:    preconditions= cases_without_source=0, identities=124 = legacy_values=124, cross_source_dups=0, legacy_md5=7faeee41f519cf754f879880c750b6a5
+             type-check= exit 1 on the contracted schema: apps/web/test/integration-disconnect-visibility.test.ts(333,67) error TS2322, Type 'null' is not assignable to type 'string | StringFieldUpdateOperationsInput' (the test "keeps a case with no recorded source integration visible" sets `sourceIntegrationId: null`)
+             deploy applied out-of-order? [x] yes, "69 migrations found", applied 20261001110000_contract_customer_identity_and_case_source without error
+             contracted diff=0 ("No difference detected")   rollback diff=0   md5 identical? [x] yes (pre and post files identical)
+Deviations:  FAIL on the type-check criterion only. Cause: that test was added by commit 014ea51 (soft disconnect), after the 2026-10-05 re-verification, and assumes a nullable `Case.sourceIntegrationId`. `pnpm -r` stopped at apps/web, so other errors in packages after it were not listed. The suite would also fail at runtime on the contracted schema (the update sets NULL on a NOT NULL column). Does not block C-11 (N2.10 is a separate release); C-16 needs the test fixed on `testing` first (open item for E-03 and N2.10).
 ```
 
 ### C-10 — H-13 `breachedAt` backfill rehearsal on the restore
 
-| | |
-| --- | --- |
-| Related | H-13; N1.2 class-C drift |
-| Source | Roadmap H-13 ("To close (host)"); `packages/commitments/src/scripts/backfill-breached-at.ts` |
-| Why | Gives the exact expected production result for C-13 on today's data. **The script has no scratch-database guard**: `DATABASE_URL` must point at the restore |
-| Environment | E4 |
-| Prerequisites | C-09 done (or C-07 if you skip C-09) |
-| State | Writes `evaluations."breachedAt"` in `sla_restore_drill` |
-| Depends on | C-07 |
-| Closes | Rehearsal for H-13 |
+|               |                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | H-13; N1.2 class-C drift                                                                                                                                    |
+| Source        | Roadmap H-13 ("To close (host)"); `packages/commitments/src/scripts/backfill-breached-at.ts`                                                                |
+| Why           | Gives the exact expected production result for C-13 on today's data. **The script has no scratch-database guard**: `DATABASE_URL` must point at the restore |
+| Environment   | E4                                                                                                                                                          |
+| Prerequisites | C-09 done (or C-07 if you skip C-09)                                                                                                                        |
+| State         | Writes `evaluations."breachedAt"` in `sla_restore_drill`                                                                                                    |
+| Depends on    | C-07                                                                                                                                                        |
+| Closes        | Rehearsal for H-13                                                                                                                                          |
 
 ```bash
 cd ~/elapsed-validation/main
@@ -1656,11 +1762,11 @@ pnpm --filter @sla/commitments replay:compare -- ~/elapsed-validation/replay/aft
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    run 1 rows=   skipped=   run 2 rows=   drift after=   compare exit=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, main=8dc2fe8, on the migrated 2026-10-01 restore
+Evidence:    run 1 rows=9 (10 commitments considered)   skipped=1 (8000cdcb..., recomputed status "met")   run 2 rows=0   drift after=0 status, 0 breachedAt of 3923   compare exit=0 (5,440 records, 0 differences, class A 0, class B 0)
+Deviations:  None. Production's own data already shows 0/0 drift (C-05b), so the host repair C-13 is expected to change 0 rows.
 ```
 
 ### CHECKPOINT C1
@@ -1673,16 +1779,16 @@ CHECKPOINT C1:  [ ] passed — release may be scheduled   [ ] stopped — reason
 
 ### C-11 — GATED: release `main` (N2–N10) to production
 
-| | |
-| --- | --- |
-| Related | Status Board "Up next (1)"; N2–N6 "built, not deployed"; N9 (Custom REST stays blocked by the rollout block); N10; DC-01 |
-| Source | `h-phase-close-out.md` Release row; `docs/deployment.md` "Updating"; `docs/production-backup-runbook.md` "two traps" |
-| Why | Most open items close only on the deployed code |
-| Environment | E6 · **MODIFIES PRODUCTION** (builds images, runs the 13 migrations, restarts web and worker) |
+|               |                                                                                                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | Status Board "Up next (1)"; N2–N6 "built, not deployed"; N9 (Custom REST stays blocked by the rollout block); N10; DC-01                                                                                |
+| Source        | `h-phase-close-out.md` Release row; `docs/deployment.md` "Updating"; `docs/production-backup-runbook.md` "two traps"                                                                                    |
+| Why           | Most open items close only on the deployed code                                                                                                                                                         |
+| Environment   | E6 · **MODIFIES PRODUCTION** (builds images, runs the 13 migrations, restarts web and worker)                                                                                                           |
 | Prerequisites | CHECKPOINT C1; **OD-05** (your go-ahead); customer notices decided: D13 stale-source alert behavior, the monthly report default (OD-13, C-08), the new "Paused by Elapsed" states; a maintenance window |
-| State | MODIFIES PRODUCTION |
-| Depends on | CHECKPOINT C1 |
-| Closes | "Deployed" state of N2–N10 (recorded by C-12) |
+| State         | MODIFIES PRODUCTION                                                                                                                                                                                     |
+| Depends on    | CHECKPOINT C1                                                                                                                                                                                           |
+| Closes        | "Deployed" state of N2–N10 (recorded by C-12)                                                                                                                                                           |
 
 ```bash
 # on the host, immediately before deploying: a fresh pre-release backup (C-01's command with the label pre-release)
@@ -1703,12 +1809,13 @@ dc logs --no-color migrate | tail -20
 
 ```text
 RESULT
-Status:      [ ] DONE   [ ] FAILED   [ ] NOT DONE (gate)
-Run by/date:
+Status:      [x] DONE (before this audit; not run by this plan)   [ ] FAILED   [ ] NOT DONE (gate)
+Run by/date: Release applied by the owner on 2026-10-09 (migrations finished 2026-10-09 15:23-23:56 UTC); recorded here 2026-10-10 from A-03 and A-04
 Where:       host
-Evidence:    pre-release dump=          HEAD=          migrate exit/log=          services=
-             monthly reports held? [ ] yes [ ] no
-Deviations:
+Evidence:    pre-release dump= none found in backups/ after 2026-10-02 (pre-n3-elapsed_db-20261002T033846Z.dump is the newest before the release; A-07)   HEAD=8dc2fe8 (code of 0e48d28 + docs)
+             migrate exit/log= 68 migrations applied, 0 failed, newest 20261009120000_n10_integration_availability   services= postgres, web, worker x3, nginx healthy 2026-10-10 (A-03, A-05)
+             monthly reports held? [ ] unknown: worker_settings.monthlyReportEnabled on production is read in C-12 below
+Deviations:  OD-05 (go-ahead) was effectively given by deploying; the C-05 to C-08 evidence was produced after the release (rework note), not before it.
 ```
 
 ### CHECKPOINT C2
@@ -1719,16 +1826,16 @@ CHECKPOINT C2 (after C-11 and C-12):  [ ] production healthy on MAIN_SHA — con
 
 ### C-12 — Post-release verification (read-only)
 
-| | |
-| --- | --- |
-| Related | Status Board (deployed commit), N2–N10 deployment, N10 "customers see Unavailable / Coming soon / Paused by Elapsed, never a false Disconnected" |
-| Source | `h-phase-close-out.md` Release row ("record the deployed commit in the roadmap Status Board"); `docs/integration-availability.md` |
-| Why | Confirms the release and produces the record the roadmap asks for |
-| Environment | E6 · PRODUCTION (read-only) |
-| Prerequisites | C-11 |
-| State | READ-ONLY |
-| Depends on | C-11 |
-| Closes | "Not deployed" notes on N2–N10 (E-03 records the commit) |
+|               |                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | Status Board (deployed commit), N2–N10 deployment, N10 "customers see Unavailable / Coming soon / Paused by Elapsed, never a false Disconnected" |
+| Source        | `h-phase-close-out.md` Release row ("record the deployed commit in the roadmap Status Board"); `docs/integration-availability.md`                |
+| Why           | Confirms the release and produces the record the roadmap asks for                                                                                |
+| Environment   | E6 · PRODUCTION (read-only)                                                                                                                      |
+| Prerequisites | C-11                                                                                                                                             |
+| State         | READ-ONLY                                                                                                                                        |
+| Depends on    | C-11                                                                                                                                             |
+| Closes        | "Not deployed" notes on N2–N10 (E-03 records the commit)                                                                                         |
 
 ```bash
 ro_sql <<'SQL'
@@ -1745,29 +1852,31 @@ dc logs --since 30m --no-color worker | grep -c '"work_finished"'
 
 In the browser as an operator: `/admin`, `/admin/monitoring`, `/admin/integrations`, `/admin/tenants` load; as a customer owner: `/settings/integrations` shows every connected integration in its previous state (none "Paused by Elapsed", none "Disconnected" that was connected before).
 **Pass:** 68 applied migrations, newest `20261009120000_n10_integration_availability`; availability rows as in B-03; integration status counts equal A-09's (no status changed by the release); health `ok`/`running`; `work_finished` > 0 and the failure count not above A-05's baseline rate.
-**On failure:** a status change or a burst of `work_failed` after the release is an incident: decide on rollback (C-11 *On failure*).
+**On failure:** a status change or a burst of `work_failed` after the release is an incident: decide on rollback (C-11 _On failure_).
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host, HEAD=
-Evidence:    applied=   newest=   availability=   status counts same as A-09? [ ]   health=   failures/finished (30 min)=   UI checks? [ ]
-Deviations:
+Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (host part passes; status stays open until the browser checks are recorded)
+Run by/date: Yasser Alnajjar, 2026-10-10 ~07:58 UTC
+Where:       host, HEAD=8dc2fe8
+Evidence:    applied=68   newest=20261009120000_n10_integration_availability   availability=6 rows as B-03 (zendesk/jira/linear stable+allowlist; intercom/github beta+all_organizations; custom beta+allowlist; all enabled)   status counts same as A-09? [x] yes (jira connected 1, intercom connected 1)
+             health=web ok (database ok); worker x3 running, 0 failedRuns, 0 expired leases, 0 failing, 0 overdue   failures/finished (30 min)=0 / 60   UI checks? [ ] not yet
+             worker_settings: monthlyReportEnabled=t, entitlementsEnforced=f, freshnessGraceFactor=3; organizations with trialEndsAt = 1; no "monthly" line in the last 24 h of worker logs
+Deviations:  monthlyReportEnabled is true in production (OD-13): no monthly-report log in 24 h, so it is not known whether a report was sent; the schedule or the per-organization state has to be read from the code or a later log. One organization has a trial end date (C-08 on the old data had 0): the trial lifecycle (N6) is active for it, with entitlementsEnforced=f.
 ```
 
 ### C-13 — GATED: H-13 production backfill
 
-| | |
-| --- | --- |
-| Related | H-13 |
-| Source | Roadmap H-13 "To close (host)"; `h-phase-close-out.md` H-13 row |
-| Why | The 9 `breachedAt` NULL rows make the dashboard's breaches-over-time fall back to `dueAt` for one organization |
-| Environment | E6 · **MODIFIES PRODUCTION DATA** (`UPDATE evaluations set "breachedAt"` for the rows C-10 identified; idempotent) |
-| Prerequisites | C-10 PASS (expected count known); C-12 PASS; OD-05; a fresh backup taken right before |
-| State | MODIFIES PRODUCTION |
-| Depends on | C-10, C-12 |
-| Closes | H-13 (with C-14) |
+|               |                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Related       | H-13                                                                                                               |
+| Source        | Roadmap H-13 "To close (host)"; `h-phase-close-out.md` H-13 row                                                    |
+| Why           | The 9 `breachedAt` NULL rows make the dashboard's breaches-over-time fall back to `dueAt` for one organization     |
+| Environment   | E6 · **MODIFIES PRODUCTION DATA** (`UPDATE evaluations set "breachedAt"` for the rows C-10 identified; idempotent) |
+| Prerequisites | C-10 PASS (expected count known); C-12 PASS; OD-05; a fresh backup taken right before                              |
+| State         | MODIFIES PRODUCTION                                                                                                |
+| Depends on    | C-10, C-12                                                                                                         |
+| Closes        | H-13 (with C-14)                                                                                                   |
 
 ```bash
 STAMP=$(date -u +%Y%m%dT%H%M%SZ) && umask 077 && dc exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$1" --format=custom --no-owner' sh "$APP_DB" < /dev/null > "backups/pre-h13-elapsed_db-$STAMP.dump" && ls -lh "backups/pre-h13-elapsed_db-$STAMP.dump"
@@ -1782,25 +1891,26 @@ docker exec -w /repo/packages/commitments "$W" ./node_modules/.bin/tsx src/scrip
 
 ```text
 RESULT
-Status:      [ ] DONE   [ ] FAILED   [ ] NOT DONE (gate)
-Run by/date:
-Where:       host
-Evidence:    backup=      run 1 rows=   skipped=   run 2 rows=
-Deviations:
+Status:      [ ] DONE   [ ] FAILED   [x] NOT DONE (gate) — not needed on current evidence
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       host (not run); evidence from the 2026-10-10 production dump restored locally (C-05b)
+Evidence:    backup=n/a   run 1 rows=n/a   skipped=n/a   run 2 rows=n/a
+             C-05b: a capture of the 2026-10-10 production dump reports drift 0 status, 0 breachedAt of 58 commitments, so the H-13 repair has nothing left to update in production (the 9 rows existed only in the 2026-10-01 data; C-10)
+Deviations:  H-13 appears already repaired in production, or the 9 affected evaluations are gone with the removed fixture organizations (A-09). Which of the two is not established by this plan. Do not run this write on production unless a new capture shows drift above 0.
 ```
 
 ### C-14 — Post-release drift capture (the "re-run the replay" step, DC-13)
 
-| | |
-| --- | --- |
-| Related | N2.11 ("After deploying, re-run the replay"); H-13 ("Then a replay capture should report drift 0 / 0"); D24 |
-| Source | `h-phase-close-out.md` Release and H-13 rows |
-| Why | Shows the deployed code recomputes every stored status and breach instant identically on production data |
-| Environment | E4 (a restore of a post-release production backup on your machine) |
-| Prerequisites | C-12 (and C-13 if done); OD-11 accepts this method |
-| State | Read-only on production (`pg_dump`); writes a local restore |
-| Depends on | C-12 |
-| Closes | N2.11's post-release replay wording; H-13's drift criterion |
+|               |                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| Related       | N2.11 ("After deploying, re-run the replay"); H-13 ("Then a replay capture should report drift 0 / 0"); D24 |
+| Source        | `h-phase-close-out.md` Release and H-13 rows                                                                |
+| Why           | Shows the deployed code recomputes every stored status and breach instant identically on production data    |
+| Environment   | E4 (a restore of a post-release production backup on your machine)                                          |
+| Prerequisites | C-12 (and C-13 if done); OD-11 accepts this method                                                          |
+| State         | Read-only on production (`pg_dump`); writes a local restore                                                 |
+| Depends on    | C-12                                                                                                        |
+| Closes        | N2.11's post-release replay wording; H-13's drift criterion                                                 |
 
 Take a backup as in C-01 (label `post-release`), copy it off the host, restore it as in C-03, then:
 
@@ -1814,25 +1924,25 @@ DATABASE_URL="$DRILL_URL" INTEGRATION_TOKEN_ENCRYPTION_KEY=x pnpm --filter @sla/
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    POST_DUMP_TS=   drift=   L2 differences/failures=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       local, the 2026-10-10 production dump (taken after the release; it is the post-release dump)
+Evidence:    POST_DUMP_TS=2026-10-10T07:41:45Z   drift=0 status, 0 breachedAt of 58 commitments (C-05b)   L2 differences/failures=0/0 (1 organization, 24 cases projected, 127 records, 153/153 NormalizedEvent ids identical)
+Deviations:  C-01's dump serves as the post-release dump, so no further backup is taken. OD-11 (accept this method) is still open.
 ```
 
 ### C-15 — H-10 production security verification (corrected for the host's database)
 
-| | |
-| --- | --- |
-| Related | H-10; Launch Gate security items; `data-retention-and-on-call.md` ("whether `pnpm db:encrypt-tokens` has been run on production is not verified"); DC-06 |
-| Source | `scripts/prod/h10-verify.sh`; `h-phase-close-out.md` "H-10 — production security verification" |
-| Why | The script's token check (3) queries `$POSTGRES_DB`, the empty database on this host, so it can pass vacuously; checks 1, 2 and 4 are valid |
-| Environment | E6 · PRODUCTION (read-only; the script compares hashes and prints no value) |
-| Prerequisites | A-03; a non-shallow clone on the host (`git rev-parse --is-shallow-repository` prints `false`) for check 1; `shasum` installed |
-| State | READ-ONLY |
-| Depends on | A-03 (run after C-12 so it checks the deployed stack) |
-| Closes | H-10's script part and the encryption "not verified" line; the third-party rotation is D-05 |
+|               |                                                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | H-10; Launch Gate security items; `data-retention-and-on-call.md` ("whether `pnpm db:encrypt-tokens` has been run on production is not verified"); DC-06 |
+| Source        | `scripts/prod/h10-verify.sh`; `h-phase-close-out.md` "H-10 — production security verification"                                                           |
+| Why           | The script's token check (3) queries `$POSTGRES_DB`, the empty database on this host, so it can pass vacuously; checks 1, 2 and 4 are valid              |
+| Environment   | E6 · PRODUCTION (read-only; the script compares hashes and prints no value)                                                                              |
+| Prerequisites | A-03; a non-shallow clone on the host (`git rev-parse --is-shallow-repository` prints `false`) for check 1; `shasum` installed                           |
+| State         | READ-ONLY                                                                                                                                                |
+| Depends on    | A-03 (run after C-12 so it checks the deployed stack)                                                                                                    |
+| Closes        | H-10's script part and the encryption "not verified" line; the third-party rotation is D-05                                                              |
 
 ```bash
 git rev-parse --is-shallow-repository; command -v shasum
@@ -1857,26 +1967,28 @@ done; echo "DEPLOYMENT_SMTP_PASSWORD vs leaked OPS_ALERT_SMTP_PASSWORD: $res"; u
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       host
-Evidence:    FAIL lines=   PASS lines=   plaintext access/refresh/slack=   NODE_ENV=
-             MANUAL answers:
-Deviations:
+Status:      [ ] PASS   [x] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-10
+Where:       host, HEAD=8dc2fe8
+Evidence:    FAIL lines=0 from h10-verify.sh, but the cross-name check below FAILS   PASS lines=13 (check 1: DATABASE_URL, INTEGRATION_CONFIG_ENCRYPTION_KEY, NEXTAUTH_SECRET, POSTGRES_PASSWORD, SENTRY_DSN, SMTP_ENCRYPTION_KEY differ from every leaked value; check 2: 4 secrets set and distinct; check 4: only nginx publishes host ports, web NODE_ENV=production, no dev ports)
+             plaintext access/refresh/slack=0/0/0 (database query by hand; check 3 of the script said "could not query the database", as predicted)   NODE_ENV=production (web)
+             cross-name check: DEPLOYMENT_SMTP_PASSWORD vs leaked OPS_ALERT_SMTP_PASSWORD = SAME
+             MANUAL answers: OPS_ALERT_SMTP_PASSWORD is empty now but its old value is in use as DEPLOYMENT_SMTP_PASSWORD, so it was not retired at its provider; SENTRY_DSN differs from the leaked value (BL-07/BL-08 still ask for provider-side revocation); third-party rotation cannot be proven from the host (D-05); the "10 real tenants" line is answered by A-09 (1 non-fixture organization, 0 fixtures; OD-07)
+Deviations:  The script's own "no FAIL" is not enough: the leaked ops SMTP password is still live as DEPLOYMENT_SMTP_PASSWORD (DC-20). Owner action: replace that password at the SMTP provider and in `.env`, then re-run this check (expect DIFFERENT). git history is complete on the host (`--is-shallow-repository` = false).
 ```
 
 ### C-16 — GATED: N2.10 contract release
 
-| | |
-| --- | --- |
-| Related | N2.10, N2.11 (the phase closes with it) |
-| Source | Roadmap N2.10 ("ship it as its own release, after a fresh backup"); contract `README.md` |
-| Why | Drops the legacy identity columns and the source-less Case key |
-| Environment | E6 · **MODIFIES PRODUCTION** (and a code change through a reviewed PR) |
+|               |                                                                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | N2.10, N2.11 (the phase closes with it)                                                                                                                      |
+| Source        | Roadmap N2.10 ("ship it as its own release, after a fresh backup"); contract `README.md`                                                                     |
+| Why           | Drops the legacy identity columns and the source-less Case key                                                                                               |
+| Environment   | E6 · **MODIFIES PRODUCTION** (and a code change through a reviewed PR)                                                                                       |
 | Prerequisites | C-09 PASS; C-12 PASS and at least one production release on the N1/N2 dual-write code (C-11 is that release); C-14 PASS; OD-05 for this release specifically |
-| State | MODIFIES PRODUCTION |
-| Depends on | C-09, C-14 |
-| Closes | N2.10, then N2.11 |
+| State         | MODIFIES PRODUCTION                                                                                                                                          |
+| Depends on    | C-09, C-14                                                                                                                                                   |
+| Closes        | N2.10, then N2.11                                                                                                                                            |
 
 On your machine, on a new branch (the same moves as C-09, committed): `git mv` the contract directory into `packages/db/prisma/migrations/`, `git apply` its `schema.patch`, `pnpm --filter @sla/db generate`, `pnpm type-check`, commit, open a PR to `main`, merge after review. On the host: a fresh backup (C-01 command, label `pre-n210`), then C-11's update commands with the new `MAIN_SHA`; then C-12; then C-14 on a new backup.
 **Pass:** `migrate` applies `20261001110000_contract_customer_identity_and_case_source`; C-12 and C-14 pass on the contracted schema.
@@ -1893,16 +2005,16 @@ Deviations:
 
 ### C-17 — N4.7 plan-record counts after your data entry
 
-| | |
-| --- | --- |
-| Related | N4.7; N4 "Phase is done when: the 10 tenants' records are filled in"; Validation Metrics "Commercial" |
-| Source | Roadmap N4.7; `scripts/prod/n47-plan-records.sql` (its header uses `$POSTGRES_DB`: use `ro_sql`, DC-06) |
-| Why | The tooling exists; the data is not entered |
-| Environment | E6 · PRODUCTION: your data entry in `/admin/tenants/[organizationId]` **modifies production data through the audited UI**; this check itself is READ-ONLY |
-| Prerequisites | C-12; OD-07 (which organizations are the real customers) |
-| State | READ-ONLY |
-| Depends on | C-12 |
-| Closes | N4.7 and N4 (counts pasted to the Status Board in E-03) |
+|               |                                                                                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N4.7; N4 "Phase is done when: the 10 tenants' records are filled in"; Validation Metrics "Commercial"                                                     |
+| Source        | Roadmap N4.7; `scripts/prod/n47-plan-records.sql` (its header uses `$POSTGRES_DB`: use `ro_sql`, DC-06)                                                   |
+| Why           | The tooling exists; the data is not entered                                                                                                               |
+| Environment   | E6 · PRODUCTION: your data entry in `/admin/tenants/[organizationId]` **modifies production data through the audited UI**; this check itself is READ-ONLY |
+| Prerequisites | C-12; OD-07 (which organizations are the real customers)                                                                                                  |
+| State         | READ-ONLY                                                                                                                                                 |
+| Depends on    | C-12                                                                                                                                                      |
+| Closes        | N4.7 and N4 (counts pasted to the Status Board in E-03)                                                                                                   |
 
 ```bash
 ro_sql < scripts/prod/n47-plan-records.sql
@@ -1912,26 +2024,26 @@ ro_sql < scripts/prod/n47-plan-records.sql
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
+Status:      [ ] PASS   [ ] FAIL   [x] BLOCKED   [ ] SKIPPED   (owner data entry in /admin/tenants not done)
+Run by/date: Yasser Alnajjar, 2026-10-10
 Where:       host
-Evidence:    table 1=
-             table 2=
-Deviations:
+Evidence:    table 1= non-fixture organizations: plan "(not recorded)", status trial, 1 tenant
+             table 2= tenants=1   plan_not_recorded=1   trial_without_end_date=0   trial_already_ended=0   paying_without_billing_reference=0
+Deviations:  Blocked on the plan-record entry for the one real organization (OD-07: only 1 organization exists, not 10).
 ```
 
 ### C-18 — Production measurements for N3.7, N8 triggers and the Validation Metrics (read-only, weekly)
 
-| | |
-| --- | --- |
-| Related | N3.7 (circuit breaker "only if production measurements justify it", D22); N8-S1–S4 triggers; roadmap "Validation Metrics" (reliability rows, weekly active orgs) |
-| Source | `h-phase-close-out.md` N3.6/N3.7 row ("read `/admin/monitoring` … for a few weeks, then record 'not needed, measured at X ms'"); plan 08 trigger table |
-| Why | N3.7 and the N8 items are decided only by production measurements; none is recorded |
-| Environment | E6 · PRODUCTION (read-only) |
-| Prerequisites | C-12 (the columns exist only after the release) |
-| State | READ-ONLY |
-| Depends on | C-12; repeat weekly for at least 3 weeks |
-| Closes | N3.7 decision input; N8 trigger status; Validation Metrics baseline |
+|               |                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N3.7 (circuit breaker "only if production measurements justify it", D22); N8-S1–S4 triggers; roadmap "Validation Metrics" (reliability rows, weekly active orgs) |
+| Source        | `h-phase-close-out.md` N3.6/N3.7 row ("read `/admin/monitoring` … for a few weeks, then record 'not needed, measured at X ms'"); plan 08 trigger table           |
+| Why           | N3.7 and the N8 items are decided only by production measurements; none is recorded                                                                              |
+| Environment   | E6 · PRODUCTION (read-only)                                                                                                                                      |
+| Prerequisites | C-12 (the columns exist only after the release)                                                                                                                  |
+| State         | READ-ONLY                                                                                                                                                        |
+| Depends on    | C-12; repeat weekly for at least 3 weeks                                                                                                                         |
+| Closes        | N3.7 decision input; N8 trigger status; Validation Metrics baseline                                                                                              |
 
 ```bash
 ro_sql <<'SQL'
@@ -1955,7 +2067,7 @@ SQL
 
 ```text
 RESULT (one line per week)
-Week 1 (date):  per-provider p95/max/streaks=          healthy=   tick ratio=   overdue=   alert failure rate=   WAO=
+Week 1 (2026-10-10):  per-provider p95/max/streaks= jira 496/496 ms, 0 streak; intercom 907/907 ms, 0 streak (1 connected each, 0 failing)   healthy=2/2   tick ratio=not computable (lastActivePollDurationMs and lastReconciliationDurationMs are empty in worker_settings; activePollIntervalMs=30000, reconciliationIntervalMs=1800000)   overdue=0 active / 0 reconciliation of 1 organization   alert failure rate=0 failures / 8 sent in 30 d   WAO=1
 Week 2 (date):
 Week 3 (date):
 Conclusion for N3.7 / N8:
@@ -1969,16 +2081,16 @@ Each item starts when its prerequisite exists; none blocks the release (C-11) ex
 
 ### D-01 — N9.7-F1: plan 09 §6.10 benchmark gate that fixes the Custom REST live-case ceiling
 
-| | |
-| --- | --- |
-| Related | N9.7 exit criterion, N9.7-F1, N9.14-F1 (3), Q13, R4; OD-08 |
-| Source | Plan 09 §6.9, §6.10; roadmap N9.7-F1 |
-| Why | No ceiling is validated; Beta enablement is blocked until a written report fixes `C` |
-| Environment | E4 · a host matching A-10, a fresh database whose name contains `bench` |
+|               |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.7 exit criterion, N9.7-F1, N9.14-F1 (3), Q13, R4; OD-08                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Source        | Plan 09 §6.9, §6.10; roadmap N9.7-F1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Why           | No ceiling is validated; Beta enablement is blocked until a written report fixes `C`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Environment   | E4 · a host matching A-10, a fresh database whose name contains `bench`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Prerequisites | **BLOCKED.** (1) BL-01: a §6.10 harness does not exist (`packages/custom-ticket/bench/` is absent; `apps/worker/scripts/bench/run.ts` measures multi-worker scheduling with a fake Linear, and `pnpm db:seed:perf-baseline` inserts `NormalizedEvent` rows directly, which §6.10 forbids). It must drive synthetic custom-shaped data through the real `deriveBatch` and projector, on `testing`. (2) BL-02/A-10 host profile. (3) OD-08 method approval. (4) To apply a ceiling other than 5,000 in production, BL-10 (`CUSTOM_PROVIDER_LIVE_CASE_CEILING` is not passed by `docker-compose.yml`) |
-| State | Writes only the `*bench*` database |
-| Depends on | A-10, OD-08 |
-| Closes | N9.7-F1; the ceiling `C`; N9.14-F1 item (3) |
+| State         | Writes only the `*bench*` database                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Depends on    | A-10, OD-08                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Closes        | N9.7-F1; the ceiling `C`; N9.14-F1 item (3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 **Commands:** none exist yet. When the harness exists, it must report per tier (1,000 / 5,000 / 10,000 / 20,000 live cases) and per pass (full; incremental at 1 %, 5 %, 25 %; first activation dry-run; guard abort), ≥ 5 runs per cell, with `PERF_METRICS=1` scopes comparable to `docs/capacity-limits.md`.
 **Pass (plan 09 §6.10):** per tier, p95 organization sweep ≤ **30 s** and p95 organization-lock hold ≤ **10 s** including custom normalization and projection; memory inside the worker limit with the margin stated; query count and lock time no worse than linear (slope reported); the guard-abort pass writes nothing. `C` = largest passing tier; if the incremental design is used, correctness criteria 1–7 of §6.10 also pass. A failing tier is never answered by raising a limit.
@@ -1999,16 +2111,16 @@ Deviations:
 
 ### D-02 — N3.6: production-scale two-hour outage drill
 
-| | |
-| --- | --- |
-| Related | N3.6, N3 "Phase is done when" (other tenants' tick time within ±10 %; no stale-source alert without D13 treatment), D13, D22 |
-| Source | Roadmap N3.6; plan 03; `h-phase-close-out.md` N3.6/N3.7 row ("Do not pause a real customer's polling to simulate an outage") |
-| Why | Only unit/real-DB drills exist (`cycle.test.ts`, `stale-source-notifications.test.ts`) |
-| Environment | E4 · staging host matching A-10, with a production-scale dataset whose provider calls are all faked |
+|               |                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N3.6, N3 "Phase is done when" (other tenants' tick time within ±10 %; no stale-source alert without D13 treatment), D13, D22                                                                                                                                                                                                                                                                      |
+| Source        | Roadmap N3.6; plan 03; `h-phase-close-out.md` N3.6/N3.7 row ("Do not pause a real customer's polling to simulate an outage")                                                                                                                                                                                                                                                                      |
+| Why           | Only unit/real-DB drills exist (`cycle.test.ts`, `stale-source-notifications.test.ts`)                                                                                                                                                                                                                                                                                                            |
+| Environment   | E4 · staging host matching A-10, with a production-scale dataset whose provider calls are all faked                                                                                                                                                                                                                                                                                               |
 | Prerequisites | **BLOCKED (BL-05).** No outage-injection harness: `apps/worker/scripts/bench/fake-linear-preload.mjs` supports latency only (`BENCH_PROVIDER_LATENCY_MS`), not a per-tenant hang or error for two hours. Needs: a staging host, a dataset (seeded, or a restore with the production encryption keys absent so no real provider can be called), and a per-tenant failure mode. Never on production |
-| State | Staging only |
-| Depends on | A-10 |
-| Closes | N3.6, then N3's phase status (with N3.7 from C-18) |
+| State         | Staging only                                                                                                                                                                                                                                                                                                                                                                                      |
+| Depends on    | A-10                                                                                                                                                                                                                                                                                                                                                                                              |
+| Closes        | N3.6, then N3's phase status (with N3.7 from C-18)                                                                                                                                                                                                                                                                                                                                                |
 
 **Pass:** during a 2-hour outage of one tenant's provider, every other tenant's per-organization run duration stays within ±10 % of its pre-outage median; the outage tenant's at-risk alerts carry the stale marker and its breach alerts are held, then sent once after recovery.
 
@@ -2023,16 +2135,16 @@ Deviations:
 
 ### D-03 — N5.8 / H-9 / 6.8: live onboarding walkthroughs per provider pair
 
-| | |
-| --- | --- |
-| Related | N5.8, H-9, historical 6.8; N5 "Phase is done when: all four pairs onboard in local dev, and Zendesk + Jira live"; Launch Gate product item 1 |
-| Source | `h-phase-close-out.md` "H-9 — live onboarding walkthrough" and Remaining owner actions (N5.8 / H-9 row) |
-| Why | Only stubbed walkthroughs exist (N1.16); no real OAuth round trip |
-| Environment | E5 · your local stack plus real sandbox accounts (no production) |
+|               |                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Related       | N5.8, H-9, historical 6.8; N5 "Phase is done when: all four pairs onboard in local dev, and Zendesk + Jira live"; Launch Gate product item 1           |
+| Source        | `h-phase-close-out.md` "H-9 — live onboarding walkthrough" and Remaining owner actions (N5.8 / H-9 row)                                                |
+| Why           | Only stubbed walkthroughs exist (N1.16); no real OAuth round trip                                                                                      |
+| Environment   | E5 · your local stack plus real sandbox accounts (no production)                                                                                       |
 | Prerequisites | **BLOCKED (BL-06):** Zendesk sandbox admin login and OAuth client (required); Intercom and Linear sandbox workspaces with OAuth apps; a Jira test site |
-| State | Local only; reads the sandbox accounts |
-| Depends on | B-02 (a building stack) |
-| Closes | N5.8, H-9, 6.8 (and N5's phase status) |
+| State         | Local only; reads the sandbox accounts                                                                                                                 |
+| Depends on    | B-02 (a building stack)                                                                                                                                |
+| Closes        | N5.8, H-9, 6.8 (and N5's phase status)                                                                                                                 |
 
 Follow the H-9 checklist exactly (fresh organization, new email, timer, no help) once per pair: Zendesk + Jira, Zendesk + Linear, Intercom + Jira, Intercom + Linear. Start the stack as that document says (`docker compose --env-file .env.docker up -d`, never plain `up`) or with B-08's terminals.
 **Pass per pair:** reached the first monitored case unaided; record minutes from sign-up to first monitored case, every hesitation, every error, tickets and policies imported. Zendesk + Jira is mandatory for N5.8/H-9.
@@ -2051,16 +2163,16 @@ Deviations:
 
 ### D-04 — N1.13: capture an Intercom → Linear link shape
 
-| | |
-| --- | --- |
-| Related | N1.13 (`[~]`); Review Trigger "link coverage < 60 %" |
-| Source | Roadmap N1.13 ("Not done, environment limit (1)"); `h-phase-close-out.md` N1.13 row |
-| Why | Only the URL shape this repository builds is recognized; Intercom + Linear customers may see low link coverage |
-| Environment | E5 · a real Intercom workspace linked to Linear |
-| Prerequisites | **BLOCKED (BL-06)** |
-| State | Reads the sandbox |
-| Depends on | – |
-| Closes | N1.13's capture half. Its L2 half ("Zendesk tenants' `certain` link counts and legs identical") is closed by **C-06** |
+|               |                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Related       | N1.13 (`[~]`); Review Trigger "link coverage < 60 %"                                                                  |
+| Source        | Roadmap N1.13 ("Not done, environment limit (1)"); `h-phase-close-out.md` N1.13 row                                   |
+| Why           | Only the URL shape this repository builds is recognized; Intercom + Linear customers may see low link coverage        |
+| Environment   | E5 · a real Intercom workspace linked to Linear                                                                       |
+| Prerequisites | **BLOCKED (BL-06)**                                                                                                   |
+| State         | Reads the sandbox                                                                                                     |
+| Depends on    | –                                                                                                                     |
+| Closes        | N1.13's capture half. Its L2 half ("Zendesk tenants' `certain` link counts and legs identical") is closed by **C-06** |
 
 Link one Intercom conversation to a Linear issue with Intercom's Linear integration; in Linear, open the issue's attachments and copy the stored URL; redact the workspace and ids to placeholders, keeping the host and path shape.
 **Pass:** the shape is recorded here. Adding it as a fixture in `recognizeIntercomConversationUrl`'s tests is implementation work that follows.
@@ -2073,16 +2185,16 @@ Evidence:    URL shape (redacted)=
 
 ### D-05 — H-10: replace the leaked third-party credentials and record the rotation
 
-| | |
-| --- | --- |
-| Related | H-10; Launch Gate "Every leaked secret has been rotated" |
-| Source | `h-phase-close-out.md` "Findings from this pass" 1; `docs/deployment.md` "Rotating secrets" (rotation log; "The script can't rotate third-party credentials") |
-| Why | The leaked `.env.prod` held `OPS_ALERT_SMTP_PASSWORD` (+ user/host) and `SENTRY_DSN`; the 2026-09-19 rotation covered four other secrets only. Since D8's update the ops alert mail goes through `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password may now live on under that name (C-15's extra comparison checks it) |
-| Environment | E6 · **MODIFIES PRODUCTION** configuration (restart) + provider consoles |
-| Prerequisites | **BLOCKED (BL-08)** on your provider accounts; a backup is not needed (no data change) |
-| State | MODIFIES PRODUCTION |
-| Depends on | C-15 |
-| Closes | H-10 (with C-15 PASS, OD-07, OD-12) |
+|               |                                                                                                                                                                                                                                                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | H-10; Launch Gate "Every leaked secret has been rotated"                                                                                                                                                                                                                                                                |
+| Source        | `h-phase-close-out.md` "Findings from this pass" 1; `docs/deployment.md` "Rotating secrets" (rotation log; "The script can't rotate third-party credentials")                                                                                                                                                           |
+| Why           | The leaked `.env.prod` held `OPS_ALERT_SMTP_PASSWORD` (+ user/host) and `SENTRY_DSN`; the 2026-09-19 rotation covered four other secrets only. Since D8's update the ops alert mail goes through `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password may now live on under that name (C-15's extra comparison checks it) |
+| Environment   | E6 · **MODIFIES PRODUCTION** configuration (restart) + provider consoles                                                                                                                                                                                                                                                |
+| Prerequisites | **BLOCKED (BL-08)** on your provider accounts; a backup is not needed (no data change)                                                                                                                                                                                                                                  |
+| State         | MODIFIES PRODUCTION                                                                                                                                                                                                                                                                                                     |
+| Depends on    | C-15                                                                                                                                                                                                                                                                                                                    |
+| Closes        | H-10 (with C-15 PASS, OD-07, OD-12)                                                                                                                                                                                                                                                                                     |
 
 Revoke and replace at the providers (SMTP account password or app password; Sentry DSN key), edit the env file on the host yourself, then `dc up -d web worker`, re-run **C-15**, and add a row to the rotation log table in `docs/deployment.md` (date, reason, scope, method; no values).
 **Pass:** C-15 re-run shows no `FAIL`, the extra comparison prints `DIFFERENT` (or the old key is unset), A-05 healthy after the restart, rotation-log row committed.
@@ -2095,16 +2207,16 @@ Evidence:    revoked at providers (date)=   C-15 re-run=   rotation log row comm
 
 ### D-06 — H-6: Sentry source maps on the host (gated rebuild)
 
-| | |
-| --- | --- |
-| Related | H-6 (was 7.6); Launch Gate "Sentry" |
-| Source | `h-phase-close-out.md` "H-6 — Sentry source maps"; `docs/deployment.md` "Sentry source maps" |
-| Why | Code side done; never verified |
-| Environment | E5 + E6 · **MODIFIES PRODUCTION** (rebuilds and restarts `web`) |
+|               |                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Related       | H-6 (was 7.6); Launch Gate "Sentry"                                                                                  |
+| Source        | `h-phase-close-out.md` "H-6 — Sentry source maps"; `docs/deployment.md` "Sentry source maps"                         |
+| Why           | Code side done; never verified                                                                                       |
+| Environment   | E5 + E6 · **MODIFIES PRODUCTION** (rebuilds and restarts `web`)                                                      |
 | Prerequisites | **BLOCKED (BL-07)**; D-05's replacement `SENTRY_DSN` first; you edit the env file yourself (never paste values here) |
-| State | MODIFIES PRODUCTION |
-| Depends on | D-05, C-12 |
-| Closes | H-6 |
+| State         | MODIFIES PRODUCTION                                                                                                  |
+| Depends on    | D-05, C-12                                                                                                           |
+| Closes        | H-6                                                                                                                  |
 
 ```bash
 dc build web 2>&1 | grep -iE 'sentry|source ?map|debug id' | tail -20
@@ -2121,16 +2233,16 @@ Evidence:    upload lines=   artifacts listed? [ ]   readable stack event id=
 
 ### D-07 — N9.14-F1 (5): legal review of the Custom REST Terms and Privacy drafts
 
-| | |
-| --- | --- |
-| Related | N9.14, N9.14-F1 item (5); plan 09 Appendix A |
-| Source | `implementation-plans/n9-legal-review.md`; roadmap N9.14 ("Terms/Privacy NOT edited") |
-| Why | Beta enablement requires it |
-| Environment | External (legal); listed under E5 in §2.1 |
-| Prerequisites | **BLOCKED (BL-09)** |
-| State | – |
-| Depends on | – |
-| Closes | N9.14-F1 item (5) |
+|               |                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------- |
+| Related       | N9.14, N9.14-F1 item (5); plan 09 Appendix A                                          |
+| Source        | `implementation-plans/n9-legal-review.md`; roadmap N9.14 ("Terms/Privacy NOT edited") |
+| Why           | Beta enablement requires it                                                           |
+| Environment   | External (legal); listed under E5 in §2.1                                             |
+| Prerequisites | **BLOCKED (BL-09)**                                                                   |
+| State         | –                                                                                     |
+| Depends on    | –                                                                                     |
+| Closes        | N9.14-F1 item (5)                                                                     |
 
 **Pass:** a written legal decision on each draft clause (approved / changed / rejected). Editing Terms and Privacy is a separate change afterwards.
 
@@ -2142,16 +2254,16 @@ Evidence:    reviewer/date=   outcome per clause=
 
 ### D-08 — N9 focused tests of plan 09 §13 and §8.4 items 3–7
 
-| | |
-| --- | --- |
-| Related | N9.5 exit, N9.2 (SSRF), N9.4 (mapping), N9.6–N9.9, N9.11, N9.13, N9.15; N9.14-F1 item (1) |
-| Source | Plan 09 §13 "Focused coverage that must exist before Beta enablement"; §8.4 "Verification required before Beta" |
-| Why | `packages/custom-ticket/test` has 2 files; `packages/safe-http` has no `test/` directory; §13's areas are otherwise untested |
-| Environment | E2 (on `testing`) |
-| Prerequisites | **BLOCKED (BL-04):** the tests must be written on `testing` when you ask for it |
-| State | Disposable test database |
-| Depends on | B-03 |
-| Closes | N9.5 exit (§8.4 items 3–6; item 7, the rotation limitation in the deployment documentation, is **already satisfied**: `docs/deployment.md`, `INTEGRATION_TOKEN_ENCRYPTION_KEY` row), N9.14-F1 item (1) test half |
+|               |                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | N9.5 exit, N9.2 (SSRF), N9.4 (mapping), N9.6–N9.9, N9.11, N9.13, N9.15; N9.14-F1 item (1)                                                                                                                        |
+| Source        | Plan 09 §13 "Focused coverage that must exist before Beta enablement"; §8.4 "Verification required before Beta"                                                                                                  |
+| Why           | `packages/custom-ticket/test` has 2 files; `packages/safe-http` has no `test/` directory; §13's areas are otherwise untested                                                                                     |
+| Environment   | E2 (on `testing`)                                                                                                                                                                                                |
+| Prerequisites | **BLOCKED (BL-04):** the tests must be written on `testing` when you ask for it                                                                                                                                  |
+| State         | Disposable test database                                                                                                                                                                                         |
+| Depends on    | B-03                                                                                                                                                                                                             |
+| Closes        | N9.5 exit (§8.4 items 3–6; item 7, the rotation limitation in the deployment documentation, is **already satisfied**: `docs/deployment.md`, `INTEGRATION_TOKEN_ENCRYPTION_KEY` row), N9.14-F1 item (1) test half |
 
 **Pass:** every §13 row has at least one test and all pass, in particular: §8.4 (3) unset/wrong key fails closed with a generic message; (4) the strict helper rejects an unprefixed value and each malformed form with one generic outcome; (5) a ciphertext moved to another organization, integration or field is rejected; (6) existing providers' `decryptToken` tests pass unmodified; the SSRF matrix; every boundary row of the §6.4 guards; the Q14/R5 rollback rows.
 
@@ -2167,16 +2279,16 @@ Evidence:    test files=   §13 rows covered _/22   failures=
 
 ### E-01 — Evidence review and file integrity
 
-| | |
-| --- | --- |
-| Related | Every check; roadmap "Task completion verification" |
-| Source | Roadmap "How This Roadmap Works" §3 and "Task completion verification" |
-| Why | A task is ticked only when its own criteria pass, not when a command exits 0 |
-| Environment | E1 |
-| Prerequisites | Every other check has a filled RESULT |
-| State | READ-ONLY |
-| Depends on | all |
-| Closes | Hand-over of this file |
+|               |                                                                              |
+| ------------- | ---------------------------------------------------------------------------- |
+| Related       | Every check; roadmap "Task completion verification"                          |
+| Source        | Roadmap "How This Roadmap Works" §3 and "Task completion verification"       |
+| Why           | A task is ticked only when its own criteria pass, not when a command exits 0 |
+| Environment   | E1                                                                           |
+| Prerequisites | Every other check has a filled RESULT                                        |
+| State         | READ-ONLY                                                                    |
+| Depends on    | all                                                                          |
+| Closes        | Hand-over of this file                                                       |
 
 ```bash
 f=docs/validation/server-validation-master.md
@@ -2185,7 +2297,7 @@ grep -cE '^Status: +\[ \] PASS' "$f"                                 # unfilled 
 git diff --check
 ```
 
-**Pass:** no duplicate IDs; every RESULT has one box ticked; every FAIL has its *On failure* steps recorded; every BLOCKED names its prerequisite; for each item in §9 you can point at the checks that meet its "Evidence needed".
+**Pass:** no duplicate IDs; every RESULT has one box ticked; every FAIL has its _On failure_ steps recorded; every BLOCKED names its prerequisite; for each item in §9 you can point at the checks that meet its "Evidence needed".
 
 ```text
 RESULT
@@ -2195,16 +2307,16 @@ Evidence:    duplicates=   unfilled=   FAIL list=   BLOCKED list=
 
 ### E-02 — Full regression suite on `testing` after you sync it with `main`
 
-| | |
-| --- | --- |
-| Related | DC-15; CLAUDE.md "On `testing`"; roadmap Rev 7 baseline (258 files / 2,766 tests) |
-| Source | `CLAUDE.md` ("`testing` is based on `main` … only synchronize when explicitly asked"); `.github/workflows/ci.yml` (golden-scenario step) |
-| Why | No full run of the merged N9/N10 code exists; CI runs only on `testing`, which is 35 commits behind `main` |
-| Environment | E2 |
-| Prerequisites | **Your explicit decision to merge `main` into `testing`** (OD-04); B-03 |
-| State | Merges into a local `testing` worktree (push is your decision); truncates `sla_validation_test` |
-| Depends on | B-07, B-06 |
-| Closes | DC-15; the regression half of N9.14-F1 (1); "Remote CI is green" for the next phase PR once pushed |
+|               |                                                                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Related       | DC-15; CLAUDE.md "On `testing`"; roadmap Rev 7 baseline (258 files / 2,766 tests)                                                        |
+| Source        | `CLAUDE.md` ("`testing` is based on `main` … only synchronize when explicitly asked"); `.github/workflows/ci.yml` (golden-scenario step) |
+| Why           | No full run of the merged N9/N10 code exists; CI runs only on `testing`, which is 35 commits behind `main`                               |
+| Environment   | E2                                                                                                                                       |
+| Prerequisites | **Your explicit decision to merge `main` into `testing`** (OD-04); B-03                                                                  |
+| State         | Merges into a local `testing` worktree (push is your decision); truncates `sla_validation_test`                                          |
+| Depends on    | B-07, B-06                                                                                                                               |
+| Closes        | DC-15; the regression half of N9.14-F1 (1); "Remote CI is green" for the next phase PR once pushed                                       |
 
 ```bash
 git worktree add ~/elapsed-validation/testing origin/testing && cd ~/elapsed-validation/testing
@@ -2225,14 +2337,14 @@ Evidence:    files=   tests=   failed=   skipped=   golden/e2e=   CI run (if pus
 
 ### E-03 — Documentation closure (procedure, after you return this file)
 
-| | |
-| --- | --- |
-| Related | Every row of §9 |
-| Source | Roadmap "How This Roadmap Works" (Complete, Close the phase, Continue) |
-| Environment | E1 (documentation only) |
-| State | Edits documentation only |
-| Depends on | E-01 |
-| Closes | The documentation state of every item whose evidence passed |
+|             |                                                                        |
+| ----------- | ---------------------------------------------------------------------- |
+| Related     | Every row of §9                                                        |
+| Source      | Roadmap "How This Roadmap Works" (Complete, Close the phase, Continue) |
+| Environment | E1 (documentation only)                                                |
+| State       | Edits documentation only                                               |
+| Depends on  | E-01                                                                   |
+| Closes      | The documentation state of every item whose evidence passed            |
 
 For each row of §9 whose evidence passed, update the listed documents in one documentation change: tick or annotate the roadmap tasks with the date and check IDs, update the Status Board (deployed commit from C-12, N4.7 counts from C-17), correct every DC row that the evidence settles, and add a changelog entry. Rows whose evidence failed or is blocked keep their current status with the exact blocker. I make these edits when you send the completed file back; nothing in this step runs a command.
 
@@ -2246,101 +2358,101 @@ Evidence:    documents changed=          rows closed=          rows left open=
 
 ## 9. Documentation closure map
 
-| Item | Current state | Evidence needed to close | Documents to update on success |
-| --- | --- | --- | --- |
-| Status Board, phase overview, N9/N10 status lines (DC-01, DC-15, DC-16) | Stale: says N10 unpushed; deployed state unknown | A-03, A-04, B-01, B-02, C-12 | `ROADMAP_Product.md` Status Board, Phase overview, N9 and N10 status lines, Changelog |
-| Release of N2–N10 ("built, not deployed") | Not deployed (last recorded production `7cb2b9b`) | C-01–C-08 PASS, C-11 DONE, C-12 PASS | Roadmap Status Board ("Stage", deployed commit and date); `h-phase-close-out.md` Release row (13 migrations, DC-05) |
-| 7.3 restore drill timing | Ticked; log missing (DC-07) | C-02 | Commit `docs/restore-drills.log`; roadmap 7.3 note |
-| H-5 "not verified" lines | Unverified on host | A-06, A-07, A-08, C-15 | `docs/data-retention-and-on-call.md` (Sentry, ops alerts, cron/off-site, log rotation, `db:encrypt-tokens`) |
-| H-6 | Open | D-06 (after D-05) | Roadmap H-6; `h-phase-close-out.md` H-6 |
-| H-8 | Blocked upstream | A-11 + OD-06 (then a lint step, implementation) | Roadmap H-8 |
-| H-10 | Open | C-15 PASS, D-05 PASS, OD-07, OD-12 | Roadmap H-10; `docs/deployment.md` rotation log; `h-phase-close-out.md` H-10 |
-| H-13 | Open (host run) | C-10, C-13, C-14 | Roadmap H-13 (closed with counts); `h-phase-close-out.md` H-13 row |
-| N1.13 | `[~]` | D-04 (capture) + C-06 (L2) | Roadmap N1.13; `h-phase-close-out.md` N1.13 row |
-| N2.10 | `[~]`, held out | C-09, then C-16 | Roadmap N2.10; contract `README.md` (moved); `h-phase-close-out.md` N2.10 row |
-| N2.11 / N2 phase | `[~]` | N2.10 closed + C-14 (OD-11) | Roadmap N2.11, N2 status, phase overview |
-| N3.6 | `[~]` | D-02 | Roadmap N3.6 |
-| N3.7 / N3 phase | Open, evidence-gated | C-18 (≥ 3 weeks) + your record "not needed, measured at X" or a trigger | Roadmap N3.7, N3 status |
-| N4.7 / N4 phase | Open (data) | OD-07, C-17 | Roadmap N4.7 (counts), N4 status, Status Board |
-| N5.8 / H-9 / 6.8 / N5 phase | Open | D-03 | Roadmap N5.8, H-9, 6.8 note; `h-phase-close-out.md` H-9 |
-| N6.4 (D27 gap) | Done with a documented gap | OD-02 | Roadmap D27, N6.4; plan 06 |
-| N6.5 | Not started (gated) | OD-03 + go-ahead | – |
-| N9.0-F1 / F2 / F3 | Open | OD-09 (F1, F2), OD-01 (F3) | Roadmap N9.0 follow-ups (DC-04) |
-| N9.5 exit (§8.4) | Not run | B-03, B-05, B-10, D-08 | Roadmap N9.5 |
-| N9.6 / N9.7 / N9.9 / N9.15 behavior | Not run against a database | B-09, B-11, B-12, B-13 | Roadmap N9.6, N9.7, N9.9, N9.15 notes |
-| N9.8a / N9.9 / N9.10 / N9.13 / N9.15 D24 + regression | "Not run" | C-06, C-07 (replay); B-07, B-16 (regression/flow) | Roadmap N9.8a, N9.9, N9.10, N9.13, N9.15 |
-| N9.11 / N9.12 | "Not exercised" | B-09–B-16 | Roadmap N9.11, N9.12 |
-| N9.7-F1 | Open | D-01 + OD-08 (+ BL-10 to apply `C`) | Roadmap N9.7, N9.7-F1 (harness path, DC-03); plan 09 §6.9–§6.10; `docs/capacity-limits.md` |
-| N9.14-F1 (Beta) | Blocked, enforced in code | Items (1) B-03, B-05, B-07, B-10, C-05–C-07, D-08; (2) B-09–B-16; (3) D-01; (4) OD-01; (5) D-07 — then a reviewed code change lifting the block in `packages/db/src/integration-catalog.ts` | Roadmap N9.14-F1; `docs/integration-availability.md` "Rollout block"; public docs and `plans.ts` copy (separate change) |
-| N10.7 | Open (tests not in the repository, DC-02) | Push `testing-n10` + B-06 | Roadmap N10.7; plan 10 §10 |
-| N10 phase done-when | 6/7 | B-06, B-13, B-14, B-15, C-12 | Roadmap N10 status → ✅ with the merge commit `0e48d28`; phase overview |
-| N10-F1 | Not written | After C-12, OD-05; the contract migration does not exist yet (implementation) | Roadmap N10-F1 |
-| Runbook commands (DC-06, DC-17) | Inconsistent env file / database names | A-03 | `docs/deployment.md`, `deployment-runbook.md`, `h-phase-close-out.md`, `n2-replay-runbook.md`; `scripts/prod/h10-verify.sh` check 3 and `n47-plan-records.sql` header (script changes: your approval) |
-| 10 live customers (DC-08) | Unlocated in the queried database | A-09 + OD-07 | Roadmap Status Board, H-1 limitation |
-| Monthly report default (DC-19) | Turns on with the release | C-08 + OD-13 | Roadmap N5.6 note; release notes in `h-phase-close-out.md` |
-| Launch Gate | Superseded, never ticked | none (by rule, not ticked retroactively) | – |
+| Item                                                                    | Current state                                     | Evidence needed to close                                                                                                                                                                    | Documents to update on success                                                                                                                                                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status Board, phase overview, N9/N10 status lines (DC-01, DC-15, DC-16) | Stale: says N10 unpushed; deployed state unknown  | A-03, A-04, B-01, B-02, C-12                                                                                                                                                                | `ROADMAP_Product.md` Status Board, Phase overview, N9 and N10 status lines, Changelog                                                                                                                 |
+| Release of N2–N10 ("built, not deployed")                               | Not deployed (last recorded production `7cb2b9b`) | C-01–C-08 PASS, C-11 DONE, C-12 PASS                                                                                                                                                        | Roadmap Status Board ("Stage", deployed commit and date); `h-phase-close-out.md` Release row (13 migrations, DC-05)                                                                                   |
+| 7.3 restore drill timing                                                | Ticked; log missing (DC-07)                       | C-02                                                                                                                                                                                        | Commit `docs/restore-drills.log`; roadmap 7.3 note                                                                                                                                                    |
+| H-5 "not verified" lines                                                | Unverified on host                                | A-06, A-07, A-08, C-15                                                                                                                                                                      | `docs/data-retention-and-on-call.md` (Sentry, ops alerts, cron/off-site, log rotation, `db:encrypt-tokens`)                                                                                           |
+| H-6                                                                     | Open                                              | D-06 (after D-05)                                                                                                                                                                           | Roadmap H-6; `h-phase-close-out.md` H-6                                                                                                                                                               |
+| H-8                                                                     | Blocked upstream                                  | A-11 + OD-06 (then a lint step, implementation)                                                                                                                                             | Roadmap H-8                                                                                                                                                                                           |
+| H-10                                                                    | Open                                              | C-15 PASS, D-05 PASS, OD-07, OD-12                                                                                                                                                          | Roadmap H-10; `docs/deployment.md` rotation log; `h-phase-close-out.md` H-10                                                                                                                          |
+| H-13                                                                    | Open (host run)                                   | C-10, C-13, C-14                                                                                                                                                                            | Roadmap H-13 (closed with counts); `h-phase-close-out.md` H-13 row                                                                                                                                    |
+| N1.13                                                                   | `[~]`                                             | D-04 (capture) + C-06 (L2)                                                                                                                                                                  | Roadmap N1.13; `h-phase-close-out.md` N1.13 row                                                                                                                                                       |
+| N2.10                                                                   | `[~]`, held out                                   | C-09, then C-16                                                                                                                                                                             | Roadmap N2.10; contract `README.md` (moved); `h-phase-close-out.md` N2.10 row                                                                                                                         |
+| N2.11 / N2 phase                                                        | `[~]`                                             | N2.10 closed + C-14 (OD-11)                                                                                                                                                                 | Roadmap N2.11, N2 status, phase overview                                                                                                                                                              |
+| N3.6                                                                    | `[~]`                                             | D-02                                                                                                                                                                                        | Roadmap N3.6                                                                                                                                                                                          |
+| N3.7 / N3 phase                                                         | Open, evidence-gated                              | C-18 (≥ 3 weeks) + your record "not needed, measured at X" or a trigger                                                                                                                     | Roadmap N3.7, N3 status                                                                                                                                                                               |
+| N4.7 / N4 phase                                                         | Open (data)                                       | OD-07, C-17                                                                                                                                                                                 | Roadmap N4.7 (counts), N4 status, Status Board                                                                                                                                                        |
+| N5.8 / H-9 / 6.8 / N5 phase                                             | Open                                              | D-03                                                                                                                                                                                        | Roadmap N5.8, H-9, 6.8 note; `h-phase-close-out.md` H-9                                                                                                                                               |
+| N6.4 (D27 gap)                                                          | Done with a documented gap                        | OD-02                                                                                                                                                                                       | Roadmap D27, N6.4; plan 06                                                                                                                                                                            |
+| N6.5                                                                    | Not started (gated)                               | OD-03 + go-ahead                                                                                                                                                                            | –                                                                                                                                                                                                     |
+| N9.0-F1 / F2 / F3                                                       | Open                                              | OD-09 (F1, F2), OD-01 (F3)                                                                                                                                                                  | Roadmap N9.0 follow-ups (DC-04)                                                                                                                                                                       |
+| N9.5 exit (§8.4)                                                        | Not run                                           | B-03, B-05, B-10, D-08                                                                                                                                                                      | Roadmap N9.5                                                                                                                                                                                          |
+| N9.6 / N9.7 / N9.9 / N9.15 behavior                                     | Not run against a database                        | B-09, B-11, B-12, B-13                                                                                                                                                                      | Roadmap N9.6, N9.7, N9.9, N9.15 notes                                                                                                                                                                 |
+| N9.8a / N9.9 / N9.10 / N9.13 / N9.15 D24 + regression                   | "Not run"                                         | C-06, C-07 (replay); B-07, B-16 (regression/flow)                                                                                                                                           | Roadmap N9.8a, N9.9, N9.10, N9.13, N9.15                                                                                                                                                              |
+| N9.11 / N9.12                                                           | "Not exercised"                                   | B-09–B-16                                                                                                                                                                                   | Roadmap N9.11, N9.12                                                                                                                                                                                  |
+| N9.7-F1                                                                 | Open                                              | D-01 + OD-08 (+ BL-10 to apply `C`)                                                                                                                                                         | Roadmap N9.7, N9.7-F1 (harness path, DC-03); plan 09 §6.9–§6.10; `docs/capacity-limits.md`                                                                                                            |
+| N9.14-F1 (Beta)                                                         | Blocked, enforced in code                         | Items (1) B-03, B-05, B-07, B-10, C-05–C-07, D-08; (2) B-09–B-16; (3) D-01; (4) OD-01; (5) D-07 — then a reviewed code change lifting the block in `packages/db/src/integration-catalog.ts` | Roadmap N9.14-F1; `docs/integration-availability.md` "Rollout block"; public docs and `plans.ts` copy (separate change)                                                                               |
+| N10.7                                                                   | Open (tests not in the repository, DC-02)         | Push `testing-n10` + B-06                                                                                                                                                                   | Roadmap N10.7; plan 10 §10                                                                                                                                                                            |
+| N10 phase done-when                                                     | 6/7                                               | B-06, B-13, B-14, B-15, C-12                                                                                                                                                                | Roadmap N10 status → ✅ with the merge commit `0e48d28`; phase overview                                                                                                                               |
+| N10-F1                                                                  | Not written                                       | After C-12, OD-05; the contract migration does not exist yet (implementation)                                                                                                               | Roadmap N10-F1                                                                                                                                                                                        |
+| Runbook commands (DC-06, DC-17)                                         | Inconsistent env file / database names            | A-03                                                                                                                                                                                        | `docs/deployment.md`, `deployment-runbook.md`, `h-phase-close-out.md`, `n2-replay-runbook.md`; `scripts/prod/h10-verify.sh` check 3 and `n47-plan-records.sql` header (script changes: your approval) |
+| 10 live customers (DC-08)                                               | Unlocated in the queried database                 | A-09 + OD-07                                                                                                                                                                                | Roadmap Status Board, H-1 limitation                                                                                                                                                                  |
+| Monthly report default (DC-19)                                          | Turns on with the release                         | C-08 + OD-13                                                                                                                                                                                | Roadmap N5.6 note; release notes in `h-phase-close-out.md`                                                                                                                                            |
+| Launch Gate                                                             | Superseded, never ticked                          | none (by rule, not ticked retroactively)                                                                                                                                                    | –                                                                                                                                                                                                     |
 
 ---
 
 ## 10. Check index (IDs, dependencies, state)
 
-| ID | Title | Env | Depends on | State |
-| --- | --- | --- | --- | --- |
-| A-01 | Local repository and toolchain | E1 | – | read-only |
-| A-02 | Branch inventory | E1 | A-01 | read-only |
-| A-03 | Host inventory | E6 | – | read-only |
-| A-04 | Production migration state | E6 | A-03 | read-only |
-| A-05 | Health endpoints | E6 | A-03 | read-only |
-| A-06 | Runtime configuration names | E6 | A-03 | read-only |
-| A-07 | Scheduled backups | E6 | A-03 | read-only |
-| A-08 | Log rotation, disk | E6 | A-03 | read-only |
-| A-09 | Tenant/provider counts | E6 | A-03 | read-only |
-| A-10 | Host hardware | E6 | – | read-only |
-| A-11 | Upstream lint support | E1 | – | read-only |
-| B-01 | Generate + type-check | E1 | A-01 | local build output |
-| B-02 | Builds | E1 | B-01 | local build output |
-| B-03 | Migrations on empty DB, drift | E2 | B-01 | disposable DB |
-| B-04 | N2.10 artefacts on current schema | E2 | B-03 | disposable DB |
-| B-05 | Tenant-scope classification | E2 | B-03 | disposable DB · BLOCKED |
-| B-06 | N10 focused suites | E2 | B-03, A-02 | disposable DB · BLOCKED |
-| B-07 | Existing regression suites | E2 | B-03 | disposable DB |
-| B-08 | Local E2E stack | E3 | B-01 | disposable DB |
-| B-09 | Custom REST E2E + partial import | E3 | B-08 | disposable DB |
-| B-10 | Secret sentinel scan | E3 | B-09 (repeat after B-11) | read-only |
-| B-11 | Failure classes | E3 | B-09 | disposable DB |
-| B-12 | Lifecycle guard + override | E3 | B-11 | disposable DB |
-| B-13 | In-flight availability abort | E3 | B-12 | disposable DB |
-| B-14 | Built-in provider disable/re-enable | E3 | B-08 (after B-13) | disposable DB |
-| B-15 | Rollout block | E3 | B-08 | disposable DB |
-| B-16 | Unsupported kinds, rollback guard | E3 | B-09 (after B-13) | disposable DB |
-| C-01 | Production backup | E6 | A-03, A-07, A-08 | read-only DB; file on host |
-| C-02 | Host restore drill | E6 | C-01 | scratch DB on host |
-| C-03 | Local restore | E4 | C-01 | local restore |
-| C-04 | L1 baseline (deployed code) | E4 | C-03 | read-only |
-| C-05 | Migrate restore with `main` | E4 | C-04 | local restore |
-| C-06 | L2 replay ×2 | E4 | C-05 | local restore |
-| C-07 | L1 compare | E4 | C-06 | read-only |
-| C-08 | Post-migration assertions | E4 | C-05 | read-only |
-| C-09 | N2.10 apply + rollback on restore | E4 | C-07 | local restore |
-| C-10 | H-13 rehearsal | E4 | C-07 (after C-09) | local restore |
-| C-11 | Release (GATED) | E6 | CHECKPOINT C1, OD-05 | **modifies production** |
-| C-12 | Post-release verification | E6 | C-11 | read-only |
-| C-13 | H-13 production backfill (GATED) | E6 | C-10, C-12, OD-05 | **modifies production** |
-| C-14 | Post-release drift capture | E4 | C-12 (after C-13) | read-only on production |
-| C-15 | H-10 host verification | E6 | A-03 (after C-12) | read-only |
-| C-16 | N2.10 release (GATED) | E6 | C-09, C-14, OD-05 | **modifies production** |
-| C-17 | N4.7 counts | E6 | C-12, OD-07 | read-only (your UI data entry first) |
-| C-18 | Weekly production measurements | E6 | C-12 | read-only |
-| D-01 | Benchmark gate | E4 | A-10, OD-08 | BLOCKED |
-| D-02 | Outage drill | E4 | A-10 | BLOCKED |
-| D-03 | Live onboarding per pair | E5 | B-02 | BLOCKED |
-| D-04 | Intercom → Linear link shape | E5 | – | BLOCKED |
-| D-05 | Third-party rotation (GATED) | E6 | C-15 | BLOCKED · **modifies production** |
-| D-06 | Sentry source maps (GATED) | E5/E6 | D-05, C-12 | BLOCKED · **modifies production** |
-| D-07 | Legal review | external | – | BLOCKED |
-| D-08 | N9 focused tests | E2 | B-03 | BLOCKED |
-| E-01 | Evidence review | E1 | all | read-only |
-| E-02 | Full suite on synced `testing` | E2 | B-06, B-07, OD-04 | local branch |
+| ID   | Title                               | Env      | Depends on               | State                                |
+| ---- | ----------------------------------- | -------- | ------------------------ | ------------------------------------ |
+| A-01 | Local repository and toolchain      | E1       | –                        | read-only                            |
+| A-02 | Branch inventory                    | E1       | A-01                     | read-only                            |
+| A-03 | Host inventory                      | E6       | –                        | read-only                            |
+| A-04 | Production migration state          | E6       | A-03                     | read-only                            |
+| A-05 | Health endpoints                    | E6       | A-03                     | read-only                            |
+| A-06 | Runtime configuration names         | E6       | A-03                     | read-only                            |
+| A-07 | Scheduled backups                   | E6       | A-03                     | read-only                            |
+| A-08 | Log rotation, disk                  | E6       | A-03                     | read-only                            |
+| A-09 | Tenant/provider counts              | E6       | A-03                     | read-only                            |
+| A-10 | Host hardware                       | E6       | –                        | read-only                            |
+| A-11 | Upstream lint support               | E1       | –                        | read-only                            |
+| B-01 | Generate + type-check               | E1       | A-01                     | local build output                   |
+| B-02 | Builds                              | E1       | B-01                     | local build output                   |
+| B-03 | Migrations on empty DB, drift       | E2       | B-01                     | disposable DB                        |
+| B-04 | N2.10 artefacts on current schema   | E2       | B-03                     | disposable DB                        |
+| B-05 | Tenant-scope classification         | E2       | B-03                     | disposable DB · BLOCKED              |
+| B-06 | N10 focused suites                  | E2       | B-03, A-02               | disposable DB · BLOCKED              |
+| B-07 | Existing regression suites          | E2       | B-03                     | disposable DB                        |
+| B-08 | Local E2E stack                     | E3       | B-01                     | disposable DB                        |
+| B-09 | Custom REST E2E + partial import    | E3       | B-08                     | disposable DB                        |
+| B-10 | Secret sentinel scan                | E3       | B-09 (repeat after B-11) | read-only                            |
+| B-11 | Failure classes                     | E3       | B-09                     | disposable DB                        |
+| B-12 | Lifecycle guard + override          | E3       | B-11                     | disposable DB                        |
+| B-13 | In-flight availability abort        | E3       | B-12                     | disposable DB                        |
+| B-14 | Built-in provider disable/re-enable | E3       | B-08 (after B-13)        | disposable DB                        |
+| B-15 | Rollout block                       | E3       | B-08                     | disposable DB                        |
+| B-16 | Unsupported kinds, rollback guard   | E3       | B-09 (after B-13)        | disposable DB                        |
+| C-01 | Production backup                   | E6       | A-03, A-07, A-08         | read-only DB; file on host           |
+| C-02 | Host restore drill                  | E6       | C-01                     | scratch DB on host                   |
+| C-03 | Local restore                       | E4       | C-01                     | local restore                        |
+| C-04 | L1 baseline (deployed code)         | E4       | C-03                     | read-only                            |
+| C-05 | Migrate restore with `main`         | E4       | C-04                     | local restore                        |
+| C-06 | L2 replay ×2                        | E4       | C-05                     | local restore                        |
+| C-07 | L1 compare                          | E4       | C-06                     | read-only                            |
+| C-08 | Post-migration assertions           | E4       | C-05                     | read-only                            |
+| C-09 | N2.10 apply + rollback on restore   | E4       | C-07                     | local restore                        |
+| C-10 | H-13 rehearsal                      | E4       | C-07 (after C-09)        | local restore                        |
+| C-11 | Release (GATED)                     | E6       | CHECKPOINT C1, OD-05     | **modifies production**              |
+| C-12 | Post-release verification           | E6       | C-11                     | read-only                            |
+| C-13 | H-13 production backfill (GATED)    | E6       | C-10, C-12, OD-05        | **modifies production**              |
+| C-14 | Post-release drift capture          | E4       | C-12 (after C-13)        | read-only on production              |
+| C-15 | H-10 host verification              | E6       | A-03 (after C-12)        | read-only                            |
+| C-16 | N2.10 release (GATED)               | E6       | C-09, C-14, OD-05        | **modifies production**              |
+| C-17 | N4.7 counts                         | E6       | C-12, OD-07              | read-only (your UI data entry first) |
+| C-18 | Weekly production measurements      | E6       | C-12                     | read-only                            |
+| D-01 | Benchmark gate                      | E4       | A-10, OD-08              | BLOCKED                              |
+| D-02 | Outage drill                        | E4       | A-10                     | BLOCKED                              |
+| D-03 | Live onboarding per pair            | E5       | B-02                     | BLOCKED                              |
+| D-04 | Intercom → Linear link shape        | E5       | –                        | BLOCKED                              |
+| D-05 | Third-party rotation (GATED)        | E6       | C-15                     | BLOCKED · **modifies production**    |
+| D-06 | Sentry source maps (GATED)          | E5/E6    | D-05, C-12               | BLOCKED · **modifies production**    |
+| D-07 | Legal review                        | external | –                        | BLOCKED                              |
+| D-08 | N9 focused tests                    | E2       | B-03                     | BLOCKED                              |
+| E-01 | Evidence review                     | E1       | all                      | read-only                            |
+| E-02 | Full suite on synced `testing`      | E2       | B-06, B-07, OD-04        | local branch                         |
 
 **Independent starting points:** A-01, A-02, A-11 (local) and A-03, A-10 (host) can start at once; Phase B can run in parallel with C-01–C-10; every D item waits only on its own prerequisite.
 
