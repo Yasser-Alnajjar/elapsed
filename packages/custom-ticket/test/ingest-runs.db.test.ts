@@ -175,6 +175,17 @@ describe.skipIf(!TEST_DATABASE_URL)("Custom REST ingest runs (real Postgres, fix
     expect(await rawIds()).toHaveLength(cap + 1); // every good ticket once; the failed one never stored
   }, 90_000);
 
+  it("a ticket whose stored data is over the size limit is a record failure (`payload_too_large`), not a failed run", async () => {
+    const all = tickets(3);
+    all[1] = ticket(1, { subject: "x".repeat(120_000) });
+    await setup(all, 3);
+    const result = await run();
+    expect(result.partial).toBeUndefined();
+    expect(result.syncRun?.recordFailureCount).toBe(1);
+    expect(result.syncRun?.recordFailures[0]).toMatchObject({ recordId: "T-1", code: "payload_too_large" });
+    expect(await rawIds()).toHaveLength(2);
+  });
+
   it("§6.12 A: a completed pass with a record failure is a normal run that reports the failed ticket", async () => {
     const all = tickets(4);
     all[1] = ticket(1, { id: null });
@@ -361,6 +372,18 @@ describe.skipIf(!TEST_DATABASE_URL)("Custom REST ingest runs (real Postgres, fix
       expect(found).toHaveLength(1);
       expect(found[0]).toMatch(/^ticket_deleted:T-2:/);
       expect((await cursor()).pendingVerification).toEqual([]);
+
+      // The read-only statements of docs/custom-provider-deletion-recovery.md run as written and find the marker.
+      const found2 = await prisma.$queryRaw<{ ticket_id: string }[]>`
+        SELECT substring("providerEventId" FROM '^ticket_deleted:(.*):[0-9a-f]+$') AS ticket_id
+        FROM raw_events
+        WHERE "integrationId" = ${integrationId}
+          AND "providerEventId" LIKE 'ticket_deleted:%'
+          AND substring("providerEventId" FROM '^ticket_deleted:(.*):[0-9a-f]+$') = ANY (${["T-2", "T-9"]}::text[])`;
+      expect(found2.map((r) => r.ticket_id)).toEqual(["T-2"]);
+      const runs = await prisma.$queryRaw<unknown[]>`
+        SELECT "startedAt", outcome, "reasonCode", progress FROM integration_sync_runs WHERE "integrationId" = ${integrationId} ORDER BY "startedAt" DESC LIMIT 3`;
+      expect(Array.isArray(runs)).toBe(true);
     });
 
     it("any other status (a 400 here) proves nothing: no marker", async () => {

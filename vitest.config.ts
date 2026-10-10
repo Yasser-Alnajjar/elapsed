@@ -75,6 +75,8 @@ const realDatabaseSuites = [
   "apps/worker/test/integration-sync-health.db.test.ts",
   "apps/worker/test/sync-history-no-change.db.test.ts",
   "apps/web/test/custom-sync-state-supersession.test.ts",
+  "apps/web/test/custom-sla-support-gating.test.ts",
+  "apps/web/test/custom-activation-atomicity.test.ts",
   "apps/web/test/seeded-tenant-isolation.test.ts",
   "apps/web/test/admin-tenants-data.test.ts",
   "apps/web/test/admin-mutations.test.ts",
