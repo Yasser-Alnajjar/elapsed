@@ -133,7 +133,7 @@ Status at hand-over:
 - **BLOCKED on a prerequisite (10):** B-05, B-06, D-01, D-02, D-03, D-04, D-06, D-05, D-07, D-08.
 - **Owner-gated actions that modify production (5):** C-11, C-13, C-16, D-06, D-05; plus your N4.7 data entry before C-17.
 
-**Closure ledger (current, branch tips `main` 27822e3, `claude/sharp-euler-gm4not` 27822e3, `testing` 718d742; the hand-over lines above are the original 2026-10 baseline and are kept for the record).** Closed means the evidence is in this file; nothing else is claimed.
+**Closure ledger (current, remote branch tips as listed by `git ls-remote` on 2026-10-10: `main` ed3c4f0 (not fetched into the local clone, where `origin/main` is a stale 0e48d28), `claude/sharp-euler-gm4not` 4e7b55d, `testing` 718d742; the earlier values `main`/`claude/sharp-euler-gm4not` 27822e3 are superseded, and `testing` is unchanged; the hand-over lines above are the original 2026-10 baseline and are kept for the record).** Closed means the evidence is in this file; nothing else is claimed.
 
 | Item | State | Evidence |
 | --- | --- | --- |

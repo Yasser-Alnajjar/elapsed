@@ -4,8 +4,8 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 
 ## Preconditions and what this deployment does NOT do
 
-- **Explicit owner authorization for the production deployment is required and has NOT been given.** Do not run any command below, change `.env`, or restart services until it is.
-- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review, (O-2, the fixed outbound IP, is no longer a gate: owner decision 2026-10-10, Option A, deferred indefinitely) and this deployment with its verification (validation master, closure ledger). O-1 and O-3 are decided and only await the reviewer's wording.
+- **The owner authorized and ran this deployment on 2026-10-10 (owner-reported; see section 5).** Any further run of the commands below, any `.env` change or any service restart needs a new explicit owner approval; the earlier one does not carry over.
+- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review (the only open gate on the launch path; it includes the wording items W-1 to W-3) and a separate reviewed code change lifting the rollout block. O-2 (the fixed outbound IP) is not a gate: owner decision 2026-10-10, Option A, deferred indefinitely. O-1 and O-3 are decided and only await the reviewer's wording. The deployment itself is done, but its verification is owner-reported and was not independently observed.
 
 ## What changes
 
@@ -127,9 +127,12 @@ Reading it: `disconnected` with `has_credentials = false` and a `last_raw_event_
 
 Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays, and nothing is promoted to Stable.
 
-1. **Owner decisions O-2 and O-3** in `implementation-plans/n9-legal-decision-sheet.md` (Part A). O-1 is already decided (D34: no age-based expiry); it needs no new decision.
-2. **Qualified legal reviewer's Part B decisions**, recorded in section 6 of `implementation-plans/n9-legal-review.md` (D-07). Engineering may not decide these.
-3. **Explicit approval to run section 1 of this document** on production (Compose settings), then the section 2 verification. Not executed.
-4. A rebuilt image only if you want the `.dockerignore` change to take effect; this needs your approval too.
+1. **Owner decisions O-1, O-2 and O-3: decided 2026-10-10** (O-1 Option A, O-2 Option A, O-3 Option A), per the closure ledger in `docs/validation/server-validation-master.md` (section 2.1, section 2.4). Nothing is outstanding for the owner here; only the qualified reviewer's wording for O-1 and O-3 remains (item 2). Not re-read from the decision sheet in this reconciliation.
+2. **Qualified legal reviewer's decisions (D-07 / BL-09), open.** This is the only open gate on the launch path. Engineering may not decide these.
+3. **Production deployment of section 1 and its verification: executed by the owner on 2026-10-10 at `8a4ee1e` (owner-reported; not independently observed).** It is not repeated without a new explicit approval. Open items from that run: `GUARD_OVERRIDE_OPERATOR_EMAILS` has one entry (owner-configured, not changed here); the Intercom/Jira `status = disconnected` observation is unresolved and needs the read-only query above run on production.
+4. **Image rebuild: approval OUTSTANDING (not given).** It is only needed for the `.dockerignore` change to take effect; the already-built images are unchanged. Not done.
+5. **Lifting the rollout block** (`packages/db/src/integration-catalog.ts`) is a separate reviewed code change and a separate decision; not made. Adding any pilot organization to the allowlist is likewise a separate step; not made.
+
+Not reconciled: an earlier version of this list cited a decision "D34: no age-based expiry" for O-1. D34 is not in `implementation-plans/ROADMAP_Product.md`, and the ledger records O-1 as "align the Privacy retention/deletion wording to the implemented behavior (Option A)". The D34 reference was removed because it cannot be confirmed from the non-legal documents; confirm it against the decision records yourself.
 
 Not launch blockers, per the recorded decisions: Phase C, the Stable promotion, and the allowlist of any further organization.
