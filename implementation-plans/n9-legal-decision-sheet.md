@@ -92,6 +92,8 @@ Interlock: the owner decisions are recorded, so the reviewer now receives them a
 | 4 | Do web and worker use the same outbound IP | **NOT PERFORMED** | H3 |
 | 5 | DNS and external allowlists affected by an IP change | **NOT PERFORMED** | H4, A7, your own allowlist records |
 
+**Second attempt (2026-10-10, owner re-authorized with the agent key `~/.ssh/elapsed-agent`): BLOCKED.** In this execution environment `~/.ssh` is empty (no `elapsed-agent` private or public key, no `known_hosts`) and there is no `ssh`/`scp` client. No connection was attempted and no key was created or installed. Every check remains NOT PERFORMED; the owner-run procedure below is unchanged.
+
 Step 1 is two read-only procedures. Do not send SSH keys, AWS keys, session tokens or `.env` contents to anyone, including in chat; only the redacted outputs described below are needed. Nothing here allocates, associates, changes or restarts anything.
 
 **Part H: on the production host**
