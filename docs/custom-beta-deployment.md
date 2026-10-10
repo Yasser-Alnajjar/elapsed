@@ -110,6 +110,10 @@ Deployed by the owner on the production host to `8a4ee1e` (fast-forward from `8d
 3. `backups/` is now excluded from the Docker build context (`.dockerignore`, entry `backups`). Verified by evaluating the file with the `@balena/dockerignore` matcher (`backups` and `backups/*.dump` excluded; source, `packages/db/prisma` and `scripts/` still included); no Dockerfile references `backups/`. No image was rebuilt (no Docker daemon in the engineering environment). Images already built on the host before this change may still contain the earlier dumps in their layers: that has NOT been checked, and removing them (`docker image prune` after the next approved rebuild) is an owner/host action.
 4. The Custom REST allowlist is empty and no pilot organization was added; the rollout block, legal review and W-3 are unchanged. Beta is not declared ready.
 
+## LEGAL-REVIEW HOLD (owner instruction, active)
+
+Owner instruction: the Terms of Service and Privacy Policy are on hold until the owner **explicitly confirms** the legal review is complete. While active, engineering and agents do not open, review, edit, summarize or analyze either document, do not use their contents for other work, and do not change related legal wording, acceptance requirements or legal decisions. Work that depends on them stops and is reported to the owner. The hold is released only by that explicit confirmation, never inferred from a commit, passing tests or other launch tasks. The page-hiding change is NOT yet implemented: it conflicts with the sign-up acceptance checkbox, which is pending an owner decision (recorded by the owner in the session that created this hold).
+
 ## Remaining Limited Beta launch prerequisites (as of this record)
 
 Custom REST stays Beta/allowlist. Nothing below was done by engineering and no pilot organization was added.
