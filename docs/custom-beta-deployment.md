@@ -103,36 +103,68 @@ Recorded from the owner's production deployment report. **Owner-reported means t
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Worker recovery after the deployment  | Recovered                                                                                                                                                                                           | Owner-reported                                                                                                                 |
 | Intercom and Jira ingestion           | Succeeding                                                                                                                                                                                          | Owner-reported                                                                                                                 |
-| Database migrations                   | Applied (owner-reported status; confirm with the read-only query below if needed)                                                                                                                   | Owner-reported                                                                                                                 |
+| Database migrations                   | Applied (owner-reported status; not independently confirmed)                                                                                                                   | Owner-reported                                                                                                                 |
 | File-permission incident              | Occurred during the deployment and was resolved by the owner                                                                                                                                        | Owner-reported; root cause and fix not recorded here                                                                           |
 | Docker build context                  | `backups/` (and any nested `backups/`) is now excluded by `.dockerignore`, so dumps cannot enter image layers. Applies to the next image build only; images already built are not changed           | Independently verified: a build with the repository's `.dockerignore` and a fake `backups/` tree copied only non-ignored files |
 | `GUARD_OVERRIDE_OPERATOR_EMAILS`      | Intentionally configured by the owner; left unchanged. Not a defect. Code: a session must be a platform operator **and** be on this separate list (`apps/web/src/lib/authz.ts`); empty means nobody | Independently verified: `apps/web/test/guard-override-operator.test.ts` passes. The production value was not read or recorded  |
-| Intercom/Jira `status = disconnected` | **Not fixed; root cause not proven.** See below                                                                                                                                                     | Code trace only                                                                                                                |
+| Intercom/Jira `status = disconnected` | **Owner-confirmed intentional (2026-10-10). Not an incident.** No reconnect, no row edit, no follow-up query required | Owner-confirmed; not independently verified (no production access, no query run) |
 
-**Intercom/Jira status.** The only code that writes `disconnected` is the owner-triggered disconnect routes (and the Slack and Custom disconnects); it also clears the credentials. The worker never writes `disconnected` and its organization query excludes rows in that status (`ORGANIZATION_TO_PROCESS_SELECT` in `apps/worker/src/cycle.ts`), and the OAuth callbacks reset a reconnected row to `connected`. A row that is genuinely `disconnected` therefore cannot be ingested by the worker, so the report's two observations cannot both hold for the same row through any code path. The likely explanations, none yet proven, are: the rows queried are not the rows ingesting (another organization or a stale/restored copy), the ingestion came from a manual out-of-band run, or the status was read from a different place. No code change was made. Do not edit the rows. Run this read-only query on production and keep its output as evidence:
+**Intercom/Jira status.** The owner has confirmed that both integrations are intentionally disconnected, so this is closed as an observation and is not tracked as a defect or an open item. The earlier read-only query and its interpretation were removed from this document for that reason. Two things are kept for the record, neither reopens it: (a) code behavior, as traced earlier: the worker never writes `disconnected` and excludes rows in that status (`ORGANIZATION_TO_PROCESS_SELECT` in `apps/worker/src/cycle.ts`), so the owner-reported "Intercom and Jira ingestion succeeding" above cannot refer to the same disconnected rows; it presumably refers to other organizations' rows. That wording is left as the owner reported it and is not pursued. (b) Do not reconnect either integration or edit the rows.
 
-```sql
-SELECT o.id AS organization_id, i.provider, i.status, i."disconnectedAt", i."connectedAt",
-       i."lastSyncAt", i."lastSuccessfulSyncAt", i."lastSyncError", i."failingSince",
-       (i.credentials IS NOT NULL) AS has_credentials,
-       (SELECT max(r."createdAt") FROM raw_events r WHERE r."integrationId" = i.id) AS last_raw_event_at
-FROM integrations i JOIN organizations o ON o.id = i."organizationId"
-WHERE i.provider IN ('intercom','jira')
-ORDER BY i.provider, o.id;
-```
+### Launch readiness for the limited Beta (reconciled 2026-10-10)
 
-Reading it: `disconnected` with `has_credentials = false` and a `last_raw_event_at` older than `disconnectedAt` is a normal customer disconnect (the ingesting integration is a different row). `disconnected` with credentials present and fresh `lastSuccessfulSyncAt` would be a real defect and the next step is then to look at who set it. If the column names differ in the deployed schema, check `\d integrations` first. Adjust nothing in the table.
+Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays (`packages/db/src/integration-catalog.ts`), nothing is opened to all organizations and nothing is promoted to Stable. Sources: the closure ledger and sections 2.2 to 2.4 of `docs/validation/server-validation-master.md`, `implementation-plans/ROADMAP_Product.md` (N9.14-F1, D33-A1). The legal documents were not opened.
 
-### Remaining launch prerequisites for the limited Beta
+**1. Completed and verified (evidence is in the repository)**
 
-Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays, and nothing is promoted to Stable.
+- Phase B, B-01 to B-16 (RESULT blocks; browser-only limitation recorded for B-10, B-12, B-14).
+- D-01 benchmark, as a provisional Beta safeguard only: ceiling 1,000 live cases; a real-host rerun is required before raising it.
+- OD-01 / U2 for the pilot: option (b); procedure `docs/custom-provider-deletion-recovery.md`; tests `apps/web/test/custom-attention-copy.test.ts`, `packages/custom-ticket/test/ingest-runs.db.test.ts`.
+- D-08 focused tests, code side (31 files, 598 tests; recorded in the ledger, not re-run). The commit `23f265b` on `origin/testing` and `b533624` on `main` exist (checked with `git merge-base`/`cat-file`).
+- BL-04 / BL-10, repository side: Compose passes both settings (`8b123a5`, `e888a54`); `apps/web/test/guard-override-operator.test.ts`.
+- Rollout block preserved and tested (`apps/web/test/integration-availability-admin.test.ts`, `packages/db/test/integration-availability.test.ts`, `apps/worker/test/integration-availability.test.ts`).
+- `.dockerignore` excludes `backups/` (toy-build check; the already-built images are unchanged).
 
-1. **Owner decisions O-1, O-2 and O-3: decided 2026-10-10** (O-1 Option A, O-2 Option A, O-3 Option A), per the closure ledger in `docs/validation/server-validation-master.md` (section 2.1, section 2.4). Nothing is outstanding for the owner here; only the qualified reviewer's wording for O-1 and O-3 remains (item 2). Not re-read from the decision sheet in this reconciliation.
-2. **Qualified legal reviewer's decisions (D-07 / BL-09), open.** This is the only open gate on the launch path. Engineering may not decide these.
-3. **Production deployment of section 1 and its verification: executed by the owner on 2026-10-10 at `8a4ee1e` (owner-reported; not independently observed).** It is not repeated without a new explicit approval. Open items from that run: `GUARD_OVERRIDE_OPERATOR_EMAILS` has one entry (owner-configured, not changed here); the Intercom/Jira `status = disconnected` observation is unresolved and needs the read-only query above run on production.
-4. **Image rebuild: approval OUTSTANDING (not given).** It is only needed for the `.dockerignore` change to take effect; the already-built images are unchanged. Not done.
-5. **Lifting the rollout block** (`packages/db/src/integration-catalog.ts`) is a separate reviewed code change and a separate decision; not made. Adding any pilot organization to the allowlist is likewise a separate step; not made.
+**2. Completed but owner-reported (not independently observed)**
 
-Not reconciled: an earlier version of this list cited a decision "D34: no age-based expiry" for O-1. D34 is not in `implementation-plans/ROADMAP_Product.md`, and the ledger records O-1 as "align the Privacy retention/deletion wording to the implemented behavior (Option A)". The D34 reference was removed because it cannot be confirmed from the non-legal documents; confirm it against the decision records yourself.
+- Production deployment at `8a4ee1e`, verification PASS, worker recovery, migrations applied, Intercom and Jira ingestion, the file-permission incident and its resolution.
+- `GUARD_OVERRIDE_OPERATOR_EMAILS` configured by the owner on purpose (value neither read nor recorded; unchanged).
+- Intercom/Jira `status = disconnected` is intentional (owner-confirmed, see above).
+
+**3. Engineering work remaining**
+
+Nothing on the limited-Beta path is currently actionable by engineering without a decision or the legal outcome. What is left:
+
+- After the legal outcome (blocked by the hold, see 5): apply whatever the qualified reviewer decides to the live copy; the public docs page and marketing/`plans.ts` copy (N9.14-F1).
+- Documentation closure, procedure E-03 in `docs/validation/server-validation-master.md`, including the stale status lines DC-01 to DC-20 in section 2.3.
+- Not needed for the Beta: a reviewed tool to apply a legitimate mass deletion or undo a verified-404 marker (OD-01 option (a), to reconsider before GA); projector write batching; real-host benchmark rerun (only before raising the ceiling); Phase C and D-02 to D-06 (see section 6 below).
+
+**4. Decisions or approvals required from the owner**
+
+- **Image rebuild: approval OUTSTANDING.** Needed only for the `.dockerignore` change to apply. Not given, not done.
+- **O-1 reference:** whether "D34" should exist as a roadmap decision (see "O-1 reference" below). Unresolved.
+- **Timing of the first pilot allowlist entry, and which organization.** The roadmap allows individual allowlist adds under the rollout block (D33-A1, `ROADMAP_Product.md` N9.14-F1), while the ledger says "Beta is NOT open" until D-07 closes. The two are not reconciled; the owner decides whether a pilot waits for D-07. No organization added.
+- Lifting the rollout block (separate reviewed change, only after N9.14-F1 closes).
+- SSH exposure (TCP 22 open to the world, restriction plan written, not applied): separate from the Beta, still owner-decided.
+- Non-gating owner decisions listed in section 2.4 of the validation master (OD-02 to OD-13; OD-09 N9.0-F1/F2 review and OD-10 override-confirmation expiry are the closest to Custom REST).
+
+**5. External or legal launch gates**
+
+- **D-07 / BL-09, qualified legal review: OPEN. The only open gate on the launch path.** It includes the wording items W-1 to W-3, and the wording of O-1 and O-3 (decided by the owner, Option A for each). Engineering may not decide these, and the legal-review hold stays: no Terms, Privacy, legal-review or decision-sheet content was opened or changed.
+- Anything that depends on that content (live copy, signup acceptance behavior, public copy) is stopped at this point.
+
+**6. Deferred, not blocking the limited Beta**
+
+- O-2 fixed outbound IP: deferred indefinitely by owner decision (Option A); the Elastic IP 13.62.74.24 must not be released or replaced.
+- Phase C (C-01 to C-18), D-02 to D-06 and other external items; the Stable promotion; opening to all organizations; allowlisting further organizations; N6.5, N7 and the N8 triggers.
+- Raising the live-case ceiling above 1,000 (needs the real-host rerun).
+
+### O-1 reference
+
+The O-1 decision of record is in the closure ledger and `server-validation-master.md` section 2.4 (introduced in commit `abc7a33`, 2026-10-10): **Option A, align the Privacy retention/deletion wording to the implemented behavior, no purge; the wording W-1 awaits the qualified reviewer.** The label "D34: no age-based expiry" first appears in commit `9ba7866` and nowhere earlier: in this file (line removed) and in a status line of `server-validation-master.md`. It is not in `implementation-plans/ROADMAP_Product.md` (the highest decision there is D33) or in any other permitted record, so there is no original D34 reference to recover. The two statements are compatible in substance (the code has no retention expiry: `docs/data-retention-and-on-call.md` says "No expiry"), but they are different things: D34 has no decision text anywhere. The restricted decision sheet may hold the primary O-1 record; it was not opened. Alternatives, none chosen:
+
+1. Keep the ledger/section 2.4 wording as the only O-1 record and treat "D34" as an erroneous label (current state of this file).
+2. Add a roadmap decision, numbered D34, that records O-1 as decided. This creates a new decision record, so it needs the owner's explicit wording.
+3. Confirm the primary record yourself against the (restricted) decision sheet and tell me what it says before anything else is edited.
 
 Not launch blockers, per the recorded decisions: Phase C, the Stable promotion, and the allowlist of any further organization.
