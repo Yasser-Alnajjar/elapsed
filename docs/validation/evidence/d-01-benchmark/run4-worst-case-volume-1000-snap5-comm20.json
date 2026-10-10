@@ -1,0 +1,316 @@
+{
+  "generatedAt": "2026-10-10T12:41:03.119Z",
+  "database": "sla_custom_bench",
+  "options": {
+    "tiers": [
+      1000
+    ],
+    "runs": 5,
+    "firstRuns": 1,
+    "snapshots": 5,
+    "comments": 20,
+    "cpus": "0,1",
+    "liveCaseCeiling": "unset (default 5000)",
+    "maxOldSpaceMb": "default",
+    "secondOrgCases": 0
+  },
+  "tiers": {
+    "1000": {
+      "tickets": 1000,
+      "snapshots": 5,
+      "comments": 20,
+      "seed": {
+        "cases": 0,
+        "events": 0,
+        "commitments": 0,
+        "evaluations": 0,
+        "raw": 25334
+      },
+      "firstFullPass": {
+        "wallMs": {
+          "n": 1,
+          "median": 23681,
+          "p95": 23681,
+          "max": 23681,
+          "values": [
+            23681
+          ]
+        },
+        "lockHoldMs": {
+          "n": 1,
+          "median": 23447,
+          "p95": 23447,
+          "max": 23447,
+          "values": [
+            23447
+          ]
+        },
+        "queries": {
+          "n": 1,
+          "median": 6177,
+          "p95": 6177,
+          "max": 6177,
+          "values": [
+            6177
+          ]
+        },
+        "maxRssMb": {
+          "n": 1,
+          "median": 717,
+          "p95": 717,
+          "max": 717,
+          "values": [
+            717
+          ]
+        },
+        "stagesMs": {
+          "worker_normalize": {
+            "durationMs": 11262,
+            "queries": 4155
+          },
+          "worker_commitment": {
+            "durationMs": 659,
+            "queries": 6
+          },
+          "worker_re_resolution": {
+            "durationMs": 83,
+            "queries": 3
+          },
+          "worker_next_reply": {
+            "durationMs": 6960,
+            "queries": 2003
+          },
+          "worker_evaluate": {
+            "durationMs": 4434,
+            "queries": 8
+          },
+          "worker_notify_claim": {
+            "durationMs": 21,
+            "queries": 1
+          },
+          "worker_notify": {
+            "durationMs": 0,
+            "queries": 0
+          },
+          "worker_monthly_report": {
+            "durationMs": 5,
+            "queries": 1
+          }
+        },
+        "failures": 0
+      },
+      "afterFirstPass": {
+        "cases": 1000,
+        "events": 20334,
+        "commitments": 11000,
+        "evaluations": 11000,
+        "raw": 25334
+      },
+      "steadyFullPass": {
+        "wallMs": {
+          "n": 5,
+          "median": 6879,
+          "p95": 7096,
+          "max": 7096,
+          "values": [
+            6879,
+            7096,
+            6736,
+            6865,
+            6997
+          ]
+        },
+        "lockHoldMs": {
+          "n": 5,
+          "median": 6663,
+          "p95": 6898,
+          "max": 6898,
+          "values": [
+            6663,
+            6898,
+            6523,
+            6647,
+            6777
+          ]
+        },
+        "queries": {
+          "n": 5,
+          "median": 3118,
+          "p95": 3118,
+          "max": 3118,
+          "values": [
+            3118,
+            3118,
+            3118,
+            3118,
+            3118
+          ]
+        },
+        "maxRssMb": {
+          "n": 5,
+          "median": 486,
+          "p95": 497,
+          "max": 497,
+          "values": [
+            486,
+            464,
+            497,
+            460,
+            486
+          ]
+        },
+        "heapUsedMb": {
+          "n": 5,
+          "median": 219,
+          "p95": 246,
+          "max": 246,
+          "values": [
+            219,
+            211,
+            217,
+            243,
+            246
+          ]
+        },
+        "stagesMedianMs": {
+          "worker_normalize": 4878,
+          "worker_commitment": 12,
+          "worker_re_resolution": 7,
+          "worker_next_reply": 343,
+          "worker_evaluate": 1322,
+          "worker_notify_claim": 5,
+          "worker_notify": 0,
+          "worker_monthly_report": 4
+        },
+        "failures": 0
+      },
+      "pollPass": {
+        "wallMs": {
+          "n": 5,
+          "median": 5827,
+          "p95": 8377,
+          "max": 8377,
+          "values": [
+            8377,
+            6289,
+            5468,
+            5827,
+            5505
+          ]
+        },
+        "lockHoldMs": {
+          "n": 5,
+          "median": 5630,
+          "p95": 8069,
+          "max": 8069,
+          "values": [
+            8069,
+            6088,
+            5271,
+            5630,
+            5239
+          ]
+        },
+        "queries": {
+          "n": 5,
+          "median": 3117,
+          "p95": 3117,
+          "max": 3117,
+          "values": [
+            3117,
+            3117,
+            3117,
+            3117,
+            3117
+          ]
+        },
+        "maxRssMb": {
+          "n": 5,
+          "median": 438,
+          "p95": 439,
+          "max": 439,
+          "values": [
+            421,
+            439,
+            438,
+            386,
+            439
+          ]
+        },
+        "heapUsedMb": {
+          "n": 5,
+          "median": 181,
+          "p95": 205,
+          "max": 205,
+          "values": [
+            189,
+            171,
+            181,
+            100,
+            205
+          ]
+        },
+        "stagesMedianMs": {
+          "worker_normalize": 4947,
+          "worker_commitment": 12,
+          "worker_re_resolution": 7,
+          "worker_next_reply": 358,
+          "worker_evaluate": 227,
+          "worker_notify_claim": 5,
+          "worker_notify": 0
+        },
+        "failures": 0
+      },
+      "guardAbort": {
+        "flippedTickets": 350,
+        "abortFailures": [
+          1,
+          1,
+          1
+        ],
+        "abortReported": [
+          "normalize:custom: A safety check stopped this sync before any change was applied (mass_lifecycle_change)"
+        ],
+        "wallMs": {
+          "n": 3,
+          "median": 2542,
+          "p95": 2691,
+          "max": 2691,
+          "values": [
+            2542,
+            2691,
+            2504
+          ]
+        },
+        "lockHoldMs": {
+          "n": 3,
+          "median": 2345,
+          "p95": 2489,
+          "max": 2489,
+          "values": [
+            2345,
+            2489,
+            2270
+          ]
+        },
+        "writesNothing": true,
+        "contentBefore": "613b3d4bfd801f5c25cf0d8f5f09b94d:4e17386e7ecd0c5a1f5270c64ab99b68:aa7b0f9306b772deb858b4418bc2c9d3",
+        "contentAfter": "613b3d4bfd801f5c25cf0d8f5f09b94d:4e17386e7ecd0c5a1f5270c64ab99b68:aa7b0f9306b772deb858b4418bc2c9d3"
+      }
+    }
+  },
+  "scaling": {
+    "steadyLockP95": {
+      "perCase": null,
+      "exponent": null
+    },
+    "steadyWallP95": {
+      "perCase": null,
+      "exponent": null
+    },
+    "steadyQueriesMedian": {
+      "perCase": null,
+      "exponent": null
+    }
+  }
+}
