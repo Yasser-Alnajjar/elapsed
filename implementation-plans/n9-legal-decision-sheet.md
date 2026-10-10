@@ -54,32 +54,82 @@ Interlock: the owner decisions are recorded, so the reviewer now receives them a
 
 **Claim rule.** Until the verification record below is filled in with real output, no document, setup guide or UI may say that Elapsed has a fixed outbound IP. Until then the truthful statement is that the address is not fixed (F-15).
 
-**Why it matters in this codebase.** Customer API calls leave from two services: the **worker** (every scheduled sync and ingest, any number of replicas) and the **web** service (the setup flow: test, sample, preview, activation full-pass check). Both must use the same fixed address. Containers reach the internet through the host (Docker NAT), so the address customers see is the host's public egress address.
+**Why it matters in this codebase.** Customer API calls leave from two services: the **worker** (every scheduled sync and ingest, any number of replicas) and the **web** service (the setup flow: test, sample, preview, activation full-pass check). Both must use the same fixed address. Containers reach the internet through the host (Docker bridge NAT), so the address customers see is the host's public egress address. Everything else the host sends (Slack, SMTP, Sentry, OAuth token exchanges) uses it too.
 
 **Requirements**
 1. One stable public IPv4 address that all Custom REST outbound requests from web and worker originate from, in production.
-2. It survives host stop/start, redeploy and container restarts (a plain auto-assigned public IP does not).
-3. No other path: no request may leave over IPv6 or an alternate NAT/interface (a customer allowlist would then miss it). Docker's default IPv6 off is to be confirmed on the host.
+2. It survives host stop/start, redeploy and container restarts (a plain auto-assigned public IP does not survive stop/start).
+3. No other path: no request may leave over IPv6 or an alternate NAT/interface (a customer allowlist would miss it). Docker's default bridge has IPv6 off; confirm on the host.
 4. The address is recorded in one place (this sheet and `docs/deployment.md`) and published in the Custom REST setup guide only after verification.
 5. A change-notice commitment (how far ahead customers are told if the address changes) is a policy question for the reviewer/owner; engineering must not promise a notice period unprompted.
 
+**Infrastructure investigation (2026-10-10; repository evidence only, no AWS access, nothing changed)**
+
+| Question | Finding | Evidence | Confidence |
+| --- | --- | --- | --- |
+| How many hosts? | One production EC2 instance runs the whole stack (postgres, migrate, web, 3 worker replicas, nginx) | ROADMAP "single EC2 deployment"; `docker-compose.yml`; validation master A-10 | Verified (documents) |
+| Instance type | t3.medium, 2 vCPU, 3.7 GiB | A-10 RESULT (read from the host's metadata service) | Verified |
+| Public or private subnet? | **Almost certainly public** (not proven): nginx publishes 80/443 on the host, the host is reached directly over SSH at a public IPv4 address (`ubuntu@13.62.74.24`, the same address in the 2026-10-02 backup runbook and the 2026-10-10 checks), webhooks and customers reach it from the internet. A private-subnet host would need a load balancer in front, and none is documented | `docker-compose.yml` (nginx ports), `docs/production-backup-runbook.md`, master line 61 | Inferred; confirm in step D1 |
+| Is 13.62.74.24 an Elastic IP or an auto-assigned public IP? | **Unknown.** The address was stable across at least 8 days, which is consistent with either (an auto-assigned address only changes on stop/start). Nothing in the repository says an Elastic IP was allocated | no document mentions an Elastic IP, NAT gateway, VPC or subnet (searched `docs/`, ROADMAP, README, scripts, compose files) | Gap |
+| How does outbound traffic flow today? | Not documented. If the host is public-subnet with an internet-gateway route, outbound leaves from the instance's public IPv4 (the Elastic IP if one is associated, else the auto-assigned address). No proxy, NAT instance or egress proxy is configured anywhere in the repo (no `HTTP(S)_PROXY`, the custom client makes direct requests) | compose files, `packages/safe-http` | Inferred |
+| IPv6? | Not documented; Docker's default bridge network has IPv6 disabled, so containers have no IPv6 route even if the VPC has IPv6 | Docker default | Confirm in D1 |
+| Domain/DNS | The domain's A record is not in the repository; it presumably points at the same address | `NEXTAUTH_URL` is a domain; DNS not documented | Gap; matters for step C |
+
+**Design decision (conditional on D1 confirming a public subnet): an Elastic IP associated with the instance.** A NAT Gateway is the wrong tool here: it exists to give instances in a *private* subnet a shared egress address and adds a standing monthly cost for traffic this host already sends directly. It would only be chosen if D1 shows the instance is in a private subnet (then: an Elastic IP attached to a NAT Gateway in a public subnet, with the private subnet's default route to it), or if production later grows past one host (then a NAT Gateway or an egress proxy with a static address becomes the right single egress point). If D1 shows the existing 13.62.74.24 is already an Elastic IP, **no AWS change is needed**: only the verification below, and this record is filled in.
+
+**Cost (approximate; confirm on the AWS pricing page for the instance's region before approving)**
+- Elastic IP / any public IPv4 address: about USD 0.005 per hour (about USD 3.65 per month), charged whether in use or idle since 2024. The instance already pays this for its auto-assigned public address, so replacing that address with an Elastic IP is roughly cost-neutral. An allocated but unassociated address is billed too, so release anything unused.
+- NAT Gateway (only if D1 says private subnet): about USD 0.045 per hour (about USD 33 per month) plus about USD 0.045 per GB processed, plus its Elastic IP. Not recommended for the current single-host topology.
+- No data-transfer change for the EIP option.
+
+**Required AWS changes (NOT executed; Elastic IP path). Placeholders in angle brackets**
+- D1 (read-only discovery, no change; needs your authorization only to be run by me over SSH, or you run it):
+  ```bash
+  # on the host (EC2 metadata, IMDSv2)
+  T=$(curl -sS -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
+  for k in instance-id placement/region public-ipv4 local-ipv4 network/interfaces/macs/; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/$k)"; done
+  MAC=$(curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/ | head -1)
+  curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC}subnet-id; echo
+  curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC}ipv6s; echo   # empty/404 = no IPv6
+  curl -4sS https://checkip.amazonaws.com; curl -6sS -m 4 https://checkip.amazonaws.com || echo "no IPv6 egress"
+  docker network inspect $(docker network ls -q --filter name=default) --format '{{.Name}} ipv6={{.EnableIPv6}}'
+  ```
+  and with AWS CLI access (console or CLI, read-only): `aws ec2 describe-addresses --public-ips <public-ipv4>` (an association = already an Elastic IP), `aws ec2 describe-instances --instance-ids <id> --query 'Reservations[].Instances[].[SubnetId,PublicIpAddress,NetworkInterfaces[].Association]'`, `aws ec2 describe-route-tables --filters Name=association.subnet-id,Values=<subnet-id>` (a `0.0.0.0/0` route to `igw-` means public subnet; to `nat-` means private).
+- C1 allocate (only if D1 shows no Elastic IP): `aws ec2 allocate-address --domain vpc --tag-specifications 'ResourceType=elastic-ip,Tags=[{Key=Name,Value=elapsed-prod-egress}]'` (record `AllocationId` and `PublicIp`).
+- C2 associate to the instance's primary network interface: `aws ec2 associate-address --instance-id <id> --allocation-id <eipalloc-id>`. This **replaces** the current auto-assigned public address, which is then released by AWS and cannot be recovered.
+- C3 update everything that used the old address: the domain's DNS A record (lower its TTL at least one TTL period beforehand), the `ssh`/`scp` examples in `docs/production-backup-runbook.md` and the validation master, any firewall or allowlist at a third party that names the old address, and any monitoring target.
+- C4 verify (below), then record the address here. Nothing in the application or Compose files changes.
+
+**Risks**
+1. **The public address changes** if 13.62.74.24 is not already an Elastic IP: SSH access, DNS, third-party allowlists and webhook registrations that use the raw address break until updated. Webhook URLs that use the domain follow DNS. A short window of unreachability while DNS propagates is expected; plan it for low traffic.
+2. Inbound security-group rules are unaffected, but confirm they do not restrict by the old address.
+3. An allocated, unassociated Elastic IP keeps billing; an Elastic IP associated with a stopped instance is billed too. Release unused ones.
+4. Single point of failure is unchanged (one host). A replacement host can take over the Elastic IP, which is an advantage over an auto-assigned address.
+5. Customers that allowlist the address depend on it staying stable: do not release or move it without a notice policy (reviewer question, W-3).
+6. Other outbound traffic from the host also uses the new address (SMTP, Slack, Sentry, OAuth providers); a provider that IP-restricts by the old address would break (none is known; check SMTP relay allowlists).
+
+**Rollback plan**
+- Before C2: record the current public address, `DisassociateAddress` state and DNS TTL.
+- To undo the association: `aws ec2 disassociate-address --association-id <eipassoc-id>` then `aws ec2 release-address --allocation-id <eipalloc-id>`. The instance may then receive a new auto-assigned public address (depending on launch settings and the subnet), **not the old one**; so a rollback is not an exact restore if the old address was auto-assigned. Treat the change as one-way once DNS is updated: the safe rollback is to keep the Elastic IP and fix any broken reference, not to remove it. Keep SSH reachable by the new address throughout (do not close the session before testing a second one).
+- Nothing in application configuration or data changes, so no application rollback or database action is involved.
+
 **Implementation plan (proposed; owner action on AWS, then a deployment approval for any host/compose change)**
-1. Record the production network facts first (BL-02: the host is described as a t3.medium but its network setup is not recorded in the repo): public or private subnet, existing Elastic IP, NAT gateway, proxy.
-2. Preferred, if the host is in a public subnet: allocate an **Elastic IP** and associate it with the production instance (outbound traffic from an instance with an EIP uses that address). If the host is in a private subnet behind a NAT gateway: attach an EIP to the **NAT gateway**. Record the allocation id and address.
-3. No application change is needed for the address itself (the client makes direct requests with no proxy; there is no proxy setting to add). If the host cannot get a stable address, the alternative is an egress proxy with a static IP, which is a code and configuration change and needs a new plan 09 amendment and approval.
+1. Run D1 (read-only discovery) and record the results in the verification section below.
+2. If an Elastic IP already exists on the instance, skip to verification. If the instance is in a public subnet without one, do C1 to C4 in a planned window. If it is in a private subnet, stop and re-plan with a NAT Gateway Elastic IP (cost above) before any change.
+3. No application change is needed for the address itself (the client makes direct requests with no proxy). If a stable address cannot be had, the alternative is an egress proxy with a static IP, which is a code and configuration change and needs a plan 09 amendment and approval.
 4. Optional product work (separate, small, after verification): show the verified address in the Custom REST setup page and guide.
-5. Everything above that touches production needs the owner's explicit deployment/infrastructure authorization; none is given. Nothing was changed.
+5. Everything above that touches AWS or production needs the owner's explicit authorization; none is given. Nothing was changed by this investigation.
 
 **Verification criteria (all must be recorded before any claim)**
 1. From inside the running **worker** container: `docker compose exec worker node -e 'fetch("https://checkip.amazonaws.com").then(r=>r.text()).then(console.log)'` prints the allocated address. Repeat from the **web** container.
-2. Same result after restarting the containers and after a host stop/start (the address is unchanged).
+2. Same result after restarting the containers. A host stop/start is the real persistence test but interrupts production: do it only in an approved window; otherwise record the AWS-side proof instead (`describe-addresses` showing the allocation associated with the instance, which survives stop/start by design).
 3. An IPv6 check from both containers shows no IPv6 egress (or that Custom REST requests cannot use it).
 4. A real end-to-end proof: a pilot-style test API (a customer test endpoint or a controlled server) logs the source address of a Custom REST test call from the web service and of a worker sync; both equal the address.
 5. The address and the date are recorded here; then Q-5 can be answered as fact.
 
 **Verification record:** address ______  allocation/NAT id ______  date ______  evidence ______  verified by ______  (EMPTY: not configured, not verified)
 
-**Remaining blockers for O-2:** AWS/infrastructure access and the owner's action to allocate and associate the address (not available to engineering here); recorded production network facts (BL-02); deployment authorization for any change; the verification above. The Beta may not advertise IP allowlisting support until then; pilot partners that require allowlisting wait for this item.
+**Remaining blockers for O-2 (as of 2026-10-10):** (1) the discovery results D1 (public/private subnet, whether 13.62.74.24 is already an Elastic IP, IPv6) need AWS or host access that engineering does not have in this environment; (2) the owner's authorization for any AWS change (allocate/associate) and for the window, DNS update and third-party allowlist updates it implies; (3) verification from both containers after the change; (4) the reviewer's answer on what may be said and any change-notice commitment (W-3). The Beta may not advertise IP allowlisting support until these are done; pilot partners that require allowlisting wait for this item.
 
 ## B. Clauses that need the qualified reviewer's decision
 
