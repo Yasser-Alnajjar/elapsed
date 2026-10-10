@@ -105,6 +105,8 @@ These are findings, not changes made. Live files were not edited.
 
 ## 7. Hand-over instructions
 
+> Update 2026-10-10: the owner decisions that the reviewer's answers depend on (O-1 retention, O-2 outbound IP, O-3 POST endpoints) are tracked, with options and implications, in `n9-legal-decision-sheet.md` Part A and are **PENDING**. That sheet also holds the reviewer handoff checklist. Section 6 below remains empty until a qualified reviewer fills it.
+
 1. Send this file, `apps/web/src/modules/marketing/legal/csr/TermsView.tsx`, `PrivacyView.tsx`, `docs/data-retention-and-on-call.md` and plan 09 §7 and Appendix A to the reviewer.
 2. The reviewer fills in section 6 (or replies per clause).
 3. Engineering then edits the live files in one change, with `pricing-plans.test.ts` updated on `testing` for P-8, and records the result in validation master D-07.
