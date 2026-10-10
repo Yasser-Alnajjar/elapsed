@@ -6,12 +6,22 @@ import { useState } from "react";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { SlackChannel } from "@/lib/types/integrations";
 
 export function SlackConnectButton() {
   return (
-    <Button type="button" size="sm" onClick={() => (window.location.href = "/api/integrations/slack/connect")}>
+    <Button
+      type="button"
+      size="sm"
+      onClick={() => (window.location.href = "/api/integrations/slack/connect")}
+    >
       Connect Slack
     </Button>
   );
@@ -30,7 +40,11 @@ export function SlackChannelPicker() {
     setLoading(true);
     setError(null);
 
-    const { ok, channels, error: loadError } = await Actions.Integrations.loadSlackChannels();
+    const {
+      ok,
+      channels,
+      error: loadError,
+    } = await Actions.Integrations.loadSlackChannels();
     setLoading(false);
 
     if (!ok || !channels) {
@@ -48,7 +62,10 @@ export function SlackChannelPicker() {
     setSaving(true);
     setError(null);
 
-    const { ok, body } = await Actions.Integrations.saveSlackChannel(channel.id, channel.name);
+    const { ok, body } = await Actions.Integrations.saveSlackChannel(
+      channel.id,
+      channel.name,
+    );
     setSaving(false);
 
     if (!ok) {
@@ -62,7 +79,13 @@ export function SlackChannelPicker() {
   if (channels === null) {
     return (
       <div className="space-y-3">
-        <Button type="button" size="sm" variant="surface" onClick={loadChannels} disabled={loading}>
+        <Button
+          type="button"
+          size="sm"
+          variant="surface"
+          onClick={loadChannels}
+          disabled={loading}
+        >
           {loading && <Loader2 className="animate-spin" />}
           {loading ? "Loading channels…" : "Choose a channel"}
         </Button>
@@ -79,7 +102,7 @@ export function SlackChannelPicker() {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={selected} onValueChange={setSelected}>
-        <SelectTrigger className="w-56">
+        <SelectTrigger className="w-44">
           <SelectValue placeholder="Select a channel" />
         </SelectTrigger>
         <SelectContent>
@@ -90,7 +113,12 @@ export function SlackChannelPicker() {
           ))}
         </SelectContent>
       </Select>
-      <Button type="button" size="sm" onClick={handleSave} disabled={!selected || saving}>
+      <Button
+        type="button"
+        size="sm"
+        onClick={handleSave}
+        disabled={!selected || saving}
+      >
         {saving && <Loader2 className="animate-spin" />}
         {saving ? "Saving…" : "Save channel"}
       </Button>
@@ -108,7 +136,12 @@ export function SlackChannelChangeButton() {
   const [changing, setChanging] = useState(false);
   if (changing) return <SlackChannelPicker />;
   return (
-    <Button type="button" size="sm" variant="surface" onClick={() => setChanging(true)}>
+    <Button
+      type="button"
+      size="sm"
+      variant="surface"
+      onClick={() => setChanging(true)}
+    >
       Change channel
     </Button>
   );

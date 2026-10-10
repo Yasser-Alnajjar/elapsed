@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { useEffect } from "react";
 import { ShieldAlert } from "lucide-react";
 
@@ -57,6 +58,7 @@ export const CaseDetailView = ({
   data,
   selectedCommitmentId,
 }: CaseDetailViewProps) => {
+  const timeZone = useOrgTimezone();
   useNextReplyCycleSync(data.commitments, selectedCommitmentId);
 
   return (
@@ -66,9 +68,21 @@ export const CaseDetailView = ({
           <ShieldAlert />
           <AlertDescription>
             {data.case.sourceStaleSince
-              ? `Source data has been stale since ${formatExactTimestamp(data.case.sourceStaleSince)}.`
+              ? `Source data has been stale since ${formatExactTimestamp(data.case.sourceStaleSince, timeZone)}.`
               : "Source data is stale: its integration has not completed a successful sync yet."}{" "}
             SLA calculations use the latest received events; breach alerts are held until the source refreshes.
+          </AlertDescription>
+        </Alert>
+      )}
+      {data.case.sourceNotices && data.case.sourceNotices.length > 0 && (
+        <Alert>
+          <ShieldAlert />
+          <AlertDescription>
+            <ul className="flex flex-col gap-1">
+              {data.case.sourceNotices.map((notice) => (
+                <li key={notice}>{notice}</li>
+              ))}
+            </ul>
           </AlertDescription>
         </Alert>
       )}

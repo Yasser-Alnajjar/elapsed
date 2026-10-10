@@ -34,6 +34,8 @@ vi.mock("@sla/db", () => {
   }
   return {
     ConnectLinkError,
+    // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
     isConnectLinkProvider: (v: unknown) => v === "jira" || v === "linear",
     connectLinkLabel: (l: { intendedFor: string | null }) => `connect link${l.intendedFor ? `: ${l.intendedFor}` : ""}`,
     consumeConnectLink: db.consume,

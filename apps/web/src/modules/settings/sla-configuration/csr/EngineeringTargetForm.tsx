@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 import { Input } from "@/components/ui/input";
 import { formatTargetClock, InfoNote, tableHeadClass } from "./SlaSection";
 
@@ -41,7 +42,7 @@ export function EngineeringTargetForm({
     setSaving(false);
 
     if (!ok) {
-      setError(body.error ?? "Failed to save target");
+      notify.error(body.error ?? "Failed to save target.");
       return;
     }
 
@@ -57,7 +58,7 @@ export function EngineeringTargetForm({
     setSaving(false);
 
     if (!ok) {
-      setError("Failed to clear target");
+      notify.error("Failed to clear target.");
       return;
     }
 

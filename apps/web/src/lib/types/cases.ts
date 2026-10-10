@@ -342,6 +342,8 @@ export interface CaseDetailData {
     sourceStaleSince?: string | null;
     /** Source integration has never completed a successful sync (no meaningful stale-since instant). */
     sourceNeverSynced?: boolean;
+    /** What this case's source cannot support (N9): unsupported SLA targets and the lack of status history. Empty for a fully supported source. */
+    sourceNotices?: string[];
   };
   currentLeg: Leg;
   commitments: CommitmentDetail[];

@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 
 import {
   formatActor,
@@ -204,6 +207,7 @@ export function TimelineEventItem({
   event: TimelineEventDetail;
   isLast: boolean;
 }) {
+  const timeZone = useOrgTimezone();
   const dotClass = DOT_CLASS[event.type] ?? "bg-outline";
   const pillClass =
     PILL_CLASS[event.type] ?? "bg-surface-container text-on-surface-variant";
@@ -229,7 +233,7 @@ export function TimelineEventItem({
 
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs font-medium text-primary">
-          {formatDateTime(event.occurredAt)}
+          {formatDateTime(event.occurredAt, timeZone)}
         </span>
         <span
           className={cn(

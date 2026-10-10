@@ -6,7 +6,10 @@ import type { Logger } from "@sla/logger";
  * The one typed record a provider is reached through. Registries are static
  * object literals (`satisfies Record<IntegrationProvider, ProviderAdapter>`),
  * so a missing provider is a compile error. There is no plugin loading and no
- * runtime registration (D16): every member maps to a function that exists.
+ * runtime registration (D16, amended by D31): every member maps to a function
+ * that exists. The one data-driven member, `custom`, is itself a statically
+ * registered adapter that interprets a validated, versioned configuration;
+ * it never executes customer-supplied code.
  */
 export interface ProviderAdapter {
   provider: IntegrationProvider;
@@ -65,6 +68,29 @@ export interface IngestResult {
   /** Records the pass fetched from the provider (tickets, issues, ...); `counts` breaks that down in the provider's own terms. */
   recordsFetched: number;
   counts: Record<string, number>;
+  /**
+   * Optional (N9, Q12 and R3); no existing adapter sets it. Present only when
+   * the run ended early *solely because* its time or record budget ran out:
+   * not a success and not a failure. A run that sets it never advances
+   * `lastSuccessfulSyncAt` and never touches the failure counters.
+   */
+  partial?: {
+    reason: "budget_exhausted" | "run_cap_reached";
+    /** How far the run got (pages completed, whether the initial import is still running); counts and flags only. */
+    progress?: Record<string, number | boolean | string | null>;
+  };
+  /**
+   * Optional: facts for the sync-run record. Counts and fixed codes only,
+   * never a payload, URL or credential.
+   */
+  syncRun?: {
+    requests?: number;
+    bytes?: number;
+    /** Tickets that could not be stored (`payload_too_large`, `missing_required`, ...), up to 50. */
+    recordFailures?: { recordId: string; code: string; details?: RecordFailureDetail[] }[];
+    /** Total record failures, which may exceed `recordFailures.length`. */
+    recordFailureCount?: number;
+  };
 }
 
 export interface NormalizeContext extends AdapterContext {
@@ -151,10 +177,26 @@ export interface CanonicalBatch {
   afterProject?: () => Promise<void>;
 }
 
+/**
+ * Why one field of a record failed: the mapping, what it fills, and a sentence
+ * the owner can act on. Built from configuration and measured sizes, never
+ * from source values, so it is safe to store and show.
+ */
+export interface RecordFailureDetail {
+  mapping: string;
+  target: string;
+  reason: string;
+  message: string;
+  /** How many items (comments, history entries) had this same problem. */
+  count?: number;
+}
+
 export interface ProjectionFailure {
   /** The source record's id: a ticket id, an issue key, a pull request id. */
   id: string;
   error: string;
+  /** Field-level reasons, where the adapter can give them. */
+  details?: RecordFailureDetail[];
 }
 
 export interface CaseFacts {
@@ -331,6 +373,14 @@ export interface ProviderWebAdapter {
    * handed over, in prefix order.
    */
   conversationContext?(externalId: string): string[];
+  /**
+   * Ticket sources whose rendering depends on stored configuration (the `custom`
+   * source, N9): loaded once per rendered case and handed to `renderConversation`
+   * as `input.config`. Rendering-time interpretation is deliberate: nothing is
+   * frozen into raw payloads, so replay is preserved. Optional; every other
+   * adapter omits it.
+   */
+  loadRenderConfig?(prisma: PrismaClient, integrationId: string): Promise<unknown>;
   /** Ticket sources: the case's message-only Conversation, read from its raw events. Never the Activity Timeline. */
   renderConversation?(input: ConversationInput): ConversationMessage[];
   /** Webhook providers: whether the delivery carries the integration's secret. Never consumes the request body. */
@@ -346,6 +396,8 @@ export interface ConversationInput {
   payloads: ReadonlyMap<string, unknown>;
   /** Payloads of the raw events `conversationContext` asked for; `undefined` where none exists. */
   context: readonly unknown[];
+  /** What `loadRenderConfig` returned, for the adapters that have one (N9). */
+  config?: unknown;
 }
 
 export interface ConversationEventRef {

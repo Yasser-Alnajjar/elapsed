@@ -73,11 +73,20 @@ const realDatabaseSuites = [
   "apps/worker/test/fenced-prisma.db.test.ts",
   "apps/worker/test/not-configured.db.test.ts",
   "apps/worker/test/integration-sync-health.db.test.ts",
+  "apps/worker/test/sync-history-no-change.db.test.ts",
+  "apps/web/test/custom-sync-state-supersession.test.ts",
+  "apps/web/test/custom-sla-support-gating.test.ts",
+  "apps/web/test/custom-activation-atomicity.test.ts",
   "apps/web/test/seeded-tenant-isolation.test.ts",
   "apps/web/test/admin-tenants-data.test.ts",
   "apps/web/test/admin-mutations.test.ts",
   "packages/db/test/billing.db.test.ts",
   "apps/web/test/billing-routes.test.ts",
+  "packages/db/test/integration-availability.db.test.ts",
+  "packages/custom-ticket/test/ingest-availability.db.test.ts",
+  "packages/custom-ticket/test/ingest-runs.db.test.ts",
+  "apps/web/test/integration-availability-admin.test.ts",
+  "apps/web/test/integration-availability-routes.test.ts",
 ];
 
 export default defineConfig({

@@ -1,4 +1,4 @@
-import { Activity, Building2, Radar, ReceiptText, ScrollText } from "lucide-react";
+import { Activity, Building2, Plug, Radar, ReceiptText, ScrollText } from "lucide-react";
 import type { NavLink } from "@/components/layout/nav-items";
 
 /**
@@ -18,6 +18,12 @@ export const ADMIN_NAV_ITEMS: NavLink[] = [
     label: "Tenants",
     icon: Building2,
     description: "Every customer: plan, status, integrations and health.",
+  },
+  {
+    href: "/admin/integrations",
+    label: "Integrations",
+    icon: Plug,
+    description: "Enable, stage and roll out each integration provider.",
   },
   {
     href: "/admin/monitoring",

@@ -4,6 +4,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TimezoneCombobox } from "@/components/shared/timezone-combobox";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import type { BusinessCalendarOption } from "@/lib/types/sla-configuration";
 import {
   buildWeeklyWindows,
@@ -40,7 +42,8 @@ export function CalendarEditorDialog({
   onOpenChange,
   onSaved,
 }: CalendarEditorDialogProps) {
-  const [state, setState] = useState(() => initialCalendarFormState(calendar));
+  const orgTimezone = useOrgTimezone();
+  const [state, setState] = useState(() => initialCalendarFormState(calendar, orgTimezone));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +57,7 @@ export function CalendarEditorDialog({
 
   useEffect(() => {
     if (!open) return;
-    setState(initialCalendarFormState(calendar));
+    setState(initialCalendarFormState(calendar, orgTimezone));
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -214,10 +217,10 @@ export function CalendarEditorDialog({
           />
 
           {error && (
-            <Alert variant="destructive">
+            <DismissibleAlert key={error} variant="destructive">
               <AlertCircle />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            </DismissibleAlert>
           )}
 
           <DialogFooter>

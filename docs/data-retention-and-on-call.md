@@ -15,7 +15,7 @@ Each statement is one of:
 | Data | Retention today | Basis |
 | --- | --- | --- |
 | `RawEvent` (provider payloads, append-only, for replay) | No expiry. No prune, purge or archive job exists in `apps/` or `packages/`. | Verified |
-| `NormalizedEvent` | No expiry. Rows are replaced when a case is re-normalized (the provider `normalize.ts` files call `deleteMany` on stale rows), so it is derived data, not an audit log. | Verified |
+| `NormalizedEvent` | No expiry. Rows are reconciled when a case is re-normalized: the shared projector (`packages/ingestion/src/projector.ts`, `diffNormalizedEvents`) keeps unchanged events and deletes only the stored events a fresh derivation no longer produces. It is derived data, not an audit log. _(Corrected 2026-10-09: this row used to say the provider `normalize.ts` files call `deleteMany`; they no longer do, since N2 moved all writes into the projector.)_ | Verified |
 | `Evaluation`, `Commitment`, `LegSpan`, `Notification` | No expiry. | Verified |
 | `Case`, `Customer`, policies, calendars | Kept until the organization is removed. | Verified |
 | `PasswordResetToken`, `EmailVerificationToken` | Rows are not deleted on use or expiry. Only unused tokens for the same user are removed when a new one is issued. They go with the user. | Verified |
@@ -87,6 +87,7 @@ this was reproduced, with a caveat:
 ## Decisions (owner) — not built
 
 1. A retention period for `RawEvent`, and whether anything prunes or archives it.
+   _(2026-10-09, D31: the planned `custom` ticket-source provider depends on this decision. It will store only a whitelist projection of mapped fields (each stored payload capped at 64 KB, no sample responses stored), keep the latest snapshot a live case needs, and delete no raw event. Pruning of superseded `custom` snapshots is explicitly deferred until this item is decided. See `implementation-plans/09-custom-ticket-provider.md` §7.)_
 2. A supported tenant-deletion procedure: a script (the index above is now in place),
    a rehearsed run, and a check that no tenant-owned data is left behind.
 3. Whether a customer deletion request carries a time promise.

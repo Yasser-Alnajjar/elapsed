@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ConnectLinkError, getPrismaClient, resolveConnectLink } from "@sla/db";
+import { ConnectLinkError, getPrismaClient, resolveConnectLink, resolveIntegrationAvailability } from "@sla/db";
 import { buildAuthorizeUrl as buildJiraAuthorizeUrl } from "@sla/jira";
 import { buildAuthorizeUrl as buildLinearAuthorizeUrl } from "@sla/linear";
 import { getJiraOAuthConfig, JIRA_STATE_COOKIE } from "@/lib/jira-env";
@@ -22,6 +22,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       return NextResponse.redirect(new URL(`/connect/${encodeURIComponent(token)}`, getAppUrl()));
     }
     throw error;
+  }
+
+  // D33: the provider must be available to the link's organization. The link
+  // page explains why not; the link is not consumed.
+  if (!(await resolveIntegrationAvailability(getPrismaClient(), link.organizationId, link.provider)).available) {
+    return NextResponse.redirect(new URL(`/connect/${encodeURIComponent(token)}`, getAppUrl()));
   }
 
   const state = signConnectLinkState(link);

@@ -38,7 +38,7 @@ interface TerminalEvaluationRow {
  * minutes, for a commitment — the same working-time snapshot the pipeline
  * persisted at `evaluatedAt <= commitment.closedAt` when it finalized the
  * commitment (`evaluate-pipeline.ts`), not a value recomputed here, and not
- * a later status correction from the hourly reconciliation sweep (which
+ * a later status correction from the reconciliation sweep (at most every 30 minutes) (which
  * keeps a finalized commitment's original `closedAt` even when a later
  * Evaluation revises its status).
  */

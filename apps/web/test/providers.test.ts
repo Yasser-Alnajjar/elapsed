@@ -19,13 +19,13 @@ import {
 
 describe("provider registry", () => {
   it("names every provider once, and each adapter knows its own provider", () => {
-    expect(Object.keys(PROVIDERS).sort()).toEqual(["github", "intercom", "jira", "linear", "zendesk"]);
+    expect(Object.keys(PROVIDERS).sort()).toEqual(["custom", "github", "intercom", "jira", "linear", "zendesk"]);
     for (const [provider, adapter] of Object.entries(PROVIDERS)) expect(adapter.provider).toBe(provider);
     expect(Object.keys(WEB_PROVIDERS).sort()).toEqual(Object.keys(PROVIDERS).sort());
   });
 
   it("splits providers by role into the sources a Case comes from and the legs it links to", () => {
-    expect([...TICKET_SOURCE_PROVIDERS].sort()).toEqual(["intercom", "zendesk"]);
+    expect([...TICKET_SOURCE_PROVIDERS].sort()).toEqual(["custom", "intercom", "zendesk"]);
     expect([...ISSUE_LINK_PROVIDERS].sort()).toEqual(["github", "jira", "linear"]);
     expect(providerRole("github")).toBe("code_host");
     expect(isIssueLinkSystem("jira")).toBe(true);
@@ -37,7 +37,7 @@ describe("provider registry", () => {
     expect([...providersWithCapability("webhooks")].sort()).toEqual(["jira", "zendesk"]);
     expect(providersWithCapability("policyImport")).toEqual(["zendesk"]);
     expect(providersWithCapability("calendarImport")).toEqual(["zendesk"]);
-    expect([...providersWithCapability("replyEvents")].sort()).toEqual(["intercom", "zendesk"]);
+    expect([...providersWithCapability("replyEvents")].sort()).toEqual(["custom", "intercom", "zendesk"]);
     expect(providersWithCapability("officialLinks")).toEqual(["zendesk"]);
   });
 

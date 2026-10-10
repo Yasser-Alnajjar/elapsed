@@ -6,7 +6,7 @@ import { requireOwner } from "@/lib/authz";
 import { organizationSettingsInputSchema } from "@/lib/organization-settings";
 import type { OrganizationSettingsData } from "@/lib/types/organization";
 
-/** Open to any signed-in member (5.4's "read stays open" convention) — they need to see this to understand dashboard day grouping. */
+/** Open to any signed-in member (5.4's "read stays open" convention) — they need to see the display timezone their dates, dashboard days and monthly reports follow. */
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -23,6 +23,7 @@ export async function GET() {
   } satisfies OrganizationSettingsData);
 }
 
+/** Owner-only. The timezone is display-only: changing it re-renders how instants are shown and where dashboard days and monthly report periods fall, never a stored timestamp or an SLA result. */
 export async function PATCH(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not signed in" }, { status: 401 });

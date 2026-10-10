@@ -143,11 +143,12 @@ The product connects to two kinds of systems: **ticket sources**, which create C
 
 | Integration                                        | Role                                     | Auth                                  | Sync                            | Webhook |
 | -------------------------------------------------- | ---------------------------------------- | ------------------------------------- | ------------------------------- | ------- |
-| [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
-| [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 60 min) + webhook | Yes     |
+| [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
+| [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
 | [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk)   | OAuth2, read-only                     | Poll only                       | No      |
 | [Linear](/docs/integrations/linear)                | Engineering source (alternative to Jira) | OAuth2, read-only                     | Poll only                       | No      |
 | [GitHub](/docs/integrations/github) **(Beta)**     | Engineering source (pull requests)       | OAuth2                                | Poll only                       | No      |
+| [Custom REST](#custom-rest-beta) **(Beta)**        | Ticket source (any helpdesk with a JSON API) | API key, Bearer, Basic or a custom header, read-only | Poll only (5 min / 30 min) | No      |
 | Slack                                              | Alert channel                            | OAuth2 (bot token)                    | Outbound only                   | —       |
 | Email                                              | Alert channel                            | SMTP (self-service, per organization) | Outbound only                   | —       |
 
@@ -155,13 +156,47 @@ Intercom and GitHub are **Beta**: built and usable, but with known gaps (see eac
 
 Every connection shares the same shape:
 
-- **Connect:** one click, redirects to the provider's own OAuth consent screen. You never paste an API token directly for any of the five data-source integrations.
+- **Connect:** one click, redirects to the provider's own OAuth consent screen. You never paste an API token directly for the five OAuth integrations. The Custom REST source (Beta) is the exception: it is not an OAuth sign-in, and you enter the credentials for your helpdesk's own API, which are encrypted and never shown again.
 - **Data imported:** the specific resources listed in each provider's section below — never more.
 - **Data never modified:** every ticket-source and engineering-source integration is strictly read-only. The only two things this product ever writes to an external system are a Slack message and an outbound email — both are alerts, never a write-back into Zendesk, Jira, Intercom, Linear, or GitHub.
 - **Correlation:** how a case in one system is matched to a record in another — see [Section 15](#15-correlation-between-systems).
 - **Sync behavior:** Elapsed syncs each connected system in the background on two schedules — an **active-set poll** (every 5 minutes by default) for open cases with a live commitment, and a **reconciliation sweep** (every 30 minutes by default, and never longer than 30 minutes) that re-checks everything, including closed cases, as a safety net against a missed poll. Zendesk and Jira additionally support a real-time webhook that closes the gap between polls for the one ticket/issue that just changed.
 - **Disconnecting:** always a soft disconnect. The connection stops syncing and its credentials are cleared, and everything that came from it — its cases, commitments, events, links, alerts, and the figures built on them — disappears from the app and from alerts and reports. Nothing is deleted: reconnecting the same integration brings all of it back.
 - **Reauthentication:** if a token expires, is revoked, or a refresh attempt fails, the integration is marked **"Needs reconnect"** on the Integrations page, and a banner with a one-click reconnect link appears wherever that provider's data would otherwise be shown (onboarding, the integration's own detail page).
+
+### When an integration is unavailable
+
+Elapsed can make an integration temporarily unavailable, for example during a provider incident or maintenance, or because a Beta integration is open only to selected organizations. You will see one of these on the Integrations page and in onboarding:
+
+- **Unavailable**: the integration can't be connected right now. If Elapsed added a note, it is shown on the card.
+- **Coming soon**: the integration is listed but can't be connected yet.
+- **Paused by Elapsed**: you are connected, but Elapsed has paused this integration. This is not a disconnect, and you don't need to do anything.
+
+While an integration is paused by Elapsed:
+
+- Nothing is deleted or changed. Your connection, credentials, cases, events, commitments and history stay as they are, and stay visible.
+- Elapsed makes no requests to that system, ignores its webhooks, and refuses new connections, reconnects and manual imports. These requests return the error code `integration_disabled`, `integration_coming_soon` or `integration_beta_restricted`.
+- SLA tracking continues on the data already received, and the integration is shown as **stale** (see the freshness notices), so at-risk alerts carry a stale-data marker and breach alerts wait until data is fresh again.
+- You can still disconnect it.
+
+When Elapsed makes the integration available again, syncing resumes from where it stopped and catches up on changes made in the meantime, including changes whose webhooks were ignored. If you had disconnected it yourself, it stays disconnected until you reconnect it.
+
+### Custom REST (Beta)
+
+For a helpdesk Elapsed has no built-in integration for. It is a ticket source configured entirely from the **Integrations → Custom REST** page; no code is run and nothing is installed. It must be enabled for your organization by the platform operator first, one Custom REST source is allowed per organization, and only the organization **owner** can configure it.
+
+- **What it does:** reads tickets (and, optionally, replies and status history) from a JSON API over HTTPS, maps them into Elapsed's fields, and feeds the same SLA engine as every other source.
+- **Read-only:** Elapsed sends `GET` requests, and `POST` only to an endpoint you have explicitly confirmed is a read-only search. It never creates, edits or deletes anything in your system. Redirects are not followed, and requests go only to the address you configured (a public HTTPS host on port 443).
+- **Authentication:** an API key in a header, a Bearer token, Basic authentication, or a custom header. OAuth is not supported and credentials in the query string are refused. Credentials are encrypted at rest, never shown again, and removed from logs and error reports.
+- **Fields:** required are the ticket ID, created time and status. Recommended are title, priority, customer ID and name and an updated-since parameter. Tags and channel can be mapped. Only fields you map are stored.
+- **Two SLA modes:** **Full SLA** needs the replies on each ticket (with who wrote each one and whether it was public) and tracks first response, next reply and resolution. **Resolution-only** tracks resolution only; first response and next reply are shown as **not supported** for the source. Resolution needs a closing timestamp from your system: Elapsed never uses "updated at" as a closing time.
+- **No invented history:** if your system does not provide status history, Elapsed uses each ticket's current status and the timestamps your system gives it. It does not reconstruct history, so time a ticket waited on the customer cannot be excluded and resolution times can read longer than your system's own. Alerts for those calculations say so.
+- **Syncing:** on the same two schedules as other sources, with a 120-second limit on each sync's requests. A large first import (default 90 days, up to 365) is read over several syncs and is shown as **Importing your history**, not as a fault; SLA clocks and breach alerts start after the first complete import. If your API cannot return only recent changes and a full listing does not fit in one sync, the connection is refused with the measured numbers.
+- **Sync history:** the Syncs list shows only syncs that changed your data or that did not complete cleanly (partial, stopped or failed, or with tickets that could not be processed). A sync that finds nothing new is not listed; the page instead shows **Last checked** (the last successful check) and **Last data update** (the last time Elapsed actually changed your data). History is kept for 30 days.
+- **Safety checks:** a sync that would delete or change the open/closed state of an unusually large share of your tickets, or fail on many tickets, is stopped before anything is changed. You can review a stopped lifecycle change and approve it once; a mass deletion cannot be approved.
+- **Configuration versions:** every change is a new immutable version; you can roll back to an earlier one. A rollback applies to future processing and never restores commitments a later version cancelled.
+- **Limits:** a deleted ticket is hidden only when your system says so (a status or flag you map, or a confirmed "not found"); a ticket restored later stays hidden. Capacity for large organizations has not been validated yet, so this source is Beta and enabled per organization.
+- **Credentials and key rotation:** if the deployment's `INTEGRATION_TOKEN_ENCRYPTION_KEY` is rotated, saved Custom REST credentials become unreadable and the owner must enter them again.
 
 ### Bringing your own OAuth app
 
@@ -257,7 +292,7 @@ Nothing. No issue, status, comment, or field in Jira is ever created or changed.
 
 ### Sync behavior
 
-Same two-speed poll as Zendesk (5 min / 60 min), plus an optional webhook (manually registered in Jira's own admin settings — Section 20) for near-real-time updates on issue creation and updates.
+Same two-speed poll as Zendesk (5 min / 30 min), plus an optional webhook (manually registered in Jira's own admin settings — Section 20) for near-real-time updates on issue creation and updates.
 
 ### What happens when...
 
@@ -345,7 +380,7 @@ A warning banner listing customer/commitment-type combinations whose recent reso
 
 Three charts, all computed from the same 30-day period as the tiles above:
 
-- **Breaches Over Time** — a daily line chart of breach counts across the period, by the UTC day each commitment actually ran out of time (business hours and customer pauses included), not the day it was first synced or evaluated. Imported history lands on its original dates.
+- **Breaches Over Time** — a daily line chart of breach counts across the period, by the day (in your organization's display timezone) each commitment actually ran out of time (business hours and customer pauses included), not the day it was first synced or evaluated. Imported history lands on its original dates.
 - **SLA Compliance** — a donut chart of all cases in the period by their worst commitment status: **Met**, **At Risk**, **Breached**.
 - **Breaches by Stage** — a horizontal bar chart of breached time attributed to each leg (support, engineering, waiting on customer, unknown) — this is the "where did the time go" view, not a ranking of teams.
 
@@ -406,6 +441,15 @@ The engine's one governing rule: **elapsed time is always computed from the reco
 Each SLA policy is bound to a business calendar — either a set of weekly working windows with a timezone and holiday list (imported from Zendesk's own business-hours schedules), or an always-open calendar for 24/7 targets. An 8-hour resolution target under a business-hours calendar does not mean 8 calendar hours — only time inside the calendar's open windows counts, so an 8-hour target opened at 4pm on a Friday, under a 9-to-5 weekday calendar, doesn't come due until well into the following week.
 
 Working windows follow the calendar's local wall clock through daylight-saving changes: a 9-to-5 window is 9-to-5 local time on both sides of a clock change. On the change day itself, a window that spans the skipped hour counts one hour less and a window that spans the repeated hour counts one hour more, because that is how much real time passed.
+
+### Display timezone vs. calendar timezone
+
+Elapsed has two different kinds of timezone, and they do different jobs:
+
+- **Organization display timezone** (Settings → Organization). Every date and time you see in Elapsed is shown in this timezone: case timelines, commitments, members, integration status, banners and alert messages. It is also the timezone that new timezone pickers start on (for example, a new business calendar), the one that groups the dashboard's charts into days, and the one the monthly report uses to decide where a month starts and ends. Changing it changes only how times are *shown*: stored timestamps and SLA results do not change.
+- **Business calendar timezone**. Each business calendar has its own timezone. Its working windows and holidays are read in that timezone, and it alone decides how SLA deadlines are calculated. A new calendar starts with your display timezone pre-selected, but you can pick another, and an existing calendar never changes when you change the display timezone.
+
+Billing dates and the "Breached at (UTC)" column in the monthly report CSV stay in UTC on purpose.
 
 ### Holidays
 
@@ -651,7 +695,7 @@ When the product cannot confidently determine something — a link, a leg bounda
 - **What SLA writes back to your connected systems:** nothing, in every case — Zendesk, Jira, Linear, Intercom, and GitHub are read-only in practice as well as by design. The only two outbound actions this product ever takes are posting a Slack message and sending an alert email — both are notifications about your data, not modifications to your source systems.
 - **Organization isolation:** every customer, case, integration, and setting is scoped to your organization; a request for a case that doesn't belong to your organization is treated as not found.
 - **Assignee names:** the case header (Section 12) shows the currently-assigned agent's display name, resolved from Zendesk's `assignee_id` or Intercom's `admin_assignee_id`. Only the name is stored — never the provider's internal numeric id — and it is display only: never used for policy matching, routing, scoring, or any calculation. It updates on the next sync after a reassignment; there is no history of past assignees.
-- **Credential storage:** OAuth tokens for connected integrations, and the OAuth application credentials you configure for your organization, are stored encrypted. Disconnecting an integration clears its stored credentials.
+- **Credential storage:** Custom REST credentials (API key, token or password) are encrypted at rest, bound to your organization, never returned to the browser, and removed from logs and error reports. OAuth tokens for connected integrations, and the OAuth application credentials you configure for your organization, are stored encrypted. Disconnecting an integration clears its stored credentials.
 - **Team members and invitations:** an owner invites a teammate by email from Settings → Members. The invitation is valid for 7 days and can be revoked or resent. The invitee accepts it and joins your organization; they do not get a separate one. Owners can change a member's role and remove members, and an organization always keeps at least one owner.
 - **Roles:** there are two, **owner** and **member**. Owners can connect and disconnect integrations, change SLA policies, calendars and the engineering target, edit organization and email settings, manage members and invitations, and manage billing. Members cannot make those changes. There are no roles beyond these two, and no SSO/SAML.
 - **Compliance certifications, data residency, and retention policy:** not currently documented in the implementation. If these are requirements for your organization, raise them directly with your account contact rather than assuming a specific answer from this document.

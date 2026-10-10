@@ -27,7 +27,7 @@ The product has 10 live customers. Every later phase (contract, freshness, admin
 
 - **Store events, never computed time.** `RawEvent` stays append-only and replayable; `NormalizedEvent` stays derived.
 - **Evaluations stay immutable.** The engine stays pure and deterministic: `@sla/core` has no I/O, no clock, and no dependencies.
-- **Provider knowledge belongs at the adapter boundary.** No generic connector SDK, no dynamic plugin loading, no provider-specific SLA engine, no abstraction a current requirement doesn't need (roadmap D16).
+- **Provider knowledge belongs at the adapter boundary.** No general-purpose connector SDK, no dynamic plugin loading, no provider-specific SLA engine, no abstraction a current requirement doesn't need (roadmap D16; amended by D31, which permits the single declarative `custom` ticket-source engine, see [plan 09](09-custom-ticket-provider.md)).
 - Customer ≠ Requester. Conversation ≠ Activity Timeline. No blame-oriented language.
 - **Multi-tenant isolation.** Every new query is scoped by `organizationId`, and new models get tenant-isolation coverage.
 - **Existing customer behaviour must not silently change** (roadmap D24, §5 below).

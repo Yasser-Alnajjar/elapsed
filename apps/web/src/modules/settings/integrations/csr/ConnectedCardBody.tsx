@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { PollingPausedBanner } from "@/components/shared/polling-paused-banner";
@@ -7,7 +10,8 @@ import { TONE_TEXT } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 import type { IntegrationProvider } from "@/lib/types/integrations";
 import { DisconnectButton } from "./DisconnectButton";
-import { descriptionClass, formatDateTime } from "./card-format";
+import { formatDateTime } from "@/lib/format";
+import { descriptionClass } from "./card-format";
 
 interface PulseStat {
   label: string;
@@ -110,11 +114,13 @@ export function ConnectedCardBody({
   pulse?: PulsePanelProps;
   extra?: ReactNode;
 }) {
+  const timeZone = useOrgTimezone();
   return (
     <div className="flex flex-1 flex-col gap-4">
       <MetaLine>
         <span className="font-mono text-xxs">
           {new Date(connectedAt).toLocaleDateString("en-US", {
+            timeZone,
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -127,7 +133,7 @@ export function ConnectedCardBody({
         <PulsePanel {...pulse} />
       ) : (
         <p className={descriptionClass}>
-          Connected {formatDateTime(connectedAt)}.
+          Connected {formatDateTime(connectedAt, timeZone)}.
           {disconnectHint && ` ${disconnectHint}`}
         </p>
       )}

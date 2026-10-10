@@ -7,6 +7,7 @@ import {
   type IntegrationProvider,
   type PrismaClient,
 } from "@sla/db";
+import { sourceSupportNotices } from "./source-support-notices";
 import {
   BREACH_NOTIFICATION_THRESHOLD,
   assessFreshness,
@@ -45,7 +46,7 @@ import type {
 // (to pick the adapter), `id` (only to pass along to
 // `buildConversationMessages`) and `credentials` (handed to the adapter's
 // `externalUrl`) — never the row's other columns.
-const INTEGRATION_SELECT = { id: true, provider: true, credentials: true, lastSuccessfulSyncAt: true } as const;
+const INTEGRATION_SELECT = { id: true, provider: true, credentials: true, lastSuccessfulSyncAt: true, slaSupport: true } as const;
 
 // No business calendar exists yet for a case whose SLA hasn't matched any
 // policy — fall back to an always-open calendar purely for the purpose of
@@ -670,6 +671,7 @@ async function getCaseDetailDataInner(
       ticketUrl,
       sourceStaleSince,
       sourceNeverSynced,
+      sourceNotices: sourceSupportNotices(sourceIntegration?.slaSupport ?? null),
     },
     currentLeg,
     commitments,
@@ -728,6 +730,10 @@ async function buildConversationMessages(
     }
   }
 
+  // Optional, additive (N9, option B): configuration an adapter interprets at render time.
+  const config =
+    sourceIntegrationId && adapter.loadRenderConfig ? await adapter.loadRenderConfig(prisma, sourceIntegrationId) : undefined;
+
   const payloads = new Map<string, unknown>();
   if (replyEvents.length > 0) {
     const rawEventRows = await prisma.rawEvent.findMany({
@@ -753,5 +759,6 @@ async function buildConversationMessages(
     ),
     payloads,
     context,
+    ...(config !== undefined ? { config } : {}),
   });
 }

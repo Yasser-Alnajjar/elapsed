@@ -19,6 +19,8 @@ vi.mock("@/lib/entitlements", () => ({
 }));
 vi.mock("@/lib/oauth-state", () => ({ signOAuthState: vi.fn(() => "signed-state") }));
 vi.mock("@sla/db", () => ({
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
   getPrismaClient: vi.fn(() => ({})),
   getIntegrationConfig: vi.fn(async () => ({ clientId: "client-123", clientSecret: "secret-xyz" })),
 }));

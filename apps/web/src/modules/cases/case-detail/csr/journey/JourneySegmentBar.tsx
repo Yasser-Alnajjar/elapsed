@@ -5,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { formatDateTime, formatLeg, formatMinutes } from "@/lib/format";
 import type { CaseDetailData } from "@/lib/types/cases";
 import { legStyle } from "@/lib/status-styles";
@@ -20,6 +21,7 @@ export function JourneySegmentBar({
   data: CaseDetailData;
   journey: CaseJourneyState;
 }) {
+  const timeZone = useOrgTimezone();
   const {
     isOpen,
     now,
@@ -79,11 +81,11 @@ export function JourneySegmentBar({
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                {formatLeg(span.leg)} · {formatDateTime(span.startedAt)} –{" "}
+                {formatLeg(span.leg)} · {formatDateTime(span.startedAt, timeZone)} –{" "}
                 {isCurrent
                   ? "Now"
                   : end !== null
-                    ? formatDateTime(span.endedAt)
+                    ? formatDateTime(span.endedAt, timeZone)
                     : "Now"}
               </TooltipContent>
             </Tooltip>
@@ -92,10 +94,10 @@ export function JourneySegmentBar({
       </div>
 
       <div className="flex flex-col items-start md:flex-row md:items-center justify-between px-1 font-mono text-xxs text-outline">
-        <span>{formatDateTime(data.case.openedAt)} · Clock Start</span>
+        <span>{formatDateTime(data.case.openedAt, timeZone)} · Clock Start</span>
         {firstHandoffAt && (
           <span className="text-primary">
-            {formatDateTime(new Date(firstHandoffAt).toISOString())} · Handoff
+            {formatDateTime(new Date(firstHandoffAt).toISOString(), timeZone)} · Handoff
           </span>
         )}
         <span
@@ -103,7 +105,7 @@ export function JourneySegmentBar({
             isOpen && !firstHandoffAt ? "text-error font-medium" : "",
           )}
         >
-          {isOpen ? "Now" : formatDateTime(data.case.closedAt ?? data.asOf)}
+          {isOpen ? "Now" : formatDateTime(data.case.closedAt ?? data.asOf, timeZone)}
         </span>
       </div>
     </div>

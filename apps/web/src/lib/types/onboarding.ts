@@ -1,6 +1,6 @@
 import type { SourceRole } from "@sla/core";
 import type { ProviderCapabilities } from "@sla/ingestion";
-import type { IntegrationConfigStatus, IntegrationProvider } from "./integrations";
+import type { IntegrationConfigStatus, IntegrationProvider , ProviderAvailabilityView } from "./integrations";
 import type { AtRiskRow, UnmatchedCaseRow } from "./dashboard";
 import type { FindingsData } from "./findings";
 import type { SlaPolicySummary } from "./sla-configuration";
@@ -26,6 +26,8 @@ export interface ProviderOnboardingStatus {
   subdomain: string | null;
   /** Whether this org has saved its own OAuth app config for the provider yet; gates the connect UI (W4). */
   config: IntegrationConfigStatus;
+  /** Platform availability (D33): the Beta label, and whether it can be connected now. */
+  availability: ProviderAvailabilityView;
 }
 
 export interface OnboardingStatus {

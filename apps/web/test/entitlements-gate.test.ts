@@ -16,6 +16,8 @@ vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => state.session)
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@sla/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@sla/db")>()),
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
   getPrismaClient: vi.fn(() => ({ integration: { findUnique: async () => state.integration } })),
   checkEntitlement: vi.fn(async (_prisma: unknown, _org: string, resource: string) => {
     state.checked.push(resource);

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Link2 } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 
 import {
   formatCaseLinkMethod,
@@ -11,6 +12,7 @@ import {
 import type { CaseDetailData } from "@/lib/types/cases";
 
 export function LinkedRecords({ data }: { data: CaseDetailData }) {
+  const timeZone = useOrgTimezone();
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-6 shadow-sm">
       <div className="flex items-center justify-between">
@@ -67,7 +69,7 @@ export function LinkedRecords({ data }: { data: CaseDetailData }) {
 
           {data.case.openedAt && (
             <span className="text-sm text-outline">
-              Created: {formatDateTime(data.case.openedAt)}
+              Created: {formatDateTime(data.case.openedAt, timeZone)}
             </span>
           )}
 

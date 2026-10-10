@@ -7,6 +7,7 @@ import { requireOwner } from "@/lib/authz";
 import { getGithubOAuthConfig, GITHUB_STATE_COOKIE } from "@/lib/github-env";
 import { validateOAuthState } from "@/lib/oauth-state";
 import { getAppUrl } from "@/lib/app-url";
+import { requireIntegrationAvailableOrRedirect } from "@/lib/integration-availability";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -40,6 +41,12 @@ export async function GET(request: Request) {
   if (!owner || !repo) {
     return NextResponse.json({ error: "Invalid or expired OAuth state" }, { status: 400 });
   }
+
+  // D33: an OAuth flow started before the provider became unavailable must not
+  // complete. Checked before the code is exchanged, so no credentials are
+  // stored and a connect link is not consumed.
+  const unavailable = await requireIntegrationAvailableOrRedirect(state.organizationId, "github", getAppUrl());
+  if (unavailable) return unavailable;
 
   const config = await getGithubOAuthConfig(state.organizationId);
   const tokenCredentials = await exchangeCodeForToken(code, config);

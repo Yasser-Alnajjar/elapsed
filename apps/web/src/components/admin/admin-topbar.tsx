@@ -4,15 +4,17 @@ import { Search, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { formatUtcClock } from "@/lib/admin-format";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
+import { formatClockTime, formatTimeZoneLabel } from "@/lib/format";
 import type { IUser } from "@/lib/types/user";
 import { UserMenu } from "../layout/user-menu";
 
 /**
  * The admin top bar. The search is real: it opens the Tenants list filtered to
  * the query (name, owner email or tenant id), and `⌘K` / `Ctrl+K` focuses it.
- * The clock is the browser's own, shown in UTC, because every timestamp in the
- * console is UTC.
+ * The clock is the browser's own, shown in the operator's organization display
+ * timezone (`Organization.timezone`), not UTC. The timestamps in the console's
+ * tables stay UTC (see `@/lib/admin-format`); the clock's tooltip says so.
  */
 export function AdminTopbar({ user }: { user: IUser }) {
   const router = useRouter();
@@ -69,7 +71,7 @@ export function AdminTopbar({ user }: { user: IUser }) {
       </form>
 
       <div className="ml-auto flex shrink-0 items-center gap-3">
-        <UtcClock />
+        <OrgClock />
         <div className="bg-border hidden h-4 w-px sm:block" />
         <UserMenu user={user} />
       </div>
@@ -78,7 +80,8 @@ export function AdminTopbar({ user }: { user: IUser }) {
 }
 
 /** Ticks once a second after mount; renders a placeholder first so server and client markup match. */
-function UtcClock() {
+export function OrgClock() {
+  const timeZone = useOrgTimezone();
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -87,14 +90,16 @@ function UtcClock() {
     return () => clearInterval(timer);
   }, []);
 
+  const label = formatTimeZoneLabel(timeZone);
+
   return (
     <div
       className="bg-surface-raised border-border text-muted-foreground hidden items-center gap-1.5 rounded border px-2.5 py-1 font-mono text-xs sm:flex"
-      title="Every timestamp in this console is UTC"
+      title={`Current time in ${label}, your organization's display timezone. Timestamps in the console's tables are UTC.`}
     >
       <Timer className="text-foreground-subtle size-3.5" aria-hidden />
       <span className="text-foreground font-medium tabular-nums">
-        UTC {now ? formatUtcClock(now) : "--:--:--"}
+        {label} {now ? formatClockTime(now, timeZone) : "--:--:--"}
       </span>
     </div>
   );

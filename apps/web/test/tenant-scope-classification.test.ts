@@ -64,6 +64,14 @@ const SCOPES: Record<string, Scope> = {
   NotificationFailure: { kind: "via", fk: "commitmentId", parent: "Commitment" },
   WorkerSettings: { kind: "global" },
   AdminAuditLog: { kind: "platform" },
+  CustomActivationAudit: { kind: "direct" },
+  CustomProviderConfigVersion: { kind: "direct" },
+  CustomProviderDraft: { kind: "direct" },
+  GuardOverride: { kind: "direct" },
+  IntegrationBetaAllowlist: { kind: "direct" },
+  IntegrationSyncRun: { kind: "direct" },
+  // D33: the platform-wide per-provider availability policy; operator-only, no tenant column.
+  IntegrationAvailability: { kind: "global" },
 };
 
 /** Raw body of each model, for checks on more than field names. */

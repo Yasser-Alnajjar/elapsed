@@ -13,6 +13,7 @@ import { PROVIDERS, WEB_PROVIDERS } from "@/lib/providers";
 import { getZendeskOAuthConfig } from "@/lib/zendesk-env";
 import { computeWebhookPipeline, deliverWebhookNotifications } from "@/lib/webhook-pipeline";
 import { errorMessage } from "@/lib/utils";
+import { ignoreWebhookIfUnavailable } from "@/lib/integration-availability";
 
 export const maxDuration = 60;
 
@@ -29,7 +30,7 @@ export const maxDuration = 60;
  * On success this runs the full poll-cycle tail (ingest → normalize →
  * commitments → evaluation → notifications) for one ticket, synchronously,
  * which is what actually delivers "real-time freshness" — the 5-minute
- * active-set poll and 60-minute reconciliation sweep (roadmap step 7) keep
+ * active-set poll and 30-minute reconciliation sweep (roadmap step 7) keep
  * running unchanged as the safety net for missed or out-of-order deliveries.
  * Normalization and the pipeline tail run under `withOrganizationSlaLock`
  * (E-3): a concurrent worker cycle or another webhook for the same
@@ -56,6 +57,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ int
   if (integration.status === "disconnected") {
     return NextResponse.json({ status: "ignored", reason: "integration disconnected" });
   }
+
+  // D33 ruling 5: while the provider is unavailable to this organization the
+  // delivery is acknowledged (200) and ignored, so the sender neither retries
+  // nor disables the webhook. Nothing is stored; the first poll after
+  // re-enablement fetches the change from the stored cursor.
+  const unavailable = await ignoreWebhookIfUnavailable(integration.organizationId, "zendesk");
+  if (unavailable) return unavailable;
 
   let payload: unknown;
   try {

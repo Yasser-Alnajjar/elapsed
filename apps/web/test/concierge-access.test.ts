@@ -15,7 +15,11 @@ const providerCalls = vi.hoisted(() => ({ credentialsLoadedFor: [] as string[] }
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("server-only", () => ({}));
-vi.mock("@sla/db", () => ({ getPrismaClient: () => db.prisma }));
+vi.mock("@sla/db", () => ({
+  getPrismaClient: () => db.prisma,
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
+}));
 const oauthConfig = vi.hoisted(() => async () => ({ clientId: "id", clientSecret: "secret", redirectUri: "http://x" }));
 vi.mock("@/lib/jira-env", () => ({ getJiraOAuthConfig: vi.fn(oauthConfig) }));
 vi.mock("@/lib/zendesk-env", () => ({ getZendeskOAuthConfig: vi.fn(oauthConfig) }));

@@ -164,10 +164,10 @@
   /* ── Reference tokens ─────────────────────────── */
   --background: #0b1326;
   --surface: #131b2e;
-  --surface-raised: #111c34;
+  --surface-raised: #171f33;
   --surface-overlay: #1a2745;
-  --surface-hover: #233356;
-  --surface-active: #2b3d64;
+  --surface-hover: #1c2743;
+  --surface-active: #253253;
 
   --foreground: #f8fafc;
   --foreground-muted: #94a3b8;

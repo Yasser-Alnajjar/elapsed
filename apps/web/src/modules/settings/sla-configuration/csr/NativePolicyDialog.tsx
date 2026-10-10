@@ -3,9 +3,11 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Actions } from "@/actions/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 import { EntitlementWarningAlert, type EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 import {
   Dialog,
   DialogContent,
@@ -98,6 +100,7 @@ export function NativePolicyDialog({
       // The policy exists either way; a soft-limit warning only changes what the owner is told.
       const warning = "entitlementWarning" in result.body ? result.body.entitlementWarning : undefined;
       if (mode === "create" && warning) {
+        notify.success("Policy created.");
         setSavedWarning(warning);
         return;
       }
@@ -134,9 +137,6 @@ export function NativePolicyDialog({
 
         {savedWarning ? (
           <div className="space-y-4" data-testid="policy-created-with-warning">
-            <Alert variant="success">
-              <AlertDescription>Policy created.</AlertDescription>
-            </Alert>
             <EntitlementWarningAlert warning={savedWarning} />
             <DialogFooter>
               <Button
@@ -213,10 +213,10 @@ export function NativePolicyDialog({
           )}
 
           {error && (
-            <Alert variant="destructive">
+            <DismissibleAlert key={error} variant="destructive">
               <AlertCircle />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            </DismissibleAlert>
           )}
 
           <DialogFooter className="gap-2">

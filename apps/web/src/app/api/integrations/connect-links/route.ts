@@ -11,6 +11,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { requireOwner } from "@/lib/authz";
 import { connectLinkUrl } from "@/lib/connect-link";
+import { requireIntegrationAvailable } from "@/lib/integration-availability";
 
 const createSchema = z.object({
   provider: z.enum(CONNECT_LINK_PROVIDERS),
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
 
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  // D33: no link for a provider that is unavailable to this organization.
+  const unavailable = await requireIntegrationAvailable(session.user.organizationId, parsed.data.provider);
+  if (unavailable) return unavailable;
 
   const link = await createConnectLink(getPrismaClient(), {
     organizationId: session.user.organizationId,

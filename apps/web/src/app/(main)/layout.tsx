@@ -21,6 +21,8 @@ import { getStaleIntegrationData } from "@/lib/freshness-data";
 import { StaleDataBanner } from "@/components/shared/stale-data-banner";
 import { PlanNoticeBanner } from "@/components/shared/plan-notice-banner";
 import { providerRole } from "@/lib/providers";
+import { getOrganizationTimezone } from "@/lib/organization-timezone";
+import { OrgTimezoneProvider } from "@/components/shared/org-timezone-provider";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
 export default async function AppLayout({ children }: AppLayoutProps) {
   const { session, organizationId } = await getRequestContext();
 
-  const [user, integrations, alertSummary, staleIntegrations, entitlementNotice] =
+  const [user, integrations, alertSummary, staleIntegrations, entitlementNotice, timezone] =
     await withPerfScope("layout", () =>
       Promise.all([
         // Read fresh from the database rather than the JWT session: name and
@@ -50,10 +52,14 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         getEntitlementNotice(getPrismaClient(), organizationId, {
           roleOf: providerRole,
         }),
+        // The organization's display timezone, provided to every client
+        // component below so dates and timezone defaults agree app-wide.
+        getOrganizationTimezone(),
       ]),
     );
 
   return (
+    <OrgTimezoneProvider timezone={timezone}>
     <SidebarProvider defaultOpen={false}>
       <AppSidebar isPlatformOperator={isPlatformOperator(session)} />
       <SidebarInset>
@@ -130,5 +136,6 @@ export default async function AppLayout({ children }: AppLayoutProps) {
         </main>
       </SidebarInset>
     </SidebarProvider>
+    </OrgTimezoneProvider>
   );
 }

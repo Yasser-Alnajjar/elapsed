@@ -27,3 +27,6 @@ apps/nginx/ssl/
 
 # Multi-worker benchmark output (apps/worker/scripts/bench/run.ts)
 apps/worker/scripts/bench/out/
+
+# Local manual-test credentials (N9)
+.local/

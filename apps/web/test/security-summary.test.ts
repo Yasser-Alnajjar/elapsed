@@ -10,7 +10,7 @@ describe("security summary facts", () => {
   const facts = Object.fromEntries(getProviderAccessFacts().map((f) => [f.provider, f]));
 
   it("lists every provider in the registry", () => {
-    expect(Object.keys(facts).sort()).toEqual(["github", "intercom", "jira", "linear", "zendesk"]);
+    expect(Object.keys(facts).sort()).toEqual(["custom", "github", "intercom", "jira", "linear", "zendesk"]);
   });
 
   it("reports the exact scopes the OAuth modules request", () => {

@@ -276,7 +276,7 @@ export default function JiraIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Same two-speed poll as Zendesk (5 min / 60 min), plus an optional
+            Same two-speed poll as Zendesk (5 min / 30 min), plus an optional
             webhook for near-real-time updates on issue creation and updates.
           </p>
 

@@ -2,6 +2,15 @@ import { signIn as nextAuthSignIn } from "next-auth/react";
 import type { EntitlementWarningPayload } from "@/components/shared/entitlement-alerts";
 import type { CommitmentKind } from "@sla/core";
 import { interpretCredentialsSignInResult, type SignInOutcome } from "@/lib/auth-rate-limit";
+import type {
+  ActivateOutcome,
+  ConnectionTest,
+  DraftConfigDocument,
+  DraftView,
+  Preview,
+  Sample,
+  ValidateResponse,
+} from "@/lib/types/custom-provider";
 import type { OnboardingStatus } from "@/lib/types/onboarding";
 import type {
   ConfigurableIntegrationProvider,
@@ -34,7 +43,7 @@ import type {
 interface ActionResult<T> {
   ok: boolean;
   status: number;
-  body: T & { error?: string; reauthRequired?: boolean };
+  body: T & { error?: string; reauthRequired?: boolean; retryAfterSeconds?: number };
 }
 
 export interface EmailSettingsFormInput {
@@ -81,6 +90,15 @@ async function postJSON<T>(
   return { ok: response.ok, status: response.status, body };
 }
 
+function interpretActivation(result: ActionResult<Record<string, unknown>>): ActivateOutcome {
+  const { ok, status, body } = result;
+  if (ok) return { kind: "activated", version: Number(body.version), cancelled: Number(body.cancelled ?? 0) };
+  if (status === 409 && body.code === "needs_confirmation") return { kind: "needs_confirmation", impact: body.impact as never };
+  if (body.code === "listing_too_large") return { kind: "listing_too_large", measurement: body.measurement as never };
+  if (body.code === "invalid") return { kind: "invalid", issues: (body.issues as never) ?? [], diagnostics: (body.diagnostics as never) ?? [] };
+  return { kind: "error", code: String(body.code ?? body.error ?? "failed"), missing: body.missing as string[] | undefined };
+}
+
 /**
  * Browser-only mutation layer. Every function here is a thin wrapper around
  * a `fetch()` call to an existing `app/api/**` route handler — kept in a
@@ -95,6 +113,53 @@ export const Actions = {
     },
     async signUp(input: SignUpInput) {
       return postJSON<Record<string, never>>("/api/sign-up", input);
+    },
+  },
+
+  /** Custom REST (N9): the wizard, activation and the guard override. All owner-only; the server re-checks the Beta flag on every call. */
+  CustomProvider: {
+    async saveDraft(config: DraftConfigDocument, secrets?: Record<string, string>) {
+      const response = await fetch("/api/integrations/custom/draft", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config, ...(secrets ? { secrets } : {}) }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { draft?: DraftView; error?: string };
+      return { ok: response.ok, status: response.status, body };
+    },
+    async editFromActive() {
+      const response = await fetch("/api/integrations/custom/draft/from-active", { method: "POST" });
+      const body = (await response.json().catch(() => ({}))) as { draft?: DraftView | null; error?: string };
+      return { ok: response.ok, status: response.status, body };
+    },
+    testConnection() {
+      return postJSON<ConnectionTest>("/api/integrations/custom/test");
+    },
+    sample() {
+      return postJSON<Sample>("/api/integrations/custom/sample");
+    },
+    preview() {
+      return postJSON<Preview>("/api/integrations/custom/preview");
+    },
+    validate() {
+      return postJSON<ValidateResponse>("/api/integrations/custom/validate");
+    },
+    async activate(options: { note?: string; confirmPreviewHash?: string } = {}): Promise<ActivateOutcome> {
+      return interpretActivation(await postJSON<Record<string, unknown>>("/api/integrations/custom/activate", options));
+    },
+    async rollback(toVersion: number, confirmPreviewHash?: string): Promise<ActivateOutcome> {
+      return interpretActivation(await postJSON<Record<string, unknown>>("/api/integrations/custom/rollback", { toVersion, confirmPreviewHash }));
+    },
+    disconnect() {
+      return postJSON<{ status: string }>("/api/integrations/custom/disconnect");
+    },
+    async overridePreview() {
+      const response = await fetch("/api/integrations/custom/overrides");
+      const body = (await response.json().catch(() => ({}))) as { aborted?: import("@sla/custom-ticket").AbortedPassPreview | null; error?: string };
+      return { ok: response.ok, status: response.status, body };
+    },
+    confirmOverride(input: { previewHash: string; reason: string; via?: "support" }) {
+      return postJSON<{ id: string; expiresAt: string; via: string }>("/api/integrations/custom/overrides", input);
     },
   },
 

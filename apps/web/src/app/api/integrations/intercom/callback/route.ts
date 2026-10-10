@@ -7,6 +7,7 @@ import { requireOwner } from "@/lib/authz";
 import { getIntercomOAuthConfig, INTERCOM_STATE_COOKIE } from "@/lib/intercom-env";
 import { validateOAuthState } from "@/lib/oauth-state";
 import { getAppUrl } from "@/lib/app-url";
+import { requireIntegrationAvailableOrRedirect } from "@/lib/integration-availability";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -42,6 +43,12 @@ export async function GET(request: Request) {
     );
   }
   const { state } = validation;
+
+  // D33: an OAuth flow started before the provider became unavailable must not
+  // complete. Checked before the code is exchanged, so no credentials are
+  // stored and a connect link is not consumed.
+  const unavailable = await requireIntegrationAvailableOrRedirect(state.organizationId, "intercom", getAppUrl());
+  if (unavailable) return unavailable;
 
   const config = await getIntercomOAuthConfig(state.organizationId);
   const credentials = await exchangeCodeForToken(code, config);

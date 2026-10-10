@@ -1,5 +1,6 @@
 import { ShieldAlert } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDescription } from "@/components/ui/alert";
+import { DismissibleAlert } from "@/components/ui/dismissible-alert";
 
 interface PermissionDeniedBannerProps {
   /** Display name shown in the banner copy, e.g. "Zendesk", "Jira". */
@@ -30,11 +31,11 @@ export function PermissionDeniedMessage({ provider }: PermissionDeniedBannerProp
  */
 export function PermissionDeniedBanner({ provider }: PermissionDeniedBannerProps) {
   return (
-    <Alert variant="warning">
+    <DismissibleAlert variant="warning">
       <ShieldAlert />
       <AlertDescription>
         <PermissionDeniedMessage provider={provider} />
       </AlertDescription>
-    </Alert>
+    </DismissibleAlert>
   );
 }

@@ -1,4 +1,4 @@
-export const DEFAULT_ORGANIZATION_CONCURRENCY = 5;
+export const DEFAULT_ORGANIZATION_CONCURRENCY = 3;
 
 /** A missing or invalid value (NaN, < 1, non-integer) falls back to the default rather than disabling or unbounding the pool. */
 export function normalizeConcurrency(value: number | undefined): number {

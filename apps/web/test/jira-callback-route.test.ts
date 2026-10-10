@@ -53,6 +53,8 @@ vi.mock("@sla/jira", () => ({
   generateWebhookSecret: vi.fn(() => "webhook-secret"),
 }));
 vi.mock("@sla/db", () => ({
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
   getPrismaClient: vi.fn(() => ({
     integration: {
       findUnique: db.findUnique,

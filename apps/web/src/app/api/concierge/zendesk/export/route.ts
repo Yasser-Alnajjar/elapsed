@@ -10,6 +10,7 @@ import {
 } from "@sla/zendesk";
 import { authOptions } from "@/lib/auth";
 import { authorizeSourceExport } from "@/lib/concierge-access";
+import { requireIntegrationAvailable } from "@/lib/integration-availability";
 import { invalidSinceDaysResponse, parseSinceDays, zipResponse } from "@/lib/concierge-route";
 import {
   ZENDESK_EXPORT_ZIP_FILE,
@@ -43,6 +44,9 @@ export async function POST(request: NextRequest) {
     integrationId: body.zendeskIntegrationId,
   });
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  // D33: no live Zendesk call while the provider is unavailable to that organization.
+  const unavailable = await requireIntegrationAvailable(access.organizationId, "zendesk");
+  if (unavailable) return unavailable;
 
   let config;
   try {

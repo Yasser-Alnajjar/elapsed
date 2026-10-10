@@ -32,7 +32,7 @@ describe("scrubSentryEvent", () => {
       } as ErrorEvent);
       const serialized = JSON.stringify(event);
       expect(serialized).not.toContain("abc123");
-      expect(event.request?.url).toBe("https://app.example.com/api/webhooks/jira/int-1?secret=[Filtered]");
+      expect(event.request?.url).toBe("https://app.example.com/api/webhooks/jira/int-1?secret=[REDACTED]");
     }
   });
 
@@ -45,7 +45,7 @@ describe("scrubSentryEvent", () => {
 describe("scrubSentryBreadcrumb", () => {
   it("scrubs navigation-style to/from fields", () => {
     expect(scrubSentryBreadcrumb({ data: { from: "/a?secret=x", to: "/b" } }).data).toEqual({
-      from: "/a?secret=[Filtered]",
+      from: "/a?secret=[REDACTED]",
       to: "/b",
     });
   });

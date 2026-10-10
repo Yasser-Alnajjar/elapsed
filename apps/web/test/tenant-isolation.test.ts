@@ -333,6 +333,7 @@ async function seedExtras(
       email: `member-${lower}@example.test`,
       passwordHash: "unused",
       role: "member",
+      emailVerifiedAt: new Date(),
     },
   });
   await prisma.slaImportSummary.create({
@@ -402,6 +403,37 @@ async function seedExtras(
   });
   await prisma.billingEvent.create({
     data: { organizationId: org.organizationId, type: "operator_note", actorType: "operator", data: { note: `${label} billing note` } },
+  });
+
+  // D31/D33/N9: the Custom REST, guard, sync-run and availability tables are tenant-scoped too.
+  const integrationId = (await prisma.integration.findFirstOrThrow({ where: { organizationId: org.organizationId } })).id;
+  await prisma.customActivationAudit.create({
+    data: { organizationId: org.organizationId, integrationId, action: "activate", toVersion: 1, userId: member.id, details: { note: `${label} activation` } },
+  });
+  await prisma.customProviderConfigVersion.create({
+    data: { organizationId: org.organizationId, integrationId, version: 1, schemaVersion: 1, config: {}, configHash: `${label}-hash` },
+  });
+  await prisma.customProviderDraft.create({
+    data: { organizationId: org.organizationId, displayName: `${label} draft`, config: {}, expiresAt: new Date(Date.now() + 86_400_000) },
+  });
+  await prisma.guardOverride.create({
+    data: {
+      organizationId: org.organizationId,
+      integrationId,
+      guard: "site_switch",
+      previewHash: `${label}-preview`,
+      counts: {},
+      reason: `${label} override`,
+      path: "/test",
+      requestedByUserId: member.id,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    },
+  });
+  await prisma.integrationBetaAllowlist.create({
+    data: { provider: "custom", organizationId: org.organizationId, addedByEmail: "ops@watchtower.test" },
+  });
+  await prisma.integrationSyncRun.create({
+    data: { organizationId: org.organizationId, integrationId, startedAt: new Date(), outcome: "ok" },
   });
 
   const commitments = await prisma.commitment.findMany({

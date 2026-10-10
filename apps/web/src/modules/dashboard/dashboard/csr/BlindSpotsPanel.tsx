@@ -1,4 +1,7 @@
+"use client";
+
 import { CheckCircle2, PlugZap, ShieldAlert, Ticket } from "lucide-react";
+import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
 import { formatCommitmentKind, formatExactTimestamp } from "@/lib/format";
 import { INTEGRATION_PROVIDER_LABELS } from "@/lib/types/integrations";
 import type {
@@ -58,6 +61,7 @@ export function BlindSpotsPanel({
   failedAlerts,
   failedAlertsOverflowCount,
 }: BlindSpotsPanelProps) {
+  const timeZone = useOrgTimezone();
   const unhealthyIntegrations = integrationHealth.filter(
     (row) => row.reauthRequired || row.permissionDenied || row.lastSyncError || row.failingSince || row.stale,
   );
@@ -147,11 +151,11 @@ export function BlindSpotsPanel({
                     : row.permissionDenied
                       ? "Provider-side access lost (permission denied)"
                       : row.failingSince
-                        ? `Sync failing since ${formatExactTimestamp(row.failingSince)}`
+                        ? `Sync failing since ${formatExactTimestamp(row.failingSince, timeZone)}`
                         : row.lastSyncError
                           ? `Last sync failed: ${row.lastSyncError}`
                           : row.staleSince
-                            ? `Data stale since ${formatExactTimestamp(row.staleSince)} (no recent successful sync)`
+                            ? `Data stale since ${formatExactTimestamp(row.staleSince, timeZone)} (no recent successful sync)`
                             : "Data stale: no successful sync has completed yet"}
                 </span>
               </li>
@@ -187,7 +191,7 @@ export function BlindSpotsPanel({
                   </a>
                   <span className="text-outline shrink-0 font-mono text-xxs">
                     {row.attempts} attempt{row.attempts !== 1 ? "s" : ""} since{" "}
-                    {formatExactTimestamp(row.firstFailedAt)}
+                    {formatExactTimestamp(row.firstFailedAt, timeZone)}
                   </span>
                 </div>
                 <span className="text-error truncate text-xs">{row.error}</span>

@@ -1,46 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRetryCountdown } from "@/hooks/use-retry-countdown";
 
 export type CooldownReason = "RATE_LIMITED" | "AUTH_THROTTLED";
 
 /**
- * A server-imposed sign-in cooldown, counted down once a second until it
- * clears itself. `start` begins one from the server's `retryAfterSeconds`.
+ * A server-imposed sign-in cooldown, counted down until it clears itself.
+ * `start` begins one from the server's `retryAfterSeconds`.
  */
 export function useSignInCooldown() {
-  // Seconds remaining in a server-imposed cooldown.
-  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
+  const countdown = useRetryCountdown();
   const [cooldownReason, setCooldownReason] = useState<CooldownReason | null>(
     null,
   );
 
-  useEffect(() => {
-    if (cooldownSeconds === null) return;
-
-    if (cooldownSeconds <= 0) {
-      setCooldownSeconds(null);
-      setCooldownReason(null);
-      return;
-    }
-
-    const timer = setTimeout(
-      () => setCooldownSeconds((seconds) => (seconds ?? 1) - 1),
-      1000,
-    );
-
-    return () => clearTimeout(timer);
-  }, [cooldownSeconds]);
-
   const start = (reason: CooldownReason, seconds: number) => {
     setCooldownReason(reason);
-    setCooldownSeconds(seconds);
+    countdown.start(seconds);
   };
 
   return {
-    cooldownSeconds,
-    cooldownReason,
-    inCooldown: cooldownSeconds !== null && cooldownSeconds > 0,
+    cooldownSeconds: countdown.remainingSeconds,
+    cooldownReason: countdown.active ? cooldownReason : null,
+    inCooldown: countdown.active,
     start,
   };
 }

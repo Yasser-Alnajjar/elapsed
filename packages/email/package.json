@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sla/safe-http": "workspace:*",
     "nodemailer": "^10.0.1"
   },
   "devDependencies": {

@@ -397,7 +397,7 @@ export default function IntercomIntegrationPage() {
           </h2>
 
           <p className="leading-7 text-muted-foreground">
-            Poll only — the same 5-minute (active cases) / 60-minute
+            Poll only — the same 5-minute (active cases) / 30-minute
             (reconciliation) schedule as Zendesk and Jira, but with no real-time
             webhook. Each sync also re-checks conversations changed in the
             previous 5 minutes, so an update Intercom&apos;s search had not
