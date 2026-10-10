@@ -116,6 +116,10 @@ services:
       INTEGRATION_CONFIG_ENCRYPTION_KEY: ${INTEGRATION_CONFIG_ENCRYPTION_KEY:?INTEGRATION_CONFIG_ENCRYPTION_KEY is required}
       SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:?SMTP_ENCRYPTION_KEY is required}
       INTEGRATION_TOKEN_ENCRYPTION_KEY: ${INTEGRATION_TOKEN_ENCRYPTION_KEY:?INTEGRATION_TOKEN_ENCRYPTION_KEY is required}
+      # Custom REST live-case ceiling (plan 09 OD-08). Only the worker evaluates
+      # it (the sync guard runs in the polling cycle); the web service never
+      # reads it. Unset or invalid falls back to the same 1000 in code.
+      CUSTOM_PROVIDER_LIVE_CASE_CEILING: ${CUSTOM_PROVIDER_LIVE_CASE_CEILING:-1000}
       WORKER_ACTIVE_POLL_MS: ${WORKER_ACTIVE_POLL_MS:-300000}
       WORKER_RECONCILIATION_MS: ${WORKER_RECONCILIATION_MS:-1800000}
       # All optional (roadmap step 29) — see .env.example's "Observability"

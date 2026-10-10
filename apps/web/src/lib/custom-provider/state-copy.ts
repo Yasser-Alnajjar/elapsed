@@ -52,6 +52,12 @@ export const ATTENTION_COPY: Record<AttentionCause, string> = {
   permission: "Your system denied access. Check the permissions of the account the credentials belong to.",
   provider: "Your system could not be reached or answered with an error. Elapsed retries on every sync.",
   safety_check: "A safety check stopped a sync before any change was applied. Review the flagged change below.",
+  mass_deletion:
+    "A sync was stopped before any change was applied because it would have removed an unusually large share of your tickets (by a deleted or archived status or flag, or because tickets no longer exist at the source). Nothing was deleted and this check cannot be overridden from here. If the removal is intended, contact support; if not, fix the source and the next sync will retry.",
+  live_case_ceiling:
+    "A sync was stopped before any change was applied because it would take this source over the number of live tickets Elapsed supports for one custom source during the Beta. Nothing was changed. Narrow the tickets the listing returns (for example, by status or date), then the next sync will retry.",
+  mass_record_failure:
+    "A sync was stopped before any change was applied because too many tickets in the batch could not be processed. Nothing was changed. Review the failed tickets below and fix the field mappings or the data; the next sync will retry.",
   no_progress: "Elapsed could not read even one page in three syncs in a row. Check that your system responds in time, or narrow the first import.",
   cannot_finish_without_cursor:
     "Your system has no way to ask for only recent changes, and a full listing no longer fits in one sync. Add an updated-since parameter to the configuration.",

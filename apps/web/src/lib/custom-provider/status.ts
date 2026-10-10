@@ -17,6 +17,9 @@ export type AttentionCause =
   | "credentials"
   | "provider"
   | "safety_check"
+  | "mass_deletion"
+  | "live_case_ceiling"
+  | "mass_record_failure"
   | "no_progress"
   | "cannot_finish_without_cursor"
   | "processing";
@@ -53,7 +56,12 @@ export function attentionCause(input: StateInput): AttentionCause | null {
     const hasCursor = (latest.progress as { hasIncrementalCursor?: unknown } | null)?.hasIncrementalCursor;
     return hasCursor === false ? "cannot_finish_without_cursor" : null;
   }
-  if (latest.outcome === "aborted") return latest.reasonCode === "flag_disabled" ? null : "safety_check";
+  if (latest.outcome === "aborted") {
+    if (latest.reasonCode === "flag_disabled") return null;
+    // Each guard gets its own message; the lifecycle guard (the only one an owner may override) and any unknown code keep the generic one.
+    if (latest.reasonCode === "mass_deletion" || latest.reasonCode === "live_case_ceiling" || latest.reasonCode === "mass_record_failure") return latest.reasonCode;
+    return "safety_check";
+  }
   if (latest.outcome === "failed") {
     const code = latest.reasonCode ?? "";
     if (code === "credentials_unreadable") return "credentials";

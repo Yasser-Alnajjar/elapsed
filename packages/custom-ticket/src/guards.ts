@@ -29,11 +29,15 @@ export const RECORD_FAILURE_RATIO = 0.25;
 export const LIFECYCLE_MIN = 10;
 export const LIFECYCLE_RATIO = 0.25;
 
-/** The working default before the benchmark gate fixes the ceiling (R4): conservative and explicitly unvalidated. */
-export const DEFAULT_LIVE_CASE_CEILING = 5_000;
+/**
+ * The Beta safeguard (OD-08): live cases per integration, checked on every poll as `L + N > C`.
+ * Set from the D-01 benchmark on a pinned 2-CPU host; provisional, not proof of production-host
+ * performance, and not to be raised before a real-host rerun.
+ */
+export const DEFAULT_LIVE_CASE_CEILING = 1_000;
 const MAX_CONFIGURABLE_CEILING = 100_000;
 
-/** `CUSTOM_PROVIDER_LIVE_CASE_CEILING`, else the unvalidated default. Never a literal in the guard itself. */
+/** `CUSTOM_PROVIDER_LIVE_CASE_CEILING`, else the Beta default. Never a literal in the guard itself. */
 export function liveCaseCeiling(env: NodeJS.ProcessEnv = process.env): number {
   const raw = Number(env.CUSTOM_PROVIDER_LIVE_CASE_CEILING);
   return Number.isInteger(raw) && raw >= 1 && raw <= MAX_CONFIGURABLE_CEILING ? raw : DEFAULT_LIVE_CASE_CEILING;
