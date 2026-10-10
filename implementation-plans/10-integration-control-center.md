@@ -17,6 +17,7 @@ A platform operator can control, from `/admin/integrations` and without a deploy
 | 1 | Linear is seeded **Stable** (consistent with the D17 amendment of 2026-10-05). From N10 on, a stage change is applied in the admin console; D17 still requires it to be an explicit owner decision, recorded in the roadmap. |
 | 2 | Integration availability controls are pulled forward from plan 04 §10 ("feature flags, Later") as D33 / N10. `PLATFORM_ADMIN_EMAILS` stays the only platform-admin authority. No database-backed admin roles. |
 | 3 | `Organization.customProviderEnabled` is folded into the generic Beta allowlist. The N9.14-F1 restriction is preserved **and enforced by the backend**: until it is lifted, Custom REST cannot be added to any allowlist, opened to all organizations, or promoted to Stable. The admin UI says why. |
+| 3-A1 | **Amends ruling 3 (owner, 2026-10-10); ruling 3's text above is unchanged and remains the history.** While N9.14-F1 is open, an operator may add or remove **individual organizations** on the Custom REST allowlist, but only while the provider is **Beta with an allowlist**; each add is scoped to that one organization and audited. **Still blocked with 409 `rollout_blocked`:** opening Custom REST to all organizations and promoting it to Stable. N9.14-F1 stays open for those and for public Beta copy. Reason: ruling 3 as written made the Beta allowlist unusable, so a limited, operator-controlled Beta could not run at all. |
 | 4 | An integration operation runs only when the provider is **enabled and available to that organization**. Moving a provider to an allowlist or to Coming Soon blocks operations for organizations that no longer qualify. Configuration, credentials and stored data are preserved. |
 | 5 | Webhooks for an unavailable provider return **HTTP 200 with an ignored body**; reconciliation recovers the missed changes after re-enablement (§6.4). |
 | 6 | `enabled` is independent of `releaseStage`. Stages are **Stable, Beta, Coming Soon**. "Disabled" is not a stage. |
@@ -165,7 +166,7 @@ A static **boundary test** lists every route under `app/api/integrations/**` and
 ### 5.4 Custom REST specifics (rulings 3, 4)
 
 - Removing an organization from the Custom REST allowlist keeps plan 09 §8.7's belt-and-braces behavior: the same transaction sets `pollingPausedAt` on its custom integration. Re-adding does **not** resume a pause (§8.7, unchanged).
-- **Rollout block (N9.14-F1).** While the catalog carries the block, the admin API refuses, with 409 `rollout_blocked`: adding an organization to the Custom REST allowlist; setting its `betaAccess` to `all_organizations`; promoting it to `stable`. Narrowing changes (disable, Coming Soon, removing an organization) stay allowed. Lifting the block is a reviewed code change made when N9.14-F1 is closed. Organizations seeded from an existing `customProviderEnabled = true` stay on the list; nothing is removed by the migration.
+- **Rollout block (N9.14-F1; amended by ruling 3-A1, 2026-10-10).** While the catalog carries the block, the admin API refuses, with 409 `rollout_blocked`: setting Custom REST's `betaAccess` to `all_organizations`; promoting it to `stable`. Adding an organization to its allowlist is allowed only while the provider is `beta` with `allowlist` (otherwise 409 `rollout_blocked`); the add is scoped to that organization and audited. _(As first written, this bullet also refused every allowlist add; see ruling 3-A1.)_ Narrowing changes (disable, Coming Soon, removing an organization) stay allowed. Lifting the block is a reviewed code change made when N9.14-F1 is closed. Organizations seeded from an existing `customProviderEnabled = true` stay on the list; nothing is removed by the migration.
 
 ### 5.5 Customer-facing
 
@@ -266,7 +267,7 @@ No credential, token, secret or configuration payload is read or written by thes
 - **Resolver:** every state of §4.1, missing-row defaults, allowlist hit and miss.
 - **Admin authorization and persistence:** owner, member and signed-out get 401/403 on every new route; an operator's write persists and writes one audit row; no-op writes nothing; no secret in audit metadata.
 - **Concurrency:** two writes with the same `expectedVersion`: one succeeds, one gets 409.
-- **Rollout block:** each blocked Custom REST change is refused with 409 and writes nothing; narrowing changes succeed.
+- **Rollout block:** each blocked Custom REST change (all organizations, Stable, an allowlist add outside Beta/allowlist) is refused with 409 and writes nothing; narrowing changes and an allowlist add under Beta/allowlist succeed and write one audit row (3-A1).
 - **Connect and reconnect:** connect, callback and connect-link start refuse an unavailable provider without storing credentials or consuming the link.
 - **Webhook:** an unavailable provider gets 200 ignored and nothing is ingested.
 - **Backfill, config writes, concierge export, custom routes:** 403 with the code.
