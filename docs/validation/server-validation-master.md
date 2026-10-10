@@ -1378,12 +1378,13 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:
-Evidence:    dry-run counts=          after (by kind/status)=         finalized_md5 same? [ ]  evaluations same? [ ]
-             audit row=          rollback to v1=          re-activate cancels=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (executed by Claude Code from the cloud session), 2026-10-10
+Where:       cloud-session e2e stack: local Postgres 16 (no Docker), sla_e2e_test, branch claude/sharp-euler-gm4not, mock helpdesk with 140 tickets, rebuilt via B-08 and B-09 (API-driven, not browser)
+Evidence:    dry-run counts= 19 next_reply (all breachedOpen), 0 first_response, 140 finalized kept; DB identical to b16-before until confirmation
+             after (by kind/status)= first_response met 140; next_reply cancelled 19; resolution on_track 19, met 46, breached 75   finalized_md5 same? [x] (241d07bd...)  evaluations same? [x] (299)
+             audit row= activate 1->2, previewHash 7062d94e..., cancelledByKind {next_reply:19}, keptFinalized 140   rollback to v1= refused, 409 next_reply_restore_blocked (active version stayed 2)   re-activate cancels= 0 (new version 3, previewHash null, DB identical to after)
+Deviations:  The cloud session has no Docker, so psql against a local Postgres replaced ldc/lsql. B-09 was rebuilt through the API (policy, draft, test, sample, preview, validate, activate) and not the browser; the dry-run/confirm UI (ImpactPanel) was not exercised. In this dataset no unfinalized first_response commitments existed (all 140 met), so only next_reply was cancelled; first_response cancellation is not covered. Step 4 produced version 3, not 2 (every activation creates a new version).
 ```
 
 ### CHECKPOINT B
