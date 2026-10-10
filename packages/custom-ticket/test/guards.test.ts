@@ -118,10 +118,10 @@ describe("guard order", () => {
 });
 
 describe("liveCaseCeiling (configuration)", () => {
-  it("defaults to the unvalidated 5,000 (R4) when unset or invalid", () => {
-    expect(DEFAULT_LIVE_CASE_CEILING).toBe(5000);
+  it("defaults to the 1,000 Beta safeguard (OD-08) when unset or invalid", () => {
+    expect(DEFAULT_LIVE_CASE_CEILING).toBe(1000);
     for (const value of [undefined, "", "abc", "0", "-5", "1.5", "100001", "NaN", "Infinity"]) {
-      expect(liveCaseCeiling({ CUSTOM_PROVIDER_LIVE_CASE_CEILING: value })).toBe(5000);
+      expect(liveCaseCeiling({ CUSTOM_PROVIDER_LIVE_CASE_CEILING: value })).toBe(1000);
     }
   });
 
@@ -129,6 +129,6 @@ describe("liveCaseCeiling (configuration)", () => {
     expect(liveCaseCeiling({ CUSTOM_PROVIDER_LIVE_CASE_CEILING: "1000" })).toBe(1000);
     expect(liveCaseCeiling({ CUSTOM_PROVIDER_LIVE_CASE_CEILING: "1" })).toBe(1);
     expect(liveCaseCeiling({ CUSTOM_PROVIDER_LIVE_CASE_CEILING: "100000" })).toBe(100_000);
-    expect(liveCaseCeiling({})).toBe(5000);
+    expect(liveCaseCeiling({})).toBe(1000);
   });
 });
