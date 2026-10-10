@@ -86,64 +86,146 @@ Interlock: the owner decisions are recorded, so the reviewer now receives them a
 
 | # | Check | Result | Command set |
 | --- | --- | --- | --- |
-| 1 | Is 13.62.74.24 an Elastic IP or auto-assigned? | **NOT PERFORMED** | D1-a, D1-d |
-| 2 | Public or private subnet; outbound route | **NOT PERFORMED** | D1-a, D1-d |
-| 3 | IPv6 enabled / alternative outbound path | **NOT PERFORMED** | D1-a, D1-b |
-| 4 | Do web and worker use the same outbound IP | **NOT PERFORMED** | D1-b |
-| 5 | DNS and external allowlists affected by an IP change | **NOT PERFORMED** | D1-c |
+| 1 | Is 13.62.74.24 an Elastic IP or auto-assigned? | **NOT PERFORMED** | H1, A1, A2 |
+| 2 | Public or private subnet; outbound route | **NOT PERFORMED** | H1, H2, A3, A4, A5 |
+| 3 | IPv6 enabled / alternative outbound path | **NOT PERFORMED** | H1, H2, H3, A3, A4 |
+| 4 | Do web and worker use the same outbound IP | **NOT PERFORMED** | H3 |
+| 5 | DNS and external allowlists affected by an IP change | **NOT PERFORMED** | H4, A7, your own allowlist records |
 
-Run these read-only on the host (`ssh ubuntu@13.62.74.24`, from `~/elapsed`) and from a machine with AWS CLI read access, then paste the output into the table above:
+Step 1 is two read-only procedures. Do not send SSH keys, AWS keys, session tokens or `.env` contents to anyone, including in chat; only the redacted outputs described below are needed. Nothing here allocates, associates, changes or restarts anything.
+
+**Part H: on the production host**
+
+| | |
+| --- | --- |
+| Where | On the EC2 host, in a shell you open yourself (`ssh` from your own machine with your own key), in `~/elapsed` |
+| Access level | The `ubuntu` login that already runs `docker compose` there. No `sudo`, no AWS credentials. Reads the instance metadata service (IMDSv2), network state and the running containers only |
+| Side effects | Four short outbound HTTPS requests to public IP-echo services and `docker exec` of a one-line Node command (no writes). Services are not restarted |
+
+Save everything to a file as you go: start with `script -q d1-host.txt` (end with `exit`), or append `| tee -a d1-host.txt` yourself.
 
 ```bash
-# D1-a  host, metadata (IMDSv2): identity, subnet, public address, IPv6
+cd ~/elapsed
+
+# H1  identity, subnet, public address, IPv6 (instance metadata, IMDSv2)
 T=$(curl -sS -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
 M=http://169.254.169.254/latest/meta-data
-for k in instance-id placement/region public-ipv4 local-ipv4; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/$k)"; done
+for k in instance-id instance-type placement/region placement/availability-zone public-ipv4 local-ipv4; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/$k)"; done
 MAC=$(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/network/interfaces/macs/ | head -1)
-for k in subnet-id vpc-id ipv6s public-ipv4s; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/network/interfaces/macs/${MAC}$k)"; done
-ip -4 route show default; ip -6 route show default; ip -6 addr show scope global
-curl -4sS https://checkip.amazonaws.com; curl -6sS -m 4 https://checkip.amazonaws.com || echo "no IPv6 egress from the host"
+for k in subnet-id vpc-id public-ipv4s ipv6s subnet-ipv6-cidr-blocks; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" $M/network/interfaces/macs/${MAC}$k)"; done
 
-# D1-b  containers: outbound address of web and of EACH worker replica, plus IPv6
-C="docker compose -f docker-compose.yml --env-file .env"   # the host uses .env (A-03); use .env.prod if that is what you run
-for svc in web worker; do
-  echo "== $svc"; $C exec -T $svc node -e 'Promise.allSettled([fetch("https://checkip.amazonaws.com"),fetch("https://ipv6.icanhazip.com")]).then(async r=>{for(const x of r)console.log(x.status==="fulfilled"?(await x.value.text()).trim():"failed: "+x.reason.cause?.code)})'
-done
-for id in $(docker ps -q --filter name=worker); do docker exec $id node -e 'fetch("https://checkip.amazonaws.com").then(r=>r.text()).then(t=>console.log("worker replica",t.trim()))'; done
+# H2  the host's own routes and outbound address (IPv4, then IPv6)
+ip -4 route show default
+ip -6 route show default
+ip -6 addr show scope global
+curl -4sS -m 6 https://checkip.amazonaws.com
+curl -6sS -m 6 https://checkip.amazonaws.com || echo "no IPv6 egress from the host"
+
+# H3  web and worker containers: outbound IPv4 and IPv6 (read-only; one request each)
+C="docker compose -f docker-compose.yml --env-file .env"     # the 2026-10-10 checks found only .env on this host; use the env file you actually deploy with
+CHK='Promise.allSettled([fetch("https://checkip.amazonaws.com"),fetch("https://api6.ipify.org")]).then(async r=>{for(const x of r)console.log(x.status==="fulfilled"?(await x.value.text()).trim():"failed: "+(x.reason&&x.reason.cause&&x.reason.cause.code))})'
+echo "== web";    $C exec -T web    node -e "$CHK"
+echo "== worker"; $C exec -T worker node -e "$CHK"
+# every worker replica (there may be several):
+for id in $(docker ps -q --filter name=worker); do echo "== replica $id"; docker exec "$id" node -e "$CHK"; done
+# Docker networks: is IPv6 enabled on any of them?
 docker network ls -q | xargs docker network inspect --format '{{.Name}} ipv6={{.EnableIPv6}}'
 
-# D1-c  DNS and anything that names the address (read-only)
-dig +short A <your-production-domain>; dig +short AAAA <your-production-domain>; dig <your-production-domain> | grep -i ttl
-grep -E 'NEXTAUTH_URL|SSL_CERT_DIR' .env | sed 's/=.*@/=<...>@/'          # the domain only; do not print secrets
-# third parties: list where the raw address or domain is registered (no change): Zendesk/Jira/Linear/Intercom webhook URLs,
-# the ops SMTP relay allowlist, Sentry, any customer or partner firewall that names 13.62.74.24.
-
-# D1-d  AWS CLI, read-only (run with the production account's read credentials)
-aws ec2 describe-addresses --public-ips 13.62.74.24                        # Associations present = already an Elastic IP; error/empty = auto-assigned
-aws ec2 describe-instances --filters Name=ip-address,Values=13.62.74.24 \
-  --query 'Reservations[].Instances[].[InstanceId,SubnetId,VpcId,PublicIpAddress,Ipv6Address,NetworkInterfaces[].Association,SecurityGroups[].GroupId]'
-aws ec2 describe-subnets --subnet-ids <subnet-id> --query 'Subnets[].[MapPublicIpOnLaunch,Ipv6CidrBlockAssociationSet]'
-aws ec2 describe-route-tables --filters Name=association.subnet-id,Values=<subnet-id>   # 0.0.0.0/0 -> igw-... public; -> nat-... private
-aws ec2 describe-security-groups --group-ids <sg-id> --query 'SecurityGroups[].[IpPermissions,IpPermissionsEgress]'
+# H4  DNS: replace <your-production-domain> with the domain customers use; I do not know it and it is not in the repository
+D=<your-production-domain>
+getent hosts "$D"; (command -v dig >/dev/null && { dig +noall +answer A "$D"; dig +noall +answer AAAA "$D"; }) || echo "dig not installed; use nslookup -type=A $D and -type=AAAA"
+grep -E '^NEXTAUTH_URL=' .env | cut -d= -f2-      # prints only the app URL; never print the rest of .env
 ```
 
-How to read the results: an association in `describe-addresses` means no AWS change is needed (verify only). Default route to `igw-` with a public address on the primary interface means public subnet, and an Elastic IP is the design. Default route to `nat-` or no public address means private subnet: stop and re-plan with a NAT Gateway Elastic IP. A global IPv6 address plus a working `curl -6` from a container means a second outbound path exists and must be closed or accounted for before any address is published. Different addresses in D1-b for web and worker would mean more than one egress path.
+If the shell has no `dig`/`nslookup`, `getent hosts` is enough for the A/AAAA addresses; the record TTL can be read from the DNS provider's console instead.
 
-**Minimum required action (recommendation):** you (or I, once you provide SSH access, e.g. a session-scoped key, or pasted output) run D1-a to D1-d and paste the output. Only then choose between "verify only", "allocate and associate an Elastic IP" (Step 2, needs your separate approval) or "re-plan with a NAT Gateway".
+**Part A: AWS CLI (control plane)**
+
+| | |
+| --- | --- |
+| Where | Your own workstation or AWS CloudShell, signed in to the production account in the region reported by H1 (`placement/region`). Not on the host unless the host already has a read-only instance role |
+| Access level | Read-only EC2 `Describe*` permissions (the AWS-managed `ReadOnlyAccess` or `AmazonEC2ReadOnlyAccess` policy is enough): `DescribeAddresses`, `DescribeInstances`, `DescribeNetworkInterfaces`, `DescribeSubnets`, `DescribeRouteTables`, `DescribeInternetGateways`, `DescribeNatGateways`, `DescribeSecurityGroups`. Optional for DNS only: Route 53 `ListHostedZones` and `ListResourceRecordSets`. No write permission is needed or should be used |
+| Side effects | None; every command below is a `describe-` / `list-` call |
+
+```bash
+export AWS_PAGER=""
+R=<region from H1>
+
+# A1  is the host's public address an Elastic IP? (an Association entry = yes; "InvalidAddress.NotFound" = it is not an Elastic IP in this account/region)
+aws ec2 describe-addresses --region "$R" --public-ips 13.62.74.24
+
+# A2  the instance: subnet, VPC, public and IPv6 addresses, interfaces, security groups
+aws ec2 describe-instances --region "$R" --filters Name=ip-address,Values=13.62.74.24 \
+  --query 'Reservations[].Instances[].[InstanceId,InstanceType,SubnetId,VpcId,PublicIpAddress,Ipv6Address,NetworkInterfaces[].[NetworkInterfaceId,Association.PublicIp,Association.IpOwnerId,Ipv6Addresses],SecurityGroups[].GroupId]'
+# If A2 returns nothing, the address is not on a running instance's primary interface in this region: stop and report that.
+
+# A3  subnet attributes and IPv6 (use the SubnetId from A2)
+aws ec2 describe-subnets --region "$R" --subnet-ids <subnet-id> \
+  --query 'Subnets[].[SubnetId,AvailabilityZone,MapPublicIpOnLaunch,AssignIpv6AddressOnCreation,Ipv6CidrBlockAssociationSet[].Ipv6CidrBlock]'
+
+# A4  how outbound traffic is routed: the route table of that subnet
+#     0.0.0.0/0 -> igw-...  = public subnet;  0.0.0.0/0 -> nat-... = private subnet;  ::/0 -> igw-/eigw- = an IPv6 outbound path
+aws ec2 describe-route-tables --region "$R" --filters Name=association.subnet-id,Values=<subnet-id> \
+  --query 'RouteTables[].[RouteTableId,Associations[].[Main,SubnetId],Routes[].[DestinationCidrBlock,DestinationIpv6CidrBlock,GatewayId,NatGatewayId,State]]'
+# If A4 returns nothing the subnet uses the VPC's main route table: repeat with Name=association.main,Values=true and Name=vpc-id,Values=<vpc-id>.
+
+# A5  security groups of the instance (use the GroupIds from A2): inbound and outbound rules, read-only
+aws ec2 describe-security-groups --region "$R" --group-ids <sg-id> [<sg-id> ...] \
+  --query 'SecurityGroups[].[GroupId,GroupName,IpPermissions[].[IpProtocol,FromPort,ToPort,IpRanges[].CidrIp,Ipv6Ranges[].CidrIpv6],IpPermissionsEgress[].[IpProtocol,FromPort,ToPort,IpRanges[].CidrIp,Ipv6Ranges[].CidrIpv6]]'
+# Also read-only: network ACLs of the subnet (a rule could block or restrict outbound)
+aws ec2 describe-network-acls --region "$R" --filters Name=association.subnet-id,Values=<subnet-id> \
+  --query 'NetworkAcls[].Entries[].[RuleNumber,Egress,Protocol,RuleAction,CidrBlock,Ipv6CidrBlock]'
+
+# A6  optional: other Elastic IPs and NAT gateways in the VPC (to see whether any already exist and are unused)
+aws ec2 describe-addresses --region "$R" --query 'Addresses[].[PublicIp,AllocationId,AssociationId,InstanceId,NetworkInterfaceId]'
+aws ec2 describe-nat-gateways --region "$R" --filter Name=vpc-id,Values=<vpc-id> --query 'NatGateways[].[NatGatewayId,State,SubnetId,NatGatewayAddresses[].PublicIp]'
+
+# A7  optional DNS (only if the domain is in Route 53 in this account): where its A/AAAA records point and their TTL
+aws route53 list-hosted-zones --query 'HostedZones[].[Id,Name]'
+aws route53 list-resource-record-sets --hosted-zone-id <zone-id> --query "ResourceRecordSets[?Type=='A'||Type=='AAAA'].[Name,Type,TTL,ResourceRecords[].Value,AliasTarget.DNSName]"
+```
+
+**Redacting before you share (keep what establishes the topology)**
+
+Run the saved files through this, then read them once yourself before sending:
+
+```bash
+sed -E \
+  -e 's/\b[0-9]{12}\b/<ACCOUNT_ID>/g' \
+  -e 's/(arn:aws[a-z-]*:[a-z0-9-]*:[a-z0-9-]*:)[0-9]{12}/\1<ACCOUNT_ID>/g' \
+  -e 's/((AWS_)?(SECRET|ACCESS)[A-Z_]*[=:] *)[^ ]+/\1<REDACTED>/Ig' \
+  -e 's/((token|password|passwd|key)[A-Za-z_]*[=:] *)[^ ]+/\1<REDACTED>/Ig' \
+  d1-host.txt > d1-host.redacted.txt
+```
+(Same for the AWS output file.)
+
+| Redact | Why |
+| --- | --- |
+| 12-digit AWS account IDs (including `IpOwnerId`, ARNs, `OwnerId`) | account identifier |
+| Any key, token, secret, password; the contents of `.env`; key-pair names if shown | secrets |
+| Customer or office CIDRs in security-group rules: replace with `<office-ip>`/`<customer-ip>` but keep the port, protocol and whether it is `0.0.0.0/0` | the exposure shape matters, the individual addresses do not |
+| Tags/names that identify other customers | privacy |
+
+| Do NOT redact (needed to establish the topology) | Used to decide |
+| --- | --- |
+| The host's public IPv4 (`13.62.74.24`) and any other public addresses printed, both host and containers | Elastic IP vs auto-assigned, web vs worker egress |
+| Region, availability zone, instance type, instance-id, subnet-id, vpc-id, route-table-id, security-group-ids, allocation/association ids (shorten if you wish, but keep them distinguishable) | joins A1 to A5 |
+| Route destinations and targets, including the prefixes `igw-`, `nat-`, `eigw-` and their state | public vs private subnet, IPv6 path |
+| Whether an `Association` is present in A1/A2, `MapPublicIpOnLaunch`, the IPv6 fields (empty or not) | Elastic IP; IPv6 enabled |
+| Security-group ports/protocols and whether a source is `0.0.0.0/0` or `::/0`; egress rules | inbound exposure and outbound restrictions |
+| The DNS record type, value (address or alias target) and TTL; the app domain | impact of an address change |
+| Error codes such as `InvalidAddress.NotFound`, `UnauthorizedOperation` | tell me which check could not run |
+
+If a command fails with `UnauthorizedOperation`, paste the error and skip it; do not widen your permissions beyond read-only for this.
+
+**What to send back:** `d1-host.redacted.txt` (Part H) and the redacted Part A output, plus which of H1 to H4 and A1 to A7 you could not run. Third-party allowlists (webhook URLs registered at Zendesk/Jira/Linear/Intercom, the ops SMTP relay, Sentry, partner firewalls) cannot be read from here: list from your own records which of them name `13.62.74.24` rather than the domain. Then I will fill the findings table above and recommend the minimum action. Step 2 stays unstarted until you approve it explicitly.
+
+How to read the results: an association in `describe-addresses` means no AWS change is needed (verify only). Default route (A4) to `igw-` with a public address on the primary interface means public subnet, and an Elastic IP is the design. Default route to `nat-` or no public address means private subnet: stop and re-plan with a NAT Gateway Elastic IP. A global IPv6 address plus a working `curl -6` from a container means a second outbound path exists and must be closed or accounted for before any address is published. Different addresses in H3 for web and worker would mean more than one egress path.
+
+**Minimum required action (recommendation):** you run Part H (on the host) and Part A (AWS CLI, read-only) above and send the redacted outputs; no keys or credentials are shared with anyone. Only then choose between "verify only", "allocate and associate an Elastic IP" (Step 2, needs your separate approval) or "re-plan with a NAT Gateway".
 
 **Required AWS changes (NOT executed; Elastic IP path). Placeholders in angle brackets**
-- D1 (read-only discovery, no change; needs your authorization only to be run by me over SSH, or you run it):
-  ```bash
-  # on the host (EC2 metadata, IMDSv2)
-  T=$(curl -sS -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
-  for k in instance-id placement/region public-ipv4 local-ipv4 network/interfaces/macs/; do echo "$k: $(curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/$k)"; done
-  MAC=$(curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/ | head -1)
-  curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC}subnet-id; echo
-  curl -sS -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/network/interfaces/macs/${MAC}ipv6s; echo   # empty/404 = no IPv6
-  curl -4sS https://checkip.amazonaws.com; curl -6sS -m 4 https://checkip.amazonaws.com || echo "no IPv6 egress"
-  docker network inspect $(docker network ls -q --filter name=default) --format '{{.Name}} ipv6={{.EnableIPv6}}'
-  ```
-  and with AWS CLI access (console or CLI, read-only): `aws ec2 describe-addresses --public-ips <public-ipv4>` (an association = already an Elastic IP), `aws ec2 describe-instances --instance-ids <id> --query 'Reservations[].Instances[].[SubnetId,PublicIpAddress,NetworkInterfaces[].Association]'`, `aws ec2 describe-route-tables --filters Name=association.subnet-id,Values=<subnet-id>` (a `0.0.0.0/0` route to `igw-` means public subnet; to `nat-` means private).
+- D1 (read-only discovery, no change): the Part H / Part A procedure above (H1 to H4, A1 to A7).
 - C1 allocate (only if D1 shows no Elastic IP): `aws ec2 allocate-address --domain vpc --tag-specifications 'ResourceType=elastic-ip,Tags=[{Key=Name,Value=elapsed-prod-egress}]'` (record `AllocationId` and `PublicIp`).
 - C2 associate to the instance's primary network interface: `aws ec2 associate-address --instance-id <id> --allocation-id <eipalloc-id>`. This **replaces** the current auto-assigned public address, which is then released by AWS and cannot be recovered.
 - C3 update everything that used the old address: the domain's DNS A record (lower its TTL at least one TTL period beforehand), the `ssh`/`scp` examples in `docs/production-backup-runbook.md` and the validation master, any firewall or allowlist at a third party that names the old address, and any monitoring target.
