@@ -2387,7 +2387,7 @@ Follow-up 2 2026-10-10 (after the owner's D-07 instruction): the package was ext
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [x] BLOCKED (BL-04)   [ ] SKIPPED   (PARTIAL: tests written and passing, 4 of the 22 §13 rows still have no dedicated test; status stays open; see Follow-up)
+Status:      [x] PASS (2026-10-10, Follow-up 4: all §13 rows covered, 598 focused tests pass on `testing` and `main`)   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (earlier: BLOCKED by BL-04, then PARTIAL; kept in the follow-ups below)
 Evidence:    test files=   §13 rows covered _/22   failures=
 Follow-up 2026-10-10 (Claude Code, cloud session; branch claude/sharp-euler-gm4not, test-only commits dc6ad09, 5db1cb1, 3586f4c; NOT on origin/testing, see Deviations):
              test files written (13): packages/safe-http/test/{address,url,json,budget,client}.test.ts; packages/custom-ticket/test/{guards,path-and-dates,derive-history,pagination,overrides,validate-and-sla-modes}.test.ts; packages/db/test/custom-secrets.test.ts; packages/commitments/test/unsupported-kinds.test.ts
@@ -2616,7 +2616,7 @@ Evidence:    documents changed=          rows closed=          rows left open=
 | D-05 | Third-party rotation (GATED)        | E6       | C-15                     | BLOCKED · **modifies production**    |
 | D-06 | Sentry source maps (GATED)          | E5/E6    | D-05, C-12               | BLOCKED · **modifies production**    |
 | D-07 | Legal review                        | external | –                        | BLOCKED                              |
-| D-08 | N9 focused tests                    | E2       | B-03                     | BLOCKED                              |
+| D-08 | N9 focused tests                    | E2       | B-03                     | PASS (code side; see Follow-up 4)                              |
 | E-01 | Evidence review                     | E1       | all                      | read-only                            |
 | E-02 | Full suite on synced `testing`      | E2       | B-06, B-07, OD-04        | local branch                         |
 
