@@ -337,7 +337,7 @@ Needs owner input: the list of customers (if any) who told Elapsed their IP rest
 
 *Failure handling:* a peer address other than 13.62.74.24: stop, record the exact address and which phase, change nothing, and investigate (a proxy in front of the endpoint is the most likely cause, so first prove the endpoint log shows the real peer); a TLS or hostname error (`tls_error`, `blocked_destination`): fix the endpoint (valid certificate, port 443, public name), not Elastic's settings; HTTP 401: wrong mock key; timeouts or `unreachable`: endpoint or firewall; any request that appears from an unexpected source or any real data in the log: stop and treat as an incident; if either phase cannot be completed, O-2 stays open and the failure is recorded in this record.
 
-*Approvals needed from the owner before anything runs:* (a) the controlled hostname and its log access, (b) approval to run Phase 0, (c) separately, the production release deployment and approval for the test organization and Phase 1, (d) approval for the cleanup steps.
+*Historical (superseded by the O-2 Option A decision; nothing here is pending): approvals that the fixed-egress test plan would have needed from the owner before anything ran:* (a) the controlled hostname and its log access, (b) approval to run Phase 0, (c) separately, the production release deployment and approval for the test organization and Phase 1, (d) approval for the cleanup steps.
 
 **Verification record (2026-10-10):** address **13.62.74.24** (Elastic IP, allocation `eipalloc-0aca3c86efbc78f3c`, association `eipassoc-0659342d30c647c09`, region eu-north-1); evidence: A1/A2/A4/A6 (AWS CloudShell, read-only) and H2/H3 (owner-run on the host): host IPv4 egress 13.62.74.24; web container 13.62.74.24; worker replicas 1 to 3 each 13.62.74.24 (checked against an external IP-echo service); IPv6: none (no IPv6 on the interface or subnet, no default IPv6 route, containers `ENETUNREACH`, Docker networks `ipv6=false`); verified by the owner running the commands, recorded by engineering. **Not done and not claimed:** (a) a host stop/start test, which would interrupt production; the AWS-side proof stands in for it, since an Elastic IP stays associated across stop/start by design; (b) an end-to-end Custom REST call logged by a controlled endpoint (the external IP-echo check from the same containers and network path is the stand-in); (c) a rule-by-rule review of anything beyond what is listed above; (d) any third-party allowlist check.
 
@@ -379,7 +379,7 @@ Facts it rests on: F-8, F-9, F-16 (no expiry, no purge job, raw events append-on
 
 Facts: F-2, F-3, L-03, L-06 (POST is permitted; the use of POST does not make a request read-only; Elapsed cannot enforce what the customer's endpoint does). Customer guide (Appendix A) must not say "Elapsed never creates, edits or deletes anything in your ticket system" (L-06).
 
-**W-3 (O-2, setup guide; use ONLY after the O-2 verification record is filled in)**
+**W-3 (O-2, setup guide; the O-2 verification record is filled in, but under O-2 Option A no address is promised, so this draft is unused unless the owner reopens fixed-egress work)**
 > Requests from Elapsed to your API come from the following fixed IP address: [address]. [Reviewer: any commitment about advance notice if the address changes.]
 
 *(Note 2026-10-10: W-3 itself is unchanged and remains a separate legal-review item. Under O-2 Option A no address is promised, so this draft is unused unless the owner reopens fixed-egress work.)*

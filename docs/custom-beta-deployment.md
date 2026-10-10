@@ -4,8 +4,8 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 
 ## Preconditions and what this deployment does NOT do
 
-- **Explicit owner authorization for the production deployment is required and has NOT been given.** Do not run any command below, change `.env`, or restart services until it is.
-- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review, (O-2, the fixed outbound IP, is no longer a gate: owner decision 2026-10-10, Option A, deferred indefinitely) and this deployment with its verification (validation master, closure ledger). O-1 and O-3 are decided and only await the reviewer's wording.
+- **Owner authorization:** the production deployment was authorized and run by the owner on 2026-10-10 (see "Execution record"). Any further run of the commands below, any `.env` change or any restart needs a new explicit approval.
+- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains Beta/allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. The block does not stop individual organizations being added to the allowlist; none has been added. Remaining launch prerequisites are listed at the end of this file. O-2 (the fixed outbound IP) is not a gate (owner decision 2026-10-10, Option A, deferred indefinitely).
 
 ## What changes
 
@@ -76,7 +76,7 @@ Behavior (no customer data touched): sign in as a platform operator who is NOT o
 
 ## 3. Rollback
 
-Settings only (keeps the release): remove the two lines from `.env.prod` or restore the defaults, then
+Settings only (keeps the release): remove the two lines from `.env` or restore the defaults, then
 ```bash
 docker compose -f docker-compose.yml --env-file .env up -d worker web
 ```
@@ -104,8 +104,34 @@ Deployed by the owner on the production host to `8a4ee1e` (fast-forward from `8d
 - 68 migrations applied, none pending;
 - `CUSTOM_PROVIDER_LIVE_CASE_CEILING=1000` on the worker and unset on web.
 
-**Open after the run (not fixed, not claimed fixed):**
-1. `GUARD_OVERRIDE_OPERATOR_EMAILS` still has **one configured entry** on web; the approved target is empty. It has an effect only if that address is also in `PLATFORM_ADMIN_EMAILS`. Owner decision: keep (intentional) or clear it in `.env` and recreate web.
-2. Both integrations still report `status = disconnected` although ingestion succeeds. The cause is **unverified**; it is not reported as fixed or as expected behavior.
-3. `backups/` is untracked and not in `.dockerignore`, so `docker build` copies database dumps into the worker image layers on the host. Add `backups` to `.dockerignore` in a reviewed change; until then keep the host's `backups/` out of the build context where practical.
+**Follow-up after the run (repository work, 2026-10-10; no production change was made by engineering):**
+1. `GUARD_OVERRIDE_OPERATOR_EMAILS` has one configured entry on web. **Closed as intentionally configured** (owner decision: the entry is the owner's own and stays). The code was inspected (`apps/web/src/lib/authz.ts`, `isGuardOverrideOperator`): the list is split on commas, trimmed and lower-cased, and an address gets the override permission only if it is ALSO a platform operator (`PLATFORM_ADMIN_EMAILS`); an empty value means nobody. Tests: `apps/web/test/guard-override-operator.test.ts` (passes). The address is deliberately not recorded in this repository. The earlier wording "approved target is empty" no longer applies to this entry.
+2. `status = disconnected` on Intercom and Jira **while ingestion succeeds**: **root cause NOT proven; no code change made; not claimed fixed.** Code trace: the only writers of `Integration.status = "disconnected"` are the per-provider `/api/integrations/<provider>/disconnect` routes (owner action in the UI, which also nulls the credentials) and the Custom REST disconnect; the OAuth callbacks (`status: "connected"`, `disconnectedAt: null`) are the only way back; the worker never writes `disconnected` or `connected` (it writes only `reauth_required`, and `connected` <-> `permission_denied` by compare-and-set). The worker's load query (`ORGANIZATION_TO_PROCESS_SELECT` in `apps/worker/src/cycle.ts`) excludes `disconnected` rows, and the webhooks refuse them. So in the code a `disconnected` row cannot be ingested; "ingestion succeeded" and "status = disconnected" cannot both be true for the same row. The reading therefore most likely came from a different row, field or filter than the ingestion check (for example a second organization, a stale view, or a query on a different column), or the status changed after the ingestion check (for example a Disconnect in the UI). That is a hypothesis, not a finding. Verify with the read-only query below.
+3. `backups/` is now excluded from the Docker build context (`.dockerignore`, entry `backups`). Verified by evaluating the file with the `@balena/dockerignore` matcher (`backups` and `backups/*.dump` excluded; source, `packages/db/prisma` and `scripts/` still included); no Dockerfile references `backups/`. No image was rebuilt (no Docker daemon in the engineering environment). Images already built on the host before this change may still contain the earlier dumps in their layers: that has NOT been checked, and removing them (`docker image prune` after the next approved rebuild) is an owner/host action.
 4. The Custom REST allowlist is empty and no pilot organization was added; the rollout block, legal review and W-3 are unchanged. Beta is not declared ready.
+
+### Read-only SQL for the status question (run on production, changes nothing)
+
+```sql
+SELECT i."organizationId", i.provider, i.status, i."connectedAt", i."disconnectedAt",
+       i."lastSyncAt", i."lastSuccessfulSyncAt", i."consecutiveFailures",
+       (i.credentials IS NOT NULL) AS has_credentials, i."pollingPausedAt"
+FROM "Integration" i
+WHERE i.provider IN ('intercom', 'jira')
+ORDER BY i."organizationId", i.provider;
+```
+
+Reading it: a row with `status = 'disconnected'` that also has a `lastSuccessfulSyncAt` newer than its `disconnectedAt` contradicts the code and would be a real defect to investigate (send that row, without credentials, to engineering). A `disconnected` row with `disconnectedAt` set and `has_credentials = false` was disconnected through the UI; a `connected` row means the earlier report read another source. Use `psql` in read-only form (`BEGIN READ ONLY;` or a read-only role). Do not update the rows to change the displayed status.
+
+## Remaining Limited Beta launch prerequisites (as of this record)
+
+Custom REST stays Beta/allowlist. Nothing below was done by engineering and no pilot organization was added.
+
+| # | Prerequisite | Who | State |
+| --- | --- | --- | --- |
+| 1 | Qualified legal reviewer records Part B decisions (and Q-1 to Q-7, including W-1 to W-3) in `implementation-plans/n9-legal-review.md` section 6 (D-07) | Qualified legal reviewer (engineering may not decide) | OPEN |
+| 2 | One reviewed change to the live Terms and Privacy text, only after (1) | Engineering, after (1) | Blocked on (1) |
+| 3 | Owner names the first pilot organization(s) and approves adding them to the Beta allowlist (`/admin/integrations`) | Owner | Not started; not decided |
+| 4 | Owner identifies a qualified legal reviewer / engages one, if none is engaged yet | Owner | Not recorded in the repository |
+
+Not launch prerequisites: O-2 fixed outbound IP (deferred indefinitely), lifting the rollout block (needed only to open beyond the allowlist or reach Stable, which is out of scope), O-1/O-3 owner decisions (already made; they await the reviewer's wording only). The independent re-observation of the owner-reported production verification is optional evidence, not a gate.
