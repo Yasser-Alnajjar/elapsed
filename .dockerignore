@@ -14,5 +14,6 @@ packages/db/generated
 # Prospect CSV exports and concierge reports (apps/concierge/README.md)
 apps/concierge/data
 
-# Database dumps written by scripts/backup.sh must never enter an image layer
+# Database dumps and operator backups (also gitignored); never copy into image layers
 backups
+**/backups

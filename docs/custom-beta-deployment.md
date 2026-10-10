@@ -9,10 +9,10 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 
 ## What changes
 
-| Setting | Service | Value | Effect |
-| --- | --- | --- | --- |
-| `CUSTOM_PROVIDER_LIVE_CASE_CEILING` | worker | default `1000` | A Custom REST source may hold at most 1,000 live cases; a pass that would exceed it stops with nothing written. Provisional Beta safeguard (OD-08); do not raise it before a real-host benchmark |
-| `GUARD_OVERRIDE_OPERATOR_EMAILS` | web | empty by default (nobody) | Platform operators listed here (and also in `PLATFORM_ADMIN_EMAILS`) may apply a support-assisted guard override |
+| Setting                             | Service | Value                     | Effect                                                                                                                                                                                           |
+| ----------------------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CUSTOM_PROVIDER_LIVE_CASE_CEILING` | worker  | default `1000`            | A Custom REST source may hold at most 1,000 live cases; a pass that would exceed it stops with nothing written. Provisional Beta safeguard (OD-08); do not raise it before a real-host benchmark |
+| `GUARD_OVERRIDE_OPERATOR_EMAILS`    | web     | empty by default (nobody) | Platform operators listed here (and also in `PLATFORM_ADMIN_EMAILS`) may apply a support-assisted guard override                                                                                 |
 
 Both are optional. With neither set in `.env`, the ceiling is 1000 (Compose and compiled default) and nobody holds the override permission. Compose file: commits `8b123a5` and `e888a54` on `main`.
 
@@ -76,53 +76,60 @@ Behavior (no customer data touched): sign in as a platform operator who is NOT o
 
 ## 3. Rollback
 
-Settings only (keeps the release): remove the two lines from `.env` or restore the defaults, then
+Settings only (keeps the release): remove the two lines from `.env.prod` or restore the defaults, then
+
 ```bash
 docker compose -f docker-compose.yml --env-file .env up -d worker web
 ```
 
 Whole deployment:
+
 ```bash
 git checkout "$(cat /tmp/custom-beta-rollback-commit.txt)" -- docker-compose.yml   # or git checkout <that commit>
 docker compose -f docker-compose.yml --env-file .env up -d --build
 ```
+
 Database migrations are not reversed by this. If a migration must be undone, restore the backup taken in step 0 (data written since is lost): see `docs/production-backup-runbook.md`.
 
 ## 4. Do not do
 
 Do not raise the ceiling, enable Custom REST for more than the allowlisted pilot organizations, or lift the rollout block (`packages/db/src/integration-catalog.ts`) as part of this deployment.
 
-## Execution record (2026-10-10)
+## 5. Production record and launch prerequisites (2026-10-10)
 
-Deployed by the owner on the production host to `8a4ee1e` (fast-forward from `8dc2fe8`), with `.env`, after a manual backup `backups/pre-n9-pilot-elapsed_db-20261010T143634Z.dump` (278 KB; its table-data check is not recorded in this file).
+Recorded from the owner's production deployment report. **Owner-reported means the owner observed it on the production host; this repository has no access to production and none of it was independently observed here.** Details beyond what is listed (commit, timings, exact commands) were not supplied and are not recorded.
 
-**Incident during the run (root cause confirmed, fixed by the owner):** the backup command chain ran `umask 077` in the same interactive shell, so `git merge --ff-only` wrote the updated source files as mode 0600. `COPY . .` kept those modes in the worker image, which runs the TypeScript sources as an unprivileged user, so all three workers crash-looped with `EACCES` reading `/repo/packages/db/src/integration-catalog.ts` for a short period. The owner restored read permissions on the tracked files only (not `.env`, `.git` or `backups/`) and rebuilt the workers. `docs/production-backup-runbook.md` now runs the backup umask in a subshell.
+| Item                                  | State                                                                                                                                                                                               | Basis                                                                                                                          |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Worker recovery after the deployment  | Recovered                                                                                                                                                                                           | Owner-reported                                                                                                                 |
+| Intercom and Jira ingestion           | Succeeding                                                                                                                                                                                          | Owner-reported                                                                                                                 |
+| Database migrations                   | Applied (owner-reported status; confirm with the read-only query below if needed)                                                                                                                   | Owner-reported                                                                                                                 |
+| File-permission incident              | Occurred during the deployment and was resolved by the owner                                                                                                                                        | Owner-reported; root cause and fix not recorded here                                                                           |
+| Docker build context                  | `backups/` (and any nested `backups/`) is now excluded by `.dockerignore`, so dumps cannot enter image layers. Applies to the next image build only; images already built are not changed           | Independently verified: a build with the repository's `.dockerignore` and a fake `backups/` tree copied only non-ignored files |
+| `GUARD_OVERRIDE_OPERATOR_EMAILS`      | Intentionally configured by the owner; left unchanged. Not a defect. Code: a session must be a platform operator **and** be on this separate list (`apps/web/src/lib/authz.ts`); empty means nobody | Independently verified: `apps/web/test/guard-override-operator.test.ts` passes. The production value was not read or recorded  |
+| Intercom/Jira `status = disconnected` | **Not fixed; root cause not proven.** See below                                                                                                                                                     | Code trace only                                                                                                                |
 
-**Verification reported by the owner after the fix (not independently observed by engineering):**
-- all 3 workers healthy with 0 restarts; no `EACCES` after the permission fix; database health check passed;
-- Intercom and Jira ingestion succeeded, `consecutiveFailures = 0`, no `lastSyncError`;
-- 68 migrations applied, none pending;
-- `CUSTOM_PROVIDER_LIVE_CASE_CEILING=1000` on the worker and unset on web.
+**Intercom/Jira status.** The only code that writes `disconnected` is the owner-triggered disconnect routes (and the Slack and Custom disconnects); it also clears the credentials. The worker never writes `disconnected` and its organization query excludes rows in that status (`ORGANIZATION_TO_PROCESS_SELECT` in `apps/worker/src/cycle.ts`), and the OAuth callbacks reset a reconnected row to `connected`. A row that is genuinely `disconnected` therefore cannot be ingested by the worker, so the report's two observations cannot both hold for the same row through any code path. The likely explanations, none yet proven, are: the rows queried are not the rows ingesting (another organization or a stale/restored copy), the ingestion came from a manual out-of-band run, or the status was read from a different place. No code change was made. Do not edit the rows. Run this read-only query on production and keep its output as evidence:
 
-**Follow-up after the run (repository work, 2026-10-10; no production change was made by engineering):**
-1. `GUARD_OVERRIDE_OPERATOR_EMAILS` has one configured entry on web. **Closed as intentionally configured** (owner decision: the entry is the owner's own and stays). The code was inspected (`apps/web/src/lib/authz.ts`, `isGuardOverrideOperator`): the list is split on commas, trimmed and lower-cased, and an address gets the override permission only if it is ALSO a platform operator (`PLATFORM_ADMIN_EMAILS`); an empty value means nobody. Tests: `apps/web/test/guard-override-operator.test.ts` (passes). The address is deliberately not recorded in this repository. The earlier wording "approved target is empty" no longer applies to this entry.
-2. `status = disconnected` on Intercom and Jira: **CLOSED as owner-confirmed expected behavior (owner-reported, 2026-10-10).** The owner states they intentionally disconnected both integrations in production, so the `disconnected` values are expected and are not a defect. Not independently observed by engineering. No code change, no production action, and no reconnection was made. The earlier code trace is consistent with this: a Disconnect writes `disconnected`, the worker skips disconnected rows, and only an OAuth reconnect clears it. The Intercom/Jira ingestion success recorded above is **historical verification from before the disconnection**; ingestion does not continue while they are disconnected, and no current ingestion is claimed. Not to be reopened unless new evidence shows behavior inconsistent with the intentional disconnection (for example a `disconnected` integration that is still ingesting).
-3. `backups/` is now excluded from the Docker build context (`.dockerignore`, entry `backups`). Verified by evaluating the file with the `@balena/dockerignore` matcher (`backups` and `backups/*.dump` excluded; source, `packages/db/prisma` and `scripts/` still included); no Dockerfile references `backups/`. No image was rebuilt (no Docker daemon in the engineering environment). Images already built on the host before this change may still contain the earlier dumps in their layers: that has NOT been checked, and removing them (`docker image prune` after the next approved rebuild) is an owner/host action.
-4. The Custom REST allowlist is empty and no pilot organization was added; the rollout block, legal review and W-3 are unchanged. Beta is not declared ready.
+```sql
+SELECT o.id AS organization_id, i.provider, i.status, i."disconnectedAt", i."connectedAt",
+       i."lastSyncAt", i."lastSuccessfulSyncAt", i."lastSyncError", i."failingSince",
+       (i.credentials IS NOT NULL) AS has_credentials,
+       (SELECT max(r."createdAt") FROM raw_events r WHERE r."integrationId" = i.id) AS last_raw_event_at
+FROM integrations i JOIN organizations o ON o.id = i."organizationId"
+WHERE i.provider IN ('intercom','jira')
+ORDER BY i.provider, o.id;
+```
 
-## LEGAL-REVIEW HOLD (owner instruction, active)
+Reading it: `disconnected` with `has_credentials = false` and a `last_raw_event_at` older than `disconnectedAt` is a normal customer disconnect (the ingesting integration is a different row). `disconnected` with credentials present and fresh `lastSuccessfulSyncAt` would be a real defect and the next step is then to look at who set it. If the column names differ in the deployed schema, check `\d integrations` first. Adjust nothing in the table.
 
-Owner instruction: the Terms of Service and Privacy Policy are on hold until the owner **explicitly confirms** the legal review is complete. While active, engineering and agents do not open, review, edit, summarize or analyze either document, do not use their contents for other work, and do not change related legal wording, acceptance requirements or legal decisions. Work that depends on them stops and is reported to the owner. The hold is released only by that explicit confirmation, never inferred from a commit, passing tests or other launch tasks. **Owner decision (Option 3): leave both pages unchanged until the legal review is complete.** `/terms` and `/privacy` therefore remain publicly visible exactly as they are today; their routes, content, the footer and SEO entries, the sign-up checkbox, its validation schema, acceptance behavior and existing links are all unchanged. They remain temporarily visible because hiding them would conflict with the current sign-up acceptance flow (users would have to accept documents they cannot open) and no alternative has been approved. No product or legal change was made on the owner's behalf.
+### Remaining launch prerequisites for the limited Beta
 
-## Remaining Limited Beta launch prerequisites (as of this record)
+Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays, and nothing is promoted to Stable.
 
-Custom REST stays Beta/allowlist. Nothing below was done by engineering and no pilot organization was added.
+1. **Owner decisions O-2 and O-3** in `implementation-plans/n9-legal-decision-sheet.md` (Part A). O-1 is already decided (D34: no age-based expiry); it needs no new decision.
+2. **Qualified legal reviewer's Part B decisions**, recorded in section 6 of `implementation-plans/n9-legal-review.md` (D-07). Engineering may not decide these.
+3. **Explicit approval to run section 1 of this document** on production (Compose settings), then the section 2 verification. Not executed.
+4. A rebuilt image only if you want the `.dockerignore` change to take effect; this needs your approval too.
 
-| # | Prerequisite | Who | State |
-| --- | --- | --- | --- |
-| 1 | Qualified legal reviewer records Part B decisions (and Q-1 to Q-7, including W-1 to W-3) in `implementation-plans/n9-legal-review.md` section 6 (D-07) | Qualified legal reviewer (engineering may not decide) | OPEN |
-| 2 | One reviewed change to the live Terms and Privacy text, only after (1) | Engineering, after (1) | Blocked on (1) |
-| 3 | Owner names the first pilot organization(s) and approves adding them to the Beta allowlist (`/admin/integrations`) | Owner | Not started; not decided |
-| 4 | Owner identifies a qualified legal reviewer / engages one, if none is engaged yet | Owner | Not recorded in the repository |
-
-Not launch prerequisites: O-2 fixed outbound IP (deferred indefinitely), lifting the rollout block (needed only to open beyond the allowlist or reach Stable, which is out of scope), O-1/O-3 owner decisions (already made; they await the reviewer's wording only). The independent re-observation of the owner-reported production verification is optional evidence, not a gate.
+Not launch blockers, per the recorded decisions: Phase C, the Stable promotion, and the allowlist of any further organization.
