@@ -926,11 +926,14 @@ npx vitest run \
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       worktree/branch=      sha=
-Evidence:    files passed _/_   known failures observed: providers [ ] admin-boundary [ ] supersession [ ]   other failures=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (authorized the run); executed by Claude Code from the cloud session, 2026-10-10
+Where:       branch claude/sharp-euler-gm4not, sha=73f7e4a (contains origin/main 1b1e084); db=sla_validation_test (verified: `select current_database()` = sla_validation_test, port 5432 of the container's local PostgreSQL 16, 68 migrations; the suites refuse a database name without "test"); `DATABASE_URL` unset for the run so only TEST_DATABASE_URL was used
+Evidence:    command= `pnpm test:db:prepare` (no pending migrations), then the exact `npx vitest run ...` file list of this check, run as `env -u DATABASE_URL npx vitest run <files>`; exit 0
+             files passed 26/26   tests passed 293/293   failed 0   skipped 0 (log ~/elapsed-validation/b07.log)
+             known failures observed: providers [ ] no   admin-boundary [ ] no   supersession [ ] no   other failures= none
+             the three candidates re-run on their own: providers.test.ts 13 passed, admin-boundary.test.ts 12 passed, custom-sync-state-supersession.test.ts 8 passed (33/33, 0 failed, 0 skipped)
+Deviations:  The three documented known failures did NOT occur. Commit 0495f1f (merged by PR #51) updated exactly these three files (providers.test.ts, admin-boundary.test.ts, custom-sync-state-supersession.test.ts) for the custom provider, the SEO metadata import and D33, so the baseline in the Pass paragraph above is stale for the current code. No new, changed or unexpected failures. The original Pass paragraph is kept as written. Only the prescribed scope ran; no application code, migration or configuration changed; a vitest JSON report file created by the verbose re-run was removed (one file, in the git-ignored .vitest folder).
 ```
 
 ### B-08 — Local end-to-end stack (disposable database, web, worker, mock helpdesk)
@@ -1412,10 +1415,10 @@ Deviations:  The cloud session has no Docker, so psql against a local Postgres r
 Required for the release (C-11): **B-01, B-02, B-03, B-07 PASS** (with only the three known failures in B-07). Required for any Custom REST Beta activation (N9.14-F1): additionally B-05, B-06, B-09–B-16 PASS and D-01, D-07, D-08, OD-01. A FAIL in B-10, B-12 or B-13 is a security or data-safety finding: stop and send the file back.
 
 ```text
-CHECKPOINT B:  [ ] release prerequisites met   [ ] Beta prerequisites met   [ ] stopped — reason:
+CHECKPOINT B:  [x] release prerequisites met (B-01, B-02, B-03, B-07 PASS; 2026-10-10)   [ ] Beta prerequisites met   [ ] stopped — reason:
 ```
 
-Status 2026-10-10 (not a sign-off; the boxes above stay open). Release prerequisites: B-01, B-02, B-03 PASS; **B-07 not run (needs the owner's explicit authorization): the only open release prerequisite.** Beta prerequisites: B-05, B-06, B-08 to B-16 have PASS results (B-10, B-12, B-14 carry the browser limitation recorded in their Deviations); D-01 BLOCKED (BL-01, BL-02, OD-08), D-07 BLOCKED (BL-09), D-08 BLOCKED (§13 tests unwritten), OD-01 undecided.
+Status 2026-10-10 (updated after B-07): release prerequisites B-01, B-02, B-03 and B-07 are PASS, so that box is ticked; C-11 still needs C1 and the owner's gate (OD-05). The Beta box stays open. Beta prerequisites: B-05, B-06, B-08 to B-16 have PASS results (B-10, B-12, B-14 carry the browser limitation recorded in their Deviations); D-01 BLOCKED (BL-01, BL-02, OD-08), D-07 BLOCKED (BL-09), D-08 BLOCKED (§13 tests unwritten), OD-01 undecided.
 
 ---
 
