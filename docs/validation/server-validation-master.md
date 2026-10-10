@@ -698,11 +698,11 @@ pnpm type-check; echo "exit=$?"
 
 ```text
 RESULT
-Status:      [x] PASS (auditor pre-run, type-check part)   [ ] PASS (your run)   [ ] FAIL
+Status:      [x] PASS (auditor pre-run, type-check part)   [x] PASS (your run)   [ ] FAIL
 Run by/date: auditor, 2026-10-09 UTC — commit 0e48d28 — `pnpm --filter @sla/db generate` OK, `pnpm type-check` exit 0, 0 "error TS" lines
              (without the generate step every package importing @sla/db fails: CI's order matters)
-Your run:    <date>, commit <sha>, validate=  type-check exit=
-Deviations:
+Your run:    2026-10-10, commit 292cb26 (branch claude/sharp-euler-gm4not), executed by Claude Code from the cloud session: `pnpm --filter @sla/db generate` exit=0 (Prisma Client 7.10.0)  validate=exit 0 ("The schema at prisma/schema.prisma is valid")  type-check exit=0, 0 "error TS" lines (log ~/elapsed-validation/b01-typecheck.log)
+Deviations:  `pnpm install --frozen-lockfile` was not re-run for this step (dependencies were already installed; the B-04 worktree install succeeded with the frozen lockfile). A first `validate` without DATABASE_URL exited 1 because prisma.config needs the variable; with the documented placeholder it passes.
 ```
 
 ### B-02 — Package, web and worker builds
@@ -811,11 +811,11 @@ git worktree remove --force ~/elapsed-validation/n210
 
 ```text
 RESULT
-Status:      [x] PASS (part 1, auditor pre-run 2026-10-09 at 0e48d28: `git apply --check` succeeded)   [ ] PASS (part 2)   [ ] FAIL
-Run by/date:
-Where:
-Evidence:    contracted diff exit=    after rollback diff exit=
-Deviations:
+Status:      [x] PASS (part 1, auditor pre-run 2026-10-09 at 0e48d28: `git apply --check` succeeded)   [x] PASS (part 2)   [ ] FAIL
+Run by/date: Yasser Alnajjar (executed by Claude Code from the cloud session), 2026-10-10
+Where:       commit 292cb26; db=sla_validation_test (verified with `select current_database()`; local PostgreSQL 16 in the cloud container, not production); temporary worktree of HEAD, removed afterwards
+Evidence:    part 1 re-run: `git apply --check` => "schema.patch applies"   migration.sql ran without error (exit 0)   contracted diff exit=0 ("No difference detected", schema.patch applied in the worktree, frozen-lockfile install exit 0)   rollback.sql exit 0   after rollback diff exit=0 ("No difference detected")
+Deviations:  psql replaced lsql (no Docker). The database was empty (no data), so this is the schema-level half only; the data half stays with C-09. sla_validation_test is back at the original schema for B-05.
 ```
 
 ### B-05 — Tenant-scope classification and isolation for the N9/N10 models
@@ -841,11 +841,13 @@ npx vitest run apps/web/test/tenant-scope-classification.test.ts apps/web/test/t
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED (BL-04)   [ ] SKIPPED
-Run by/date:
-Where:       branch/worktree=         db=
-Evidence:    files passed _/2; unclassified models listed=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED (BL-04)   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (executed by Claude Code from the cloud session), 2026-10-10
+Where:       branch/worktree=claude/sharp-euler-gm4not at 292cb26 (no `testing` worktree used)   db=sla_validation_test (local PostgreSQL 16, name contains "test", 68 migrations, schema restored after B-04)
+Evidence:    `npx vitest run apps/web/test/tenant-scope-classification.test.ts apps/web/test/tenant-isolation.test.ts`: files passed 2/2, 87 tests passed (vitest v5.0.0)   unclassified models listed=none
+             classification in tenant-scope-classification.test.ts (lines 67-74): CustomActivationAudit, CustomProviderConfigVersion, CustomProviderDraft, GuardOverride, IntegrationBetaAllowlist, IntegrationSyncRun = direct; IntegrationAvailability = global (platform-level)
+             tenant-isolation.test.ts seeds customActivationAudit, customProviderConfigVersion, customProviderDraft, guardOverride, integrationBetaAllowlist and integrationSyncRun for both organizations (lines 410-435)
+Deviations:  CONFLICT, reported and not resolved here: BL-04 (§2.2) and this check's Prerequisites say the 7 models have no classification or isolation seeds and the work must be written on `testing`, but this branch already contains both (last change to the classification test: 0495f1f). The pass criteria are met on current code, so the check is recorded PASS; BL-04's text and D-08's BLOCKED (BL-04) row were not changed. Whether BL-04 is stale, or the entries exist only on this branch and not on `main`/`testing`, needs an owner decision. Only these two test files were run, per instruction (no B-07, no full suite).
 ```
 
 ### B-06 — N10 focused suites (plan 10 §10)
