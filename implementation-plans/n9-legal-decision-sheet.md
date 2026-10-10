@@ -6,7 +6,7 @@ Three separate things: **Part A** is for the owner (O-1 to O-3, engineering reco
 
 ## A. Owner decisions (no lawyer needed; made first, they fix the facts the clauses state)
 
-**Status (2026-10-10): O-1 = Option A, O-2 = Option B, O-3 = Option A: APPROVED by the owner (explicit written instruction in the Claude Code session of 2026-10-10). The qualified legal review in Part B is a separate required gate, is still PENDING, and is not satisfied by these decisions. O-2 is an infrastructure work item: no fixed egress IP exists or may be claimed until it is configured and verified (see "O-2 implementation record").**
+**Status (2026-10-10, updated): O-1 = Option A, O-2 = Option A (changed from Option B later the same day), O-3 = Option A: APPROVED by the owner (explicit written instructions in the Claude Code session of 2026-10-10). The qualified legal review in Part B is a separate required gate, is still PENDING, and is not satisfied by these decisions. O-2 no longer requires any fixed-egress-IP work for the initial launch; that work and its verification are DEFERRED INDEFINITELY (not scheduled, not a pending launch task). The technical facts recorded below (the existing Elastic IP, the verified egress) stay as historical evidence and are not a commitment to customers.**
 
 ### Owner decision record (all three DECIDED 2026-10-10; implementation and legal gates noted per item)
 
@@ -34,7 +34,7 @@ Each block: the proposal, what it implies, the exact decision needed, and a sign
 | Implications of A | Documentation only; a partner needing allowlisting cannot join until B exists. The reviewer decides whether a disclosure is required (Q-5) |
 | Implications of B | Infrastructure work and cost, a production change that needs its own deployment approval; then publish the address and commit to change notice |
 | Decision needed | Choose **A** or **B** |
-| Owner sign-off | **APPROVED: Option B.** Provide a fixed outbound egress IP. Infrastructure work item; nothing is claimed until configured and verified. Date: 2026-10-10. By: the owner, in the session instruction (written record in the Claude Code session transcript; a signed copy may be added here) |
+| Owner sign-off | **CURRENT DECISION: Option A.** No fixed-egress-IP requirement for the initial launch. Fixed-egress-IP implementation and verification are **deferred indefinitely** (not scheduled as pending launch work). Date: 2026-10-10 (changed later the same day by the owner, in the session instruction; written record in the Claude Code session transcript). **Superseded earlier decision, kept for the record: Option B (provide a fixed egress IP), 2026-10-10.** This decision does not release, replace or modify the existing Elastic IP 13.62.74.24, which also serves the application's public URL; it does not authorize any egress test, EC2 stop/start, third-party contact, AWS, DNS, security-group or SSH change. |
 
 **O-3 POST search endpoints in V1 (affects P-2, P-5, L-03)**
 
@@ -48,9 +48,11 @@ Each block: the proposal, what it implies, the exact decision needed, and a sign
 | Decision needed | Choose **A** or **B** |
 | Owner sign-off | **APPROVED: Option A.** Retain POST search endpoint support. Documentation must describe the supported behavior accurately and must not imply that POST itself guarantees read-only access. Date: 2026-10-10. By: the owner, in the session instruction (written record in the Claude Code session transcript; a signed copy may be added here) |
 
-Interlock: the owner decisions are recorded, so the reviewer now receives them as fixed inputs: O-1 Option A (P-7 and L-01/L-02 are worded to the implemented behavior; no purge), O-2 Option B (Q-5: a fixed address is planned, NOT yet in place; nothing may be stated as fact until the verification below is recorded), O-3 Option A (P-2/P-5/L-03 describe POST support without implying it is read-only). Recording O-1 to O-3 does not satisfy Part B.
+Interlock: the owner decisions are recorded, so the reviewer now receives them as fixed inputs: O-1 Option A (P-7 and L-01/L-02 are worded to the implemented behavior; no purge), O-2 Option A (Q-5: no fixed-egress-IP requirement and no address commitment for the initial launch; the current egress through Elastic IP 13.62.74.24 is a verified fact, not a promise; nothing may be stated to customers as a commitment unless the owner reopens this decision and the reviewer approves wording), O-3 Option A (P-2/P-5/L-03 describe POST support without implying it is read-only). Recording O-1 to O-3 does not satisfy Part B.
 
-### O-2 implementation record (status 2026-10-10: the fixed address ALREADY EXISTS and egress through it is verified; no AWS change is needed; remaining items below)
+### O-2 implementation record (HISTORICAL; owner decision changed 2026-10-10: Option A, fixed-egress-IP work and verification DEFERRED INDEFINITELY, not a launch gate. Everything below is preserved evidence and a shelved plan, not scheduled work)
+
+> **Decision change (2026-10-10).** The owner changed O-2 from Option B to **Option A: no fixed-egress-IP requirement for the initial launch**. Consequently: (1) the controlled Custom REST egress test, the host stop/start persistence test, the third-party allowlist inventory follow-up and any further egress verification are deferred indefinitely and are NOT launch gates; (2) the verified technical facts below stay true and stay recorded (13.62.74.24 is an Elastic IP; web and workers egress through it; no IPv6; security group and NACL read); (3) no customer-facing promise about the address is made; (4) the Elastic IP is untouched and must not be released or replaced, because it also serves the application's public URL (`NEXTAUTH_URL`); (5) the SSH exposure finding and the reviewer's wording W-3 remain separate items that this decision does not change. If fixed egress is wanted later, this record is the starting point.
 
 **Claim rule (updated 2026-10-10).** The verification record below is now filled in with real output. What may be stated as verified fact: the production host's outbound IPv4 address is the Elastic IP 13.62.74.24, used by the web service and all three worker replicas. What may not yet be stated to customers: any promise about the address (stability period, change notice) until the reviewer rules on W-3, and any claim about IPv6 or about a second host. The security-group/NACL review (A5) is still open. Until then the truthful statement is that the address is not fixed (F-15).
 
@@ -339,13 +341,13 @@ Needs owner input: the list of customers (if any) who told Elapsed their IP rest
 
 **Verification record (2026-10-10):** address **13.62.74.24** (Elastic IP, allocation `eipalloc-0aca3c86efbc78f3c`, association `eipassoc-0659342d30c647c09`, region eu-north-1); evidence: A1/A2/A4/A6 (AWS CloudShell, read-only) and H2/H3 (owner-run on the host): host IPv4 egress 13.62.74.24; web container 13.62.74.24; worker replicas 1 to 3 each 13.62.74.24 (checked against an external IP-echo service); IPv6: none (no IPv6 on the interface or subnet, no default IPv6 route, containers `ENETUNREACH`, Docker networks `ipv6=false`); verified by the owner running the commands, recorded by engineering. **Not done and not claimed:** (a) a host stop/start test, which would interrupt production; the AWS-side proof stands in for it, since an Elastic IP stays associated across stop/start by design; (b) an end-to-end Custom REST call logged by a controlled endpoint (the external IP-echo check from the same containers and network path is the stand-in); (c) a rule-by-rule review of anything beyond what is listed above; (d) any third-party allowlist check.
 
-**Remaining O-2 verification and approval gates (as of 2026-10-10); O-2 is NOT fully closed:**
+**Deferred O-2 verification items (owner decision 2026-10-10: deferred indefinitely; NOT launch gates; listed so they are not lost):**
 1. **Controlled Custom REST egress test (open):** a Custom REST test call from the web service and a worker sync against a controlled endpoint that logs the source address, both showing 13.62.74.24. The external IP-echo check from the same containers is only a stand-in.
 2. **Host stop/start persistence test (open, not claimed):** interrupts production, so it needs an approved window; until then only the AWS-side proof exists (the Elastic IP stays associated across stop/start by design).
 3. **Third-party IP allowlist inventory (open, owner records):** which systems reference 13.62.74.24 (Zendesk, Jira, Linear, Intercom OAuth redirect URIs and webhook URLs, the ops SMTP relay, Sentry, partner or customer firewalls). Nearly all probably do because the app is served by IP.
 4. **Qualified legal review of W-3 (open, separate gate):** what customers may be told about the address and any stability or change-notice commitment; plus the reviewer's decisions on the rest of Part B.
 5. **Address protection (open, owner decision):** who may release or disassociate the Elastic IP; it is also the application's public URL (`NEXTAUTH_URL`).
-Closed for O-2: the address exists, is an Elastic IP on the instance's primary interface, public subnet via an internet gateway with no NAT and no IPv6, security group and NACL read, and web plus all three workers verified to egress through it (IPv4). Optional/separate: show the address in the setup page; a domain for the app; the SSH decision above.
+Established as technical fact (2026-10-10, unchanged by the decision): the address exists, is an Elastic IP on the instance's primary interface, public subnet via an internet gateway with no NAT and no IPv6, security group and NACL read, and web plus all three workers verified to egress through it (IPv4). Not a commitment to customers. Optional/separate: show the address in the setup page; a domain for the app; the SSH decision above.
 
 ## B. Clauses that need the qualified reviewer's decision
 
@@ -363,7 +365,7 @@ Closed for O-2: the address exists, is an Elastic IP on the instance's primary i
 | L-05 name Sentry and Slack as subprocessors | No | Reviewer's call; independent of Custom REST | |
 | P-8 marketing / plans copy "or a Custom REST source (Beta)" | No (held until a first organization is enabled) | Approve after the pilot starts | |
 | Q-1 processor role, DPA before Beta | Yes (answer) | Reviewer to say whether a DPA is required for the pilot customers | |
-| Q-5 outbound IP disclosure | Yes (answer) | **Owner decided O-2 Option B (2026-10-10): a fixed egress IP will be provided; it is NOT yet configured or verified.** Reviewer to say what may be stated meanwhile (recommended: "not fixed yet"), and whether a change-notice commitment is wanted once it exists (W-3) | |
+| Q-5 outbound IP disclosure | Yes (answer) | **Owner decided O-2 Option A (2026-10-10): no fixed-egress-IP requirement for the initial launch; fixed-egress work deferred indefinitely.** Reviewer to say what, if anything, may be stated to customers about outbound addresses (engineering note: current egress is Elastic IP 13.62.74.24, verified, but not promised) and whether any disclosure such as "not guaranteed, do not rely on IP allowlisting" is advisable. W-3 below stays as drafted and unchanged | |
 
 ### Proposed wording for the reviewer (drafts by engineering, not legal text; live copy unchanged)
 
@@ -380,11 +382,13 @@ Facts: F-2, F-3, L-03, L-06 (POST is permitted; the use of POST does not make a 
 **W-3 (O-2, setup guide; use ONLY after the O-2 verification record is filled in)**
 > Requests from Elapsed to your API come from the following fixed IP address: [address]. [Reviewer: any commitment about advance notice if the address changes.]
 
+*(Note 2026-10-10: W-3 itself is unchanged and remains a separate legal-review item. Under O-2 Option A no address is promised, so this draft is unused unless the owner reopens fixed-egress work.)*
+
 Until verified, the only permitted statement is: "Elapsed's outbound IP address is not fixed yet; do not rely on IP allowlisting."
 
 ## Handoff to the qualified reviewer (checklist; nothing here is approval)
 
-1. Owner decisions O-1 (A), O-2 (B) and O-3 (A) are recorded above (2026-10-10); give the reviewer this sheet with them. O-2's address is not yet configured.
+1. Owner decisions O-1 (A), O-2 (A) and O-3 (A) are recorded above (2026-10-10); give the reviewer this sheet with them. O-2 requires no fixed-egress-IP work for the initial launch (deferred indefinitely).
 2. Send: this sheet, `n9-legal-review.md` (facts F-1 to F-17, proposals P-1 to P-9, issues L-01 to L-06, questions Q-1 to Q-7, decision record section 6), `apps/web/src/modules/marketing/legal/csr/TermsView.tsx` and `PrivacyView.tsx` (read-only; unchanged), `docs/data-retention-and-on-call.md`, plan 09 §7 and Appendix A.
 3. The reviewer answers Part B (and Q-1 to Q-7) and records each clause in `n9-legal-review.md` section 6 (name, role, date, approved/changed/rejected, final wording).
 4. Only then does engineering edit the live Terms and Privacy in one reviewed change and mark D-07. Until section 6 is filled by the reviewer, D-07 is BLOCKED (BL-09) and no copy changes.
