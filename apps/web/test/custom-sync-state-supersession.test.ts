@@ -31,7 +31,9 @@ describe.skipIf(!TEST_DATABASE_URL)("custom sync state with unstored no-change r
     const tables = await prisma.$queryRaw<{ tablename: string }[]>`
       SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables.map((x) => `"public"."${x.tablename}"`).join(", ")} CASCADE`);
-    organizationId = (await prisma.organization.create({ data: { name: "Custom", customProviderEnabled: true } })).id;
+    organizationId = (await prisma.organization.create({ data: { name: "Custom" } })).id;
+    // D33: Custom REST Beta access is an allowlist entry (was `customProviderEnabled`).
+    await prisma.integrationBetaAllowlist.create({ data: { provider: "custom", organizationId, addedByEmail: "ops@watchtower.test" } });
     integrationId = (
       await prisma.integration.create({
         data: {

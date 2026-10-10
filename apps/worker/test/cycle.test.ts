@@ -74,6 +74,12 @@ vi.mock("../src/providers", async (importOriginal) => {
 vi.mock("@sla/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@sla/db")>()),
   withOrganizationSlaLock: vi.fn((_prisma: unknown, _organizationId: string, work: () => Promise<unknown>) => work()),
+  // D33: every provider available unless a test says otherwise; these fakes have no availability tables.
+  resolveOrganizationAvailability: vi.fn(async () =>
+    Object.fromEntries(
+      ["zendesk", "jira", "linear", "intercom", "github", "custom"].map((provider) => [provider, { available: true, provider, releaseStage: "stable" }]),
+    ),
+  ),
 }));
 
 const captureExceptionMock = vi.mocked(captureException);

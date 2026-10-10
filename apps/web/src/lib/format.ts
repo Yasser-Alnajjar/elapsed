@@ -504,7 +504,7 @@ export function formatCaseTitle(
     text.length > CASE_TITLE_SUBJECT_MAX
       ? `${text.slice(0, CASE_TITLE_SUBJECT_MAX - 1).trimEnd()}…`
       : text;
-  return short ?? key;
+  return `${key} · ${short}`;
 }
 
 const LINKED_SYSTEM_SHORT_LABELS: Record<string, string> = {

@@ -60,6 +60,8 @@ vi.mock("@sla/linear", () => ({ exchangeCodeForToken: vi.fn(async () => ({ acces
 vi.mock("@sla/slack", () => ({ exchangeCodeForToken: vi.fn(async () => ({ accessToken: "xoxb-a", teamId: "T1", teamName: "Acme", botUserId: "B1" })) }));
 
 vi.mock("@sla/db", () => ({
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
   getPrismaClient: vi.fn(() => ({
     integration: {
       findUnique: db.integrationFindUnique,

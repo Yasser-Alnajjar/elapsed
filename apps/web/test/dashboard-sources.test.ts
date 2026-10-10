@@ -8,6 +8,7 @@ const ROLES: Record<string, SourceRole> = {
   jira: "work_tracker",
   linear: "work_tracker",
   github: "code_host",
+  custom: "ticket_source",
 };
 const views = (connected: string[]) =>
   Object.fromEntries(

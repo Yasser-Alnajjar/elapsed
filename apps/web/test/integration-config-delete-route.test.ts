@@ -18,6 +18,8 @@ const db = vi.hoisted(() => ({ deleteIntegrationConfig: vi.fn() }));
 vi.mock("next-auth", () => ({ getServerSession: vi.fn(async () => auth.session) }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@sla/db", () => ({
+  // D33: every provider available; these fakes have no availability tables.
+  resolveIntegrationAvailability: vi.fn(async (_db: unknown, _org: string, provider: string) => ({ available: true, provider, releaseStage: "stable" })),
   getPrismaClient: vi.fn(() => ({})),
   getIntegrationConfigStatus: vi.fn(),
   saveIntegrationConfig: vi.fn(),

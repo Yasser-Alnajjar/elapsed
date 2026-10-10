@@ -158,7 +158,7 @@ describe("admin boundary (N4.6)", () => {
     expect(pages.length).toBeGreaterThanOrEqual(5);
     for (const page of pages) {
       const specs = importsOf(page);
-      expect(specs.every((spec) => spec.startsWith("@modules/admin/")), `${webRel(page)} imports ${specs.join(", ")}`).toBe(true);
+      expect(specs.every((spec) => spec.startsWith("@modules/admin/") || spec === "@/lib/seo/metadata"), `${webRel(page)} imports ${specs.join(", ")}`).toBe(true);
     }
   });
 
@@ -171,6 +171,7 @@ describe("admin boundary (N4.6)", () => {
     expect(methods.map((m) => m[1])).toEqual([
       "getOverview",
       "getUsage",
+      "getIntegrations",
       "getTenants",
       "getTenantDetail",
       "getAuditLog",
