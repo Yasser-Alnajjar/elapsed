@@ -733,11 +733,11 @@ pnpm worker:build; echo "worker exit=$?"
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       commit
-Evidence:    packages exit=   web exit=   worker exit=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (executed by Claude Code from the cloud session), 2026-10-10
+Where:       commit 308a8db (branch claude/sharp-euler-gm4not), cloud container, Node 22, pnpm 10.33.0; CI placeholder env exactly as the command block, DATABASE_URL pointing at a non-existent `ci` database (nothing connects)
+Evidence:    packages exit=0   web exit=0   worker exit=0 (`pnpm build`, `pnpm web:build`, `pnpm worker:build`; logs in ~/elapsed-validation/b02-*.log)
+Deviations:  The local e2e web and worker dev processes were stopped before the build so `.next` was not shared. No build output was inspected beyond exit codes and the Next.js route summary.
 ```
 
 ### B-03 — All 68 migrations on an empty disposable database; no schema drift
@@ -772,11 +772,12 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       commit       db=sla_validation_test
-Evidence:    migrate status=   diff exit=   migrations=   availability rows=   allowlist=
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (executed by Claude Code from the cloud session), 2026-10-10
+Where:       commit 308a8db   db=sla_validation_test (freshly created, empty) on a local PostgreSQL 16 in the cloud container (no Docker: psql replaced ldc/lsql); not production, not a shared database
+Evidence:    `pnpm test:db:prepare` applied all migrations ("All migrations have been successfully applied")   migrate status="68 migrations found ... Database schema is up to date!"   diff exit=0 ("No difference detected")   migrations=68
+             availability rows=6: zendesk/jira/linear stable+allowlist; intercom/github beta+all_organizations; custom beta+allowlist; all enabled=t   allowlist=0
+Deviations:  PostgreSQL 16 from the OS package, not the postgres:16-alpine image. A pre-check query meant to print the target database errored on a typo in the query (no effect); the target was fixed by the database name in TEST_DATABASE_URL, which `test:db:prepare` uses exclusively. The database is kept for B-04/B-05.
 ```
 
 ### B-04 — N2.10 contract artefacts still apply to the current schema
