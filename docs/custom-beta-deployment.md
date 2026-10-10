@@ -5,7 +5,7 @@ Status: **prepared, NOT executed.** Run only after the owner's explicit producti
 ## Preconditions and what this deployment does NOT do
 
 - **Explicit owner authorization for the production deployment is required and has NOT been given.** Do not run any command below, change `.env.prod`, or restart services until it is.
-- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review, owner decisions O-1 to O-3 (pending), and this deployment with its verification (validation master, closure ledger).
+- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. Open gates at the time of writing: D-07 qualified legal review, the O-2 fixed outbound IP (owner decided 2026-10-10; infrastructure not configured or verified, and separate from the two Compose settings here, which it does not depend on), and this deployment with its verification (validation master, closure ledger). O-1 and O-3 are decided and only await the reviewer's wording.
 
 ## What changes
 
