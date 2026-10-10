@@ -9,10 +9,10 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 
 ## What changes
 
-| Setting | Service | Value | Effect |
-| --- | --- | --- | --- |
-| `CUSTOM_PROVIDER_LIVE_CASE_CEILING` | worker | default `1000` | A Custom REST source may hold at most 1,000 live cases; a pass that would exceed it stops with nothing written. Provisional Beta safeguard (OD-08); do not raise it before a real-host benchmark |
-| `GUARD_OVERRIDE_OPERATOR_EMAILS` | web | empty by default (nobody) | Platform operators listed here (and also in `PLATFORM_ADMIN_EMAILS`) may apply a support-assisted guard override |
+| Setting                             | Service | Value                     | Effect                                                                                                                                                                                           |
+| ----------------------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CUSTOM_PROVIDER_LIVE_CASE_CEILING` | worker  | default `1000`            | A Custom REST source may hold at most 1,000 live cases; a pass that would exceed it stops with nothing written. Provisional Beta safeguard (OD-08); do not raise it before a real-host benchmark |
+| `GUARD_OVERRIDE_OPERATOR_EMAILS`    | web     | empty by default (nobody) | Platform operators listed here (and also in `PLATFORM_ADMIN_EMAILS`) may apply a support-assisted guard override                                                                                 |
 
 Both are optional. With neither set in `.env`, the ceiling is 1000 (Compose and compiled default) and nobody holds the override permission. Compose file: commits `8b123a5` and `e888a54` on `main`.
 
@@ -77,35 +77,59 @@ Behavior (no customer data touched): sign in as a platform operator who is NOT o
 ## 3. Rollback
 
 Settings only (keeps the release): remove the two lines from `.env.prod` or restore the defaults, then
+
 ```bash
 docker compose -f docker-compose.yml --env-file .env up -d worker web
 ```
 
 Whole deployment:
+
 ```bash
 git checkout "$(cat /tmp/custom-beta-rollback-commit.txt)" -- docker-compose.yml   # or git checkout <that commit>
 docker compose -f docker-compose.yml --env-file .env up -d --build
 ```
+
 Database migrations are not reversed by this. If a migration must be undone, restore the backup taken in step 0 (data written since is lost): see `docs/production-backup-runbook.md`.
 
 ## 4. Do not do
 
 Do not raise the ceiling, enable Custom REST for more than the allowlisted pilot organizations, or lift the rollout block (`packages/db/src/integration-catalog.ts`) as part of this deployment.
 
-## Execution record (2026-10-10)
+## 5. Production record and launch prerequisites (2026-10-10)
 
-Deployed by the owner on the production host to `8a4ee1e` (fast-forward from `8dc2fe8`), with `.env`, after a manual backup `backups/pre-n9-pilot-elapsed_db-20261010T143634Z.dump` (278 KB; its table-data check is not recorded in this file).
+Recorded from the owner's production deployment report. **Owner-reported means the owner observed it on the production host; this repository has no access to production and none of it was independently observed here.** Details beyond what is listed (commit, timings, exact commands) were not supplied and are not recorded.
 
-**Incident during the run (root cause confirmed, fixed by the owner):** the backup command chain ran `umask 077` in the same interactive shell, so `git merge --ff-only` wrote the updated source files as mode 0600. `COPY . .` kept those modes in the worker image, which runs the TypeScript sources as an unprivileged user, so all three workers crash-looped with `EACCES` reading `/repo/packages/db/src/integration-catalog.ts` for a short period. The owner restored read permissions on the tracked files only (not `.env`, `.git` or `backups/`) and rebuilt the workers. `docs/production-backup-runbook.md` now runs the backup umask in a subshell.
+| Item                                  | State                                                                                                                                                                                               | Basis                                                                                                                          |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Worker recovery after the deployment  | Recovered                                                                                                                                                                                           | Owner-reported                                                                                                                 |
+| Intercom and Jira ingestion           | Succeeding                                                                                                                                                                                          | Owner-reported                                                                                                                 |
+| Database migrations                   | Applied (owner-reported status; confirm with the read-only query below if needed)                                                                                                                   | Owner-reported                                                                                                                 |
+| File-permission incident              | Occurred during the deployment and was resolved by the owner                                                                                                                                        | Owner-reported; root cause and fix not recorded here                                                                           |
+| Docker build context                  | `backups/` (and any nested `backups/`) is now excluded by `.dockerignore`, so dumps cannot enter image layers. Applies to the next image build only; images already built are not changed           | Independently verified: a build with the repository's `.dockerignore` and a fake `backups/` tree copied only non-ignored files |
+| `GUARD_OVERRIDE_OPERATOR_EMAILS`      | Intentionally configured by the owner; left unchanged. Not a defect. Code: a session must be a platform operator **and** be on this separate list (`apps/web/src/lib/authz.ts`); empty means nobody | Independently verified: `apps/web/test/guard-override-operator.test.ts` passes. The production value was not read or recorded  |
+| Intercom/Jira `status = disconnected` | **Not fixed; root cause not proven.** See below                                                                                                                                                     | Code trace only                                                                                                                |
 
-**Verification reported by the owner after the fix (not independently observed by engineering):**
-- all 3 workers healthy with 0 restarts; no `EACCES` after the permission fix; database health check passed;
-- Intercom and Jira ingestion succeeded, `consecutiveFailures = 0`, no `lastSyncError`;
-- 68 migrations applied, none pending;
-- `CUSTOM_PROVIDER_LIVE_CASE_CEILING=1000` on the worker and unset on web.
+**Intercom/Jira status.** The only code that writes `disconnected` is the owner-triggered disconnect routes (and the Slack and Custom disconnects); it also clears the credentials. The worker never writes `disconnected` and its organization query excludes rows in that status (`ORGANIZATION_TO_PROCESS_SELECT` in `apps/worker/src/cycle.ts`), and the OAuth callbacks reset a reconnected row to `connected`. A row that is genuinely `disconnected` therefore cannot be ingested by the worker, so the report's two observations cannot both hold for the same row through any code path. The likely explanations, none yet proven, are: the rows queried are not the rows ingesting (another organization or a stale/restored copy), the ingestion came from a manual out-of-band run, or the status was read from a different place. No code change was made. Do not edit the rows. Run this read-only query on production and keep its output as evidence:
 
-**Open after the run (not fixed, not claimed fixed):**
-1. `GUARD_OVERRIDE_OPERATOR_EMAILS` still has **one configured entry** on web; the approved target is empty. It has an effect only if that address is also in `PLATFORM_ADMIN_EMAILS`. Owner decision: keep (intentional) or clear it in `.env` and recreate web.
-2. Both integrations still report `status = disconnected` although ingestion succeeds. The cause is **unverified**; it is not reported as fixed or as expected behavior.
-3. `backups/` is untracked and not in `.dockerignore`, so `docker build` copies database dumps into the worker image layers on the host. Add `backups` to `.dockerignore` in a reviewed change; until then keep the host's `backups/` out of the build context where practical.
-4. The Custom REST allowlist is empty and no pilot organization was added; the rollout block, legal review and W-3 are unchanged. Beta is not declared ready.
+```sql
+SELECT o.id AS organization_id, i.provider, i.status, i."disconnectedAt", i."connectedAt",
+       i."lastSyncAt", i."lastSuccessfulSyncAt", i."lastSyncError", i."failingSince",
+       (i.credentials IS NOT NULL) AS has_credentials,
+       (SELECT max(r."createdAt") FROM raw_events r WHERE r."integrationId" = i.id) AS last_raw_event_at
+FROM integrations i JOIN organizations o ON o.id = i."organizationId"
+WHERE i.provider IN ('intercom','jira')
+ORDER BY i.provider, o.id;
+```
+
+Reading it: `disconnected` with `has_credentials = false` and a `last_raw_event_at` older than `disconnectedAt` is a normal customer disconnect (the ingesting integration is a different row). `disconnected` with credentials present and fresh `lastSuccessfulSyncAt` would be a real defect and the next step is then to look at who set it. If the column names differ in the deployed schema, check `\d integrations` first. Adjust nothing in the table.
+
+### Remaining launch prerequisites for the limited Beta
+
+Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays, and nothing is promoted to Stable.
+
+1. **Owner decisions O-2 and O-3** in `implementation-plans/n9-legal-decision-sheet.md` (Part A). O-1 is already decided (D34: no age-based expiry); it needs no new decision.
+2. **Qualified legal reviewer's Part B decisions**, recorded in section 6 of `implementation-plans/n9-legal-review.md` (D-07). Engineering may not decide these.
+3. **Explicit approval to run section 1 of this document** on production (Compose settings), then the section 2 verification. Not executed.
+4. A rebuilt image only if you want the `.dockerignore` change to take effect; this needs your approval too.
+
+Not launch blockers, per the recorded decisions: Phase C, the Stable promotion, and the allowlist of any further organization.
