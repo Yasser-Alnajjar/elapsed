@@ -847,7 +847,7 @@ Where:       branch/worktree=claude/sharp-euler-gm4not at 292cb26 (no `testing` 
 Evidence:    `npx vitest run apps/web/test/tenant-scope-classification.test.ts apps/web/test/tenant-isolation.test.ts`: files passed 2/2, 87 tests passed (vitest v5.0.0)   unclassified models listed=none
              classification in tenant-scope-classification.test.ts (lines 67-74): CustomActivationAudit, CustomProviderConfigVersion, CustomProviderDraft, GuardOverride, IntegrationBetaAllowlist, IntegrationSyncRun = direct; IntegrationAvailability = global (platform-level)
              tenant-isolation.test.ts seeds customActivationAudit, customProviderConfigVersion, customProviderDraft, guardOverride, integrationBetaAllowlist and integrationSyncRun for both organizations (lines 410-435)
-Deviations:  CONFLICT, reported and not resolved here: BL-04 (§2.2) and this check's Prerequisites say the 7 models have no classification or isolation seeds and the work must be written on `testing`, but this branch already contains both (last change to the classification test: 0495f1f). The pass criteria are met on current code, so the check is recorded PASS; BL-04's text and D-08's BLOCKED (BL-04) row were not changed. Whether BL-04 is stale, or the entries exist only on this branch and not on `main`/`testing`, needs an owner decision. Only these two test files were run, per instruction (no B-07, no full suite).
+Deviations:  CONFLICT, reported and not resolved here: BL-04 (§2.2) and this check's Prerequisites say the 7 models have no classification or isolation seeds and the work must be written on `testing`, but this branch already contains both (last change to the classification test: 0495f1f). The pass criteria are met on current code, so the check is recorded PASS; BL-04's text and D-08's BLOCKED (BL-04) row were not changed. Follow-up 2026-10-10 (after `git fetch`): 0495f1f (2026-10-10 11:25 +03:00) IS on origin/main (merged by PR #51, 1b1e084) and the same seven classification entries and isolation seeds are in main's two test files; it is NOT on origin/testing or origin/testing-n10. An earlier note here suggested the entries might exist only on this branch; that was wrong (the local main was stale). BL-04 and D-08 are stale relative to main; an owner decision is needed before they are edited. Only these two test files were run, per instruction (no B-07, no full suite).
 ```
 
 ### B-06 — N10 focused suites (plan 10 §10)
@@ -973,11 +973,12 @@ pnpm worker:dev 2>&1 | tee ~/elapsed-validation/worker.log                      
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
-Run by/date:
-Where:       commit
-Evidence:    health={"status":"ok","checks":{"database":"ok"}}   mock state ok? [x] ({"mode":"normal","delayMs":0,"tickets":40,"open":27})   sign-in as owner A ok? [ ] not yet confirmed
-Deviations:
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar (first part); closed by Claude Code from the cloud session, 2026-10-10
+Where:       commit 292cb26, branch claude/sharp-euler-gm4not; local PostgreSQL 16 in the cloud container, db=sla_e2e_test, throwaway secrets in ~/elapsed-validation/e2e.env (mode 600), web `pnpm web:dev`, worker `pnpm worker:dev`, mock helpdesk
+Evidence:    health={"status":"ok","checks":{"database":"ok"}}   mock state ok? [x] ({"mode":"normal","delayMs":0,"tickets":40,"open":27})   sign-in as owner A ok? [x] (credentials sign-in returned 200; the session shows n9-owner-a@example.test, role owner, organization cmv2a3jc4...)
+             three accounts in .local/n9-test-credentials.txt (git-ignored): owner A, member A, owner B   worker check: the two organizationId values in worker.log equal the two ids in `select id from organizations` of sla_e2e_test, and worker.log shows integrations=1 for organization A after activation, so the worker uses sla_e2e_test
+Deviations:  No Docker: local PostgreSQL 16 and psql instead of ldc/lsql. Owner A signed in through the NextAuth credentials endpoint (curl), not the browser form. The web dev server first returned 404 for /api/health because a stale .next from `pnpm web:build` (B-02) was present; removing the git-ignored apps/web/.next and restarting web fixed it. The mock keeps its state in memory, so a restart resets it to 40 tickets (reset to 140 for B-12).
 ```
 
 ### B-09 — Custom REST end-to-end: draft, test, sample, preview, validate, activate, history import with partial runs
@@ -1080,11 +1081,12 @@ In the browser's developer tools (Network), reload the custom integration page a
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (database and log scan pass; browser response check and the repeat after B-11 are open)
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (database and log scan pass; browser response check closed 2026-10-10 by Claude Code)
 Run by/date: Yasser Alnajjar, 2026-10-10
 Where:       local e2e stack, sla_e2e_test
-Evidence:    counts (7 rows)= integrations 0, drafts 0, config_versions 0, sync_runs 0, raw_events 0, admin_audit 0, activation_audit 0   secret prefixes= apiKey enc:v1:   web.log=0   worker.log=0   API responses clean? [ ] not yet   repeated after B-11? [x] yes, all 7 counts 0, web.log 0, worker.log 0
-Deviations:  None so far.
+Evidence:    counts (7 rows)= integrations 0, drafts 0, config_versions 0, sync_runs 0, raw_events 0, admin_audit 0, activation_audit 0   secret prefixes= apiKey enc:v1:   web.log=0   worker.log=0   API responses clean? [x] yes   repeated after B-11? [x] yes, all 7 counts 0, web.log 0, worker.log 0
+             response check (local e2e stack, owner A, 2026-10-10): sentinel hits=0 in the HTML and RSC responses of /settings/integrations/custom (300,244 bytes) and /settings/integrations (328,724 bytes), and in the JSON of GET /api/integrations/custom/status, GET .../draft, GET .../overrides and POST .../draft/from-active; the editor draft response lists `"secretsSet":["apiKey"]` (names only). Repeat on the final stack: DB tables 0, web.log 0, worker.log 0.
+Deviations:  The response check used curl as the signed-in owner (page HTML, RSC payload and the API GET/POST routes the editor calls), not the browser Network panel; client-side requests that only the browser issues were not observed. GET .../draft returned an empty draft after activation, so the draft payload was checked through from-active. mock.log contains the key twice, which is expected: the mock server receives it as its API key and B-10 scans the web and worker logs only.
 ```
 
 ### B-11 — Failure classes, recovery and freshness (plan 09 §6.12, §8.3, §8.5; R3)
@@ -1171,12 +1173,17 @@ SQL
 
 ```text
 RESULT
-Status:      [ ] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (all measured criteria pass; open only for the member-refusal check, which was not reported)
+Status:      [x] PASS   [ ] FAIL   [ ] BLOCKED   [ ] SKIPPED   (all measured criteria pass; the member-refusal and preview-contents items were closed 2026-10-10 by Claude Code on a rebuilt stack, see Evidence)
 Run by/date: Yasser Alnajjar, 2026-10-10 09:38-09:56 UTC
 Where:       local e2e stack, sla_e2e_test, worker on the patched safe-http
-Evidence:    L=140   N=90 (the command `closeFirst:45` ran twice, 09:38:09 and 09:38:37; the mock then had 4 open of 140; the guard needs R > 35, so the check still holds)   abort outcome/reason=aborted/mass_lifecycle_change, repeated unchanged on three later runs (09:39:39, 09:40:17, 09:40:55; waiting did not clear it)   open before/after abort=94/94   member refused? [ ] not reported
+Evidence:    L=140   N=90 (the command `closeFirst:45` ran twice, 09:38:09 and 09:38:37; the mock then had 4 open of 140; the guard needs R > 35, so the check still holds)   abort outcome/reason=aborted/mass_lifecycle_change, repeated unchanged on three later runs (09:39:39, 09:40:17, 09:40:55; waiting did not clear it)   open before/after abort=94/94   member refused? [x] yes (see the closing run below)
              override row (guard/path/consumed/ttl)= mass_lifecycle_change / customer / consumed=t, outcome=applied / 23:59:59.971 (24 h, OD-10)   open after override=4 (94 -> 4, equal to the 90 closed at the source; the run after the override was ok, 90 records)   support path status=403 (operator, GUARD_OVERRIDE_OPERATOR_EMAILS empty)
 Deviations:  N was 90, not 45 (command run twice). Preview contents (guard, R, L, ratio, record ids) were not reported. The pasted browser output contained a local session cookie of the throwaway e2e database; it was not stored here.
+Closing run (Claude Code, 2026-10-10 11:33-11:36 UTC, rebuilt local e2e stack sla_e2e_test, commit 292cb26, worker running, mock reset to 140 tickets): L=140, 94 open; `closeFirst:45` ran once (N=45 > 35); runs at 11:34:48 and 11:35:18 = aborted/mass_lifecycle_change with 45 records, open_cases 94 before and after.
+             owner preview (GET /api/integrations/custom/overrides): guard mass_lifecycle_change, R=45, L=140, ratio=0.3214, 20 record ids (T-1001, T-1002, T-1004 ...), previewHash (64 hex).
+             member A (n9-member-a@example.test, role member): GET preview, POST customer override and POST support-authorization all returned 403 "Only an organization owner can change this setting"; guard_overrides stayed at 0 rows. The "control absent in the UI" half was not observed (no browser); the server refuses.
+             Not repeated (already recorded above): the owner confirmation, TTL and the operator 403.
+Deviations (closing run): the dry-run state differs from the first run (rebuilt database, N=45 once). The override was not confirmed in this run, so an aborted pass is left pending in sla_e2e_test.
 ```
 
 ### B-13 — Availability during an in-flight request: allowlist removal aborts within about 5 s, data preserved, pause not resumed (plan 09 §8.7, plan 10 §5.4)
