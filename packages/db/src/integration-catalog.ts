@@ -13,11 +13,14 @@ export interface IntegrationAvailabilityDefaults {
 }
 
 /**
- * A recorded decision that forbids widening a provider's availability (D33
- * ruling 3). While present, the admin API refuses to add any organization to
- * the provider's allowlist, open it to all organizations, or promote it to
- * Stable. Narrowing changes stay allowed. Lifted only by removing it here, in
- * a reviewed change, once the named roadmap item is closed.
+ * A recorded decision that forbids widening a provider's availability beyond
+ * an allowlist (D33 ruling 3, amended by D33-A1). While present, the admin API
+ * refuses to open the provider to all organizations or promote it to Stable.
+ * Adding or removing individual organizations stays allowed, but only while
+ * the provider is Beta with an allowlist (`allowlistAddBlock` in the admin
+ * library): the allowlist is the bounded form of Beta. Narrowing changes stay
+ * allowed. Lifted only by removing it here, in a reviewed change, once the
+ * named roadmap item is closed.
  */
 export interface IntegrationRolloutBlock {
   /** The roadmap item that must close first, e.g. `N9.14-F1`. */
@@ -83,7 +86,7 @@ export const INTEGRATION_CATALOG = {
     rolloutBlock: {
       id: "N9.14-F1",
       reason:
-        "Custom REST Beta enablement is blocked until N9.14-F1 closes: database verification and replay, an end-to-end run, the capacity benchmark that fixes the live-case ceiling, U2 and legal review (roadmap N9).",
+        "Custom REST cannot be opened to all organizations or promoted to Stable until N9.14-F1 closes: database verification and replay, an end-to-end run, the capacity benchmark that fixes the live-case ceiling, U2 and legal review (roadmap N9). Individual organizations can still be added to the Beta allowlist.",
     },
   },
 } as const satisfies Record<IntegrationProvider, IntegrationCatalogEntry>;

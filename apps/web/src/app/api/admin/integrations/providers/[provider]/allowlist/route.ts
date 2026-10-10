@@ -12,8 +12,9 @@ import { requirePlatformOperator } from "@/lib/authz";
 
 /**
  * Adds an organization to a provider's Beta allowlist (N10, D33): `{ organizationId, reason }`.
- * 409 `already_listed`, or `rollout_blocked` while the provider carries a
- * rollout block (Custom REST: N9.14-F1). Audited.
+ * 409 `already_listed`, or `rollout_blocked` when a provider under a rollout
+ * block (Custom REST: N9.14-F1) is not Beta with an allowlist (D33-A1). Scoped
+ * to the one organization; the provider's policy is untouched. Audited.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const session = await getServerSession(authOptions);

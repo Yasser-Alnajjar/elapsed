@@ -77,13 +77,15 @@ To stop **one** organization's integration only, use the per-integration **Pause
 
 ## Procedure: Beta allowlist
 
-- Select the provider, set Beta access to **Allowlist**, then add organizations. Removing an organization takes effect on its next check; its data and connection are kept.
+- Select the provider, set Beta access to **Allowlist**, then add organizations (Custom REST included, while it is Beta with an allowlist). Removing an organization takes effect on its next check; its data and connection are kept.
 - Moving a provider from "All organizations" to "Allowlist" removes access from every organization not on the list, including connected ones: the impact preview shows how many.
 - **Custom REST:** removing an organization also pauses polling on its custom integration; re-adding does not resume it (use **Resume polling** on the tenant page). This is plan 09 §8.7's behavior.
 
 ## Rollout block: Custom REST (N9.14-F1)
 
-Until N9.14-F1 is closed (roadmap), the backend refuses with 409 `rollout_blocked`: adding an organization to the Custom REST allowlist, opening Custom REST to all organizations, and promoting it to Stable. The console shows the block and its reason. Narrowing changes (disable, Coming Soon, removing an organization) are allowed. Lifting the block is a reviewed code change in `packages/db/src/integration-catalog.ts` made when N9.14-F1 closes.
+Until N9.14-F1 is closed (roadmap), the backend refuses with 409 `rollout_blocked`: opening Custom REST to all organizations and promoting it to Stable. The console shows the block and its reason (those two options are disabled in the edit dialog).
+
+Individual organizations **can** be added to and removed from the Custom REST allowlist while the provider is **Beta with an allowlist** (decision D33-A1, 2026-10-10). Each add affects only that organization, needs a reason and writes one audit row. If the provider is in any other state (for example Coming Soon), the add is refused with the same `rollout_blocked` code. Narrowing changes (disable, Coming Soon, removing an organization) are allowed. Lifting the block is a reviewed code change in `packages/db/src/integration-catalog.ts` made when N9.14-F1 closes.
 
 ## Promoting a provider (D17)
 
