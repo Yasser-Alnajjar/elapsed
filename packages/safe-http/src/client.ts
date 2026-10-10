@@ -303,7 +303,10 @@ export function createSafeHttpClient(options: SafeHttpClientOptions): SafeHttpCl
         attempt += 1;
         await budget.assertNotStopped();
         await budget.reserveRequestSlot(); // throws budget_exhausted before any attempt that cannot be useful
-        const timeoutMs = Math.min(attemptTimeoutMs, budget.remainingMs());
+        const remaining = budget.remainingMs();
+        const timeoutMs = Math.min(attemptTimeoutMs, remaining);
+        // The attempt's timer was shortened by the run budget, not by the per-attempt limit.
+        const clippedByBudget = remaining < attemptTimeoutMs;
         let raw: { status: number; headers: Record<string, string>; text: string } | null = null;
         let failure: SafeHttpError | null = null;
         try {
@@ -311,6 +314,10 @@ export function createSafeHttpClient(options: SafeHttpClientOptions): SafeHttpCl
         } catch (error) {
           failure = error instanceof SafeHttpError ? error : mapTransportError(error);
         }
+        // A request still in flight when the run's budget ends did not fail: the run ran out of time
+        // (plan 09 Q12), so it is a partial run, not a timeout. A request that used its whole
+        // per-attempt limit is still a real timeout.
+        if (failure && failure.code === "timeout" && clippedByBudget) throw new SafeHttpError("budget_exhausted");
         if (raw && !isRetryableStatus(raw.status)) return toResponse(raw, false);
         if (failure && failure.code !== "timeout" && failure.code !== "unreachable") throw failure;
         // A retryable outcome: 5xx/429 or a transport failure that may clear.
