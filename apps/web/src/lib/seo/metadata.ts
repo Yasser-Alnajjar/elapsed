@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { releaseStageSeoSuffix, type ReleaseStage } from "@/lib/release-stage";
 import type { PublicPage } from "@/lib/types/seo";
 import { HOME_PAGE, PUBLIC_PAGES, SOCIAL_IMAGE_ALT } from "./pages";
 import type { PublicPath } from "./pages";
@@ -101,6 +102,19 @@ export function getPageMetadata(path: PublicPath): Metadata {
   const page = PUBLIC_PAGES.find((candidate) => candidate.path === path);
   if (!page) throw new Error(`No SEO entry for ${path} in lib/seo/pages.ts`);
   return pageMetadata(page);
+}
+
+/**
+ * Metadata for an integration's documentation page. The page's entry in
+ * `lib/seo/pages.ts` is stage-neutral; the integration's current release stage
+ * (persisted policy, read by the caller) adds its one sentence, so a Beta
+ * integration says so in search results and a Stable one does not. The page
+ * must be dynamically rendered for the stage to stay current.
+ */
+export function getIntegrationPageMetadata(path: PublicPath, stage: ReleaseStage): Metadata {
+  const page = PUBLIC_PAGES.find((candidate) => candidate.path === path);
+  if (!page) throw new Error(`No SEO entry for ${path} in lib/seo/pages.ts`);
+  return pageMetadata({ ...page, description: `${page.description}${releaseStageSeoSuffix(stage)}` });
 }
 
 /**

@@ -29,8 +29,6 @@ const row = (overrides: Partial<AdminIntegrationAvailabilityRow> = {}): AdminInt
   activeOrganizations: 3,
   pausedConnections: 0,
   health: { healthy: 2, failing: 1, needsAttention: 1, stale: 0 },
-  rolloutBlock: null,
-  allowlistAddBlock: null,
   ...overrides,
 });
 
@@ -79,7 +77,7 @@ describe("Integration Control Center view (N10)", () => {
     expect(html).toContain("Paused during a Zendesk incident.");
   });
 
-  it("explains the Custom REST rollout block and an empty allowlist", async () => {
+  it("explains an empty Custom REST allowlist", async () => {
     const html = await render({
       rows: [
         row({
@@ -88,13 +86,11 @@ describe("Integration Control Center view (N10)", () => {
           connectionType: "api_credentials",
           releaseStage: "beta",
           betaAccess: "allowlist",
-          rolloutBlock: { id: "N9.14-F1", reason: "Benchmark and legal review first." },
         }),
       ],
       organizations: [],
     });
-    expect(html).toContain("Rollout blocked (N9.14-F1)");
-    expect(html).toContain("Benchmark and legal review first.");
+    expect(html).not.toContain("Rollout blocked");
     expect(html).toContain("Allowlist is empty: no organization can use Custom REST right now.");
     expect(html).toContain("API credentials");
   });

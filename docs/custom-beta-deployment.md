@@ -5,7 +5,7 @@ Status: **EXECUTED 2026-10-10 by the owner on the production host at commit `8a4
 ## Preconditions and what this deployment does NOT do
 
 - **Owner authorization:** the production deployment was authorized and run by the owner on 2026-10-10 (see "Execution record"). Any further run of the commands below, any `.env` change or any restart needs a new explicit approval.
-- Deploying does not open the Beta. The Custom REST rollout block (`N9.14-F1`) stays in place: Custom REST remains Beta/allowlist-only, is never opened to all organizations and never promoted to Stable by this deployment. The block does not stop individual organizations being added to the allowlist; none has been added. Remaining launch prerequisites are listed at the end of this file. O-2 (the fixed outbound IP) is not a gate (owner decision 2026-10-10, Option A, deferred indefinitely).
+- Deploying does not open the Beta: Custom REST remains Beta/allowlist-only, and this deployment opens it to no additional organization and promotes nothing to Stable. Individual organizations are added to the allowlist in `/admin/integrations`; none has been added. The rollout block this paragraph originally cited (`N9.14-F1`) was removed on 2026-10-12 and changed no production setting. Remaining launch prerequisites are listed at the end of this file. O-2 (the fixed outbound IP) is not a gate (owner decision 2026-10-10, Option A, deferred indefinitely).
 
 ## What changes
 
@@ -72,7 +72,7 @@ $C logs --since 10m worker | grep -iE "error|fatal" | head      # nothing new
 $C exec worker wget -qO- http://localhost:8081/health          # liveness
 ```
 
-Behavior (no customer data touched): sign in as a platform operator who is NOT on the override list and call the override apply route for any id: expect 403 "needs the separate guard-override permission". Custom REST stays Beta, allowlist only: `/admin/integrations` shows Custom REST with the rollout block note.
+Behavior (no customer data touched): sign in as a platform operator who is NOT on the override list and call the override apply route for any id: expect 403 "needs the separate guard-override permission". Custom REST stays Beta, allowlist only: `/admin/integrations` shows Custom REST as Beta with an allowlist.
 
 ## 3. Rollback
 
@@ -93,7 +93,7 @@ Database migrations are not reversed by this. If a migration must be undone, res
 
 ## 4. Do not do
 
-Do not raise the ceiling, enable Custom REST for more than the allowlisted pilot organizations, or lift the rollout block (`packages/db/src/integration-catalog.ts`) as part of this deployment.
+Do not raise the ceiling or enable Custom REST for more than the allowlisted pilot organizations as part of this deployment.
 
 ## 5. Production record and launch prerequisites (2026-10-10)
 
@@ -113,7 +113,7 @@ Recorded from the owner's production deployment report. **Owner-reported means t
 
 ### Launch readiness for the limited Beta (reconciled 2026-10-10)
 
-Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, the rollout block stays (`packages/db/src/integration-catalog.ts`), nothing is opened to all organizations and nothing is promoted to Stable. Sources: the closure ledger and sections 2.2 to 2.4 of `docs/validation/server-validation-master.md`, `implementation-plans/ROADMAP_Product.md` (N9.14-F1, D33-A1). The legal documents were not opened.
+Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, nothing is opened to all organizations and nothing is promoted to Stable. Sources: the closure ledger and sections 2.2 to 2.4 of `docs/validation/server-validation-master.md`, `implementation-plans/ROADMAP_Product.md`. The legal documents were not opened.
 
 **1. Completed and verified (evidence is in the repository)**
 
@@ -122,7 +122,7 @@ Custom REST stays Beta and allowlist-only. No pilot organization is added by thi
 - OD-01 / U2 for the pilot: option (b); procedure `docs/custom-provider-deletion-recovery.md`; tests `apps/web/test/custom-attention-copy.test.ts`, `packages/custom-ticket/test/ingest-runs.db.test.ts`.
 - D-08 focused tests, code side (31 files, 598 tests; recorded in the ledger, not re-run). The commit `23f265b` on `origin/testing` and `b533624` on `main` exist (checked with `git merge-base`/`cat-file`).
 - BL-04 / BL-10, repository side: Compose passes both settings (`8b123a5`, `e888a54`); `apps/web/test/guard-override-operator.test.ts`.
-- Rollout block preserved and tested (`apps/web/test/integration-availability-admin.test.ts`, `packages/db/test/integration-availability.test.ts`, `apps/worker/test/integration-availability.test.ts`).
+- Integration availability policy tested (`apps/web/test/integration-availability-admin.test.ts`, `packages/db/test/integration-availability.test.ts`, `apps/worker/test/integration-availability.test.ts`).
 - `.dockerignore` excludes `backups/` (toy-build check; the already-built images are unchanged).
 
 **2. Completed but owner-reported (not independently observed)**
@@ -135,7 +135,7 @@ Custom REST stays Beta and allowlist-only. No pilot organization is added by thi
 
 Nothing on the limited-Beta path is currently actionable by engineering without a decision or the legal outcome. What is left:
 
-- After the legal outcome (blocked by the hold, see 5): apply whatever the qualified reviewer decides to the live copy; the public docs page and marketing/`plans.ts` copy (N9.14-F1).
+- After the legal outcome (blocked by the hold, see 5): apply whatever the qualified reviewer decides to the live copy; the public docs page and marketing/`plans.ts` copy.
 - Documentation closure, procedure E-03 in `docs/validation/server-validation-master.md`, including the stale status lines DC-01 to DC-20 in section 2.3.
 - Not needed for the Beta: a reviewed tool to apply a legitimate mass deletion or undo a verified-404 marker (OD-01 option (a), to reconsider before GA); projector write batching; real-host benchmark rerun (only before raising the ceiling); Phase C and D-02 to D-06 (see section 6 below).
 
@@ -143,14 +143,13 @@ Nothing on the limited-Beta path is currently actionable by engineering without 
 
 - **Image rebuild: approval OUTSTANDING.** Needed only for the `.dockerignore` change to apply. Not given, not done.
 - **O-1 reference:** whether "D34" should exist as a roadmap decision (see "O-1 reference" below). Unresolved.
-- **Timing of the first pilot allowlist entry, and which organization.** The roadmap allows individual allowlist adds under the rollout block (D33-A1, `ROADMAP_Product.md` N9.14-F1), while the ledger says "Beta is NOT open" until D-07 closes. The two are not reconciled; the owner decides whether a pilot waits for D-07. No organization added.
-- Lifting the rollout block (separate reviewed change, only after N9.14-F1 closes).
+- **Which organization(s) are the first pilot, and when.** Adding an organization to the Custom REST allowlist is not gated by the legal review or by any roadmap item (N9.14-F1 was removed on 2026-10-12); it is the owner's choice. No organization added.
 - SSH exposure (TCP 22 open to the world, restriction plan written, not applied): separate from the Beta, still owner-decided.
 - Non-gating owner decisions listed in section 2.4 of the validation master (OD-02 to OD-13; OD-09 N9.0-F1/F2 review and OD-10 override-confirmation expiry are the closest to Custom REST).
 
 **5. External or legal launch gates**
 
-- **D-07 / BL-09, qualified legal review: OPEN. The only open gate on the launch path.** It includes the wording items W-1 to W-3, and the wording of O-1 and O-3 (decided by the owner, Option A for each). Engineering may not decide these, and the legal-review hold stays: no Terms, Privacy, legal-review or decision-sheet content was opened or changed.
+- **D-07 / BL-09, qualified legal review: OPEN, under the owner's legal-review hold.** It gates the live Terms and Privacy edits and the public and marketing copy, not allowlisting a pilot organization (N9.14-F1 was removed on 2026-10-12). It includes the wording items W-1 to W-3, and the wording of O-1 and O-3 (decided by the owner, Option A for each). Engineering may not decide these, and the legal-review hold stays: no Terms, Privacy, legal-review or decision-sheet content was opened or changed.
 - Anything that depends on that content (live copy, signup acceptance behavior, public copy) is stopped at this point.
 
 **6. Deferred, not blocking the limited Beta**

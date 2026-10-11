@@ -68,13 +68,12 @@ describe("catalog defaults (D33 rulings 1 and 3; the N10 migration seeds the sam
     expect([...CATALOG_PROVIDERS].sort()).toEqual(["custom", "github", "intercom", "jira", "linear", "zendesk"]);
   });
 
-  it("seeds Zendesk, Jira and Linear Stable; Intercom and GitHub Beta for all; Custom REST Beta allowlist with the N9.14-F1 block", () => {
+  it("seeds Zendesk, Jira and Linear Stable; Intercom and GitHub Beta for all; Custom REST Beta allowlist", () => {
     const stage = Object.fromEntries(CATALOG_PROVIDERS.map((p) => [p, defaultAvailabilityPolicy(p)]));
     for (const p of ["zendesk", "jira", "linear"] as const) expect(stage[p]).toMatchObject({ enabled: true, releaseStage: "stable" });
     for (const p of ["intercom", "github"] as const) expect(stage[p]).toMatchObject({ enabled: true, releaseStage: "beta", betaAccess: "all_organizations" });
     expect(stage.custom).toMatchObject({ enabled: true, releaseStage: "beta", betaAccess: "allowlist" });
-    expect(INTEGRATION_CATALOG.custom.rolloutBlock.id).toBe("N9.14-F1");
-    for (const p of CATALOG_PROVIDERS.filter((p) => p !== "custom")) expect("rolloutBlock" in INTEGRATION_CATALOG[p]).toBe(false);
+    for (const p of CATALOG_PROVIDERS) expect("rolloutBlock" in INTEGRATION_CATALOG[p]).toBe(false);
   });
 });
 

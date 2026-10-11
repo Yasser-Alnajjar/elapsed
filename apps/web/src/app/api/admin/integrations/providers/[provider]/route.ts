@@ -13,8 +13,7 @@ import { requirePlatformOperator } from "@/lib/authz";
 /**
  * Changes one provider's platform availability (N10, D33):
  * `{ expectedVersion, enabled?, releaseStage?, betaAccess?, statusMessage?, reason }`.
- * Compare-and-set on `expectedVersion` (409 `stale_version`); widening a
- * provider under a rollout block is 409 `rollout_blocked`. Audited.
+ * Compare-and-set on `expectedVersion` (409 `stale_version`). Audited.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const session = await getServerSession(authOptions);

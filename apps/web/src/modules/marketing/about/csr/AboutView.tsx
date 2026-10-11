@@ -593,9 +593,9 @@ export const AboutView = () => {
 
               <p className="text-muted-foreground mb-6 text-base leading-relaxed">
                 Our documentation lists current limitations alongside every
-                feature, from fixed warning thresholds to which integrations are
-                still in beta, so you can evaluate the product as it actually
-                is.
+                feature, from fixed warning thresholds to the release stage
+                (Beta or Stable) of each integration, so you can evaluate the
+                product as it actually is.
               </p>
 
               <Link

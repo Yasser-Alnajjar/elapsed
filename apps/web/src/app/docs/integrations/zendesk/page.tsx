@@ -5,7 +5,9 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { getPageMetadata } from "@/lib/seo/metadata";
+import { ReleaseStageBadge, ReleaseStageNotice } from "@/components/shared/release-stage";
+import { getIntegrationPageMetadata } from "@/lib/seo/metadata";
+import { getReleaseStage } from "@/lib/release-stage-data";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -25,14 +27,24 @@ const toc = [
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
 
-export const generateMetadata = () => getPageMetadata("/docs/integrations/zendesk");
+// The release stage (Beta, Stable, ...) is the persisted integration policy
+// (D33), read per request; a static render would freeze it at build time.
+export const dynamic = "force-dynamic";
 
-export default function ZendeskIntegrationPage() {
+export const generateMetadata = async () =>
+  getIntegrationPageMetadata("/docs/integrations/zendesk", await getReleaseStage("zendesk"));
+
+export default async function ZendeskIntegrationPage() {
+  const stage = await getReleaseStage("zendesk");
+
   return (
     <DocsLayout toc={toc}>
       <div className="space-y-12">
         <header className="space-y-4">
-          <Badge variant="outline">Integrations</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Integrations</Badge>
+            <ReleaseStageBadge stage={stage} showStable />
+          </div>
 
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">Zendesk</h1>
@@ -41,6 +53,7 @@ export default function ZendeskIntegrationPage() {
               Zendesk is the system of record for what you promised — SLA
               policies, business calendars, customers, and the full ticket
               history.
+              <ReleaseStageNotice stage={stage} limitationsHref="#limitations" />
             </p>
           </div>
         </header>

@@ -5,7 +5,9 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { getPageMetadata } from "@/lib/seo/metadata";
+import { ReleaseStageBadge, ReleaseStageNotice } from "@/components/shared/release-stage";
+import { getIntegrationPageMetadata } from "@/lib/seo/metadata";
+import { getReleaseStage } from "@/lib/release-stage-data";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -24,15 +26,23 @@ const toc = [
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
 
-export const generateMetadata = () => getPageMetadata("/docs/integrations/linear");
+// The release stage (Beta, Stable, ...) is the persisted integration policy
+// (D33), read per request; a static render would freeze it at build time.
+export const dynamic = "force-dynamic";
 
-export default function LinearIntegrationPage() {
+export const generateMetadata = async () =>
+  getIntegrationPageMetadata("/docs/integrations/linear", await getReleaseStage("linear"));
+
+export default async function LinearIntegrationPage() {
+  const stage = await getReleaseStage("linear");
+
   return (
     <DocsLayout toc={toc}>
       <div className="space-y-12">
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Integrations</Badge>
+            <ReleaseStageBadge stage={stage} showStable />
           </div>
 
           <div className="space-y-3">
@@ -48,7 +58,7 @@ export default function LinearIntegrationPage() {
               >
                 Known limitations
               </Link>
-              .
+              .<ReleaseStageNotice stage={stage} />
             </p>
           </div>
         </header>

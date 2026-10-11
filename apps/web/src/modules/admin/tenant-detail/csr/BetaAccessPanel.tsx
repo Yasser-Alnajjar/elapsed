@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Plug } from "lucide-react";
+import { Plug } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
@@ -64,23 +64,16 @@ export function BetaAccessPanel({ organizationId, access }: { organizationId: st
                     </span>
                   </div>
                   {!entry.allowlistApplies && <MonoLabel>Allowlist not in effect for this provider right now</MonoLabel>}
-                  {entry.allowlistAddBlock && !entry.listed ? (
-                    <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
-                      <Lock className="text-warning-text mt-0.5 size-3 shrink-0" aria-hidden />
-                      Adding is blocked by {entry.allowlistAddBlock.id}.
-                    </p>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={entry.listed ? "outline" : "default"}
-                      disabled={working !== null || reason.trim() === ""}
-                      onClick={() => void toggle(entry)}
-                      className="self-start"
-                    >
-                      {working === entry.provider ? "Saving" : entry.listed ? "Remove from Beta" : "Add to Beta"}
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={entry.listed ? "outline" : "default"}
+                    disabled={working !== null || reason.trim() === ""}
+                    onClick={() => void toggle(entry)}
+                    className="self-start"
+                  >
+                    {working === entry.provider ? "Saving" : entry.listed ? "Remove from Beta" : "Add to Beta"}
+                  </Button>
                 </li>
               ))}
             </ul>

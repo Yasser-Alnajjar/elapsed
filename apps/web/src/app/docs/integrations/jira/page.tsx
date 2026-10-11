@@ -14,7 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableCard } from "@/components/shared/data-table/data-table-card";
-import { getPageMetadata } from "@/lib/seo/metadata";
+import { ReleaseStageBadge, ReleaseStageNotice } from "@/components/shared/release-stage";
+import { getIntegrationPageMetadata } from "@/lib/seo/metadata";
+import { getReleaseStage } from "@/lib/release-stage-data";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -68,14 +70,24 @@ const situations = [
   },
 ];
 
-export const generateMetadata = () => getPageMetadata("/docs/integrations/jira");
+// The release stage (Beta, Stable, ...) is the persisted integration policy
+// (D33), read per request; a static render would freeze it at build time.
+export const dynamic = "force-dynamic";
 
-export default function JiraIntegrationPage() {
+export const generateMetadata = async () =>
+  getIntegrationPageMetadata("/docs/integrations/jira", await getReleaseStage("jira"));
+
+export default async function JiraIntegrationPage() {
+  const stage = await getReleaseStage("jira");
+
   return (
     <DocsLayout toc={toc}>
       <div className="space-y-12">
         <header className="space-y-4">
-          <Badge variant="outline">Integrations</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Integrations</Badge>
+            <ReleaseStageBadge stage={stage} showStable />
+          </div>
 
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">Jira</h1>
@@ -84,6 +96,7 @@ export default function JiraIntegrationPage() {
               Jira supplies the engineering side of the timeline — what happened
               to an escalated case after a Zendesk ticket was linked to a Jira
               issue.
+              <ReleaseStageNotice stage={stage} limitationsHref="#limitations" />
             </p>
           </div>
         </header>

@@ -15,7 +15,7 @@ import { ConnectedCardBody } from "./ConnectedCardBody";
 import { ConnectPrompt } from "./ConnectPrompt";
 import { IntegrationCardShell } from "./IntegrationCardShell";
 import { StatusIndicator } from "./IntegrationStatus";
-import { ReleaseStageBadge } from "./ReleaseStageBadge";
+import { ReleaseStageBadge } from "@/components/shared/release-stage";
 
 const metaChip =
   "text-primary bg-surface-container-lowest border-outline-variant/30 rounded border px-1.5 py-0.5 font-mono text-xxs";

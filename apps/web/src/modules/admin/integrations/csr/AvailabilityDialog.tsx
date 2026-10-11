@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 import { AdminClientActions } from "@/actions/admin-client";
 import { MonoLabel } from "@/components/admin/admin-ui";
@@ -83,7 +83,6 @@ function AvailabilityForm({
   const after: AvailabilityPolicyFields = { enabled, releaseStage, betaAccess, statusMessage: statusMessage.trim() || null };
   const changed = JSON.stringify(before) !== JSON.stringify(after);
   const isNarrowing = narrows(before, after);
-  const blocked = row.rolloutBlock;
   const reviewing = impact !== null;
 
   /** Only the fields that differ, so the request says exactly what the operator changed. */
@@ -158,9 +157,8 @@ function AvailabilityForm({
             </SelectTrigger>
             <SelectContent>
               {RELEASE_STAGES.map((stage) => (
-                <SelectItem key={stage} value={stage} disabled={Boolean(blocked) && stage === "stable" && row.releaseStage !== "stable"}>
+                <SelectItem key={stage} value={stage}>
                   {RELEASE_STAGE_LABELS[stage]}
-                  {blocked && stage === "stable" && row.releaseStage !== "stable" ? ` (blocked by ${blocked.id})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -176,23 +174,13 @@ function AvailabilityForm({
               </SelectTrigger>
               <SelectContent>
                 {BETA_ACCESS_MODES.map((mode) => (
-                  <SelectItem key={mode} value={mode} disabled={Boolean(blocked) && mode === "all_organizations" && row.betaAccess !== "all_organizations"}>
+                  <SelectItem key={mode} value={mode}>
                     {BETA_ACCESS_LABELS[mode]}
-                    {blocked && mode === "all_organizations" && row.betaAccess !== "all_organizations" ? ` (blocked by ${blocked.id})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        )}
-
-        {blocked && (
-          <p className="border-warning/30 bg-warning/[0.07] text-muted-foreground flex items-start gap-2 rounded border px-3 py-2 text-xs leading-4">
-            <Lock className="text-warning-text mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Stable and &quot;All organizations&quot; are blocked by {blocked.id}: {blocked.reason}
-            </span>
-          </p>
         )}
 
         <div className="flex flex-col gap-1.5">

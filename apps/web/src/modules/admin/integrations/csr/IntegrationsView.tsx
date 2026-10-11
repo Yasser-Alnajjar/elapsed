@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, ListChecks, Lock, Pencil, Plug, RefreshCw, TriangleAlert } from "lucide-react";
+import { Ban, ListChecks, Pencil, Plug, RefreshCw, TriangleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
 import { AdminClientActions } from "@/actions/admin-client";
 import { AdminPanel, AuditNotice, Fact, MonoLabel, PageHeader, Tag } from "@/components/admin/admin-ui";
@@ -185,15 +185,6 @@ function ProviderCard({ row, onEdit, onAllowlist }: { row: AdminIntegrationAvail
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Ban className="size-3.5" aria-hidden />
           Allowlist is empty: no organization can use {row.name} right now.
-        </p>
-      )}
-      {row.rolloutBlock && (
-        <p className="border-warning/30 bg-warning/[0.07] text-muted-foreground flex items-start gap-2 rounded border px-3 py-2 text-xs leading-4">
-          <Lock className="text-warning-text mt-0.5 size-3.5 shrink-0" aria-hidden />
-          <span>
-            <span className="text-foreground font-semibold">Rollout blocked ({row.rolloutBlock.id}).</span> {row.rolloutBlock.reason} Adding or removing individual
-            organizations (Beta with an allowlist), disabling and Coming soon still work.
-          </span>
         </p>
       )}
 

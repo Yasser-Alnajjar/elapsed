@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, TriangleAlert, X } from "lucide-react";
+import { TriangleAlert, X } from "lucide-react";
 import { useId, useState } from "react";
 import { AdminClientActions } from "@/actions/admin-client";
 import { MonoLabel } from "@/components/admin/admin-ui";
@@ -165,34 +165,25 @@ function AllowlistForm({
           </div>
         )}
 
-        {row.allowlistAddBlock ? (
-          <p className="border-warning/30 bg-warning/[0.07] text-muted-foreground flex items-start gap-2 rounded border px-3 py-2 text-xs leading-4">
-            <Lock className="text-warning-text mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Adding organizations is blocked by {row.allowlistAddBlock.id}: {row.allowlistAddBlock.reason}
-            </span>
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={ids.org}>Add an organization</Label>
-            {candidates.length === 0 ? (
-              <p className="text-muted-foreground text-xs">Every organization is already on the allowlist.</p>
-            ) : (
-              <Select value={organizationId} onValueChange={setOrganizationId} disabled={busy}>
-                <SelectTrigger id={ids.org} className="w-full">
-                  <SelectValue placeholder="Choose an organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {candidates.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={ids.org}>Add an organization</Label>
+          {candidates.length === 0 ? (
+            <p className="text-muted-foreground text-xs">Every organization is already on the allowlist.</p>
+          ) : (
+            <Select value={organizationId} onValueChange={setOrganizationId} disabled={busy}>
+              <SelectTrigger id={ids.org} className="w-full">
+                <SelectValue placeholder="Choose an organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {candidates.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={ids.reason}>Reason (audit log, required to add or remove)</Label>
@@ -217,11 +208,9 @@ function AllowlistForm({
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Close
         </Button>
-        {!row.allowlistAddBlock && (
-          <Button type="button" onClick={() => void add()} disabled={busy || !organizationId || !reasonOk}>
-            Add to allowlist
-          </Button>
-        )}
+        <Button type="button" onClick={() => void add()} disabled={busy || !organizationId || !reasonOk}>
+          Add to allowlist
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

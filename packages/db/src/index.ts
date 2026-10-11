@@ -136,7 +136,6 @@ export type {
   IntegrationCategory,
   IntegrationConnectionType,
   IntegrationCatalogEntry,
-  IntegrationRolloutBlock,
   IntegrationAvailabilityDefaults,
 } from "./integration-catalog";
 export {

@@ -2,11 +2,18 @@ import type { ActivationImpact } from "@sla/commitments";
 import type { ConnectionTest, DraftView, FullPassMeasurement, Preview, Sample } from "@sla/custom-ticket";
 import type { ConfigDiff } from "@/lib/custom-provider/config-diff";
 import type { CustomStatus } from "@/lib/custom-provider/status";
+import type { ReleaseStage } from "@/lib/release-stage";
 
 /** Everything the Custom REST page needs, assembled on the server. */
 export interface CustomProviderPageData {
-  /** The operator's Beta flag for this organization. */
+  /** Custom REST is available to this organization (provider enabled and, while Beta with an allowlist, the organization listed). */
   enabled: boolean;
+  /** Custom REST's platform release stage, from the persisted availability policy (D33). */
+  releaseStage: ReleaseStage;
+  /** Why it is unavailable to this organization (the resolver's sentence), or null when it is available. */
+  unavailableMessage: string | null;
+  /** The unavailable reason is the Beta allowlist, so access is requested from support. */
+  betaRestricted: boolean;
   /** The caller is the organization owner; members read the state but cannot change it. */
   isOwner: boolean;
   /** The signed-in user, recorded with the comment-visibility acknowledgement. */

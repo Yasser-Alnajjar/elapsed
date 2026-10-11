@@ -15,7 +15,6 @@ import { requirePlatformOperator } from "@/lib/authz";
  * Legacy route for the Custom REST Beta flag (N9, plan 09 8.7): `{ enabled, reason }`.
  * Kept for one release (D33, plan 10 §7.1) as a thin wrapper over the Custom
  * REST Beta allowlist; new callers use `/api/admin/integrations/providers/custom/allowlist`.
- * Enabling follows the allowlist rule: refused (409 `rollout_blocked`) unless Custom REST is Beta with an allowlist (D33-A1).
  */
 export async function POST(request: Request, { params }: { params: Promise<{ organizationId: string }> }) {
   const session = await getServerSession(authOptions);

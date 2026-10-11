@@ -19,6 +19,8 @@ import {
   SectionHeading,
 } from "@/components/marketing/marketing-ui";
 import { Reveal } from "@/components/shared/reveal";
+import { RELEASE_STAGE_LABELS, type ReleaseStage } from "@/lib/release-stage";
+import type { IntegrationProvider } from "@/lib/types/integrations";
 import {
   Accordion,
   AccordionContent,
@@ -30,12 +32,32 @@ import { HOME_FAQS } from "./home-content";
 
 const TRIAL = `${TRIAL_LENGTH_DAYS}-day trial`;
 
-const INTEGRATION_GROUPS: { label: string; tools: string[]; beta?: boolean }[] =
-  [
-    { label: "Ticket sources", tools: ["Zendesk", "Intercom"], beta: true },
-    { label: "Engineering", tools: ["Jira", "Linear", "GitHub"], beta: true },
-    { label: "Alerts", tools: ["Slack", "Email"] },
-  ];
+/**
+ * `provider` ties a tool to its integration policy, which supplies its
+ * release stage (Beta, Stable, ...). Slack and email are alert channels with
+ * no release stage, so they carry none.
+ */
+const INTEGRATION_GROUPS: {
+  label: string;
+  tools: { name: string; provider?: IntegrationProvider }[];
+}[] = [
+  {
+    label: "Ticket sources",
+    tools: [
+      { name: "Zendesk", provider: "zendesk" },
+      { name: "Intercom", provider: "intercom" },
+    ],
+  },
+  {
+    label: "Engineering",
+    tools: [
+      { name: "Jira", provider: "jira" },
+      { name: "Linear", provider: "linear" },
+      { name: "GitHub", provider: "github" },
+    ],
+  },
+  { label: "Alerts", tools: [{ name: "Slack" }, { name: "Email" }] },
+];
 
 const PROBLEMS = [
   {
@@ -338,7 +360,12 @@ function CaseCardPreview() {
   );
 }
 
-export const HomeView = () => {
+export const HomeView = ({
+  releaseStages,
+}: {
+  /** Each integration's current release stage, from the persisted policy. */
+  releaseStages: Record<IntegrationProvider, ReleaseStage>;
+}) => {
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
   const primaryHref = isAuthenticated ? "/dashboard" : "/sign-up";
@@ -429,25 +456,29 @@ export const HomeView = () => {
                 </span>
 
                 <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-sm">
-                  {group.tools.map((tool, i) => (
-                    <span key={tool} className="flex items-center gap-2">
-                      {i > 0 && (
-                        <span className="text-foreground-subtle">·</span>
-                      )}
-                      {tool}
-                    </span>
-                  ))}
-
-                  {group.beta && (
-                    <span
-                      className={cn(
-                        MONO_LABEL,
-                        "bg-surface-overlay text-primary rounded px-1.5 py-0.5",
-                      )}
-                    >
-                      Beta
-                    </span>
-                  )}
+                  {group.tools.map((tool, i) => {
+                    const stage = tool.provider
+                      ? releaseStages[tool.provider]
+                      : "stable";
+                    return (
+                      <span key={tool.name} className="flex items-center gap-2">
+                        {i > 0 && (
+                          <span className="text-foreground-subtle">·</span>
+                        )}
+                        {tool.name}
+                        {stage !== "stable" && (
+                          <span
+                            className={cn(
+                              MONO_LABEL,
+                              "bg-surface-overlay text-primary rounded px-1.5 py-0.5",
+                            )}
+                          >
+                            {RELEASE_STAGE_LABELS[stage]}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               </Reveal>
             ))}

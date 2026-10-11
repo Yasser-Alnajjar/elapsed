@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Actions } from "@/actions/client";
 import { useOrgTimezone } from "@/components/shared/org-timezone-provider";
+import { ReleaseStageBadge } from "@/components/shared/release-stage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ const TONE_DOT = {
 } as const;
 
 /**
- * Custom REST (Beta, N9): the guided connection for a helpdesk Elapsed has no
+ * Custom REST (N9): the guided connection for a helpdesk Elapsed has no
  * adapter for. Read-only against your system; credentials encrypted and never
  * shown again. Members can read the state; only the owner can change anything.
  */
@@ -61,8 +62,8 @@ export function CustomProviderView({ data }: { data: CustomProviderPageData }) {
       <div className="flex flex-col gap-4">
         <Header data={data} />
         <Alert>
-          Custom REST is in Beta and is not enabled for your organization.
-          Contact support to request access.
+          {data.unavailableMessage ?? "Custom REST is not enabled for your organization."}
+          {data.betaRestricted ? " Contact support to request access." : ""}
         </Alert>
       </div>
     );
@@ -270,7 +271,7 @@ function Header({ data }: { data: CustomProviderPageData }) {
                 <h1 className="text-on-surface text-2xl font-semibold tracking-tight">
                   Custom REST
                 </h1>
-                <Badge variant="beta">Beta</Badge>
+                <ReleaseStageBadge stage={data.releaseStage} />
                 {copy && (
                   <span className="bg-surface-raised text-on-surface flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium">
                     <span

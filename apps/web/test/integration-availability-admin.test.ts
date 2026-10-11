@@ -3,10 +3,10 @@
  * read or change integration availability; each change persists with exactly
  * one audit row (operator, provider, before/after, reason, never a secret); a
  * no-op writes nothing; concurrent edits never silently overwrite each other;
- * the N9.14-F1 rollout block refuses opening Custom REST to all organizations
- * and promoting it to Stable (D33-A1: an allowlist add stays possible while
- * Beta/allowlist, scoped to one organization); narrowing stays possible; allowlists are per organization; disabling and
- * re-enabling never deletes or rewrites customer data.
+ * Custom REST has no rollout block: it can be opened to all organizations or
+ * promoted to Stable like any provider, and an allowlist add is scoped to one
+ * organization; narrowing stays possible; allowlists are per organization;
+ * disabling and re-enabling never deletes or rewrites customer data.
  *
  * Needs a migrated database at TEST_DATABASE_URL whose name contains "test"
  * (every test truncates all tables). Skipped when unset.
@@ -202,22 +202,19 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
     });
   });
 
-  describe("Custom REST rollout block (N9.14-F1, D33 ruling 3 as amended by D33-A1)", () => {
+  describe("Custom REST allowlist and stage changes (no rollout block)", () => {
     it.each([
       [{ releaseStage: "stable" }],
       [{ betaAccess: "all_organizations" }],
       [{ releaseStage: "stable", betaAccess: "all_organizations" }],
-    ])("refuses %j with 409 rollout_blocked and writes nothing", async (change) => {
+    ])("accepts %j with one audit row and a version bump", async (change) => {
       const response = await patch("custom", { expectedVersion: 0, ...change, reason: "widen" });
-      expect(response.status).toBe(409);
-      const body = await response.json();
-      expect(body.code).toBe("rollout_blocked");
-      expect(body.error).toContain("N9.14-F1");
-      expect(await auditRows()).toHaveLength(0);
-      expect(await prisma.integrationAvailability.findUniqueOrThrow({ where: { provider: "custom" } })).toMatchObject({ releaseStage: "beta", betaAccess: "allowlist", version: 0 });
+      expect(response.status).toBe(200);
+      expect(await auditRows()).toHaveLength(1);
+      expect(await prisma.integrationAvailability.findUniqueOrThrow({ where: { provider: "custom" } })).toMatchObject({ ...change, version: 1 });
     });
 
-    it("adds one organization to the allowlist under Beta/allowlist: scoped to it, audited once, policy untouched (D33-A1)", async () => {
+    it("adds one organization to the allowlist: scoped to it, audited once, policy untouched", async () => {
       const response = await addToList("custom", acme);
       expect(response.status).toBe(201);
       const listed = await prisma.integrationBetaAllowlist.findMany({ where: { provider: "custom" } });
@@ -231,7 +228,7 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
       expect(await resolve(prisma, globex, "custom")).toMatchObject({ available: false, code: "integration_beta_restricted" });
     });
 
-    it("the legacy tenant route adds under the same rule; a repeat is a no-op", async () => {
+    it("the legacy tenant route adds the same way; a repeat is a no-op", async () => {
       const first = await legacyRoute.POST(request(`/api/admin/tenants/${acme}/custom-provider`, "POST", { enabled: true, reason: "x" }), params({ organizationId: acme }));
       expect(first.status).toBe(200);
       expect(await first.json()).toMatchObject({ changed: true });
@@ -241,28 +238,11 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
       expect(await auditRows()).toHaveLength(1);
     });
 
-    it("refuses an add with 409 rollout_blocked when Custom REST is not Beta with an allowlist, and writes nothing", async () => {
-      expect((await patch("custom", { expectedVersion: 0, releaseStage: "coming_soon", reason: "hold" })).status).toBe(200);
-      const audited = (await auditRows()).length;
-      const refused = await addToList("custom", acme);
-      expect(refused.status).toBe(409);
-      expect(await refused.json()).toMatchObject({ code: "rollout_blocked" });
-      const legacy = await legacyRoute.POST(request(`/api/admin/tenants/${acme}/custom-provider`, "POST", { enabled: true, reason: "x" }), params({ organizationId: acme }));
-      expect(legacy.status).toBe(409);
-      expect(await prisma.integrationBetaAllowlist.count()).toBe(0);
-      expect(await auditRows()).toHaveLength(audited);
-    });
-
-    it("refuses opening to all organizations or Stable even with organizations on the list, and keeps the list", async () => {
+    it("keeps the allowlist when Custom REST is opened to all organizations", async () => {
       expect((await addToList("custom", acme)).status).toBe(201);
-      const audited = (await auditRows()).length;
-      for (const change of [{ betaAccess: "all_organizations" }, { releaseStage: "stable" }]) {
-        const response = await patch("custom", { expectedVersion: 0, ...change, reason: "widen" });
-        expect(response.status).toBe(409);
-        expect(await response.json()).toMatchObject({ code: "rollout_blocked" });
-      }
-      expect(await auditRows()).toHaveLength(audited);
+      expect((await patch("custom", { expectedVersion: 0, betaAccess: "all_organizations", reason: "open" })).status).toBe(200);
       expect(await prisma.integrationBetaAllowlist.count()).toBe(1);
+      expect((await resolve(prisma, globex, "custom")).available).toBe(true);
     });
 
     it("keeps requiring an operator and a reason for the add", async () => {
@@ -359,7 +339,6 @@ describe.skipIf(!TEST_DATABASE_URL)("integration availability administration (re
       expect(body.rows.map((r: { provider: string }) => r.provider).sort()).toEqual(["custom", "github", "intercom", "jira", "linear", "zendesk"]);
       const zendesk = body.rows.find((r: { provider: string }) => r.provider === "zendesk");
       expect(zendesk).toMatchObject({ connections: 2, activeOrganizations: 2, pausedConnections: 0, health: { healthy: 1, needsAttention: 1 } });
-      expect(body.rows.find((r: { provider: string }) => r.provider === "custom").rolloutBlock.id).toBe("N9.14-F1");
       expect(JSON.stringify(body)).not.toContain("enc:v1:secret");
     });
   });

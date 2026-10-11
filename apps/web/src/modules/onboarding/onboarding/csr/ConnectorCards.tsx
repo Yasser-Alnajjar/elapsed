@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { ShieldCheck, type LucideIcon } from "lucide-react";
 
+import { ReleaseStageBadge } from "@/components/shared/release-stage";
+import type { ReleaseStage } from "@/lib/release-stage";
 import type { OAuthIntegrationProvider } from "@/lib/types/integrations";
 import type { ProviderOnboardingStatus } from "@/lib/types/onboarding";
 import { IntegrationConfigGate } from "@modules/settings/integrations/csr/IntegrationConfigGate";
@@ -15,8 +17,8 @@ interface ConnectorHeaderProps {
   name: string;
   badge: string;
   tagline: string;
-  /** In Beta (D17), from the provider's persisted release stage (D33). */
-  beta?: boolean;
+  /** The provider's persisted release stage (D33); Beta and Coming soon are labelled. */
+  stage?: ReleaseStage;
 }
 
 /** Icon + name + connector badge above a provider's connect form — ported from the mockups' connector card header. */
@@ -25,7 +27,7 @@ export function ConnectorHeader({
   name,
   badge,
   tagline,
-  beta = false,
+  stage = "stable",
 }: ConnectorHeaderProps) {
   return (
     <div className="flex items-center gap-3">
@@ -40,7 +42,7 @@ export function ConnectorHeader({
           <span className="font-label-caps text-label-caps rounded bg-primary/10 px-1.5 py-0.5 uppercase text-primary">
             {badge}
           </span>
-          {beta && <BetaBadge />}
+          <ReleaseStageBadge stage={stage} />
         </div>
         <span className="font-body-sm text-body-sm text-on-surface-variant">
           {tagline}
@@ -69,14 +71,6 @@ function ConnectOrUnavailable({
       {availability.message}
       {availability.statusMessage ? ` ${availability.statusMessage}` : ""}
     </p>
-  );
-}
-
-function BetaBadge() {
-  return (
-    <span className="font-label-caps text-label-caps rounded bg-secondary-container/40 px-1.5 py-0.5 uppercase text-on-secondary-container">
-      Beta
-    </span>
   );
 }
 
@@ -142,7 +136,7 @@ export function AlternativeConnectorCard({
     readOnlyNote,
     Connect,
   } = providerPresentation(provider.provider);
-  const beta = provider.availability.releaseStage === "beta";
+  const { releaseStage } = provider.availability;
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface-container p-5 shadow-sm">
@@ -155,7 +149,7 @@ export function AlternativeConnectorCard({
             <span className="font-headline-sm text-headline-sm text-on-surface">
               {provider.label}
             </span>
-            {beta && <BetaBadge />}
+            <ReleaseStageBadge stage={releaseStage} />
           </div>
           <span className="font-body-sm text-body-sm text-on-surface-variant">
             {tagline}
@@ -195,7 +189,6 @@ export function PrimaryConnectorCard({
   const { icon, tagline, help, Connect } = providerPresentation(
     provider.provider,
   );
-  const beta = provider.availability.releaseStage === "beta";
 
   return (
     <ConnectorCard>
@@ -204,7 +197,7 @@ export function PrimaryConnectorCard({
         name={provider.label}
         badge="Primary connector"
         tagline={tagline}
-        beta={beta}
+        stage={provider.availability.releaseStage}
       />
 
       <ScopeBanner access={provider.access} />

@@ -138,7 +138,8 @@ describe("noindex coverage (inheritance)", () => {
   it("wires every indexable page to its own registry entry", () => {
     for (const route of PAGES.filter((page) => classifyPath(page.url) === "public-indexable")) {
       const source = readFileSync(join(route.dir, "page.tsx"), "utf8");
-      expect(source, route.url).toContain(`getPageMetadata("${route.url}")`);
+      // An integration page adds its release stage to the same entry (`getIntegrationPageMetadata`).
+      expect(source, route.url).toMatch(new RegExp(`get(Integration)?PageMetadata\\("${route.url}"`));
     }
   });
 });

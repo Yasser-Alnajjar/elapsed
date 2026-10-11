@@ -108,12 +108,12 @@ const pages = [
   {
     path: "/docs/integrations/zendesk",
     title: "Connect Zendesk",
-    description: `Create a Zendesk OAuth client and connect Zendesk, the system of record for your SLA policies, business calendars, customers and ticket history, to ${SITE_NAME}.`,
+    description: `Connect Zendesk, your system of record for SLA policies, calendars, customers and ticket history, to ${SITE_NAME} with a Zendesk OAuth client.`,
   },
   {
     path: "/docs/integrations/jira",
     title: "Connect Jira",
-    description: `Connect Jira to ${SITE_NAME} for the engineering side of the timeline: what happened to an escalated case after a Zendesk ticket was linked to a Jira issue.`,
+    description: `Connect Jira to ${SITE_NAME} for the engineering side of the timeline: what happened to a case after its Zendesk ticket links to a Jira issue.`,
   },
   {
     path: "/docs/integrations/slack",
@@ -123,17 +123,17 @@ const pages = [
   {
     path: "/docs/integrations/linear",
     title: "Connect Linear",
-    description: `Connect Linear to ${SITE_NAME} as an alternative to Jira for the engineering leg of a case by creating a Linear OAuth application and adding its credentials.`,
+    description: `Connect Linear to ${SITE_NAME} as an alternative to Jira for a case's engineering leg: create a Linear OAuth application and add its credentials.`,
   },
   {
     path: "/docs/integrations/intercom",
     title: "Connect Intercom",
-    description: `Connect Intercom to ${SITE_NAME} as an alternative ticket source to Zendesk, and learn how it differs. This integration is in Beta.`,
+    description: `Connect Intercom to ${SITE_NAME} as an alternative ticket source to Zendesk, and learn how it differs.`,
   },
   {
     path: "/docs/integrations/github",
     title: "Connect GitHub",
-    description: `Track engineering time from pull requests by creating a read-only GitHub App and connecting it to ${SITE_NAME}. This integration is in Beta.`,
+    description: `Track engineering time from pull requests by creating a read-only GitHub App and connecting it to ${SITE_NAME}.`,
   },
 ] as const satisfies readonly PublicPage[];
 

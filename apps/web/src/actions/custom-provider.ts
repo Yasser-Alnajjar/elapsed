@@ -18,6 +18,15 @@ export const CustomProviderActions = {
     const isOwner = role === "owner";
     // The draft holds configuration the owner is editing; only the owner of an enabled organization sees it.
     const draft = enabled && isOwner ? await getDraft(prisma, organizationId) : null;
-    return { enabled, isOwner, userId, draft, status };
+    return {
+      enabled,
+      releaseStage: availability.releaseStage,
+      unavailableMessage: availability.available ? null : availability.message,
+      betaRestricted: !availability.available && availability.code === "integration_beta_restricted",
+      isOwner,
+      userId,
+      draft,
+      status,
+    };
   },
 };

@@ -145,18 +145,18 @@ The product connects to two kinds of systems: **ticket sources**, which create C
 | -------------------------------------------------- | ---------------------------------------- | ------------------------------------- | ------------------------------- | ------- |
 | [Zendesk](#6-zendesk-integration)                  | Ticket source                            | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
 | [Jira](#7-jira-integration)                        | Engineering source                       | OAuth2, read-only                     | Poll (5 min / 30 min) + webhook | Yes     |
-| [Intercom](/docs/integrations/intercom) **(Beta)** | Ticket source (alternative to Zendesk)   | OAuth2, read-only                     | Poll only                       | No      |
+| [Intercom](/docs/integrations/intercom)            | Ticket source (alternative to Zendesk)   | OAuth2, read-only                     | Poll only                       | No      |
 | [Linear](/docs/integrations/linear)                | Engineering source (alternative to Jira) | OAuth2, read-only                     | Poll only                       | No      |
-| [GitHub](/docs/integrations/github) **(Beta)**     | Engineering source (pull requests)       | OAuth2                                | Poll only                       | No      |
-| [Custom REST](#custom-rest-beta) **(Beta)**        | Ticket source (any helpdesk with a JSON API) | API key, Bearer, Basic or a custom header, read-only | Poll only (5 min / 30 min) | No      |
+| [GitHub](/docs/integrations/github)                | Engineering source (pull requests)       | OAuth2                                | Poll only                       | No      |
+| [Custom REST](#custom-rest)                        | Ticket source (any helpdesk with a JSON API) | API key, Bearer, Basic or a custom header, read-only | Poll only (5 min / 30 min) | No      |
 | Slack                                              | Alert channel                            | OAuth2 (bot token)                    | Outbound only                   | —       |
 | Email                                              | Alert channel                            | SMTP (self-service, per organization) | Outbound only                   | —       |
 
-Intercom and GitHub are **Beta**: built and usable, but with known gaps (see each one's "Known limitations" section on its own integration page, linked above) and no onboarding-progress reporting (Zendesk and Jira only — see below). Zendesk and Jira are the only integrations covered by task 2.9's live-account verification checklist so far.
+Each integration is at a release stage, **Beta** or **Stable**, and the stage can change over time, so this guide does not repeat it. The current stage is shown on the integration's card under **Settings → Integrations**, during onboarding and at the top of its documentation page (linked above). **Beta** is an early-release stage: the integration is built and usable, but it may have limitations or behave unexpectedly. **Stable** means it has left Beta; it does not mean a connection can never fail, and a connection's own status and sync health are shown separately. Every integration lists its known gaps under "Known limitations" on its own page. Onboarding-progress reporting covers Zendesk and Jira only (see below), and Zendesk and Jira are the only integrations covered by task 2.9's live-account verification checklist so far.
 
 Every connection shares the same shape:
 
-- **Connect:** one click, redirects to the provider's own OAuth consent screen. You never paste an API token directly for the five OAuth integrations. The Custom REST source (Beta) is the exception: it is not an OAuth sign-in, and you enter the credentials for your helpdesk's own API, which are encrypted and never shown again.
+- **Connect:** one click, redirects to the provider's own OAuth consent screen. You never paste an API token directly for the five OAuth integrations. The Custom REST source is the exception: it is not an OAuth sign-in, and you enter the credentials for your helpdesk's own API, which are encrypted and never shown again.
 - **Data imported:** the specific resources listed in each provider's section below — never more.
 - **Data never modified:** every ticket-source and engineering-source integration is strictly read-only. The only two things this product ever writes to an external system are a Slack message and an outbound email — both are alerts, never a write-back into Zendesk, Jira, Intercom, Linear, or GitHub.
 - **Correlation:** how a case in one system is matched to a record in another — see [Section 15](#15-correlation-between-systems).
@@ -181,9 +181,9 @@ While an integration is paused by Elapsed:
 
 When Elapsed makes the integration available again, syncing resumes from where it stopped and catches up on changes made in the meantime, including changes whose webhooks were ignored. If you had disconnected it yourself, it stays disconnected until you reconnect it.
 
-### Custom REST (Beta)
+### Custom REST
 
-For a helpdesk Elapsed has no built-in integration for. It is a ticket source configured entirely from the **Integrations → Custom REST** page; no code is run and nothing is installed. It must be enabled for your organization by the platform operator first, one Custom REST source is allowed per organization, and only the organization **owner** can configure it.
+For a helpdesk Elapsed has no built-in integration for. It is a ticket source configured entirely from the **Integrations → Custom REST** page; no code is run and nothing is installed. While Custom REST is in Beta it must be enabled for your organization by the platform operator first (the Integrations page says so when it is not). One Custom REST source is allowed per organization, and only the organization **owner** can configure it.
 
 - **What it does:** reads tickets (and, optionally, replies and status history) from a JSON API over HTTPS, maps them into Elapsed's fields, and feeds the same SLA engine as every other source.
 - **Read-only:** Elapsed sends `GET` requests, and `POST` only to an endpoint you have explicitly confirmed is a read-only search. It never creates, edits or deletes anything in your system. Redirects are not followed, and requests go only to the address you configured (a public HTTPS host on port 443).
@@ -195,7 +195,7 @@ For a helpdesk Elapsed has no built-in integration for. It is a ticket source co
 - **Sync history:** the Syncs list shows only syncs that changed your data or that did not complete cleanly (partial, stopped or failed, or with tickets that could not be processed). A sync that finds nothing new is not listed; the page instead shows **Last checked** (the last successful check) and **Last data update** (the last time Elapsed actually changed your data). History is kept for 30 days.
 - **Safety checks:** a sync that would delete or change the open/closed state of an unusually large share of your tickets, or fail on many tickets, is stopped before anything is changed. You can review a stopped lifecycle change and approve it once; a mass deletion cannot be approved.
 - **Configuration versions:** every change is a new immutable version; you can roll back to an earlier one. A rollback applies to future processing and never restores commitments a later version cancelled.
-- **Limits:** a deleted ticket is hidden only when your system says so (a status or flag you map, or a confirmed "not found"); a ticket restored later stays hidden. Capacity for large organizations has not been validated yet, so this source is Beta and enabled per organization.
+- **Limits:** a deleted ticket is hidden only when your system says so (a status or flag you map, or a confirmed "not found"); a ticket restored later stays hidden. Capacity for large organizations has not been validated yet.
 - **Disconnecting, reconnecting and deleting the configuration:** disconnecting stops syncing, clears the credentials and hides this source's data, like every integration; nothing is deleted, and your configuration and its version history stay on the page. To reconnect, enter the credentials again: Elapsed reconnects on the configuration version that was active when you disconnected (not a newer saved version or an unsaved draft), creates no new version and shows your data again. **Delete configuration** (offered only while disconnected) permanently deletes only the draft and the configuration versions, so you set it up again from scratch. Your cases, SLAs, events and history are not deleted, and they stay hidden until you set up and connect the source again.
 - **Credentials and key rotation:** if the deployment's `INTEGRATION_TOKEN_ENCRYPTION_KEY` is rotated, saved Custom REST credentials become unreadable and the owner must enter them again.
 

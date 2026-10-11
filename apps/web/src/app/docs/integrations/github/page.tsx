@@ -5,7 +5,9 @@ import { DocsLayout } from "@/components/docs/docs-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { getPageMetadata } from "@/lib/seo/metadata";
+import { ReleaseStageBadge, ReleaseStageNotice } from "@/components/shared/release-stage";
+import { getIntegrationPageMetadata } from "@/lib/seo/metadata";
+import { getReleaseStage } from "@/lib/release-stage-data";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -24,16 +26,23 @@ const toc = [
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
 
-export const generateMetadata = () => getPageMetadata("/docs/integrations/github");
+// The release stage (Beta, Stable, ...) is the persisted integration policy
+// (D33), read per request; a static render would freeze it at build time.
+export const dynamic = "force-dynamic";
 
-export default function GithubIntegrationPage() {
+export const generateMetadata = async () =>
+  getIntegrationPageMetadata("/docs/integrations/github", await getReleaseStage("github"));
+
+export default async function GithubIntegrationPage() {
+  const stage = await getReleaseStage("github");
+
   return (
     <DocsLayout toc={toc}>
       <div className="space-y-12">
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Integrations</Badge>
-            <Badge variant="beta">Beta</Badge>
+            <ReleaseStageBadge stage={stage} showStable />
           </div>
 
           <div className="space-y-3">
@@ -42,14 +51,8 @@ export default function GithubIntegrationPage() {
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
               Tracks engineering-leg time directly from pull requests, for teams
               whose escalations show up as code changes before they show up as
-              tickets. This integration is in Beta — see{" "}
-              <Link
-                href="#limitations"
-                className="underline underline-offset-4"
-              >
-                Known limitations
-              </Link>
-              .
+              tickets.
+              <ReleaseStageNotice stage={stage} limitationsHref="#limitations" />
             </p>
           </div>
         </header>

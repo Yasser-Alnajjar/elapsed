@@ -44,7 +44,7 @@ For an organization the provider is unavailable to:
 | Custom REST request in flight | Aborted within about 5 seconds; the response is discarded |
 | Disconnect | **Allowed** |
 
-Error codes: `integration_disabled`, `integration_coming_soon`, `integration_beta_restricted`. The admin API adds `stale_version`, `rollout_blocked` and `already_listed` (all 409).
+Error codes: `integration_disabled`, `integration_coming_soon`, `integration_beta_restricted`. The admin API adds `stale_version` and `already_listed` (both 409).
 
 ## What is never touched
 
@@ -77,19 +77,29 @@ To stop **one** organization's integration only, use the per-integration **Pause
 
 ## Procedure: Beta allowlist
 
-- Select the provider, set Beta access to **Allowlist**, then add organizations (Custom REST included, while it is Beta with an allowlist). Removing an organization takes effect on its next check; its data and connection are kept.
+- Select the provider, set Beta access to **Allowlist**, then add organizations (Custom REST included). Each add affects only that organization, needs a reason and writes one audit row. Removing an organization takes effect on its next check; its data and connection are kept.
 - Moving a provider from "All organizations" to "Allowlist" removes access from every organization not on the list, including connected ones: the impact preview shows how many.
 - **Custom REST:** removing an organization also pauses polling on its custom integration; re-adding does not resume it (use **Resume polling** on the tenant page). This is the N9 design record §8.7's behavior.
 
-## Rollout block: Custom REST (N9.14-F1)
-
-Until N9.14-F1 is closed (roadmap), the backend refuses with 409 `rollout_blocked`: opening Custom REST to all organizations and promoting it to Stable. The console shows the block and its reason (those two options are disabled in the edit dialog).
-
-Individual organizations **can** be added to and removed from the Custom REST allowlist while the provider is **Beta with an allowlist** (decision D33-A1, 2026-10-10). Each add affects only that organization, needs a reason and writes one audit row. If the provider is in any other state (for example Coming Soon), the add is refused with the same `rollout_blocked` code. Narrowing changes (disable, Coming Soon, removing an organization) are allowed. Lifting the block is a reviewed code change in `packages/db/src/integration-catalog.ts` made when N9.14-F1 closes.
-
 ## Promoting a provider (D17)
 
-A promotion out of Beta is an owner decision recorded in the roadmap (D17). After it is recorded: change the stage to Stable in the console with the decision as the reason. The in-app Beta label follows automatically. The public pages under `/docs/integrations/*` are static and still say "Beta": update their copy in a source change.
+A promotion out of Beta is an owner decision recorded in the roadmap (D17). After it is recorded: change the stage to Stable in the console with the decision as the reason. Every surface that names the stage follows automatically, with no copy to edit: see [Where the stage is shown](#where-the-stage-is-shown). A promotion changes the label and removes the Beta warning; it does not change what the integration does, and "Stable" is not a promise that connections never fail (a connection's status and sync health are shown separately).
+
+## Where the stage is shown
+
+The **release stage** stored in `IntegrationAvailability` (D33, edited in `/admin/integrations`) is the only source. `INTEGRATION_CATALOG` supplies a default only for a provider with no stored row. Nothing else holds "Beta" or "Stable" for a provider: the wording lives in `apps/web/src/lib/release-stage.ts`, the label and the Beta/Coming soon notice in `apps/web/src/components/shared/release-stage.tsx`.
+
+| Surface | How it gets the stage | Changes after a stage edit |
+|---|---|---|
+| Settings → Integrations cards, the Custom REST page | the signed-in resolver (`integrations-data.ts`, `actions/custom-provider.ts`) | next page load |
+| Onboarding provider cards | the same resolver (`onboarding-data.ts`) | next page load |
+| `/docs/integrations/{zendesk,jira,linear,intercom,github}`: header label, the Beta notice, and the page's search description | `getReleaseStage()` in `lib/release-stage-data.ts`, which reads the persisted policy | next request (the pages are `force-dynamic`) |
+| Home page integration list | `getReleaseStages()` | next request (`app/page.tsx` is `force-dynamic`) |
+| `/admin/integrations`, the tenant Beta panel | the policy itself | next page load |
+
+A Beta integration is labelled Beta and its page opens with a notice that it is an early-release stage with possible limitations and unexpected behavior, linking to its "Known limitations". A Stable integration shows a neutral "Stable" label on its documentation page and no warning; cards and selectors show no label for Stable, as before. Coming soon is labelled the same way. The stage is platform-wide; whether a given organization can connect is the separate availability decision above.
+
+**Not updated automatically:** the Markdown guides in `docs/` (for example `customer-guide.md`) and the README are not rendered by the application, so they do not carry a stage; they point to the in-product surfaces above. The Slack page has no stage because Slack is not a registered provider. If the policy cannot be read, the public pages show the catalog default rather than failing; nothing is enforced from that value. A page that shows a stage must stay dynamically rendered: a static render would freeze it at build time (`integration-release-stage.test.ts` checks this).
 
 ## Concurrent edits
 

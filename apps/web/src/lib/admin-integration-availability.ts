@@ -39,7 +39,7 @@ import {
 /** A refused change, with the documented code the API returns (409). */
 export class AvailabilityConflictError extends AdminConflictError {
   constructor(
-    readonly code: "stale_version" | "rollout_blocked" | "already_listed" | "not_listed",
+    readonly code: "stale_version" | "already_listed" | "not_listed",
     message: string,
   ) {
     super(message);
@@ -118,42 +118,6 @@ export function parseAvailabilityChange(body: unknown): AvailabilityChangeInput 
   return { expectedVersion: input.expectedVersion, changes, reason: parseReason(input.reason) };
 }
 
-// ---- Rollout block (D33 ruling 3) -----------------------------------------------
-
-/**
- * While the catalog carries a rollout block (Custom REST: N9.14-F1), refuse
- * any change that would widen availability beyond an allowlist (all
- * organizations, Stable). Narrowing (disable, Coming Soon, removing
- * organizations) stays allowed, and so does adding one organization to the
- * allowlist of a Beta/allowlist provider (D33-A1, `allowlistAddBlock`).
- */
-function assertRolloutAllowed(provider: IntegrationProvider, before: AvailabilityPolicyFields, after: AvailabilityPolicyFields) {
-  const block = catalogEntry(provider).rolloutBlock;
-  if (!block) return;
-  const widensStage = after.releaseStage === "stable" && before.releaseStage !== "stable";
-  const widensAccess = after.betaAccess === "all_organizations" && before.betaAccess !== "all_organizations";
-  if (widensStage || widensAccess) {
-    throw new AvailabilityConflictError("rollout_blocked", `Blocked by ${block.id}: ${block.reason}`);
-  }
-}
-
-/**
- * Why an organization may not be added to a provider's allowlist right now, or
- * null when it may. Only a provider under a rollout block is restricted, and
- * only to Beta with an allowlist: any other policy (Stable, Coming Soon, all
- * organizations) is outside what the block allows, so the allowlist is not
- * where that provider's access is decided. One rule for the API and the UI.
- */
-export function allowlistAddBlock(
-  provider: IntegrationProvider,
-  policy: Pick<AvailabilityPolicyFields, "releaseStage" | "betaAccess">,
-): { id: string; reason: string } | null {
-  const block = catalogEntry(provider).rolloutBlock;
-  if (!block) return null;
-  if (policy.releaseStage === "beta" && policy.betaAccess === "allowlist") return null;
-  return { id: block.id, reason: `${block.reason} Organizations can be added only while the stage is Beta and access is Allowlist.` };
-}
-
 // ---- Reads -------------------------------------------------------------------
 
 export async function getAdminIntegrationsData(prisma: PrismaClient, now: Date = new Date()): Promise<AdminIntegrationsData> {
@@ -212,8 +176,6 @@ export async function getAdminIntegrationsData(prisma: PrismaClient, now: Date =
       activeOrganizations: new Set(connections.map((row) => row.organizationId)).size,
       pausedConnections,
       health,
-      rolloutBlock: entry.rolloutBlock ? { ...entry.rolloutBlock } : null,
-      allowlistAddBlock: allowlistAddBlock(policy.provider, policy),
     };
   });
   return { rows, organizations };
@@ -298,7 +260,6 @@ export async function updateIntegrationAvailability(
     if (JSON.stringify(before) === JSON.stringify(after)) {
       return { changed: false, policy: { ...before, version: current.version } };
     }
-    assertRolloutAllowed(provider, before, after);
 
     const updated = await tx.integrationAvailability.updateMany({
       where: { provider, version: input.expectedVersion },
@@ -319,8 +280,7 @@ export async function updateIntegrationAvailability(
 
 /**
  * Adds one organization to a provider's Beta allowlist (scoped to that
- * organization only; the provider's policy is untouched). A provider under a
- * rollout block accepts it only while Beta with an allowlist (D33-A1).
+ * organization only; the provider's policy is untouched).
  */
 export async function addToBetaAllowlist(
   prisma: PrismaClient,
@@ -330,8 +290,6 @@ export async function addToBetaAllowlist(
 
   await prisma.$transaction(async (tx) => {
     const policy = await getIntegrationAvailabilityPolicy(tx, provider);
-    const block = allowlistAddBlock(provider, policy);
-    if (block) throw new AvailabilityConflictError("rollout_blocked", `Blocked by ${block.id}: ${block.reason}`);
     const organization = await tx.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
     if (!organization) throw new AdminNotFoundError("Organization not found");
     const existing = await tx.integrationBetaAllowlist.findUnique({

@@ -6,7 +6,7 @@ import type {
   IntegrationConnectionView,
   ProviderAvailabilityView,
 } from "@/lib/types/integrations";
-import { ReleaseStageBadge } from "./ReleaseStageBadge";
+import { ReleaseStageBadge } from "@/components/shared/release-stage";
 import { ConnectedCardBody } from "./ConnectedCardBody";
 import { ConnectPrompt } from "./ConnectPrompt";
 import { IntegrationCardShell } from "./IntegrationCardShell";

@@ -6,7 +6,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getIntercomRedirectUri } from "@/lib/intercom-redirect";
-import { getPageMetadata } from "@/lib/seo/metadata";
+import { ReleaseStageBadge, ReleaseStageNotice } from "@/components/shared/release-stage";
+import { getIntegrationPageMetadata } from "@/lib/seo/metadata";
+import { getReleaseStage } from "@/lib/release-stage-data";
 
 const toc = [
   { id: "purpose", title: "Purpose", level: 2 as const },
@@ -39,20 +41,24 @@ const toc = [
   { id: "limitations", title: "Known limitations", level: 2 as const },
 ];
 
-// The callback URL shown below comes from NEXTAUTH_URL at request time; a
-// static render would freeze the build placeholder (http://localhost:3000).
+// The callback URL shown below comes from NEXTAUTH_URL at request time, and the
+// release stage (Beta, Stable, ...) is the persisted integration policy (D33),
+// also read per request; a static render would freeze both at build time.
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = () => getPageMetadata("/docs/integrations/intercom");
+export const generateMetadata = async () =>
+  getIntegrationPageMetadata("/docs/integrations/intercom", await getReleaseStage("intercom"));
 
-export default function IntercomIntegrationPage() {
+export default async function IntercomIntegrationPage() {
+  const stage = await getReleaseStage("intercom");
+
   return (
     <DocsLayout toc={toc}>
       <div className="space-y-12">
         <header className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Integrations</Badge>
-            <Badge variant="beta">Beta</Badge>
+            <ReleaseStageBadge stage={stage} showStable />
           </div>
 
           <div className="space-y-3">
@@ -62,14 +68,8 @@ export default function IntercomIntegrationPage() {
               An alternative ticket source alongside Zendesk, not a replacement
               — it contributes conversations, customers, and support-side
               timeline events, with a few real differences from Zendesk worth
-              knowing before you rely on it. This integration is in Beta — see{" "}
-              <Link
-                href="#limitations"
-                className="underline underline-offset-4"
-              >
-                Known limitations
-              </Link>
-              .
+              knowing before you rely on it.
+              <ReleaseStageNotice stage={stage} limitationsHref="#limitations" />
             </p>
           </div>
         </header>
