@@ -179,12 +179,15 @@ export function CheckField({
   checked,
   onChange,
   hint,
+  error,
 }: {
   id: string;
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: string;
+  /** An inline validation message shown under the label. */
+  error?: string;
 }) {
   return (
     <div className="flex items-start gap-2">
@@ -193,12 +196,19 @@ export function CheckField({
         className="mt-0.5"
         checked={checked}
         onCheckedChange={(next) => onChange(next === true)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
       <div className="flex flex-col gap-0.5">
         <Label htmlFor={id} className="text-on-surface text-sm">
           {label}
         </Label>
         {hint && <p className={hintClass}>{hint}</p>}
+        {error && (
+          <p id={`${id}-error`} role="alert" className="text-sm text-error">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

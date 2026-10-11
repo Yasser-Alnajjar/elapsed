@@ -5,7 +5,7 @@ import { CheckField, SelectField, TextAreaField, TextField } from "./fields";
 import type { StepProps } from "./wizard-types";
 
 /** Step 2: the ticket list request, pagination and incremental sync. */
-export function StepTickets({ config, set }: StepProps) {
+export function StepTickets({ config, set, postConfirmationError }: StepProps) {
   const request = (getIn(config, ["tickets", "request"]) ?? {}) as Record<string, unknown>;
   const method = String(request.method ?? "GET");
   const pagination = (getIn(config, ["tickets", "pagination"]) ?? { type: "none" }) as Record<string, unknown>;
@@ -33,6 +33,7 @@ export function StepTickets({ config, set }: StepProps) {
             label="I confirm this POST only searches. It does not create, change or delete anything."
             checked={request.readOnlySearch === true}
             onChange={(v) => set(["tickets", "request", "readOnlySearch"], v ? true : undefined)}
+            error={postConfirmationError}
             hint="Elapsed cannot check this itself. It only sends a POST to an endpoint you have confirmed is a read-only query, and that confirmation is your responsibility. Changing the method, path, query or body clears it."
           />
           <TextAreaField

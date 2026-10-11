@@ -13,4 +13,6 @@ export interface StepProps {
   secrets: Record<string, string>;
   setSecret: (field: string, value: string) => void;
   userId: string;
+  /** The validation message for the ticket request's POST confirmation, once the owner has tried to continue. */
+  postConfirmationError?: string;
 }

@@ -81,18 +81,23 @@ function requestVariables(request: RequestConfig): Set<string> {
 }
 
 /**
- * The endpoints of a (possibly incomplete) configuration whose `POST` the owner
- * has not confirmed as a read-only search, as dotted paths. Used by the owner's
- * outbound checks (test, sample, preview), which run before full validation.
+ * The endpoints of a configuration whose `POST` the owner has not confirmed as a
+ * read-only search, as dotted paths. It reads raw JSON, so it also applies to a
+ * draft that is incomplete or does not parse yet: the draft is saved only
+ * without such an endpoint, and the owner's outbound checks (test, sample,
+ * preview), which run before full validation, refuse it.
  */
-export function unconfirmedPostEndpoints(config: CustomConfig): string[] {
-  const endpoints: [string, RequestConfig | undefined][] = [
-    ["tickets.request", config.tickets.request],
-    ["comments.request", config.comments?.request],
-    ["ticketDetail.request", config.ticketDetail?.request],
-    ["statusHistory.request", config.statusHistory?.request],
-  ];
-  return endpoints.filter(([, request]) => request !== undefined && isUnconfirmedPost(request)).map(([path]) => path);
+export function unconfirmedPostEndpoints(config: unknown): string[] {
+  const record = (value: unknown): Record<string, unknown> | undefined =>
+    value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+  const root = record(config);
+  const requestOf = (section: string) => record(record(root?.[section])?.request);
+  return ["tickets", "comments", "ticketDetail", "statusHistory"]
+    .filter((section) => {
+      const request = requestOf(section);
+      return request !== undefined && isUnconfirmedPost({ method: request.method as RequestConfig["method"], readOnlySearch: request.readOnlySearch as RequestConfig["readOnlySearch"] });
+    })
+    .map((section) => `${section}.request`);
 }
 
 function checkRequest(request: RequestConfig, path: string, allowed: readonly string[], out: Diagnostic[]): void {
