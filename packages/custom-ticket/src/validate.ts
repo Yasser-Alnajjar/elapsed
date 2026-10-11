@@ -1,4 +1,5 @@
 import { parseHttpsOrigin, type ParsedOrigin } from "@sla/safe-http";
+import { isUnconfirmedPost } from "./requests";
 import { secretFieldNames, variablesIn, type CustomConfig, type Expr, type PaginationConfig, type RequestConfig } from "./schema";
 
 export type Severity = "error" | "warning";
@@ -79,10 +80,25 @@ function requestVariables(request: RequestConfig): Set<string> {
   return names;
 }
 
+/**
+ * The endpoints of a (possibly incomplete) configuration whose `POST` the owner
+ * has not confirmed as a read-only search, as dotted paths. Used by the owner's
+ * outbound checks (test, sample, preview), which run before full validation.
+ */
+export function unconfirmedPostEndpoints(config: CustomConfig): string[] {
+  const endpoints: [string, RequestConfig | undefined][] = [
+    ["tickets.request", config.tickets.request],
+    ["comments.request", config.comments?.request],
+    ["ticketDetail.request", config.ticketDetail?.request],
+    ["statusHistory.request", config.statusHistory?.request],
+  ];
+  return endpoints.filter(([, request]) => request !== undefined && isUnconfirmedPost(request)).map(([path]) => path);
+}
+
 function checkRequest(request: RequestConfig, path: string, allowed: readonly string[], out: Diagnostic[]): void {
   const err = (code: string, sub = "") => out.push({ severity: "error", code, path: `${path}${sub}` });
   if (request.method === "POST") {
-    if (request.readOnlySearch !== true) err("post_requires_read_only_designation", ".readOnlySearch");
+    if (isUnconfirmedPost(request)) err("post_requires_read_only_designation", ".readOnlySearch");
   } else {
     if (request.body !== undefined) err("get_with_body", ".body");
     if (request.readOnlySearch !== undefined) err("read_only_designation_on_get", ".readOnlySearch");

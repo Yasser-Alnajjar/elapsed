@@ -1,6 +1,6 @@
 "use client";
 
-import { getIn, linesToRecord, recordToLines } from "@/lib/custom-provider/wizard";
+import { editTicketsRequest, getIn, linesToRecord, recordToLines } from "@/lib/custom-provider/wizard";
 import { CheckField, SelectField, TextAreaField, TextField } from "./fields";
 import type { StepProps } from "./wizard-types";
 
@@ -19,21 +19,21 @@ export function StepTickets({ config, set }: StepProps) {
         id="cp-method"
         label="Method"
         value={method}
-        onChange={(v) => set(["tickets", "request"], v === "POST" ? { ...request, method: v } : { method: v, path: request.path, query: request.query, headers: request.headers })}
+        onChange={(v) => set(["tickets", "request"], editTicketsRequest(request, { method: v }))}
         options={[
           { value: "GET", label: "GET" },
           { value: "POST", label: "POST (read-only search)" },
         ]}
       />
-      <TextField id="cp-path" label="Path" mono value={String(request.path ?? "")} onChange={(v) => set(["tickets", "request", "path"], v)} placeholder="/v2/tickets" hint="Variables: {{updatedSince}}, {{cursor}}, {{page}}, {{offset}}, {{limit}}." />
+      <TextField id="cp-path" label="Path" mono value={String(request.path ?? "")} onChange={(v) => set(["tickets", "request"], editTicketsRequest(request, { path: v }))} placeholder="/v2/tickets" hint="Variables: {{updatedSince}}, {{cursor}}, {{page}}, {{offset}}, {{limit}}." />
       {method === "POST" && (
         <div className="sm:col-span-2 flex flex-col gap-3">
           <CheckField
             id="cp-readonly"
-            label="This POST only searches. It does not create, change or delete anything."
+            label="I confirm this POST only searches. It does not create, change or delete anything."
             checked={request.readOnlySearch === true}
             onChange={(v) => set(["tickets", "request", "readOnlySearch"], v ? true : undefined)}
-            hint="Elapsed only sends a POST to an endpoint you have confirmed is a read-only query."
+            hint="Elapsed cannot check this itself. It only sends a POST to an endpoint you have confirmed is a read-only query, and that confirmation is your responsibility. Changing the method, path, query or body clears it."
           />
           <TextAreaField
             id="cp-body"
@@ -49,7 +49,7 @@ export function StepTickets({ config, set }: StepProps) {
             }}
             onChange={(v) => {
               try {
-                set(["tickets", "request", "body"], v.trim() === "" ? undefined : JSON.parse(v));
+                set(["tickets", "request"], editTicketsRequest(request, { body: v.trim() === "" ? undefined : JSON.parse(v) }));
               } catch {
                 /* keep typing */
               }
@@ -63,7 +63,7 @@ export function StepTickets({ config, set }: StepProps) {
         rows={3}
         value={recordToLines(request.query)}
         canonical={(text) => recordToLines(linesToRecord(text))}
-        onChange={(v) => set(["tickets", "request", "query"], Object.keys(linesToRecord(v)).length ? linesToRecord(v) : undefined)}
+        onChange={(v) => set(["tickets", "request"], editTicketsRequest(request, { query: Object.keys(linesToRecord(v)).length ? linesToRecord(v) : undefined }))}
         hint="Credentials are not allowed here: authentication lives in headers."
       />
       <TextField id="cp-items" label="Where the tickets are in the response" mono value={String(getIn(config, ["tickets", "itemsPath"]) ?? "")} onChange={(v) => set(["tickets", "itemsPath"], v)} placeholder="$.data[*]" hint="A path such as $.data[*] or $.tickets." />

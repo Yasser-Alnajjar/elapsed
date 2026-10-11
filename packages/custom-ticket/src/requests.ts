@@ -2,6 +2,15 @@ import { SafeHttpError, assertSameOrigin, buildUrl, type ParsedOrigin, type Safe
 import { evaluatePath } from "./path";
 import type { PaginationConfig, RequestConfig } from "./schema";
 
+/**
+ * A `POST` the owner has not confirmed as a read-only search (plan 09 §6.2, §8.3).
+ * Configuration validation rejects it; this is the same rule, so the request
+ * builder can refuse to send it on any path that has not been validated.
+ */
+export function isUnconfirmedPost(request: Pick<RequestConfig, "method" | "readOnlySearch">): boolean {
+  return request.method === "POST" && request.readOnlySearch !== true;
+}
+
 /** Where a paginated listing stands. Persisted in the cursor, so every field is a small JSON value. */
 export type Position =
   | { kind: "start" }
@@ -76,6 +85,7 @@ export function buildRequest(
   vars: Variables,
   origin: ParsedOrigin,
 ): SafeRequest {
+  if (isUnconfirmedPost(request)) throw new SafeHttpError("invalid_request");
   const filled: Variables = { ...vars, limit: vars.limit ?? pageSizeOf(pagination) };
   if (position.kind === "page") filled.page = position.page;
   if (position.kind === "offset") filled.offset = position.offset;

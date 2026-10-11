@@ -209,7 +209,7 @@ describe("request building: variables never change the destination", () => {
 
   it("substitutes variables into a JSON body as typed values, not as structure", () => {
     const req = buildRequest(
-      { method: "POST", path: "/search", body: { q: "{{updatedSince}}", n: "{{limit}}", nested: ["{{cursor}}"] } } as Endpoint["request"],
+      { method: "POST", path: "/search", body: { q: "{{updatedSince}}", n: "{{limit}}", nested: ["{{cursor}}"] }, readOnlySearch: true } as Endpoint["request"],
       { type: "none" } as PaginationConfig,
       START,
       { updatedSince: '2026-01-01","admin":true,"x":"', limit: 5 },
