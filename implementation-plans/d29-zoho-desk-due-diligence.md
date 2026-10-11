@@ -1,6 +1,6 @@
 # D29 — Zoho Desk due diligence (decision record)
 
-> **Status:** investigation complete, **no code written**. Prepared 2026-10-01 for roadmap decision **D29** (third ticket source) and plan [`07-third-ticket-source.md`](07-third-ticket-source.md).
+> **Status:** investigation complete, **no code written**. Prepared 2026-10-01 for roadmap decision **D29** (third ticket source) and the N7 section of the roadmap ([N7 spike and acceptance](ROADMAP_Product.md#n7-spike-and-acceptance-zoho-desk-d29); the former plan 07 was consolidated into the roadmap in Rev 14).
 > **Decision: CONDITIONAL GO** (technically viable; two conditions must be met before D29 can close as Zoho Desk — see §13).
 > **Update (Rev 6, 2026-10-05):** the owner has since closed D29 in the roadmap as **Zoho Desk for the Egyptian market**. The §13 kill criteria still apply to the N7.1 spike. N7 remains demand-based and no Zoho code exists.
 > **Method:** read the N2 contract and the Zendesk/Intercom adapters in this repo, then read Zoho's official docs (the full Desk API reference, the Desk webhook reference, the Zoho OAuth protocol pages and the Desk help-center articles). **No live Zoho calls were made** (no sandbox account or credentials). Every claim is tagged:
@@ -376,4 +376,4 @@ Official Zoho documentation (primary):
 
 Secondary, used only for context: [Zoho Desk for Jira (MYBytes, third-party, Atlassian Marketplace)](https://marketplace.atlassian.com/apps/1234529/zoho-desk-for-jira). A Zoho community thread on rate limits was read and **not** relied on.
 
-Repo evidence: `implementation-plans/02-provider-contract-and-projector.md`, `07-third-ticket-source.md`, `ROADMAP_Product.md` (D29, N7), `packages/ingestion/src/{contract,projector,pipeline,errors}.ts`, `packages/{zendesk,intercom}/src/*`, `packages/core/src/{types,ordering,clock-rules,evaluate}.ts`, `packages/http-retry/src/retry.ts`, `apps/web/src/app/api/webhooks/zendesk/[integrationId]/route.ts`.
+Repo evidence: `ROADMAP_Product.md` (D29, N7, and the N2 and N7 design records that replaced plans 02 and 07), `packages/ingestion/src/{contract,projector,pipeline,errors}.ts`, `packages/{zendesk,intercom}/src/*`, `packages/core/src/{types,ordering,clock-rules,evaluate}.ts`, `packages/http-retry/src/retry.ts`, `apps/web/src/app/api/webhooks/zendesk/[integrationId]/route.ts`.

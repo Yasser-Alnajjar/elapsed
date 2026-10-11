@@ -1,6 +1,6 @@
 # Integration availability (operator runbook)
 
-How platform operators control which integration providers customers can use, and what each control does. Decision: D33. Design: [`implementation-plans/10-integration-control-center.md`](../implementation-plans/10-integration-control-center.md).
+How platform operators control which integration providers customers can use, and what each control does. Decision: D33. Design: the [N10 design record](../implementation-plans/ROADMAP_Product.md#n10-design-record) in `implementation-plans/ROADMAP_Product.md`.
 
 ## Who can change it
 
@@ -79,7 +79,7 @@ To stop **one** organization's integration only, use the per-integration **Pause
 
 - Select the provider, set Beta access to **Allowlist**, then add organizations (Custom REST included, while it is Beta with an allowlist). Removing an organization takes effect on its next check; its data and connection are kept.
 - Moving a provider from "All organizations" to "Allowlist" removes access from every organization not on the list, including connected ones: the impact preview shows how many.
-- **Custom REST:** removing an organization also pauses polling on its custom integration; re-adding does not resume it (use **Resume polling** on the tenant page). This is plan 09 §8.7's behavior.
+- **Custom REST:** removing an organization also pauses polling on its custom integration; re-adding does not resume it (use **Resume polling** on the tenant page). This is the N9 design record §8.7's behavior.
 
 ## Rollout block: Custom REST (N9.14-F1)
 
@@ -118,4 +118,4 @@ A provider that has no adapter cannot be listed as Coming Soon, because adding i
 
 ## Rollback
 
-The N10 schema is additive until the N10-F1 contract migration (`20261011120000_n10_f1_drop_custom_provider_enabled`) is applied. After N10-F1 the old column no longer exists, so reverting to pre-N10 code needs the column restored first (see plan 10 §11). Before N10-F1, if the code is reverted, the old Custom REST flag (`Organization.customProviderEnabled`) is read again; allowlist changes made after the deploy are not reflected in it, so check the flag on each organization that uses Custom REST.
+The N10 schema is additive until the N10-F1 contract migration (`20261011120000_n10_f1_drop_custom_provider_enabled`) is applied. After N10-F1 the old column no longer exists, so reverting to pre-N10 code needs the column restored first (see the N10 design record §11). Before N10-F1, if the code is reverted, the old Custom REST flag (`Organization.customProviderEnabled`) is read again; allowlist changes made after the deploy are not reflected in it, so check the flag on each organization that uses Custom REST.

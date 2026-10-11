@@ -56,7 +56,7 @@ under H-3 for this reason.
   disconnected sources only) deletes only the draft and the configuration
   versions. The integration row and every raw event, case, event, commitment
   and evaluation stay; it is not a purge and changes no retention rule above.
-  Plan 09, "Reconnect" and "Delete configuration".
+  N9 design record §7 ("Reconnect" and "Delete configuration") in `implementation-plans/ROADMAP_Product.md`.
 - No provider-side token revocation is called; only local credentials are
   cleared. Stated in the Zendesk route, and none of the other disconnect
   routes call a revoke endpoint either. The customer should revoke the app in
@@ -94,7 +94,7 @@ this was reproduced, with a caveat:
 ## Decisions (owner) — not built
 
 1. A retention period for `RawEvent`, and whether anything prunes or archives it.
-   _(2026-10-09, D31: the planned `custom` ticket-source provider depends on this decision. It will store only a whitelist projection of mapped fields (each stored payload capped at 64 KB, no sample responses stored), keep the latest snapshot a live case needs, and delete no raw event. Pruning of superseded `custom` snapshots is explicitly deferred until this item is decided. See `implementation-plans/09-custom-ticket-provider.md` §7.)_
+   _(2026-10-09, D31: the planned `custom` ticket-source provider depends on this decision. It will store only a whitelist projection of mapped fields (each stored payload capped at 64 KB, no sample responses stored), keep the latest snapshot a live case needs, and delete no raw event. Pruning of superseded `custom` snapshots is explicitly deferred until this item is decided. See the N9 design record §7 in `implementation-plans/ROADMAP_Product.md`.)_
 2. A supported tenant-deletion procedure: a script (the index above is now in place),
    a rehearsed run, and a check that no tenant-owned data is left behind.
 3. Whether a customer deletion request carries a time promise.

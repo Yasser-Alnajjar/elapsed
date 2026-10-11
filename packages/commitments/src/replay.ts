@@ -27,7 +27,8 @@ import { POLICY_SELECT, chunk, loadPolicyContext } from "./tick-context";
  * pure engine over stored rows at a fixed `asOf` and writes one deterministic
  * JSON line per commitment and per case, so a capture taken before a change
  * can be diffed against one taken after it. See
- * implementation-plans/01-provider-neutral-core.md §5. Read-only.
+ * the "Replay/diff gate (D24)" design record in
+ * implementation-plans/ROADMAP_Product.md. Read-only.
  */
 
 export const REPLAY_FORMAT_VERSION = 1;

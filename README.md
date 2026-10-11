@@ -43,8 +43,8 @@ packages/
   logger/      Structured JSON logging
   slack/ email/ notifications/
                Alert channels and delivery, and the monthly report
-implementation-plans/  Product roadmap (ROADMAP_Product.md), per-phase
-                       implementation plans and decision records
+implementation-plans/  Product roadmap (ROADMAP_Product.md: status,
+                       decisions and design records) and the D29 due diligence
 plans/                 Performance plan (ground rules cited by source comments)
 docs/                  Customer guide, deployment, runbooks, capacity limits
 ```

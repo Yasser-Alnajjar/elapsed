@@ -1,12 +1,12 @@
 # Custom REST: recovering from a deletion-guard abort
 
-Status: **pilot procedure** (owner decision OD-01 / U2, option (b), 2026-10-10). It covers the Beta pilot only. Option (a), a reviewed workflow that lets an owner or operator apply or reverse a mass deletion, must be reconsidered before general availability (plan 09 §15.1, `docs/validation/server-validation-master.md` §2.5).
+Status: **pilot procedure** (owner decision OD-01 / U2, option (b), 2026-10-10). It covers the Beta pilot only. Option (a), a reviewed workflow that lets an owner or operator apply or reverse a mass deletion, must be reconsidered before general availability (N9 design record §15 and §6.11 in `implementation-plans/ROADMAP_Product.md`, `docs/validation/server-validation-master.md` §2.5).
 
 ## Scope and rules
 
-- Applies when a custom integration's latest sync run is `aborted` with reason `mass_deletion`: more live tickets were reported deleted in one pass than `max(3, 5% of live cases)` (plan 09 §6.4).
+- Applies when a custom integration's latest sync run is `aborted` with reason `mass_deletion`: more live tickets were reported deleted in one pass than `max(3, 5% of live cases)` (N9 design record §6.4).
 - The abort writes nothing. Existing cases and events stay visible and monitored. The source goes stale (breach alerts are held) until the abort clears.
-- **Never delete `RawEvent` rows** (append-only replay log, plan 09 §7), never edit `Case.deletedAt` or `NormalizedEvent` by hand to get a sync through, and never lower or bypass a guard. The override machinery covers only the lifecycle guard (R2) and is not used here.
+- **Never delete `RawEvent` rows** (append-only replay log, N9 design record §7), never edit `Case.deletedAt` or `NormalizedEvent` by hand to get a sync through, and never lower or bypass a guard. The override machinery covers only the lifecycle guard (R2) and is not used here.
 - Everything below is read-only SQL plus a source-side fix, a pause, or an escalation. A step that would change stored data is an engineering escalation, not an operator action (see "What this procedure cannot do").
 
 Run the SQL in `psql` with the ids set first (for example `\set integration_id 'cm...'` and `\set ids '{T-1,T-2}'`, using `ANY (:'ids'::text[])`); the statements are read-only.
