@@ -123,11 +123,11 @@ There is one owner and no rota. Alerting that exists in code:
 
 First checks in an incident: is the worker heartbeat recent; are any
 integrations `reauth_required` or `permission_denied`; did the last backup
-succeed. Recovery steps are in [deployment-runbook.md](deployment-runbook.md)
-and [deployment.md](deployment.md).
+succeed. Recovery steps are in [deployment.md](deployment.md) (see "Common
+mistakes and quick recovery").
 
-**Documentation gap:** those two documents and the backup scripts refer to
-`docker-compose.prod.yml`. That file is not in the repository. The scripts
+**Documentation gap:** the restore and secret-rotation scripts and
+`n2-replay-runbook.md` refer to `docker-compose.prod.yml`. That file is not in the repository. The scripts
 fall back to `docker-compose.yml` when it is missing, so the production compose
 file has not been audited. It must be checked on the host.
 

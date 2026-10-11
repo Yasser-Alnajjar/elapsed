@@ -14,8 +14,8 @@
 
 ## 2. Why this phase exists
 
-- **Onboarding.** `plans/03` Phase 11 lists the three highest-value onboarding mitigations as **not built**: partial value while tracker approval is pending, a "request access" link for the tracker admin, and a forwardable security summary.
-- **Retention.** `plans/03` 10.2 calls the scheduled monthly report "the strongest retention feature not yet shipped".
+- **Onboarding.** The original onboarding design (now in [Product Positioning & Guardrails](ROADMAP_Product.md#product-positioning--guardrails)) lists the three highest-value onboarding mitigations as **not built**: partial value while tracker approval is pending, a "request access" link for the tracker admin, and a forwardable security summary.
+- **Retention.** The original MVP definition called the scheduled monthly report "the strongest retention feature not yet shipped".
 - **Verification.** Roadmap 6.8, the live onboarding walkthrough, was never done.
 - **Measurement.** With 10 live customers, retention and usage now matter more than acquisition, and nothing measures usage today.
 
@@ -84,7 +84,7 @@
   - link to the case list
   - Aggregations reuse `report-data.ts` and `analytics-data.ts`.
 - **Delivery:** email through `OrganizationEmailSettings`, with the CSV attached; plus a Slack message with a link if Slack is connected. Delivery failures go to `ReportDelivery.error` and appear in the admin tenant detail.
-- PDF is **out of scope** unless a customer asks twice (`plans/03` Phase 8 rule).
+- PDF is **out of scope** unless a customer asks twice (the evidence rule in [Product Positioning & Guardrails](ROADMAP_Product.md#product-positioning--guardrails)).
 - **Verify:** worker test for idempotency (two ticks send once); content snapshot test; neutral-language check (no "blame", "fault", "responsible").
 
 ### N5.7 — Usage instrumentation for validation metrics
@@ -139,8 +139,8 @@ The schema is additive. The monthly report has a `WorkerSettings` kill switch (o
 
 ## 9. Out of scope
 
-- PDF reports, customer-facing portals, and shared reports (`plans/03` "do not build").
+- PDF reports, customer-facing portals, and shared reports (the do-not-build list in [Product Positioning & Guardrails](ROADMAP_Product.md#product-positioning--guardrails)).
 - AI summaries.
 - Financial or credit figures.
 - Third-party product analytics.
-- SSO/SAML (parked in `ignored.md`).
+- SSO/SAML (parked; see the roadmap's Out of scope).

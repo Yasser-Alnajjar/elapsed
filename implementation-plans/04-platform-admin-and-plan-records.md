@@ -66,8 +66,8 @@ The platform operator can answer, on one page and without SQL: **who are the cus
   - `trialEndsAt DateTime?`
   - `billingReference String?` — free text, for example an invoice or contract id.
 - The admin edits these on the tenant-detail page, and every edit is audited.
-- **These fields never change monitoring behaviour** (roadmap Phase 10b principle 3: never hard-stop monitoring).
-- **D14 (decided):** the live pricing model is adopted (Starter $49, Team $149, Enterprise Custom, seat-based). The `plans/03` Phase 18 model is not used. The single plan constant is `packages/db/src/plans.ts` (N6.1).
+- **These fields never change monitoring behaviour** (plan 08 §2 principle 3: never hard-stop monitoring).
+- **D14 (decided):** the live pricing model is adopted (Starter $49, Team $149, Enterprise Custom, seat-based). The original escalation-volume model is not used. The single plan constant is `packages/db/src/plans.ts` (N6.1).
 - **Verify:** `tenant-isolation.test.ts` unchanged (these are org columns); an admin edit test.
 
 ### N4.4 — Tenants list and tenant detail read models

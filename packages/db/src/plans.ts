@@ -7,7 +7,7 @@
  * Pure data and pure functions: no Prisma, no I/O. It is exported on its own
  * (`@sla/db/plans`) so the client-rendered pricing page can import it without
  * pulling in the database client. The obsolete `$299/$699` pilot pricing and
- * the escalation-volume model of `plans/03` Phase 18 are not adopted and must
+ * the escalation-volume model rejected by D14 (roadmap) are not adopted and must
  * not be added here.
  */
 

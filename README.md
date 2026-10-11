@@ -45,7 +45,7 @@ packages/
                Alert channels and delivery, and the monthly report
 implementation-plans/  Product roadmap (ROADMAP_Product.md), per-phase
                        implementation plans and decision records
-plans/                 Product research and strategy (historical)
+plans/                 Performance plan (ground rules cited by source comments)
 docs/                  Customer guide, deployment, runbooks, capacity limits
 ```
 
@@ -151,7 +151,8 @@ is covered in [docs/deployment.md](docs/deployment.md).
   (`apps/web/src/app/docs`) give a per-page guide for end users, with one
   page per integration.
 - **[implementation-plans/ROADMAP_Product.md](implementation-plans/ROADMAP_Product.md)**
-  records what has been built, step by step, and why.
+  is the single live product roadmap: status, open work, decisions and the
+  document map. Start there; it says which other document to read for a task.
 
 When behavior changes, update `docs/customer-guide.md` and the matching
 in-app `/docs` page together. These are the only two user-facing doc sets.

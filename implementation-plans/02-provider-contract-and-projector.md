@@ -148,7 +148,7 @@ Per-provider exit: **L2 replay for tenants using that provider shows 0 differenc
 
 ### N2.11 — Close-out
 - All four matrix pairs pass. Full L1 + L2 replay is clean. The boundary allowlist is empty.
-- Roadmap updated. `plans/04-Architecture-Sketch.md` is **not** edited in this phase; record any divergence in the roadmap's Appendix E.
+- Roadmap updated. Record any divergence from the documented design in the roadmap's Appendix E.
 
 ## 7. Data / schema changes
 

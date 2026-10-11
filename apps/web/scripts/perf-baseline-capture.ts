@@ -1,7 +1,7 @@
 /**
  * Runs each Phase 0 page loader once against a seeded organization with
  * `PERF_METRICS=1` and prints the `perf_scope` counters
- * (implementation-plans/performance-plan.md). Re-run after each phase to
+ * (plans/performance-plan.md). Re-run after each phase to
  * compare against the recorded baseline in ROADMAP_Product.md 7.7.
  *
  * `getCaseListData` imports the `server-only` guard, which throws

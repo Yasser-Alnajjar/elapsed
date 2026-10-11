@@ -35,3 +35,18 @@ development; the `testing` branch is the dedicated workspace for the test suite.
   needs a production change, assess it normally and keep the branches consistent.
 - `testing` is based on `main`. Never merge `testing` into `main` (or `main`
   into `testing`) automatically; only synchronize when explicitly asked.
+
+## Documentation
+
+- `implementation-plans/ROADMAP_Product.md` is the single live product
+  roadmap. Start there, then read only the documents the task needs; its
+  "Documentation lifecycle" section has the document map and the rules.
+- Do not read every Markdown file or historical plan by default, and do not
+  create a new document when an existing one can be updated.
+- Task-specific plans are temporary: when the work is done, migrate what is
+  still needed, update the roadmap, and remove the plan only if nothing
+  (docs, source comments, scripts, CI) still depends on it.
+- If the code conflicts with a documented decision, report the conflict
+  before changing the decision; update the docs after approval.
+- Never delete unresolved work, decisions, or required records (evidence,
+  compliance, runbooks in use) to reduce the file count.

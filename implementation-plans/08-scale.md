@@ -3,7 +3,7 @@
 > **Roadmap phase:** [N8 in `ROADMAP_Product.md`](ROADMAP_Product.md#phase-n8--scale). Task status lives in the roadmap. This file explains **how**.
 > **Depends on:** [N3](03-provider-isolation-and-freshness.md) for tick and duration metrics. It is last in the roadmap chain.
 > **Trigger-based (roadmap D21).** Each item below starts only when its trigger metric fires. Nothing here is built speculatively.
-> **Source:** `plans/03-Product-and-MVP.md` Phase 10b ("Known scale limits" and "Scale work, in order"), plus roadmap backlog items R-7 and S-7. **Estimate:** per item, when triggered. **Branch:** `phase/n8-<item>` per triggered item.
+> **Source:** the scale analysis of the pre-build product definition (Phase 10b; removed in Rev 12, now carried by this plan), plus roadmap backlog items R-7 and S-7. **Estimate:** per item, when triggered. **Branch:** `phase/n8-<item>` per triggered item.
 
 ---
 
@@ -11,7 +11,7 @@
 
 Keep freshness and correctness intact as tenant count and data volume grow, by fixing the limit that is **measured** to bite next, in the order it bites.
 
-## 2. Principles (from `plans/03` Phase 10b)
+## 2. Principles
 
 1. Snapshots for reading, live evaluation for looking. Do not regress this.
 2. Bound the work per tick, then parallelise.

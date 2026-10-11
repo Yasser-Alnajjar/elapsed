@@ -196,7 +196,7 @@ reads (members, pending invitations, import review, integrations with Slack and 
 
 ## H-2 — D14 (closed)
 
-**Closed 2026-10-05.** The question was: which pricing model is current, and which do the 10 customers pay on? The owner decided D14: the **live model** is current. It is Starter **$49**, Team **$149**, Enterprise Custom, seat-based and flat monthly in USD, implemented once as `PLANS` in `packages/db/src/plans.ts` and rendered by the pricing page (roadmap N6.1). The `plans/03` Phase 18 model (Starter $79, Growth $149, Scale $249, by monthly escalations) is **not adopted**, and the obsolete `$299/$699` pilot pricing in `plans/05` must not be reintroduced.
+**Closed 2026-10-05.** The question was: which pricing model is current, and which do the 10 customers pay on? The owner decided D14: the **live model** is current. It is Starter **$49**, Team **$149**, Enterprise Custom, seat-based and flat monthly in USD, implemented once as `PLANS` in `packages/db/src/plans.ts` and rendered by the pricing page (roadmap N6.1). The earlier escalation-volume model (Starter $79, Growth $149, Scale $249, by monthly escalations) is **not adopted**, and the obsolete `$299/$699` pilot pricing from the removed validation plan must not be reintroduced.
 
 What is still open is data, not a decision: which plan each of the 10 customers actually pays or was quoted. That is roadmap N4.7 (enter it in the admin tenant page); a count per plan is enough, no names.
 

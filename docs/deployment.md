@@ -122,6 +122,33 @@ docker compose -f docker-compose.yml --env-file .env.prod up -d --build
 Migrations run automatically as part of `up` (see above) — there is no
 separate migration command to remember on update.
 
+### Common mistakes and quick recovery
+
+- **Running Prisma from the host.** It may load a local `.env` and try
+  `localhost:5432` instead of the Compose `postgres` service. Run
+  migrations through the service instead:
+  `docker compose -f docker-compose.yml --env-file .env.prod run --rm migrate`.
+  Inside Docker, `DATABASE_URL` must use the host `postgres`, never
+  `localhost`. If you must run Prisma yourself, Prisma lives in `@sla/db`:
+  `pnpm --filter @sla/db exec prisma migrate deploy`, not `pnpm prisma …`
+  from the repository root. A `P1001 Can't reach database server` means
+  Postgres is not running or not reachable: check `docker compose … ps` and
+  `docker compose … logs postgres`.
+- **Bypassing the `migrate` service.** Compose blocks `web` and `worker`
+  until `migrate` succeeds, so this only happens if you start the
+  containers some other way (`docker run`, a different Compose file). The
+  symptom is a worker that restarts in a loop with ``The table
+  `public.worker_settings` does not exist``. `upsert()` creates rows, never
+  tables: the schema comes only from the migrations (fresh Postgres →
+  `migrate deploy` → schema → worker). Do not keep restarting the worker:
+  check `ps`, run `run --rm migrate`, then `up -d`.
+- **`down -v` during a normal deployment.** It deletes the PostgreSQL
+  volume, and with it the database. Use it only to deliberately reset a
+  local environment (`down -v --remove-orphans`, then `up -d --build`).
+- **Publishing Postgres.** The Compose file keeps `postgres:5432` internal
+  on purpose; do not add a `ports:` mapping unless external access is
+  specifically required.
+
 ## Backups
 
 The database is the only state this stack has: both app containers are

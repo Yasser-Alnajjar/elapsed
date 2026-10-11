@@ -28,9 +28,9 @@
   | Source | Plans | Metric |
   |---|---|---|
   | Live pricing page, `apps/web/src/modules/marketing/pricing/csr/PricingView.tsx` (last changed 2026-09-27) | Starter $49 · Team $149 · Enterprise Custom | Seats (5 / 20 / unlimited); Starter: 1 support + 1 engineering integration, up to 3 SLA policies, email alerts; Team: unlimited integrations, Slack, "90-day case history"; Enterprise: SSO/SAML, custom retention |
-  | `plans/03-Product-and-MVP.md` Phase 18 | Starter $79 · Growth $149 · Scale $249 · Enterprise | Monthly escalated tickets (150 / 600 / 2,500) |
+  | The pre-build product definition (removed in Rev 12; git history) | Starter $79 · Growth $149 · Scale $249 · Enterprise | Monthly escalated tickets (150 / 600 / 2,500) |
 
-- The old `$299 / $699` pilot pricing in `plans/05` is obsolete. **Do not reintroduce it.**
+- The old `$299 / $699` pilot pricing from the removed validation plan is obsolete. **Do not reintroduce it.**
 - **D14 chose the live model** (Starter / Team / Enterprise, seat-based). The escalation-volume model is not adopted. The old `$299 / $699` pilot pricing stays excluded.
 
 **Why it waits:** with 10 customers, a manual plan record (N4) is enough. Building billing before the provider boundary and freshness work would optimise invoicing over correctness.
@@ -66,7 +66,7 @@
 ### N6.3 — Soft enforcement at the three creation points
 - **Invite** (seat limit), **connect integration** (integration limit), **create native policy** (policy limit).
 - Behaviour: a warning with an upgrade path, and the event is recorded on the admin tenant detail.
-- **Hard blocks only at these creation points, and only if D14 explicitly requires them.** Evaluation, notifications, sync and existing data are **never** gated (Phase 10b principle 3).
+- **Hard blocks only at these creation points, and only if D14 explicitly requires them.** Evaluation, notifications, sync and existing data are **never** gated (plan 08 §2 principle 3).
 - **Verify:** route tests for the warn path; a test that a tenant over every limit still gets evaluated and alerted.
 
 ### N6.4 — Trial lifecycle (D27 decided)
@@ -93,7 +93,7 @@
 - Every transition runs in one transaction under an organization row lock, re-validates, bumps `version` (a stale `expectedVersion` returns `conflict`), records a `BillingEvent`, and mirrors plan and status onto the `Organization` columns that entitlement checks read, so entitlements change atomically with the plan. Licensed seats narrow the plan's seat limit.
 - Pricing is flat, monthly and USD (D14); seats never change the price.
 - Typed errors: `invalid_plan`, `invalid_seats`, `contact_sales` (422); `invalid_transition`, `conflict` (409); `provider_unavailable` (501).
-- **Verify:** real-Postgres domain and API suites (`packages/db/test/billing*.ts`, `apps/web/test/billing*.test.ts`, `admin-billing.test.ts`); tenant isolation and scope classification cover the four tables. Reference: [`backend_capability_summary.md`](backend_capability_summary.md).
+- **Verify:** real-Postgres domain and API suites (`packages/db/test/billing*.ts`, `apps/web/test/billing*.test.ts`, `admin-billing.test.ts`); tenant isolation and scope classification cover the four tables.
 
 ### N6.8 — Payment-provider boundary
 - `packages/db/src/billing-provider.ts` defines `BillingProvider` (subscription sync, payment-method and portal sessions, collecting an invoice). `apps/web/src/lib/billing-provider.ts` `getBillingProvider()` returns `null` until N6.5, so provider-only actions report `provider_unavailable`, invoices are "Direct invoice" on net-14 terms and an operator marks them paid. Nothing else in the app names a provider.
@@ -174,3 +174,16 @@ Switch it on with `UPDATE worker_settings SET "entitlementsEnforced" = true;` an
 - Tax logic beyond the billing provider's defaults.
 - Seat-level SSO (parked).
 - Anything that pauses monitoring.
+
+### Billing UI constraints that hold until N6.5 ships
+
+(Migrated from the former billing capability summary, removed in the Rev 12 documentation cleanup.) The billing UI must not show:
+
+- A card or bank form, provider branding, hosted checkout, "Pay now", payment-method management, or a "Manage in billing portal" action (the existing disabled portal button stays).
+- Fake payment confirmations or receipts, an invoice PDF download, or any claim that an invoice is emailed or specific bank or payment instructions (neither exists).
+- An annual/monthly toggle (monthly only), discount or promo codes, tax or VAT, multi-currency, seat purchasing or per-seat price math (pricing is flat), usage-based billing or overages, a free tier, "pause subscription", self-serve trial extension, or customer-facing dunning and retry-charge.
+- Terms or consent checkboxes (the backend has none), or features that do not exist (SSO, custom retention).
+
+Vocabulary stays provider-agnostic: "invoice", "billing email", "direct invoice". The review shows one "Payment" row that today reads "Direct invoice, net 14". The confirm action must tolerate a slower or failing confirm (a provider failure rolls the change back), and success states stay the same when a provider is added. The upgrade CTA (`apps/web/src/lib/upgrade-cta.ts`) stays contact-only and changes to `/upgrade` only when N6.5 ships (N6.4).
+
+**Read-model gaps recorded 2026-10-03 and not re-verified on 2026-10-05:** a first-invoice preview for an unchosen plan (`cycleLines`); `start` accepts an optional `seatQuantity` that no UI sends; `SignInForm` ignores `callbackUrl`. Done: viewer-aware pricing read (`pricing-viewer.ts`), prorated-upgrade preview, and not offering CTAs to `internal` organizations.
