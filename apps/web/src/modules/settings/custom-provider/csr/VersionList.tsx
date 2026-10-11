@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { CustomStatus } from "@/lib/custom-provider/status";
 import { formatLongDateTime } from "@/lib/format";
 import type { ActivateOutcome } from "@/lib/types/custom-provider";
+import { ConfigDiffPanel } from "./ConfigDiffPanel";
 import { ImpactPanel } from "./ImpactPanel";
 
 /** Immutable configuration versions. Rolling back re-activates mapping for future processing only: commitments a later version cancelled are never restored. */
@@ -17,13 +18,13 @@ export function VersionList({ status, isOwner }: { status: CustomStatus; isOwner
   const router = useRouter();
   const timeZone = useOrgTimezone();
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<{ version: number; outcome: ActivateOutcome } | null>(null);
+  const [pending, setPending] = useState<{ version: number; outcome: ActivateOutcome; diffHash?: string } | null>(null);
 
-  async function rollback(version: number, hash?: string) {
+  async function rollback(version: number, hash?: string, diffHash?: string) {
     setBusy(true);
-    const outcome = await Actions.CustomProvider.rollback(version, hash);
+    const outcome = await Actions.CustomProvider.rollback(version, hash, diffHash);
     setBusy(false);
-    if (outcome.kind === "needs_confirmation") return setPending({ version, outcome });
+    if (outcome.kind === "needs_confirmation" || outcome.kind === "needs_diff_review") return setPending({ version, outcome, diffHash });
     setPending(null);
     if (outcome.kind === "activated") {
       notify.success(`Rolled back to version ${version}.`);
@@ -58,8 +59,21 @@ export function VersionList({ status, isOwner }: { status: CustomStatus; isOwner
           </li>
         ))}
       </ul>
+      {pending?.outcome.kind === "needs_diff_review" && (
+        <ConfigDiffPanel
+          diff={pending.outcome.diff}
+          busy={busy}
+          onConfirm={() => void rollback(pending.version, undefined, pending.outcome.kind === "needs_diff_review" ? (pending.outcome.diff.hash ?? undefined) : undefined)}
+          onCancel={() => setPending(null)}
+        />
+      )}
       {pending?.outcome.kind === "needs_confirmation" && (
-        <ImpactPanel impact={pending.outcome.impact} busy={busy} onConfirm={() => void rollback(pending.version, pending.outcome.kind === "needs_confirmation" ? pending.outcome.impact.cancellation?.previewHash : undefined)} onCancel={() => setPending(null)} />
+        <ImpactPanel
+          impact={pending.outcome.impact}
+          busy={busy}
+          onConfirm={() => void rollback(pending.version, pending.outcome.kind === "needs_confirmation" ? pending.outcome.impact.cancellation?.previewHash : undefined, pending.diffHash)}
+          onCancel={() => setPending(null)}
+        />
       )}
     </div>
   );

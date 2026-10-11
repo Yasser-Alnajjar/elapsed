@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { notify } from "@/lib/notify";
 import { REASON_COPY, UNSUPPORTED_KIND_COPY } from "@/lib/custom-provider/state-copy";
-import type { ActivateOutcome, ConnectionTest, Preview, Sample, ValidateResponse } from "@/lib/types/custom-provider";
+import type { ActivateOutcome, ConfigDiff, ConnectionTest, Preview, Sample, ValidateResponse } from "@/lib/types/custom-provider";
+import { ConfigDiffPanel } from "./ConfigDiffPanel";
 import { FailureReasons } from "./FailureReasons";
 import { ImpactPanel } from "./ImpactPanel";
 
@@ -36,7 +37,10 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
   const [sample, setSample] = useState<Sample | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [validation, setValidation] = useState<ValidateResponse | null>(null);
+  const [diff, setDiff] = useState<ConfigDiff | null>(null);
   const [outcome, setOutcome] = useState<ActivateOutcome | null>(null);
+  // The dry-run diff the owner confirmed (plan 09, 6.8); kept for the commitment confirmation that may follow.
+  const [confirmedDiffHash, setConfirmedDiffHash] = useState<string | undefined>(undefined);
 
   async function run<T>(name: string, action: () => Promise<{ ok: boolean; status: number; body: T & { error?: string } }>, apply: (body: T) => void) {
     setBusy(name);
@@ -53,13 +57,14 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
     apply(result.body);
   }
 
-  async function activate(confirmPreviewHash?: string) {
+  async function activate(confirmPreviewHash?: string, confirmDiffHash = confirmedDiffHash) {
     setBusy("activate");
     if (!(await save())) {
       setBusy(null);
       return;
     }
-    const result = await Actions.CustomProvider.activate({ confirmPreviewHash });
+    setConfirmedDiffHash(confirmDiffHash);
+    const result = await Actions.CustomProvider.activate({ confirmPreviewHash, confirmDiffHash });
     setBusy(null);
     setOutcome(result);
     if (result.kind === "activated") {
@@ -93,6 +98,9 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
         </Button>
         <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => run("validate", Actions.CustomProvider.validate, setValidation)}>
           Check support
+        </Button>
+        <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => run("compare", Actions.CustomProvider.dryRun, setDiff)}>
+          Compare with stored data
         </Button>
       </div>
       {busy && <p className="text-on-surface-variant text-xs">Working: {busy}…</p>}
@@ -177,8 +185,12 @@ export function ReviewPanel({ save, onSample }: { save: () => Promise<boolean>; 
         </div>
       )}
 
+      {diff && outcome?.kind !== "needs_diff_review" && <ConfigDiffPanel diff={diff} busy={busy !== null} />}
+
       <div className="border-outline-variant/20 flex flex-col gap-3 border-t pt-4">
-        {outcome?.kind === "needs_confirmation" ? (
+        {outcome?.kind === "needs_diff_review" ? (
+          <ConfigDiffPanel diff={outcome.diff} busy={busy !== null} onConfirm={() => activate(undefined, outcome.diff.hash ?? undefined)} onCancel={() => setOutcome(null)} />
+        ) : outcome?.kind === "needs_confirmation" ? (
           <ImpactPanel impact={outcome.impact} busy={busy !== null} onConfirm={() => activate(outcome.impact.cancellation?.previewHash)} onCancel={() => setOutcome(null)} />
         ) : (
           <Button type="button" disabled={busy !== null} onClick={() => activate()} className="self-start">

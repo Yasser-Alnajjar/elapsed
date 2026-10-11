@@ -1,5 +1,6 @@
 import type { ActivationImpact } from "@sla/commitments";
 import type { ConnectionTest, DraftView, FullPassMeasurement, Preview, Sample } from "@sla/custom-ticket";
+import type { ConfigDiff } from "@/lib/custom-provider/config-diff";
 import type { CustomStatus } from "@/lib/custom-provider/status";
 
 /** Everything the Custom REST page needs, assembled on the server. */
@@ -14,7 +15,7 @@ export interface CustomProviderPageData {
   status: CustomStatus;
 }
 
-export type { ActivationImpact, ConnectionTest, DraftView, FullPassMeasurement, Preview, Sample };
+export type { ActivationImpact, ConfigDiff, ConnectionTest, DraftView, FullPassMeasurement, Preview, Sample };
 
 export interface DraftConfigDocument {
   [key: string]: unknown;
@@ -39,6 +40,7 @@ export interface ValidateResponse {
 export type ActivateOutcome =
   | { kind: "activated"; version: number; cancelled: number }
   | { kind: "needs_confirmation"; impact: ActivationImpact }
+  | { kind: "needs_diff_review"; diff: ConfigDiff }
   | { kind: "listing_too_large"; measurement: FullPassMeasurement }
   | { kind: "invalid"; issues: { path: string; code: string }[]; diagnostics: { severity: string; code: string; path: string }[] }
   | { kind: "error"; code: string; missing?: string[] };

@@ -11,7 +11,9 @@ export const maxDuration = 150;
  * `{ note?, confirmPreviewHash? }`: when the new version makes a commitment
  * kind unsupported for commitments that already exist, the first call answers
  * `409 needs_confirmation` with the dry-run, and nothing is changed until the
- * owner repeats the call with that preview's hash.
+ * owner repeats the call with that preview's hash. `confirmDiffHash` works the
+ * same way for the dry-run diff of cases and events (plan 09, 6.8): a version
+ * that would change stored data answers `409 needs_diff_review` first.
  */
 export async function POST(request: Request) {
   const guard = await ownerGuard({ outbound: true });
@@ -26,12 +28,15 @@ export async function POST(request: Request) {
       userId,
       note: typeof body.note === "string" ? body.note : undefined,
       confirmPreviewHash: typeof body.confirmPreviewHash === "string" ? body.confirmPreviewHash : undefined,
+      confirmDiffHash: typeof body.confirmDiffHash === "string" ? body.confirmDiffHash : undefined,
     });
     switch (result.status) {
       case "activated":
         return NextResponse.json({ version: result.version, cancelled: result.cancelled, warning: gate.warning });
       case "needs_confirmation":
         return NextResponse.json({ error: "needs_confirmation", code: "needs_confirmation", impact: result.impact }, { status: 409 });
+      case "needs_diff_review":
+        return NextResponse.json({ error: "needs_diff_review", code: "needs_diff_review", diff: result.diff }, { status: 409 });
       case "invalid":
         return NextResponse.json({ error: "invalid", code: "invalid", issues: result.issues, diagnostics: result.diagnostics }, { status: 422 });
       case "not_ready":

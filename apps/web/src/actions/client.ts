@@ -4,6 +4,7 @@ import type { CommitmentKind } from "@sla/core";
 import { interpretCredentialsSignInResult, type SignInOutcome } from "@/lib/auth-rate-limit";
 import type {
   ActivateOutcome,
+  ConfigDiff,
   ConnectionTest,
   DraftConfigDocument,
   DraftView,
@@ -94,6 +95,7 @@ function interpretActivation(result: ActionResult<Record<string, unknown>>): Act
   const { ok, status, body } = result;
   if (ok) return { kind: "activated", version: Number(body.version), cancelled: Number(body.cancelled ?? 0) };
   if (status === 409 && body.code === "needs_confirmation") return { kind: "needs_confirmation", impact: body.impact as never };
+  if (status === 409 && body.code === "needs_diff_review") return { kind: "needs_diff_review", diff: body.diff as never };
   if (body.code === "listing_too_large") return { kind: "listing_too_large", measurement: body.measurement as never };
   if (body.code === "invalid") return { kind: "invalid", issues: (body.issues as never) ?? [], diagnostics: (body.diagnostics as never) ?? [] };
   return { kind: "error", code: String(body.code ?? body.error ?? "failed"), missing: body.missing as string[] | undefined };
@@ -144,11 +146,14 @@ export const Actions = {
     validate() {
       return postJSON<ValidateResponse>("/api/integrations/custom/validate");
     },
-    async activate(options: { note?: string; confirmPreviewHash?: string } = {}): Promise<ActivateOutcome> {
+    dryRun() {
+      return postJSON<ConfigDiff>("/api/integrations/custom/dry-run");
+    },
+    async activate(options: { note?: string; confirmPreviewHash?: string; confirmDiffHash?: string } = {}): Promise<ActivateOutcome> {
       return interpretActivation(await postJSON<Record<string, unknown>>("/api/integrations/custom/activate", options));
     },
-    async rollback(toVersion: number, confirmPreviewHash?: string): Promise<ActivateOutcome> {
-      return interpretActivation(await postJSON<Record<string, unknown>>("/api/integrations/custom/rollback", { toVersion, confirmPreviewHash }));
+    async rollback(toVersion: number, confirmPreviewHash?: string, confirmDiffHash?: string): Promise<ActivateOutcome> {
+      return interpretActivation(await postJSON<Record<string, unknown>>("/api/integrations/custom/rollback", { toVersion, confirmPreviewHash, confirmDiffHash }));
     },
     disconnect() {
       return postJSON<{ status: string }>("/api/integrations/custom/disconnect");
