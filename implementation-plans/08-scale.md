@@ -27,14 +27,14 @@ Keep freshness and correctness intact as tenant count and data volume grow, by f
 - `pnpm --filter @sla/worker perf:baseline` (`apps/worker/scripts/perf-baseline-cycle.ts`), scoped with `PERF_ORG_ID`
 - `pnpm db:seed:perf-baseline` (`packages/db/src/scripts/seed-perf-baseline.ts`)
 - `PERF_METRICS=1` counters (`packages/db/src/perf-metrics.ts`); lock wait/hold logging (`packages/db/src/organization-lock.ts`)
-- Tick and integration durations from N3.6
+- Tick and integration durations from N3.6 *(Rev 11: per-organization `organization_finished.durationMs` and per-integration `lastSyncDurationMs`; `WorkerSettings.lastActivePollDurationMs` and `lastReconciliationDurationMs` are not written or used)*
 - Performance history: [`plans/performance-plan.md`](../plans/performance-plan.md) and roadmap task 7.7
 
 ## 4. Items, each with its trigger
 
 | # | Limit | Trigger | Work | Verify |
 |---|---|---|---|---|
-| S1 | Within one worker, organizations are processed up to a fixed concurrency limit (workers can be added; per-organization leases already divide the work, see the roadmap's Appendix D invariant 11) | Active-poll tick p95 > 50% of the interval for 7 days, or one tenant > 25% of the tick | Per-org time budget and round-robin fairness in `apps/worker/src/cycle.ts` (adding workers is already possible and is the first lever) | Worker perf baseline with a multi-org seed; tick p95 back under 50% |
+| S1 | Within one worker, organizations are processed up to a fixed concurrency limit (workers can be added; per-organization leases already divide the work, see the roadmap's Appendix D invariant 11) | Active-poll tick p95 > 50% of the interval for 7 days, or one tenant > 25% of the tick *(Rev 11: needs rebasing on `organization_finished.durationMs`; the "tick" metric has no writer-backed source; not decided here)* | Per-org time budget and round-robin fairness in `apps/worker/src/cycle.ts` (adding workers is already possible and is the first lever) | Worker perf baseline with a multi-org seed; tick p95 back under 50% |
 | S2 | Provider rate limits on large backfills | A customer backfill taking > 4 h, or repeated 429s in logs | Resumable, rate-aware backfill with live counts (also serves N5 onboarding) | Backfill resumes after a worker restart without re-fetching |
 | S3 | Evaluation loads every event of every active commitment | Org sweep > 30 s, or org lock hold > 10 s (`organization-lock.ts` logs) | Evaluate only commitments whose events, policy or calendar changed since the last tick (deferred follow-up recorded in 7.7 Phase 3) | **L1 replay 0 differences** at several `asOf` points; perf baseline |
 | S4 | Org-level SLA lock held for the whole sweep | Webhook latency p95 > 30 s for large tenants | Per-chunk lock in the sweep | `organization-lock.test.ts`; `scoped-pipelines.test.ts` |

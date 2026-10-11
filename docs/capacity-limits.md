@@ -30,7 +30,7 @@
 
 ## Many organizations (10 organizations × 500 cases, ~40 events per case)
 
-The shape of today's 10 live tenants if each were small. One worker run scoped to 10 seeded organizations (`PERF_ORG_ID=<id1>,<id2>,…`), both cycle kinds back to back:
+A seeded laptop shape of 10 small tenants (the roadmap says 10 customers; the owner-reported production holds 1 organization and 24 cases per ledger A-09, an open conflict, OD-07). One worker run scoped to 10 seeded organizations (`PERF_ORG_ID=<id1>,<id2>,…`), both cycle kinds back to back:
 
 | | Total wall (both cycles, incl. process start) | Org lock held per org, poll | Org lock held per org, sweep |
 | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ Those numbers are from one process cycling the organizations one after another, 
 | Concurrent web users | **not measured** | — | the loaders were run one at a time in-process; no load test was run and no throughput claim is made |
 | Web pages other than the dashboard | flat to 10k cases | — | measured above |
 
-Nothing here has been checked against the 10 live tenants' real sizes: their case and event counts are not recorded in the repo (see H-1).
+Nothing here has been checked against the real tenants' sizes: their case and event counts are not recorded in the repo (see H-1); the owner-reported production is 1 organization and 24 cases (ledger A-09), which conflicts with "10 live tenants" (OD-07, open).
 
 ## Not done
 
@@ -68,6 +68,6 @@ PERF_METRICS=1 PERF_ORG_ID=<organizationId> pnpm --filter @sla/worker perf:basel
 
 Always set `PERF_ORG_ID` for the worker script: an unscoped run cycles every organization in the database, including any with live integrations.
 
-## Relation to the N3.6 drill (2026-10-10, documentation only)
+## Relation to N3.6 (2026-10-10; updated 2026-10-11, documentation only)
 
-The figures above are single-organization measurements on a laptop (Apple M4, 16 GB), not measurements of the production host (t3.medium, 2 vCPU, 3.7 GiB, per the owner-reported ledger A-10) and not a multi-tenant outage drill. They do not define the scale of the N3.6 two-hour drill: the target number of organizations and cases for that drill is undefined and needs an owner decision. See the roadmap's N3.6 entry.
+The figures above are single-organization measurements on a laptop (Apple M4, 16 GB), not measurements of the production host (t3.medium, 2 vCPU, 3.7 GiB, per the owner-reported ledger A-10) and not a multi-tenant outage run. **Rev 11:** the N3.6 two-hour production-scale outage drill is permanently waived by the owner (waived, not passed), so no "production scale" for it needs to be defined; N3.6 closes on short automated tests. These figures are not evidence for the outage criteria. See the roadmap's N3.6 entry ("Rev 11 closure").

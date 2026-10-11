@@ -90,6 +90,14 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
 
 > **Update (Rev 10, 2026-10-10; documentation only, nothing built or run).** Verified against the code: `lastSyncDurationMs` is written per integration, and per-organization duration is emitted only as the structured log `organization_finished` (`durationMs`, `ingestMs`, `pipelineMs`, `apps/worker/src/cycle.ts`). **`WorkerSettings.lastActivePollDurationMs` and `lastReconciliationDurationMs` have no writers**, so the metrics the bullet above promises, and the roadmap's "tick p95 / interval" metric, are not available; the roadmap's remark that there is no global tick to persist is consistent with this. Before the production-scale drill can satisfy "other tenants within ±10%", the owner must either approve implementing the writers or approve an alternative metric (for example the `organization_finished` log). The drill itself is proposed for an isolated staging or bench environment only, never against a real customer's provider; the environment, host and target scale are undecided and need the owner. N3.7 keeps its D22 gate. See the roadmap's N3.6 entry and ledger D-02.
 
+> **Update (Rev 11, 2026-10-11; documentation only; owner decisions; supersedes the Rev 10 note above and the drill bullet of this task where they conflict).**
+>
+> - **The two-hour outage drill is permanently WAIVED by the owner (waived, never passed).** Acceptance 1 below is reworded accordingly. N3.6 closes on two short automated tests (**W1**: `@sla/http-retry` per-attempt timeout, `packages/http-retry/test/retry.test.ts`; **W2**: the existing outage test in `apps/worker/test/cycle.test.ts`, extended to one hung organization plus six healthy ones at concurrency 3, with a control phase and an outage phase in the same test). The D13 behavior is not re-tested: `apps/web/test/stale-source-notifications.test.ts` stays the evidence.
+> - **±10%:** the healthy organizations' median per-organization run duration (`organization_finished.durationMs`) during the outage phase is within ±10% of their median in the control phase of the same test, or within an absolute floor of 15 ms, whichever is larger; and every healthy organization finishes while the failing one is still hung.
+> - **25%:** the 25%-of-the-active-poll-interval threshold applies to **healthy organizations only** (production 30 s, so 7.5 s). The failing organization's own run exceeds it by configuration. The N3.7 trigger below is read the same way; **N3.7 keeps its D22 gate**.
+> - **Measurements:** `organization_finished` and `Integration.lastSyncDurationMs`. `WorkerSettings.lastActivePollDurationMs` and `lastReconciliationDurationMs` are **not written and not used** (the columns stay; no migration). The "tick" wording in this plan predates per-organization scheduling and should be read as the per-organization run.
+> - Full definitions, residual risks and the corrections to the harness, existing-test and production-scale claims are in the roadmap's N3.6 entry ("Rev 11 closure").
+
 ### N3.7 — Circuit breaker, only if N3.6 justifies it
 - **Trigger:** the drill or production metrics show one failing integration adding more than 25% of the active-poll interval to the tick, or a real outage did.
 - **Design:**
@@ -98,7 +106,7 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
   - Normalization and evaluation still run.
   - Reauth and permission-denied states are unchanged: they are not outages.
 - If the trigger is not met, **record "not needed, measured at X ms"** in the roadmap and skip this task.
-- **Verify:** drill test shows the healthy org's tick time is unaffected within ±10%.
+- **Verify:** drill test shows the healthy org's tick time is unaffected within ±10%. *(Rev 11: read as the same-test control-versus-outage comparison of healthy organizations' per-organization run duration defined in the N3.6 update above; the "more than 25%" trigger is read against healthy organizations only.)*
 
 ### N3.8 — Customer-visible freshness
 - Integration settings and detail: show "last successful sync" and "failing since".
@@ -118,7 +126,7 @@ The 2026-09-29 audit, Scenario A (Zendesk down for 2 hours):
 |---|---|
 | `Integration.lastSuccessfulSyncAt`, `consecutiveFailures`, `failingSince`, `lastSyncDurationMs` (+ backfill) | N3.1 |
 | `Evaluation.sourceStaleSince` | N3.3 |
-| `WorkerSettings.freshnessGraceFactor`, `lastActivePollDurationMs`, `lastReconciliationDurationMs` | N3.2, N3.6 |
+| `WorkerSettings.freshnessGraceFactor`, `lastActivePollDurationMs`, `lastReconciliationDurationMs` (Rev 11: the two duration columns exist but are not written or used) | N3.2, N3.6 |
 | `Integration.nextAttemptAt` (only if N3.7 is triggered) | N3.7 |
 
 All are additive and nullable or defaulted, so they are safe to roll back.
@@ -137,7 +145,7 @@ pnpm --filter @sla/commitments replay:compare -- <baseline.jsonl> <after.jsonl>
 
 ## 8. Acceptance criteria
 
-1. In the simulated 2-hour outage of one provider, other tenants' tick time changes by ≤10%, and no alert for a stale-source case is sent without the D13 treatment.
+1. **(Rev 11)** In the short automated outage test (N3.6, W2), the healthy organizations' median per-organization run duration during one organization's outage is within ±10% of the control phase of the same test (or within the 15 ms floor), and no alert for a stale-source case is sent without the D13 treatment (existing real-DB coverage). *Original: "In the simulated 2-hour outage of one provider, other tenants' tick time changes by ≤10%"; the 2-hour clause is WAIVED by the owner (2026-10-11), not passed.*
 2. Last successful sync and failing-since are visible to customers (their own org) and to operators (all orgs).
 3. L1 replay with fresh data: 0 status and `breachedAt` differences.
 4. The circuit breaker is either implemented with its trigger evidence recorded, or explicitly recorded as not needed.
