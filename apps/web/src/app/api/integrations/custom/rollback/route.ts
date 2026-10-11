@@ -6,7 +6,8 @@ import { failure, ownerGuard, readJson } from "@/lib/custom-provider/route-guard
  * Re-activates an earlier immutable version (owner only, audited). Future
  * processing only: commitments a later version cancelled are never
  * reactivated, and the dry-run says how many stay cancelled. Same
- * confirmation-by-hash flow as activation.
+ * confirmation-by-hash flows as activation, including the dry-run diff of
+ * cases and events (plan 09, 6.8).
  */
 export async function POST(request: Request) {
   const guard = await ownerGuard();
@@ -20,12 +21,15 @@ export async function POST(request: Request) {
     userId,
     toVersion,
     confirmPreviewHash: typeof body?.confirmPreviewHash === "string" ? body.confirmPreviewHash : undefined,
+    confirmDiffHash: typeof body?.confirmDiffHash === "string" ? body.confirmDiffHash : undefined,
   });
   switch (result.status) {
     case "activated":
       return NextResponse.json({ version: result.version, cancelled: result.cancelled });
     case "needs_confirmation":
       return NextResponse.json({ error: "needs_confirmation", code: "needs_confirmation", impact: result.impact }, { status: 409 });
+    case "needs_diff_review":
+      return NextResponse.json({ error: "needs_diff_review", code: "needs_diff_review", diff: result.diff }, { status: 409 });
     case "invalid":
       return NextResponse.json({ error: "invalid", code: "invalid", issues: result.issues, diagnostics: result.diagnostics }, { status: 422 });
     case "not_ready":
