@@ -118,4 +118,4 @@ A provider that has no adapter cannot be listed as Coming Soon, because adding i
 
 ## Rollback
 
-The N10 schema is additive. If the code is reverted, the old Custom REST flag (`Organization.customProviderEnabled`) is read again; allowlist changes made after the deploy are not reflected in it, so check the flag on each organization that uses Custom REST.
+The N10 schema is additive until the N10-F1 contract migration (`20261011120000_n10_f1_drop_custom_provider_enabled`) is applied. After N10-F1 the old column no longer exists, so reverting to pre-N10 code needs the column restored first (see plan 10 §11). Before N10-F1, if the code is reverted, the old Custom REST flag (`Organization.customProviderEnabled`) is read again; allowlist changes made after the deploy are not reflected in it, so check the flag on each organization that uses Custom REST.
