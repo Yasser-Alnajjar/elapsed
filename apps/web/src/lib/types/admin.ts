@@ -187,7 +187,7 @@ export interface AdminProviderPairCount {
 export interface AdminTenantsData {
   asOf: string;
   tenants: AdminTenantRow[];
-  /** Counts only, never names (N4.7): how many tenants use each combination of providers. */
+  /** Counts only, never names (N4.4): how many tenants use each combination of providers. */
   providerPairCounts: AdminProviderPairCount[];
   /** How many tenants carry each plan status, and how many have no plan recorded yet. */
   planStatusCounts: Record<PlanStatus, number>;
