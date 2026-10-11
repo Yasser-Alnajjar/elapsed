@@ -118,7 +118,7 @@ model IntegrationBetaAllowlist {
 | github | true | beta | **all_organizations** | — |
 | custom | true | beta | allowlist | every organization with `customProviderEnabled = true` |
 
-`Organization.customProviderEnabled` is **kept, unread** (expand step) and dropped by a later contract migration (N10-F1), the same pattern as N2.10, so a rolling deploy never meets a missing column.
+`Organization.customProviderEnabled` was **kept, unread** (expand step) and is dropped by the contract migration N10-F1 (`20261011120000_n10_f1_drop_custom_provider_enabled`), the same pattern as N2.10, so a rolling deploy never meets a missing column.
 
 ## 5. Enforcement
 
@@ -258,7 +258,7 @@ No credential, token, secret or configuration payload is read or written by thes
 | **N10.5** | Admin console page, dialogs, allowlist, tenant-detail panel (§7) | Loading, error, empty, success states; browser check |
 | **N10.6** | Customer-facing availability (§5.5): settings page, onboarding selector, derived Beta label | Unavailable/Coming soon/Paused by Elapsed shown |
 | **N10.7** | Focused tests on `testing` (§10) | Listed tests pass |
-| **N10-F1** | Contract migration dropping `Organization.customProviderEnabled` | After N10 is deployed (owner decides when) |
+| **N10-F1** | Contract migration dropping `Organization.customProviderEnabled` | Written and verified 2026-10-11; applied to production with the owner's chosen release |
 
 ## 10. Tests (focused, on `testing`, ruling 8)
 
@@ -282,7 +282,7 @@ Type-check (`pnpm type-check`) and the web build run on the phase branch.
 
 ## 11. Rollback
 
-Additive schema. Reverting the code leaves two unused tables and the still-present `customProviderEnabled` column, which the reverted code reads again. Allowlist additions made after the deploy would not be reflected in the column; the runbook says to re-check the Custom REST flag after a rollback.
+Additive schema. Until N10-F1 is applied, reverting the code leaves two unused tables and the still-present `customProviderEnabled` column, which the reverted code reads again. **After N10-F1 is applied the column is gone**, so pre-N10 code cannot run against the database without restoring it (`ALTER TABLE "organizations" ADD COLUMN "customProviderEnabled" BOOLEAN NOT NULL DEFAULT false`, then re-set it from the Custom REST allowlist). Allowlist additions made after the deploy would not be reflected in the column; the runbook says to re-check the Custom REST flag after a rollback.
 
 ## 12. Out of scope
 

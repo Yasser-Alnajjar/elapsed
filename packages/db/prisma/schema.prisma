@@ -85,11 +85,6 @@ model Organization {
   billingSubscription BillingSubscription?
   billingInvoices     BillingInvoice[]
   billingEvents       BillingEvent[]
-  /// DEPRECATED (D33, N10): superseded by the Custom REST entry of
-  /// `IntegrationBetaAllowlist`, which the N10 migration seeded from it. No
-  /// code reads or writes it any more; kept for one release so a rolling
-  /// deploy never meets a missing column, then dropped by N10-F1.
-  customProviderEnabled Boolean @default(false)
   customProviderDrafts  CustomProviderDraft[]
   customConfigVersions  CustomProviderConfigVersion[]
   integrationSyncRuns   IntegrationSyncRun[]
