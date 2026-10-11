@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@sla/db";
 import { DRAFT_INTEGRATION_ID, customSecretFieldsSet, decryptCustomSecrets, encryptCustomSecret } from "@sla/db";
 import { privateHostsAllowed } from "@sla/safe-http";
 import { authSchema, parseConfig, secretFieldNames, type ConfigIssue, type CustomConfig } from "./schema";
-import { validateConfig, type Diagnostic } from "./validate";
+import { unconfirmedPostEndpoints, validateConfig, type Diagnostic } from "./validate";
 
 export const DRAFT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_SECRET_BYTES = 4096;
@@ -20,11 +20,14 @@ export interface DraftView {
 }
 
 export class DraftInputError extends Error {
-  readonly code: "invalid_config" | "invalid_secret" | "unknown_secret_field";
-  constructor(code: DraftInputError["code"]) {
+  readonly code: "invalid_config" | "invalid_secret" | "unknown_secret_field" | "post_requires_read_only_designation";
+  /** For `post_requires_read_only_designation`: the endpoints whose POST is not confirmed. */
+  readonly endpoints: string[];
+  constructor(code: DraftInputError["code"], endpoints: string[] = []) {
     super(code);
     this.name = "DraftInputError";
     this.code = code;
+    this.endpoints = endpoints;
   }
 }
 
@@ -57,7 +60,8 @@ export async function getDraft(prisma: PrismaClient, organizationId: string, now
 
 /**
  * Saves the draft's configuration and, write-only, any secret values. The
- * configuration may be incomplete; it is validated again at activation.
+ * configuration may be incomplete (it is validated again at activation), but a
+ * `POST` without the owner's read-only confirmation is refused.
  * Secrets are accepted only for the fields the draft's auth type needs, are
  * encrypted at once, bound to the organization and field, and never read back.
  * Changing the auth type drops secrets of fields the new type does not use.
@@ -76,6 +80,9 @@ export async function saveDraft(
     throw new DraftInputError("invalid_config");
   }
   if (serialized.length > 64 * 1024) throw new DraftInputError("invalid_config");
+  // The one semantic rule a draft must meet to be kept: a POST needs the owner's read-only confirmation (plan 09 §6.2).
+  const unconfirmed = unconfirmedPostEndpoints(input.config);
+  if (unconfirmed.length > 0) throw new DraftInputError("post_requires_read_only_designation", unconfirmed);
 
   const auth = authSchema.safeParse(input.config.auth);
   const allowedFields = auth.success ? secretFieldNames(auth.data) : [];

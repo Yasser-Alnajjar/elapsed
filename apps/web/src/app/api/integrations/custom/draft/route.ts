@@ -6,6 +6,7 @@ import { failure, ownerGuard, readJson } from "@/lib/custom-provider/route-guard
  * The wizard's draft (N9.11). `GET` returns the configuration and WHICH secret
  * fields are set, never a secret. `PUT { config, secrets? }` saves it: secrets
  * are write-only, encrypted at once and bound to the organization and field.
+ * A POST without the read-only confirmation is refused with 422.
  */
 export async function GET() {
   const guard = await ownerGuard();
@@ -24,7 +25,10 @@ export async function PUT(request: Request) {
   try {
     return NextResponse.json({ draft: await saveDraft(prisma, organizationId, { config: body.config, secrets }) });
   } catch (error) {
-    if (error instanceof DraftInputError) return failure(error.code, 400);
+    if (error instanceof DraftInputError) {
+      if (error.code === "post_requires_read_only_designation") return failure(error.code, 422, { endpoints: error.endpoints });
+      return failure(error.code, 400);
+    }
     throw error;
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DraftNotReadyError, loadReadyDraft, openOutboundSession, type OutboundSession } from "@sla/custom-ticket";
+import { DraftNotReadyError, loadReadyDraft, openOutboundSession, unconfirmedPostEndpoints, type OutboundSession } from "@sla/custom-ticket";
 import { failure, ownerGuard, type OwnerContext } from "./route-guard";
 
 /**
@@ -15,6 +15,9 @@ export async function withOutboundSession(run: (session: OutboundSession, ctx: O
   const { ctx } = guard;
   try {
     const draft = await loadReadyDraft(ctx.prisma, ctx.organizationId);
+    // These checks run before full validation, so the POST confirmation is enforced here too: nothing is sent without it.
+    const unconfirmed = unconfirmedPostEndpoints(draft.config);
+    if (unconfirmed.length > 0) return failure("post_requires_read_only_designation", 422, { endpoints: unconfirmed });
     const session = openOutboundSession(draft.config, draft.secrets);
     try {
       return NextResponse.json(await run(session, ctx));

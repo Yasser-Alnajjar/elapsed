@@ -29,6 +29,7 @@ export {
 export {
   pathsIn,
   storedSlaSupport,
+  unconfirmedPostEndpoints,
   validateConfig,
   type Diagnostic,
   type MetricSupport,

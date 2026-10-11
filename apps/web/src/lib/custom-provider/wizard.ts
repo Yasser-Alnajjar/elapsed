@@ -43,6 +43,20 @@ export function setIn<T extends DraftConfigDocument>(root: T, path: readonly Key
   return next as T;
 }
 
+/**
+ * The ticket-list request after an edit. The read-only confirmation belongs to
+ * the endpoint the owner confirmed, so any edit to the path or body, or a
+ * change of method, drops it and the owner must confirm again. A switch to
+ * `GET` also drops the body, as a GET carries none.
+ */
+export function editTicketsRequest(request: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const { readOnlySearch: _confirmation, ...rest } = request;
+  const next: Record<string, unknown> = { ...rest, ...patch };
+  for (const key of Object.keys(next)) if (next[key] === undefined || next[key] === "") delete next[key];
+  if (next.method !== "POST") delete next.body;
+  return next;
+}
+
 export interface SamplePath {
   path: string;
   preview: string;

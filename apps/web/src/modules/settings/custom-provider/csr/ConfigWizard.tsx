@@ -6,7 +6,8 @@ import { Actions } from "@/actions/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/notify";
-import { emptyConfig, samplePaths, setIn } from "@/lib/custom-provider/wizard";
+import { emptyConfig, getIn, samplePaths, setIn } from "@/lib/custom-provider/wizard";
+import { CONFIRMATION_ERROR_PATHS, POST_CONFIRMATION_MESSAGE, confirmationErrors, customConfigFormSchema } from "@/lib/custom-provider/wizard-schema";
 import type { CustomProviderPageData, DraftConfigDocument, Sample } from "@/lib/types/custom-provider";
 import { ReviewPanel } from "./ReviewPanel";
 import { StepConnection } from "./StepConnection";
@@ -39,13 +40,21 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
   const [sampleTicket, setSampleTicket] = useState<unknown>(null);
   const saved = useRef(false);
   const quiet = useRef(false);
+  /** Set once the owner has tried to save or continue with an unconfirmed POST; the inline error shows from then on. */
+  const [attempted, setAttempted] = useState(false);
 
   const formik = useFormik<WizardValues>({
     initialValues: { config: (initial?.config as DraftConfigDocument | undefined) ?? emptyConfig(), secrets: {}, json: "" },
+    // Backstop: Formik does not call onSubmit while the configuration has an unconfirmed POST. The server enforces the same rule.
+    validationSchema: customConfigFormSchema,
     onSubmit: async (values, { setFieldValue }) => {
       saved.current = false;
       const typed = Object.fromEntries(Object.entries(values.secrets).filter(([, v]) => v !== ""));
       const result = await Actions.CustomProvider.saveDraft(values.config, Object.keys(typed).length ? typed : undefined);
+      if (!result.ok && result.body.error === "post_requires_read_only_designation") {
+        showConfirmationError();
+        return;
+      }
       if (!result.ok || !result.body.draft) {
         notify.error(result.body.error === "unknown_secret_field" ? "A credential does not match the authentication type." : "The draft could not be saved.");
         return;
@@ -61,12 +70,38 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
   const { config } = formik.values;
   const paths = useMemo(() => (sampleTicket ? samplePaths(sampleTicket).map((p) => p.path) : []), [sampleTicket]);
 
+  /** Takes the owner to the ticket request, where the checkbox is, and says why they cannot continue. */
+  function showConfirmationError() {
+    setAttempted(true);
+    setStep("Tickets");
+    notify.error(POST_CONFIRMATION_MESSAGE);
+  }
+
+  /** True when the configuration may be saved or left behind: no POST without its confirmation. */
+  async function confirmationsHold(): Promise<boolean> {
+    if (confirmationErrors(await formik.validateForm()).length === 0) return true;
+    showConfirmationError();
+    return false;
+  }
+
   /** `silent` skips the "saved" toast, for the checks on the Review step that save first. */
   async function save(silent = false): Promise<boolean> {
+    saved.current = false;
     quiet.current = silent;
+    if (!(await confirmationsHold())) return false;
     await formik.submitForm();
     return saved.current;
   }
+
+  /** Moving forward needs every POST confirmed; moving back does not. */
+  async function goTo(target: (typeof STEPS)[number]) {
+    if (STEPS.indexOf(target) > STEPS.indexOf(step) && !(await confirmationsHold())) return;
+    if (target === "Advanced (JSON)") void formik.setFieldValue("json", JSON.stringify(config, null, 2));
+    setStep(target);
+  }
+
+  const ticketsConfirmationError = attempted ? (getIn(formik.errors, CONFIRMATION_ERROR_PATHS[0]) as string | undefined) : undefined;
+  const otherConfirmationErrors = attempted ? confirmationErrors(formik.errors).slice(ticketsConfirmationError ? 1 : 0) : [];
 
   const props: StepProps = {
     config,
@@ -76,6 +111,7 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
     secrets: formik.values.secrets,
     setSecret: (field, value) => void formik.setFieldValue(`secrets.${field}`, value),
     userId,
+    postConfirmationError: ticketsConfirmationError,
   };
 
   return (
@@ -88,15 +124,18 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
             size="sm"
             variant={name === step ? "default" : "surface"}
             aria-current={name === step}
-            onClick={() => {
-              if (name === "Advanced (JSON)") void formik.setFieldValue("json", JSON.stringify(config, null, 2));
-              setStep(name);
-            }}
+            onClick={() => void goTo(name)}
           >
             {name}
           </Button>
         ))}
       </nav>
+
+      {otherConfirmationErrors.length > 0 && (
+        <Alert variant="warning">
+          A POST in the replies, ticket detail or history request is not confirmed as a read-only search. Set <code>readOnlySearch</code> to true in the Advanced (JSON) tab only if it is, or change the method to GET.
+        </Alert>
+      )}
 
       {issues.length > 0 && step !== "Review" && (
         <Alert variant="warning">
@@ -145,10 +184,10 @@ export function ConfigWizard({ initial, secretsSet: initialSecretsSet, userId }:
 
       {step !== "Review" && (
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" disabled={formik.isSubmitting} onClick={() => void formik.submitForm()}>
+          <Button type="button" size="sm" variant="outline" disabled={formik.isSubmitting} onClick={() => void save()}>
             Save draft
           </Button>
-          <Button type="button" size="sm" onClick={() => setStep(STEPS[Math.min(STEPS.indexOf(step) + 1, 4)]!)}>
+          <Button type="button" size="sm" onClick={() => void goTo(STEPS[Math.min(STEPS.indexOf(step) + 1, 4)]!)}>
             Next
           </Button>
         </div>

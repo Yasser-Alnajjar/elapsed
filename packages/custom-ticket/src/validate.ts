@@ -1,4 +1,5 @@
 import { parseHttpsOrigin, type ParsedOrigin } from "@sla/safe-http";
+import { isUnconfirmedPost } from "./requests";
 import { secretFieldNames, variablesIn, type CustomConfig, type Expr, type PaginationConfig, type RequestConfig } from "./schema";
 
 export type Severity = "error" | "warning";
@@ -79,10 +80,30 @@ function requestVariables(request: RequestConfig): Set<string> {
   return names;
 }
 
+/**
+ * The endpoints of a configuration whose `POST` the owner has not confirmed as a
+ * read-only search, as dotted paths. It reads raw JSON, so it also applies to a
+ * draft that is incomplete or does not parse yet: the draft is saved only
+ * without such an endpoint, and the owner's outbound checks (test, sample,
+ * preview), which run before full validation, refuse it.
+ */
+export function unconfirmedPostEndpoints(config: unknown): string[] {
+  const record = (value: unknown): Record<string, unknown> | undefined =>
+    value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+  const root = record(config);
+  const requestOf = (section: string) => record(record(root?.[section])?.request);
+  return ["tickets", "comments", "ticketDetail", "statusHistory"]
+    .filter((section) => {
+      const request = requestOf(section);
+      return request !== undefined && isUnconfirmedPost({ method: request.method as RequestConfig["method"], readOnlySearch: request.readOnlySearch as RequestConfig["readOnlySearch"] });
+    })
+    .map((section) => `${section}.request`);
+}
+
 function checkRequest(request: RequestConfig, path: string, allowed: readonly string[], out: Diagnostic[]): void {
   const err = (code: string, sub = "") => out.push({ severity: "error", code, path: `${path}${sub}` });
   if (request.method === "POST") {
-    if (request.readOnlySearch !== true) err("post_requires_read_only_designation", ".readOnlySearch");
+    if (isUnconfirmedPost(request)) err("post_requires_read_only_designation", ".readOnlySearch");
   } else {
     if (request.body !== undefined) err("get_with_body", ".body");
     if (request.readOnlySearch !== undefined) err("read_only_designation_on_get", ".readOnlySearch");
