@@ -25,6 +25,7 @@ const status = (overrides: Partial<CustomStatus> = {}): CustomStatus => ({
   failedTickets: [],
   failedTicketCount: 0,
   override: null,
+  reconnect: null,
   ...overrides,
 });
 
