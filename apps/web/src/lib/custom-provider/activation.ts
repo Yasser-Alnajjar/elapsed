@@ -29,7 +29,7 @@ export type ActivationResult =
   | { status: "listing_too_large"; measurement: FullPassMeasurement }
   | { status: "needs_confirmation"; impact: ActivationImpact }
   | { status: "needs_diff_review"; diff: ConfigDiff }
-  | { status: "blocked"; reason: "next_reply_restore_blocked" | "auth_changed_reenter_credentials" | "version_not_found" | "not_connected" }
+  | { status: "blocked"; reason: "next_reply_restore_blocked" | "auth_changed_reenter_credentials" | "version_not_found" | "not_connected" | "reconnect_first" }
   | { status: "conflict" };
 
 const configHash = (config: unknown): string => createHash("sha256").update(JSON.stringify(config)).digest("hex");
@@ -95,8 +95,10 @@ export async function activateDraft(
 
   const existing = await prisma.integration.findUnique({
     where: { organizationId_provider: { organizationId: input.organizationId, provider: "custom" } },
-    select: { id: true, activeConfigVersion: true, slaSupport: true },
+    select: { id: true, status: true, activeConfigVersion: true, slaSupport: true },
   });
+  // A disconnected source with a kept configuration comes back through `reconnectCustom` on its last activated version: a draft never replaces it.
+  if (existing?.status === "disconnected" && existing.activeConfigVersion !== null) return { status: "blocked", reason: "reconnect_first" };
   const targetSupport = storedSlaSupport(report);
   const assess = (integrationId: string | null, current: unknown) =>
     assessActivationImpact(prisma, { organizationId: input.organizationId, integrationId, current, target: targetSupport });
@@ -299,4 +301,127 @@ export async function disconnectCustom(prisma: PrismaClient, organizationId: str
     data: { credentials: Prisma.JsonNull, status: "disconnected", disconnectedAt: new Date(), lastSyncError: null },
   });
   return true;
+}
+
+export type ReconnectResult =
+  | { status: "reconnected"; version: number; integrationId: string }
+  | { status: "not_disconnected" }
+  | { status: "no_active_configuration" }
+  | { status: "invalid_secrets"; missing: string[] }
+  | { status: "conflict" };
+
+const MAX_SECRET_BYTES = 4096;
+
+/**
+ * Reconnects a disconnected source on the configuration version that was
+ * active when it was disconnected (`activeConfigVersion`, which Disconnect
+ * never touches). Only the credentials are new. No draft is read and no
+ * version is created, so a saved draft or a newer-looking version can never
+ * replace the last activated configuration, and the version history is
+ * untouched. The stored cases, events, commitments and `slaSupport` are not
+ * re-assessed: the version is the same one they were derived under. The status
+ * flip is what brings the data back (`integration-visibility.ts`), and the
+ * cursor is kept, so the worker resumes where it stopped. Compare-and-set on
+ * the version read, so a concurrent change is a `conflict`, never a wrong
+ * version.
+ */
+export async function reconnectCustom(
+  prisma: PrismaClient,
+  input: { organizationId: string; userId: string; secrets: Record<string, unknown> },
+): Promise<ReconnectResult> {
+  const integration = await prisma.integration.findUnique({
+    where: { organizationId_provider: { organizationId: input.organizationId, provider: "custom" } },
+    select: { id: true, status: true, activeConfigVersion: true },
+  });
+  if (!integration || integration.status !== "disconnected") return { status: "not_disconnected" };
+  if (integration.activeConfigVersion === null) return { status: "no_active_configuration" };
+  const row = await prisma.customProviderConfigVersion.findUnique({
+    where: { integrationId_version: { integrationId: integration.id, version: integration.activeConfigVersion } },
+    select: { config: true },
+  });
+  const parsed = row ? parseConfig(row.config) : null;
+  if (!parsed || !parsed.ok) return { status: "no_active_configuration" };
+
+  const fields = secretFieldNames(parsed.config.auth);
+  const values: Record<string, string> = {};
+  const missing: string[] = [];
+  for (const field of fields) {
+    const value = input.secrets[field];
+    if (typeof value !== "string" || value.length === 0 || Buffer.byteLength(value, "utf8") > MAX_SECRET_BYTES) missing.push(field);
+    else values[field] = value;
+  }
+  if (missing.length > 0 || Object.keys(input.secrets).some((field) => !fields.includes(field))) return { status: "invalid_secrets", missing };
+
+  const version = integration.activeConfigVersion;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const swapped = await tx.integration.updateMany({
+        where: { id: integration.id, status: "disconnected", activeConfigVersion: version },
+        data: {
+          credentials: {
+            secrets: encryptCustomSecrets(values, { organizationId: input.organizationId, integrationId: integration.id }),
+            ticketUrlTemplate: parsed.config.ticketUrlTemplate ?? null,
+            reauthRequired: false,
+          } as unknown as Prisma.InputJsonValue,
+          status: "connected",
+          disconnectedAt: null,
+          lastSyncError: null,
+          consecutiveFailures: 0,
+          failingSince: null,
+        },
+      });
+      if (swapped.count !== 1) throw new ActivationConflict();
+      await tx.customActivationAudit.create({
+        data: {
+          organizationId: input.organizationId,
+          integrationId: integration.id,
+          action: "reconnect",
+          fromVersion: version,
+          toVersion: version,
+          userId: input.userId,
+          details: {},
+        },
+      });
+      return { status: "reconnected" as const, version, integrationId: integration.id };
+    });
+  } catch (error) {
+    if (error instanceof ActivationConflict) return { status: "conflict" };
+    throw error;
+  }
+}
+
+/**
+ * Deletes a disconnected source's configuration and nothing else: the draft,
+ * every configuration version, the activation pointer and `slaSupport`. The
+ * `Integration` row is kept (RawEvent cascades on delete, and cases are
+ * detached, not removed), and so are its cases, events, raw events,
+ * commitments, evaluations, sync history, sync cursor and audit rows. They stay
+ * hidden while the source is disconnected (`integration-visibility.ts`) and are
+ * not reachable by any other integration or organization. Setting the source
+ * up again starts a new configuration at version 1 on the same row. Only a
+ * disconnected source can be deleted; a connected one is disconnected first.
+ * Deleting an organization is a separate lifecycle.
+ */
+export async function deleteCustomConfiguration(prisma: PrismaClient, organizationId: string): Promise<"deleted" | "not_found" | "connected"> {
+  const integration = await prisma.integration.findUnique({ where: { organizationId_provider: { organizationId, provider: "custom" } }, select: { id: true } });
+  if (!integration) {
+    await prisma.customProviderDraft.deleteMany({ where: { organizationId } });
+    return "not_found";
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Compare-and-set on the status: a source reconnected a moment ago is refused, never half-deleted.
+      const cleared = await tx.integration.updateMany({
+        where: { id: integration.id, status: "disconnected" },
+        data: { activeConfigVersion: null, slaSupport: Prisma.DbNull, credentials: Prisma.JsonNull },
+      });
+      if (cleared.count !== 1) throw new ActivationConflict();
+      await tx.customProviderDraft.deleteMany({ where: { organizationId } });
+      await tx.customProviderConfigVersion.deleteMany({ where: { integrationId: integration.id } });
+    });
+  } catch (error) {
+    if (error instanceof ActivationConflict) return "connected";
+    throw error;
+  }
+  return "deleted";
 }

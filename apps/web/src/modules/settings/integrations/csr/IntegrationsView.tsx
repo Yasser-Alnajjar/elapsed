@@ -85,6 +85,7 @@ export const IntegrationsView = ({ data }: IntegrationsViewProps) => {
                 <CustomIntegrationCard
                   view={data.custom}
                   state={data.customState}
+                  hasConfiguration={data.customHasConfiguration}
                   availability={data.availability.custom}
                   delay={SOURCE_INTEGRATION_SPECS.length * CARD_STAGGER}
                 />

@@ -50,6 +50,13 @@ under H-3 for this reason.
   evaluation stay. Verified in each `disconnect/route.ts`.
 - Slack: the `SlackIntegration` row, including the stored token, is hard
   deleted. Verified.
+- Custom REST (`custom`): the same soft disconnect, and its configuration
+  versions and `activeConfigVersion` are kept so the owner can reconnect on
+  the last activated version. **Delete configuration** (a separate owner action,
+  disconnected sources only) deletes only the draft and the configuration
+  versions. The integration row and every raw event, case, event, commitment
+  and evaluation stay; it is not a purge and changes no retention rule above.
+  Plan 09, "Reconnect" and "Delete configuration".
 - No provider-side token revocation is called; only local credentials are
   cleared. Stated in the Zendesk route, and none of the other disconnect
   routes call a revoke endpoint either. The customer should revoke the app in

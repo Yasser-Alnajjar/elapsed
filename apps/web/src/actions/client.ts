@@ -158,6 +158,18 @@ export const Actions = {
     disconnect() {
       return postJSON<{ status: string }>("/api/integrations/custom/disconnect");
     },
+    /** Reconnects a disconnected source on its last activated configuration with freshly entered credentials. No version is created. */
+    async reconnect(secrets: Record<string, string>) {
+      const response = await fetch("/api/integrations/custom/reconnect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ secrets }) });
+      const body = (await response.json().catch(() => ({}))) as { status?: string; version?: number; error?: string; code?: string; missing?: string[] };
+      return { ok: response.ok, status: response.status, body };
+    },
+    /** Deletes the configuration (draft, versions, activation pointer) of a disconnected source. Every case, event and other stored record is kept. */
+    async deleteConfiguration() {
+      const response = await fetch("/api/integrations/custom/config", { method: "DELETE" });
+      const body = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
+      return { ok: response.ok, status: response.status, body };
+    },
     async overridePreview() {
       const response = await fetch("/api/integrations/custom/overrides");
       const body = (await response.json().catch(() => ({}))) as { aborted?: import("@sla/custom-ticket").AbortedPassPreview | null; error?: string };

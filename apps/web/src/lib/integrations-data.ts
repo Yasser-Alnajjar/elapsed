@@ -192,6 +192,9 @@ export const getIntegrationsData = cache(async function getIntegrationsData(
     availability: Object.fromEntries(
       Object.entries(availability).map(([provider, decision]) => [provider, toAvailabilityView(decision)]),
     ) as IntegrationsPageData["availability"],
+    customHasConfiguration:
+      customIntegration !== null &&
+      (await prisma.customProviderConfigVersion.count({ where: { organizationId, integration: { provider: "custom" } } })) > 0,
     customState: customIntegration && customIntegration.credentials !== null ? (await getCustomStatus(prisma, organizationId)).state : null,
     slack: {
       connected: slackIntegration !== null,
