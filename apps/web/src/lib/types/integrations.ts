@@ -72,6 +72,8 @@ export interface IntegrationsPageData {
   customEnabled: boolean;
   /** Every provider's platform availability for this organization (D33). Slack is not covered (N10 ruling 7). */
   availability: Record<IntegrationProvider, ProviderAvailabilityView>;
+  /** The `custom` source still has saved configuration versions (kept when it is disconnected, gone once the owner deletes the configuration). */
+  customHasConfiguration: boolean;
   /** The one customer-facing sync state of the Custom REST source (plan 09, 6.13), or null when it is not connected. */
   customState: import("@/lib/custom-provider/status").CustomSyncState | null;
   slack: SlackConnectionView;

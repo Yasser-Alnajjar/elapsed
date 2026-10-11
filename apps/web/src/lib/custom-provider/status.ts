@@ -1,6 +1,6 @@
 import { getWorkerSettingsForRead, resolveIntegrationAvailability, type PrismaClient } from "@sla/db";
 import type { RecordFailureDetail } from "@sla/ingestion";
-import { isRunSuperseded, latestLifecycleAbort, type AbortedPassPreview } from "@sla/custom-ticket";
+import { isRunSuperseded, latestLifecycleAbort, parseConfig, secretFieldNames, type AbortedPassPreview } from "@sla/custom-ticket";
 import { staleFields } from "@/lib/freshness-data";
 
 /**
@@ -104,6 +104,8 @@ export interface CustomStatus {
   failedTicketCount: number;
   /** The aborted pass the owner may review, when the latest run is a lifecycle-guard abort. */
   override: AbortedPassPreview | null;
+  /** A disconnected source that kept its last activated configuration: the version it reconnects on and the credential fields to enter again. Null otherwise. */
+  reconnect: { version: number; secretFields: string[] } | null;
 }
 
 const RUNS_SHOWN = 10;
@@ -126,7 +128,15 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
     }),
   ]);
   if (!integration || integration.status === "disconnected") {
-    return { connected: false, state: null, attention: null, stale: false, staleSince: null, lastSuccessfulSyncAt: null, lastDataChangedAt: null, activeVersion: null, slaSupport: null, versions: [], runs: [], failedTickets: [], failedTicketCount: 0, override: null };
+    // Disconnecting keeps the configuration: its versions stay listed (the last active one marked) and the source reconnects on that one, until the owner deletes the configuration.
+    const kept = integration
+      ? await prisma.customProviderConfigVersion.findMany({ where: { integrationId: integration.id }, orderBy: { version: "desc" }, take: 20, select: { version: true, createdAt: true, note: true, config: true } })
+      : [];
+    const versions = kept.map((v) => ({ version: v.version, createdAt: v.createdAt.toISOString(), note: v.note, active: v.version === integration?.activeConfigVersion }));
+    const activeRow = kept.find((v) => v.version === integration?.activeConfigVersion);
+    const parsed = activeRow ? parseConfig(activeRow.config) : null;
+    const reconnect = activeRow && parsed?.ok ? { version: activeRow.version, secretFields: secretFieldNames(parsed.config.auth) } : null;
+    return { connected: false, state: null, attention: null, stale: false, staleSince: null, lastSuccessfulSyncAt: null, lastDataChangedAt: null, activeVersion: null, slaSupport: null, versions, runs: [], failedTickets: [], failedTicketCount: 0, override: null, reconnect };
   }
   const [runRows, versionRows, settings] = await Promise.all([
     prisma.integrationSyncRun.findMany({ where: { integrationId: integration.id }, orderBy: { startedAt: "desc" }, take: RUNS_SHOWN }),
@@ -176,5 +186,6 @@ export async function getCustomStatus(prisma: PrismaClient, organizationId: stri
     failedTickets: ((latestCompleted?.failures as { recordId: string; code: string; details?: RecordFailureDetail[] }[] | null) ?? []).slice(0, 50),
     failedTicketCount: latestCompleted?.failureCount ?? 0,
     override: await latestLifecycleAbort(prisma, integration.id),
+    reconnect: null,
   };
 }
