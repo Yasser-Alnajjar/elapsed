@@ -17,7 +17,7 @@ export const STATE_COPY: Record<CustomSyncState, StateCopy> = {
   importing_history: {
     title: "Importing your history",
     tone: "neutral",
-    body: "Elapsed has not yet read all of your tickets. SLA clocks and breach alerts start after the first complete import. This can take a while for a large history and is not a fault.",
+    body: "Elapsed has not yet read all of your tickets. SLA clocks keep running from each ticket's own times, and commitments are tracked as tickets arrive. Until the first import completes, the data counts as stale: at-risk alerts carry a stale-data marker, and breach alerts are held, then sent once the import completes for breaches that are still confirmed. This can take a while for a large history and is not a fault.",
   },
   catching_up: {
     title: "Catching up",

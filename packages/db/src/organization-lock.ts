@@ -47,6 +47,11 @@ const LOCK_WAIT_TIMEOUT_MS = 15 * 60_000;
  * after every individual SQL statement. Queued on the same transaction as
  * `work()`, so it only reaches listeners if `COMMIT` below actually runs.
  */
+/** The advisory-lock key `withOrganizationSlaLock` takes; organization deletion takes the same one. */
+export function organizationSlaLockKey(organizationId: string): string {
+  return `sla-processing:${organizationId}`;
+}
+
 export async function withOrganizationSlaLock<T>(
   _prisma: PrismaClient,
   organizationId: string,
@@ -65,7 +70,7 @@ export async function withOrganizationSlaLock<T>(
     await client.query(`SET LOCAL lock_timeout = '${LOCK_WAIT_TIMEOUT_MS}ms'`);
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      [`sla-processing:${organizationId}`],
+      [organizationSlaLockKey(organizationId)],
     );
     const holdStartedAt = trackMetrics ? performance.now() : 0;
     const result = await work();

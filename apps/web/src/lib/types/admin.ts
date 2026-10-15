@@ -63,6 +63,7 @@ export const ADMIN_AUDIT_ACTIONS = [
   "update_integration_availability",
   "add_integration_allowlist",
   "remove_integration_allowlist",
+  "delete_organization",
 ] as const;
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];
 
@@ -80,6 +81,7 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   update_integration_availability: "Changed integration availability",
   add_integration_allowlist: "Added to a Beta allowlist",
   remove_integration_allowlist: "Removed from a Beta allowlist",
+  delete_organization: "Deleted organization",
 };
 
 export interface AdminAuditRow {

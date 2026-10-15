@@ -10,6 +10,7 @@
     "validate": "prisma validate",
     "migrate:dev": "prisma migrate dev",
     "encrypt-tokens": "dotenv -e ../../.env -- tsx src/scripts/encrypt-integration-tokens.ts",
+    "delete-organization": "dotenv -e ../../.env -- tsx src/scripts/delete-organization.ts",
     "seed:perf-baseline": "dotenv -e ../../.env -- tsx src/scripts/seed-perf-baseline.ts"
   },
   "dependencies": {

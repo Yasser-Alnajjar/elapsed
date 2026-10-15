@@ -112,7 +112,8 @@ export {
   connectAdvisoryLockConnection,
 } from "./advisory-lock";
 export type { AdvisoryLockConnection } from "./advisory-lock";
-export { withOrganizationSlaLock } from "./organization-lock";
+export { organizationSlaLockKey, withOrganizationSlaLock } from "./organization-lock";
+export { deleteOrganization, type DeleteOrganizationOptions, type DeletionReport, type DeletionStatus } from "./organization-deletion";
 export {
   LIVE_DATA_CHANNEL,
   publishLiveDataEvent,

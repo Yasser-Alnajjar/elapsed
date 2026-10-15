@@ -43,6 +43,7 @@ Those numbers are from one process cycling the organizations one after another, 
 | Dimension | Comfortable | Degrading | Basis |
 | --- | --- | --- | --- |
 | Cases per organization | up to ~5,000 (dashboard under ~3 s, lock hold under ~7 s) | 10,000 (dashboard 3.5 s, sweep lock 17.6 s) | measured above |
+| Cases per Custom REST integration | up to 1,000 (the provisional Beta ceiling, `CUSTOM_PROVIDER_LIVE_CASE_CEILING`, OD-08) | 2,000 fails the 10 s organization-lock limit (1,500 passed) | Ledger D-01 (`docs/validation/server-validation-master.md`; runs in `docs/validation/evidence/d-01-benchmark/`); V1 re-projects every case on every pass, so the figures above (which exclude provider normalization and projection) do not apply to it. Pinned 2 vCPU / 3.7 GiB environment, not the production host; a real-host rerun is required before raising the ceiling (N9.7-F1) |
 | Cases per organization, beyond 10,000 | not measured | — | extrapolating the linear trend gives a dashboard of about 7 s at 20k, not verified |
 | Number of organizations | 10 organizations of 500 cases: poll pass 5.3 s of lock time in total, sweep 7.4 s | not measured beyond 10 | multi-org run above; tick time is the sum over organizations |
 | Concurrent web users | **not measured** | — | the loaders were run one at a time in-process; no load test was run and no throughput claim is made |
