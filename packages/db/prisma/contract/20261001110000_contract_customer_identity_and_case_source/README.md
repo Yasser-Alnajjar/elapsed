@@ -1,5 +1,7 @@
 # N2.10 — contract migration (held back, not deployable yet)
 
+> **2026-10-16 (owner Decision 8):** ships together with N10-F1 in one release (ledger C-16). The move into `prisma/migrations/` is prepared on branch `release/contract-n2-10-n10-f1`, under this same name so it applies before N10-F1. It stays here on `main` until that release PR is approved.
+
 Not in `prisma/migrations`, so `prisma migrate deploy` never applies it by accident.
 
 - `migration.sql` drops `Customer.zendeskOrgId` / `intercomCompanyId` / `intercomContactId` (and their keys) and `cases_organizationId_externalId_key`, and makes `Case.sourceIntegrationId` NOT NULL.

@@ -119,7 +119,11 @@ docker compose -f docker-compose.yml --env-file .env.prod up -d --build
 ```
 
 Migrations run automatically as part of `up` (see above) — there is no
-separate migration command to remember on update.
+separate migration command to remember on update. **Exception:** a release
+that drops columns (a contract migration, such as the combined N2.10 + N10-F1
+release) stops `web` and `worker` before migrating, so the old code never runs
+against the new schema; follow ledger check C-16 in
+`docs/validation/server-validation-master.md` for that release.
 
 ### Common mistakes and quick recovery
 

@@ -38,4 +38,6 @@ WORKDIR /repo/apps/worker
 EXPOSE 8081
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- "http://localhost:${WORKER_HEALTH_PORT:-8081}/health" || exit 1
+# Same as apps/web/Dockerfile. Set after `pnpm install` so the install keeps devDependencies (tsx runs the worker).
+ENV NODE_ENV=production
 CMD ["pnpm", "start"]

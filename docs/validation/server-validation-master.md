@@ -205,7 +205,7 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 | DC-17 | `n2-replay-runbook.md` §1, `restore-drill.sh`, `data-retention-and-on-call.md` "Documentation gap"                                                                                                                                        | `docker-compose.prod.yml`                                                                                                                       | Removed from the repository; production runs `docker-compose.yml`                                                                                                                                                                                                                                                            | Commands here use `docker-compose.yml`                                                                                   |
 | DC-18 | `.github/workflows/ci.yml` comment on the `postgres` service                                                                                                                                                                              | "Only for the tenant-isolation suite … every other test uses fakes"                                                                             | `vitest.config.ts` lists 76 real-database suites                                                                                                                                                                                                                                                                             | Informational; no check                                                                                                  |
 | DC-19 | `h-phase-close-out.md` Release row ("Plan the customer-facing effects first: D13 … trial lifecycle and soft limits")                                                                                                                      | Lists the customer-facing effects of the release                                                                                                | Omits N5.6: migration `20261002140000` adds `worker_settings.monthlyReportEnabled` **default `true`**, and no UI sets it, so every organization (fixtures included) gets a monthly report email and Slack message after the release                                                                                          | OD-13; C-08 records the value                                                                                            |
-| DC-20 | `scripts/prod/h10-verify.sh` check 1; `h-phase-close-out.md` finding 1                                                                                                                                                                    | Compares each leaked key with the current value **of the same name**                                                                            | D8's update consolidated `OPS_ALERT_SMTP_*` into `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password reused as `DEPLOYMENT_SMTP_PASSWORD` is not detected                                                                                                                                                                     | C-15 adds a cross-name comparison                                                                                        |
+| DC-20 | `scripts/prod/h10-verify.sh` check 1; `h-phase-close-out.md` finding 1                                                                                                                                                                    | Compares each leaked key with the current value **of the same name**                                                                            | D8's update consolidated `OPS_ALERT_SMTP_*` into `DEPLOYMENT_SMTP_*`, so a leaked ops SMTP password reused as `DEPLOYMENT_SMTP_PASSWORD` is not detected                                                                                                                                                                     | `h10-verify.sh` section 1 compares every current secret with every leaked value under any name (2026-10-16)              |
 
 ### 2.4 Owner decisions needed (fill in)
 
@@ -219,7 +219,7 @@ Recorded, **not resolved** here. Each needs your decision or a documentation upd
 | OD-03 | **Production billing provider** (D28 leaves it open)                                                                                                                                                                                                                                                                                                                                                                                   | N6.5, any production billing          |                                                                                                                                    |
 | OD-04 | **Pre-merge verification policy** (Q9 deferred): CI runs only for `testing`                                                                                                                                                                                                                                                                                                                                                            | Branch rules; E-02                    |                                                                                                                                    |
 | OD-06 | **H-8**: wait for upstream, or a lint-only TypeScript 6 pin                                                                                                                                                                                                                                                                                                                                                                            | H-8, 7.10                             |                                                                                                                                    |
-| OD-05 | Release go-ahead for N2–N10 (C-11), and separately for the N2.10 contract release (C-16) and the H-13 production backfill (C-13)                                                                                                                                                                                                                                                                                                       | C-11, C-13, C-16                      |                                                                                                                                    |
+| OD-05 | Release go-ahead for N2–N10 (C-11), and separately for the N2.10 contract release (C-16) and the H-13 production backfill (C-13)                                                                                                                                                                                                                                                                                                       | C-11, C-13, C-16                      | **Decided 2026-10-16 (Decision 8, option B):** N2.10 and N10-F1 ship together in one release (C-16); no other deploy of `main` before it. C-11 is moot (released 2026-10-09). C-13 is moot (H-13 closed 2026-10-10). |
 | OD-07 | Where the 10 live customers' data is (DC-08), and whether the 11 `seed-org-*` fixture organizations stay in the production database (H-10 asks "no dev seed data in production")                                                                                                                                                                                                                                                       | H-1/D15 limitation, H-10              |                                                                                                                                    |
 | OD-08 | Benchmark method of plan 09 §6.10 and the ceiling `C`. **DECIDED 2026-10-10 (provisional Beta safeguard only):** method accepted; not proof of production-host performance; `C = 1,000` live cases per integration (`L + N > C`, per normalization pass); real-host rerun required before raising it; projector write batching tracked separately with its own acceptance criteria (plan 09 §6.10 "Follow-up items")                   | N9.7-F1                               | **Decided 2026-10-10.** Compose wiring done locally (not deployed); real-host rerun still open                                     |
 | OD-09 | **N9.0-F1** (final review of the Rev 8 Markdown diff) and **N9.0-F2** (the copy change is already merged, DC-04: confirm or revert)                                                                                                                                                                                                                                                                                                    | N9.0 follow-ups                       |                                                                                                                                    |
@@ -1869,6 +1869,16 @@ Evidence:    preconditions= cases_without_source=0, identities=124 = legacy_valu
 Deviations:  FAIL on the type-check criterion only. Cause: that test was added by commit 014ea51 (soft disconnect), after the 2026-10-05 re-verification, and assumes a nullable `Case.sourceIntegrationId`. `pnpm -r` stopped at apps/web, so other errors in packages after it were not listed. The suite would also fail at runtime on the contracted schema (the update sets NULL on a NOT NULL column). Does not block C-11 (N2.10 is a separate release); C-16 needs the test fixed on `testing` first (open item for E-03 and N2.10).
 ```
 
+
+Follow-up 2026-10-16 (Decision 8, combined release; engineering rerun on disposable databases, not production): **the C-09 failure is fixed and the combined release is rehearsed.**
+- **Type-check:** `integration-disconnect-visibility.test.ts` (the C-09 failure) and `custom-lifecycle.test.ts` (added later, same cause) now read or set the column through raw SQL, so they compile against both schemas. The first keeps its pre-N2.10 visibility check and, once the column is NOT NULL, asserts that the database refuses a source-less case. On the contracted schema `pnpm type-check` is clean in every workspace. The test change is on `testing` (worktree `elapsed-testing-n36`, uncommitted) and mirrored on `main` and the release branch, because `apps/web` type-checks its tests.
+- **Release branch** `release/contract-n2-10-n10-f1` (worktree `../elapsed-release-contract`, from `main` `a4359e6`, uncommitted): the contract directory moved into `prisma/migrations/` **under its original name**, `schema.patch` applied (then removed), a `rollback.sql` added for N10-F1. Keeping the old name makes `migrate deploy` apply N2.10 **before** N10-F1.
+- **Rehearsal** on a database built by the production code (`8dc2fe8`, 68 migrations) and seeded with the 11 fixture organizations and a perf organization, plus three production-era shapes (dual-written legacy columns, a legacy-only customer without its identity row, a case without a source): a `pg_dump`/`pg_restore` backup check (44 TABLE DATA, counts equal); `migrate deploy` applied `20261001110000_…` then `20261011120000_…` in 1.4 s, healed both shapes (identities 170 → 171, source-less cases 1 → 0), `migrate diff` empty; **L2 0 differences over 8,455 records, twice, 12,740/12,740 NormalizedEvent ids identical; L1 0 differences over 6,213 records** against a baseline captured by the production code, class C drift unchanged; the organization-deletion procedure 20/20 on the contracted schema.
+- **Failure path:** an unhealable case makes N2.10 abort; nothing else is applied (N10-F1 not attempted, legacy columns and identities unchanged); `migrate resolve --rolled-back` returns the database to the production schema (`migrate diff` empty, production code reports it up to date). With a later name (tried first) N10-F1 committed before the abort, which is why the original name is kept.
+- **Rollback path:** after a successful release, N2.10 `rollback.sql` + N10-F1 `rollback.sql` + removing both `_prisma_migrations` rows gives exactly the production schema; the production code reads it with 0 L1 differences.
+- **Fresh install:** all 70 migrations apply in name order, `migrate diff` empty.
+- **Full suite on the contracted schema** (release worktree on `main` `cb6ac19`, which includes the Sentry removal; fresh migrated scratch database): **3,836 passed, 3 failed of 3,839** (an earlier run on `a4359e6`: 3,842 of 3,845; the difference is the removed Sentry-scrub tests). The 3 failures (`custom-provider-failure-details` RunHistory ticket ids, `integration-availability-boundary` gate list, `provider-boundary` ratchet with 6 violations) fail identically on `main` before the merge (`ded452f`) and after it, without the contract change: pre-existing, not caused by N2.10, N10-F1 or the merge, and not fixed here.
+
 ### C-10 — H-13 `breachedAt` backfill rehearsal on the restore
 
 |               |                                                                                                                                                             |
@@ -2073,33 +2083,21 @@ Deviations:  C-01's dump serves as the post-release dump, so no further backup i
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Related       | H-10; Launch Gate security items; `data-retention-and-on-call.md` ("whether `pnpm db:encrypt-tokens` has been run on production is not verified"); DC-06 |
 | Source        | `scripts/prod/h10-verify.sh`; `h-phase-close-out.md` "H-10 — production security verification"                                                           |
-| Why           | The script's token check (3) queries `$POSTGRES_DB`, the empty database on this host, so it can pass vacuously; checks 1, 2 and 4 are valid              |
+| Why           | The 2026-10-10 run found the script's token check (3) queried `$POSTGRES_DB`, the empty database on this host. **Fixed 2026-10-16:** the script now queries the database named by `DATABASE_URL`, covers every credential column, and includes the cross-name comparison (DC-20), so the script alone is the check |
 | Environment   | E6 · PRODUCTION (read-only; the script compares hashes and prints no value)                                                                              |
-| Prerequisites | A-03; a non-shallow clone on the host (`git rev-parse --is-shallow-repository` prints `false`) for check 1; `shasum` installed                           |
+| Prerequisites | A-03; a non-shallow clone on the host for check 1 (confirmed 2026-10-10); `shasum` and `perl` installed                                                  |
 | State         | READ-ONLY                                                                                                                                                |
 | Depends on    | A-03 (run after C-12 so it checks the deployed stack)                                                                                                    |
 | Closes        | H-10's script part and the encryption "not verified" line; the third-party rotation is D-05                                                              |
 
+From a workstation (the host checkout does not need updating; do not `git pull` there before C-16):
+
 ```bash
-git rev-parse --is-shallow-repository; command -v shasum
-scripts/prod/h10-verify.sh "$ENV_FILE" 2>&1 | tee ~/validation/h10.txt
-ro_sql <<'SQL'
-select count(*) as plaintext_access_tokens from integrations where credentials ->> 'accessToken' is not null and credentials ->> 'accessToken' not like 'enc:v1:%';
-select count(*) as plaintext_refresh_tokens from integrations where credentials ->> 'refreshToken' is not null and credentials ->> 'refreshToken' not like 'enc:v1:%';
-select count(*) as slack_plaintext from slack_integrations where "accessToken" not like 'enc:v1:%';
-SQL
-dc exec -T web printenv NODE_ENV
-# Cross-name check (DC-20): prints only SAME or DIFFERENT, never a value
-strip() { sed -E "s/^[^=]*=//; s/^[\"']//; s/[\"']\$//"; }
-cur=$(grep -E '^DEPLOYMENT_SMTP_PASSWORD=' "$ENV_FILE" | tail -1 | strip); res=DIFFERENT
-for c in $(git log --all --format=%h -- .env.prod); do
-  old=$(git show "$c:.env.prod" 2>/dev/null | grep -E '^OPS_ALERT_SMTP_PASSWORD=' | tail -1 | strip)
-  [ -n "$old" ] && [ -n "$cur" ] && [ "$(printf %s "$old" | shasum -a 256)" = "$(printf %s "$cur" | shasum -a 256)" ] && res=SAME
-done; echo "DEPLOYMENT_SMTP_PASSWORD vs leaked OPS_ALERT_SMTP_PASSWORD: $res"; unset cur old
+ssh -i KEY ubuntu@13.62.74.24 'cd ~/elapsed && bash -s' < scripts/prod/h10-verify.sh | tee h10-$(date -u +%F).txt
 ```
 
-**Pass:** the cross-name check prints `DIFFERENT` (a `SAME` is a FAIL: the leaked password is still in use, D-05); no `FAIL` line in sections 1, 2 and 4; ignore section 3's database answer and use the `ro_sql` counts instead, which must all be **0**; `NODE_ENV=production`; every `MANUAL` line answered in Evidence (the seed-data question is answered by A-09 and OD-07).
-**On failure:** a `FAIL` in section 1 means a leaked value is still in use: rotate it (`docs/deployment.md` "Rotating secrets"); plaintext tokens: `pnpm db:encrypt-tokens` is the documented repair (a production write: your decision).
+**Pass:** the summary line reads `0 FAIL` and every `MANUAL` line is answered in Evidence (what each section checks: `h-phase-close-out.md` "H-10"). A `FAIL ... not verified` line means the check could not run, never that it passed.
+**On failure:** a section 1 `FAIL` means a leaked value is still in use: rotate it (database password and `NEXTAUTH_SECRET`: `h-phase-close-out.md` "Exposed credentials and the rotation plan", step 1; never `scripts/rotate-secrets.sh`, which also rotates the encryption keys; a provider credential: D-05); plaintext credentials in section 3: `pnpm db:encrypt-tokens` is the documented repair for integration and Slack tokens (a production write: your decision); seed data in section 4: OD-07.
 
 ```text
 RESULT
@@ -2113,22 +2111,79 @@ Evidence:    FAIL lines=0 from h10-verify.sh, but the cross-name check below FAI
 Deviations:  The script's own "no FAIL" is not enough: the leaked ops SMTP password is still live as DEPLOYMENT_SMTP_PASSWORD (DC-20). Owner action: replace that password at the SMTP provider and in `.env`, then re-run this check (expect DIFFERENT). git history is complete on the host (`--is-shallow-repository` = false).
 ```
 
-### C-16 — GATED: N2.10 contract release
+_The run above used the 2026-10-10 commands, now replaced by the single script. Re-run (corrected script):_
+
+```text
+RESULT
+Status:      [ ] PASS   [x] FAIL   [ ] BLOCKED   [ ] SKIPPED
+Run by/date: Yasser Alnajjar, 2026-10-16 04:01 UTC (streamed from a workstation)
+Where:       host, HEAD=cb6ac19, ENV_FILE=.env, APP_DB=elapsed_db (69 migrations)
+Evidence:    s1: 6 PASS, no reuse under any name (DC-20 reuse gone), MANUAL OPS_ALERT_SMTP_PASSWORD provider date   s2: 5 PASS
+             s3: plaintext integration tokens 0/3, custom secrets 0/0, unknown shapes 0/2, drafts 0/0, Slack 0/1, client secrets 0/3, SMTP passwords 0/1
+             s4: services postgres/web/worker/nginx only; only nginx publishes ports; web NODE_ENV=production; seed rows 0/26; organizations=1
+             FAIL: worker NODE_ENV unset (apps/worker/Dockerfile never set it; fixed 2026-10-16, ships with the C-16 rebuild)
+Deviations:  Output cut off after s4: streamed via `bash -s`, `docker compose exec` consumed the rest of the script from stdin, so the
+             host listener check, s5 and the summary did not run. Script fixed (docker calls get their own stdin).
+Re-run:      2026-10-16 04:04 UTC, corrected script: Summary 25 PASS, 1 FAIL, 2 MANUAL. Same results plus: no host listener on
+             5432/3000/3001/5555/9229/1025/8025. FAIL = worker NODE_ENV only (re-run after C-16). MANUAL = OPS_ALERT_SMTP_PASSWORD provider
+             date (D-05); traced-run rotation of POSTGRES_PASSWORD/DATABASE_URL/NEXTAUTH_SECRET and the encryption-key decision.
+```
+
+### C-16 — GATED: combined contract release (N2.10 + N10-F1)
+
+_Rewritten 2026-10-16 for the owner's Decision 8 (option B): N2.10 and N10-F1 ship in **one** release. The previous text (N2.10 alone) is in git history._
 
 |               |                                                                                                                                                              |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Related       | N2.10, N2.11 (the phase closes with it)                                                                                                                      |
-| Source        | Roadmap N2.10 ("ship it as its own release, after a fresh backup"); contract `README.md`                                                                     |
-| Why           | Drops the legacy identity columns and the source-less Case key                                                                                               |
+| Related       | N2.10, N2.11 (the phase closes with it), N10-F1                                                                                                              |
+| Source        | Roadmap N2.10 and N10-F1; the migration directory `README.md`; `docs/production-backup-runbook.md`; C-01, C-12, C-14                                         |
+| Why           | Drops the legacy identity columns and the source-less Case key (N2.10) and `Organization.customProviderEnabled` (N10-F1)                                     |
 | Environment   | E6 · **MODIFIES PRODUCTION** (and a code change through a reviewed PR)                                                                                       |
-| Prerequisites | C-09 PASS; C-12 PASS and at least one production release on the N1/N2 dual-write code (C-11 is that release); C-14 PASS; OD-05 for this release specifically |
+| Prerequisites | C-09 rerun PASS (2026-10-16 follow-up above); the release branch merged to `main` by PR; **your go-ahead for this release**; a maintenance window of about 10 minutes |
 | State         | MODIFIES PRODUCTION                                                                                                                                          |
-| Depends on    | C-09, C-14                                                                                                                                                   |
-| Closes        | N2.10, then N2.11                                                                                                                                            |
+| Depends on    | C-09, C-12, C-14                                                                                                                                             |
+| Closes        | N2.10, N2.11 and N10-F1                                                                                                                                      |
 
-On your machine, on a new branch (the same moves as C-09, committed): `git mv` the contract directory into `packages/db/prisma/migrations/`, `git apply` its `schema.patch`, `pnpm --filter @sla/db generate`, `pnpm type-check`, commit, open a PR to `main`, merge after review. On the host: a fresh backup (C-01 command, label `pre-n210`), then C-11's update commands with the new `MAIN_SHA`; then C-12; then C-14 on a new backup.
-**Pass:** `migrate` applies `20261001110000_contract_customer_identity_and_case_source`; C-12 and C-14 pass on the contracted schema.
-**On failure:** `rollback.sql` (by hand) and the `_prisma_migrations` row removal exactly as rehearsed in C-09, or restore the `pre-n210` dump.
+**Hold:** `main` carries N10-F1 in `prisma/migrations/` already, so **no other production deploy of `main` may happen before this release**: it would apply N10-F1 alone. Anything else waiting on `main` (for example the Sentry removal) ships in this release.
+
+On your machine: review and merge the release PR (`release/contract-n2-10-n10-f1` into `main`), note `MAIN_SHA` and the current production commit `PROD_SHA`.
+
+On the host (helpers from §0.4):
+
+```bash
+# 1. Code
+git status --short                                   # must be empty
+git fetch origin main && git merge --ff-only origin/main && git rev-parse HEAD   # must equal MAIN_SHA
+# 2. Read-only prechecks: every number must be 0, otherwise stop (nothing has changed yet)
+ro_sql <<'SQL'
+select count(*) as unhealable_cases from cases c
+ where c."sourceIntegrationId" is null
+   and not exists (select 1 from integrations i where i."organizationId" = c."organizationId" and i.provider = c.system);
+select count(*) as flagged_not_allowlisted from organizations o
+ where o."customProviderEnabled"
+   and not exists (select 1 from integration_beta_allowlist a where a."organizationId" = o.id and a.provider = 'custom');
+select count(*) as failed_migrations from _prisma_migrations where finished_at is null and rolled_back_at is null;
+SQL
+# 3. Build the new images; nothing restarts and the database is not touched
+dc build
+# 4. Maintenance window starts: stop the writers so the old code never meets the new schema
+dc stop worker web
+# 5. Fresh backup, taken after the writers stopped (C-01's command with the label pre-contract)
+STAMP=$(date -u +%Y%m%dT%H%M%SZ) && umask 077 && dc exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$1" --format=custom --no-owner' sh "$APP_DB" < /dev/null > "backups/pre-contract-elapsed_db-$STAMP.dump" && ls -lh "backups/pre-contract-elapsed_db-$STAMP.dump"
+dc exec -T postgres pg_restore --list < "backups/pre-contract-elapsed_db-$STAMP.dump" | grep -c "TABLE DATA"   # must equal the live table count (A-07)
+# 6. Verify the backup by restoring it (docs/production-backup-runbook.md §4, into elapsed_db_restore_check), compare case and raw-event counts with the live database, then drop the check database
+# 7. Migrate
+dc run --rm migrate
+# 8. Start the new release
+dc up -d
+dc ps -a --format 'table {{.Service}}\t{{.Status}}'
+```
+
+**Pass:** the migrate log applies exactly `20261001110000_contract_customer_identity_and_case_source` then `20261011120000_n10_f1_drop_custom_provider_enabled`; C-12 passes with **70** applied migrations; then (read-only) `customers` has no `zendeskOrgId`/`intercomCompanyId`/`intercomContactId` column, `organizations` has no `customProviderEnabled`, and `cases."sourceIntegrationId"` is NOT NULL; finally C-14 on a new post-release backup: L2 0 differences, 0 record failures, and L1 drift unchanged from C-14's last result. The backup is copied off the host (C-01) before step 7.
+**On failure:**
+- **Step 2 or 5 fails:** nothing changed in the database; `dc up -d web worker` restarts the old release (its images were not replaced until step 3: if step 3 already ran, `git checkout PROD_SHA && dc build` first).
+- **Step 7 aborts in N2.10** (the precondition message): the database is unchanged (rehearsed). Run `dc run --rm migrate pnpm --filter @sla/db exec prisma migrate resolve --rolled-back 20261001110000_contract_customer_identity_and_case_source`, then `git checkout PROD_SHA && dc build && dc up -d`, and fix the reported cases before trying again.
+- **After step 8, a problem:** restore the `pre-contract` dump (`docs/production-backup-runbook.md` §5) and redeploy `PROD_SHA`; or, to keep data written since, apply N2.10 `rollback.sql` then N10-F1 `rollback.sql`, delete both `_prisma_migrations` rows, and redeploy `PROD_SHA` (both rehearsed 2026-10-16).
 
 ```text
 RESULT
@@ -2619,7 +2674,7 @@ Evidence:    documents changed=          rows closed=          rows left open=
 | H-5 "not verified" lines                                                | Unverified on host                                                             | A-06, A-07, A-08, C-15                                                                                                                                                                                                                                               | `docs/data-retention-and-on-call.md` (Sentry, ops alerts, cron/off-site, log rotation, `db:encrypt-tokens`)                                                                                           |
 | H-6                                                                     | Open                                                                           | D-06 (after D-05)                                                                                                                                                                                                                                                    | Roadmap H-6; `h-phase-close-out.md` H-6                                                                                                                                                               |
 | H-8                                                                     | Blocked upstream                                                               | A-11 + OD-06 (then a lint step, implementation)                                                                                                                                                                                                                      | Roadmap H-8                                                                                                                                                                                           |
-| H-10                                                                    | Open                                                                           | C-15 PASS, D-05 PASS, OD-07, OD-12                                                                                                                                                                                                                                   | Roadmap H-10; `docs/deployment.md` rotation log; `h-phase-close-out.md` H-10                                                                                                                          |
+| H-10                                                                    | Open (BLOCKED)                                                                           | C-15 PASS, rotation step 1, key decision, D-05 PASS, OD-07, OD-12                                                                                                                                                                                                                                   | Roadmap H-10; `docs/deployment.md` rotation log; `h-phase-close-out.md` H-10                                                                                                                          |
 | H-13                                                                    | Open (host run); closed 2026-10-10 as resolved or moot, see the C-13 Follow-up | C-10, C-13, C-14                                                                                                                                                                                                                                                     | Roadmap H-13 (closed with counts); `h-phase-close-out.md` H-13 row                                                                                                                                    |
 | N1.13 | `[x]` closed 2026-10-12 (capture: owner-confirmed, not independently recorded; L2: C-06 PASS) | D-04 (owner-confirmed) + C-06 (L2, PASS)                                                                                                                                                                                                                                           | Roadmap N1.13; `h-phase-close-out.md` N1.13 row                                                                                                                                                       |
 | N2.10                                                                   | `[~]`, held out                                                                | C-09, then C-16                                                                                                                                                                                                                                                      | Roadmap N2.10; contract `README.md` (moved); `h-phase-close-out.md` N2.10 row                                                                                                                         |
@@ -2692,7 +2747,7 @@ Evidence:    documents changed=          rows closed=          rows left open=
 | C-13 | H-13 production backfill (GATED)    | E6       | C-10, C-12, OD-05        | **modifies production**                            |
 | C-14 | Post-release drift capture          | E4       | C-12 (after C-13)        | read-only on production                            |
 | C-15 | H-10 host verification              | E6       | A-03 (after C-12)        | read-only                                          |
-| C-16 | N2.10 release (GATED)               | E6       | C-09, C-14, OD-05        | **modifies production**                            |
+| C-16 | N2.10 + N10-F1 release (GATED)      | E6       | C-09, C-14, OD-05        | **modifies production**                            |
 | C-17 | N4.7 counts (WITHDRAWN 2026-10-12)  | E6       | n/a                      | not required                                       |
 | C-18 | Weekly production measurements      | E6       | C-12                     | read-only                                          |
 | D-01 | Benchmark gate                      | E4       | A-10, OD-08              | PASS (provisional Beta safeguard)                  |
