@@ -93,7 +93,7 @@ Database migrations are not reversed by this. If a migration must be undone, res
 
 ## 4. Do not do
 
-Do not raise the ceiling or enable Custom REST for more than the allowlisted pilot organizations as part of this deployment.
+Do not raise the ceiling or enable Custom REST for more than the allowlisted organizations as part of this deployment.
 
 ## 5. Production record and launch prerequisites (2026-10-10)
 
@@ -113,13 +113,13 @@ Recorded from the owner's production deployment report. **Owner-reported means t
 
 ### Launch readiness for the limited Beta (reconciled 2026-10-10)
 
-Custom REST stays Beta and allowlist-only. No pilot organization is added by this document, nothing is opened to all organizations and nothing is promoted to Stable. Sources: the closure ledger and sections 2.2 to 2.4 of `docs/validation/server-validation-master.md`, `implementation-plans/ROADMAP_Product.md`. The legal documents were not opened.
+Custom REST stays Beta and allowlist-only. No organization is added to the allowlist by this document, nothing is opened to all organizations and nothing is promoted to Stable. Sources: the closure ledger and sections 2.2 to 2.4 of `docs/validation/server-validation-master.md`, `implementation-plans/ROADMAP_Product.md`. The legal documents were not opened.
 
 **1. Completed and verified (evidence is in the repository)**
 
 - Phase B, B-01 to B-16 (RESULT blocks; browser-only limitation recorded for B-10, B-12, B-14).
 - D-01 benchmark, as a provisional Beta safeguard only: ceiling 1,000 live cases; a real-host rerun is required before raising it.
-- OD-01 / U2 for the pilot: option (b); procedure `docs/custom-provider-deletion-recovery.md`; tests `apps/web/test/custom-attention-copy.test.ts`, `packages/custom-ticket/test/ingest-runs.db.test.ts`.
+- OD-01 / U2 for the Beta: option (b); procedure `docs/custom-provider-deletion-recovery.md`; tests `apps/web/test/custom-attention-copy.test.ts`, `packages/custom-ticket/test/ingest-runs.db.test.ts`.
 - D-08 focused tests, code side (31 files, 598 tests; recorded in the ledger, not re-run). The commit `23f265b` on `origin/testing` and `b533624` on `main` exist (checked with `git merge-base`/`cat-file`).
 - BL-04 / BL-10, repository side: Compose passes both settings (`8b123a5`, `e888a54`); `apps/web/test/guard-override-operator.test.ts`.
 - Integration availability policy tested (`apps/web/test/integration-availability-admin.test.ts`, `packages/db/test/integration-availability.test.ts`, `apps/worker/test/integration-availability.test.ts`).
@@ -143,13 +143,13 @@ Nothing on the limited-Beta path is currently actionable by engineering without 
 
 - **Image rebuild: approval OUTSTANDING.** Needed only for the `.dockerignore` change to apply. Not given, not done.
 - **O-1 reference:** resolved 2026-10-15: the owner chose to record the RawEvent retention rule as roadmap decision D34 (see "O-1 reference" below).
-- **Which organization(s) are the first pilot, and when.** Adding an organization to the Custom REST allowlist is not gated by the legal review or by any roadmap item (N9.14-F1 was removed on 2026-10-12); it is the owner's choice. No organization added.
+- **Beta pilot selection: closed as obsolete (2026-10-16).** The owner confirms the integration is already operational. This is the owner's confirmation and is not independently verified (the closure ledger's last readings, 2026-10-10, showed no Custom REST integration). Allowlist changes stay audited operator actions (D33), and the legal review below stays open and separate.
 - SSH exposure (TCP 22 open to the world, restriction plan written, not applied): separate from the Beta, still owner-decided.
 - Non-gating owner decisions listed in section 2.4 of the validation master (OD-02 to OD-13; OD-09 N9.0-F1/F2 review and OD-10 override-confirmation expiry are the closest to Custom REST).
 
 **5. External or legal launch gates**
 
-- **D-07 / BL-09, qualified legal review: OPEN, under the owner's legal-review hold.** It gates the live Terms and Privacy edits and the public and marketing copy, not allowlisting a pilot organization (N9.14-F1 was removed on 2026-10-12). It includes the wording items W-1 to W-3, and the wording of O-1 and O-3 (decided by the owner, Option A for each). Engineering may not decide these, and the legal-review hold stays: no Terms, Privacy, legal-review or decision-sheet content was opened or changed.
+- **D-07 / BL-09, qualified legal review: OPEN, under the owner's legal-review hold.** It gates the live Terms and Privacy edits and the public and marketing copy, not allowlisting an organization (N9.14-F1 was removed on 2026-10-12). It includes the wording items W-1 to W-3, and the wording of O-1 and O-3 (decided by the owner, Option A for each). Engineering may not decide these, and the legal-review hold stays: no Terms, Privacy, legal-review or decision-sheet content was opened or changed.
 - Anything that depends on that content (live copy, signup acceptance behavior, public copy) is stopped at this point.
 
 **6. Deferred, not blocking the limited Beta**
