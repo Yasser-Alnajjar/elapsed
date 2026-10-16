@@ -1,44 +1,36 @@
 Those scripts are fixture writers, not H-1 tooling. They create 11 fake organizations with connected-looking Zendesk/Jira integrations, users, cases, policies, events, commitments, and evaluations. They have no production-environment guard, so do **not** let them inherit the production `DATABASE_URL`.
 
-Use a separate, already-migrated scratch database. The production worker image excludes `.env`, while the package script explicitly tries to load it, so invoke the CLI directly inside a one-off `worker` container:
+Run them **locally, against the development database only** (roadmap section 7, "Testing environment"); never on a server. Use a separate scratch database on the local `docker-compose.dev.yml` Postgres, with `test` in its name, and point `DATABASE_URL` at it explicitly so the root `.env` is never used:
 
 ```bash
-export SEED_DATABASE_URL='postgresql://USER:PASSWORD@postgres:5432/YOUR_SCRATCH_DB?schema=public'
+docker compose -f docker-compose.dev.yml up -d postgres
+docker compose -f docker-compose.dev.yml exec -T postgres createdb -U user sla_seed_test   # once
+export DATABASE_URL='postgresql://user:password@localhost:5432/sla_seed_test?schema=public'
 ```
 
-If the scratch database is new, apply its schema first:
+Before seeding, refuse to continue unless the target is a local scratch database:
 
 ```bash
-docker compose -f docker-compose.yml --env-file .env.prod run --rm --no-deps \
-  -e DATABASE_URL="$SEED_DATABASE_URL" \
-  migrate
+case "$DATABASE_URL" in
+  postgresql://*@localhost:*/*test*|postgresql://*@127.0.0.1:*/*test*) ;;
+  *) echo "refused: DATABASE_URL is not a local *test* database" >&2; false ;;
+esac
 ```
 
-Seed all 11 fixture organizations from the fixed deterministic anchor:
+Generate the Prisma client, and if the scratch database is new, apply its schema:
 
 ```bash
-docker compose -f docker-compose.yml --env-file .env.prod run --rm --no-deps \
-  -e DATABASE_URL="$SEED_DATABASE_URL" \
-  worker \
-  pnpm exec tsx scripts/seed-test-customers/cli.ts seed
+pnpm --filter @sla/db generate
+pnpm --filter @sla/db exec prisma migrate deploy
 ```
 
-Validate:
+Seed all 11 fixture organizations from the fixed deterministic anchor, validate, or rebuild (`--reset` deletes only the fixed fixture organizations in that target database):
 
 ```bash
-docker compose -f docker-compose.yml --env-file .env.prod run --rm --no-deps \
-  -e DATABASE_URL="$SEED_DATABASE_URL" \
-  worker \
-  pnpm exec tsx scripts/seed-test-customers/cli.ts validate
-```
-
-For a clean rebuild, which deletes only the fixed fixture organizations in that target database:
-
-```bash
-docker compose -f docker-compose.yml --env-file .env.prod run --rm --no-deps \
-  -e DATABASE_URL="$SEED_DATABASE_URL" \
-  worker \
-  pnpm exec tsx scripts/seed-test-customers/cli.ts seed --reset
+cd apps/worker
+pnpm exec tsx scripts/seed-test-customers/cli.ts seed
+pnpm exec tsx scripts/seed-test-customers/cli.ts validate
+pnpm exec tsx scripts/seed-test-customers/cli.ts seed --reset
 ```
 
 Useful options:
@@ -52,4 +44,4 @@ Useful options:
 ... cli.ts seed --anchor=now
 ```
 
-`--no-deps` assumes the Compose Postgres service is already running. The `postgres` hostname is correct only from inside the Compose network. The seed intentionally makes no Zendesk, Jira, Slack, SMTP, or other network calls, but it does write substantial database fixture data. [CLI behavior](cli.ts) · [seed scope](seed.ts)
+The seed intentionally makes no Zendesk, Jira, Slack, SMTP, or other network calls, but it does write substantial database fixture data. [CLI behavior](cli.ts) · [seed scope](seed.ts)

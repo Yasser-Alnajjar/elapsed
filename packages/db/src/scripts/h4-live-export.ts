@@ -10,13 +10,15 @@
  * titles and SLA numbers. It holds NO ticket subject, description, comment,
  * requester, or customer name (the Zendesk ticket object is reduced to an
  * allow-list of fields before it is stored). Ticket ids are still customer
- * data: keep the file on the host, and do not commit it.
+ * data: do not commit it.
  *
  * Sample (per organization): every ticket with an open commitment (capped by
  * --open-limit), plus the most recent tickets by open date up to --limit in
  * total. Open tickets are what the dev-sandbox check never covered.
  *
- * Usage (on the host, inside the worker image, which has tsx and the keys):
+ * Closed audit (H-4): it reads a live tenant, so it is not run for testing or
+ * verification (roadmap section 7, "Testing environment"). Locally, against a
+ * development database and sandbox credentials:
  *   pnpm --filter @sla/db exec tsx src/scripts/h4-live-export.ts \
  *     <organizationId> <outFile> [--limit=150] [--open-limit=60]
  */

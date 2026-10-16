@@ -1,7 +1,8 @@
 # Repository workflow: `main` vs `testing`
 
-> You are on the `testing` branch: the dedicated test workspace. The
-> "On `testing`" section below is the one that applies here.
+> Check the current branch (`git branch --show-current`) and follow the
+> matching section below. The "Testing environment" rule applies on every
+> branch.
 
 Testing work is isolated from normal development. `main` is for product
 development; the `testing` branch is the dedicated workspace for the test suite.
@@ -28,6 +29,16 @@ development; the `testing` branch is the dedicated workspace for the test suite.
   whole suite.
 - Keep test-related changes isolated to this branch where possible.
 - Only touch the Product Roadmap if the testing task explicitly requires it.
+
+## Testing environment (permanent rule)
+
+- Run all tests and verification checks locally, against the development
+  environment only.
+- Never run tests, test scripts, verification suites, smoke tests, replays or
+  drills on any server (production, staging or remote), and never SSH into a
+  server to test or verify.
+- If a check can only be performed on a server, do not run it: report it as
+  not run and state the limitation.
 
 ## Production code and branch sync
 

@@ -1,6 +1,7 @@
 -- H-4: choose which live tenants to spot-check. Read-only (SELECT only).
--- HOST ONLY: this prints organization ids (needed for h4-live-export.ts).
--- Do not paste the output anywhere; it is not for the roadmap.
+-- Closed audit (H-4); queries live tenants, so it is not run for testing or
+-- verification (roadmap section 7, "Testing environment"). It prints
+-- organization ids (needed for h4-live-export.ts). Do not paste the output anywhere; it is not for the roadmap.
 --
 -- Prefer tenants that (a) have a connected Zendesk, (b) have open commitments,
 -- and (c) use a business-hours calendar, because the dev-sandbox check covered

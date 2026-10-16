@@ -2,12 +2,10 @@
 -- Read-only (SELECT only). Prints no organization name, id, email or ticket
 -- content. Paste the two result tables into the roadmap Status Board.
 --
--- Run (on the host, in a read-only transaction):
---   docker compose -f docker-compose.yml exec -T postgres \
---     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 \
---     -c 'BEGIN READ ONLY;' -f - < scripts/prod/h1-provider-pairs.sql
--- (or simply: psql ... -f scripts/prod/h1-provider-pairs.sql; every statement
--- below is a SELECT.)
+-- Closed audit (H-1). It queries live data, so it is not run for testing or
+-- verification (roadmap section 7, "Testing environment"). Against a local
+-- development database: psql ... -f scripts/prod/h1-provider-pairs.sql
+-- (every statement below is a SELECT).
 
 -- Table 1: tenants per (ticket source, engineering tool) pair.
 -- ticket source  = zendesk | intercom   (where cases come from)

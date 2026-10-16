@@ -4,11 +4,11 @@
 # summary. Never prints a secret value (only key names, counts and hashes are
 # compared in memory), never writes to the database, changes nothing.
 #
-# Run on the production host, from the repo checkout (section 1 needs git
-# history):
+# This script inspects a live host, so it is outside the repository's
+# local-only verification rule (roadmap section 7, "Testing environment"): it
+# is not part of development, CI or assistant work, and is never run over SSH
+# on anyone's behalf. Only the owner's own host procedure may use it.
 #   scripts/prod/h10-verify.sh [ENV_FILE]     # default .env.prod, else .env
-# or, without updating the host checkout, from a workstation:
-#   ssh -i KEY ubuntu@13.62.74.24 'cd ~/elapsed && bash -s' < scripts/prod/h10-verify.sh
 # Optional environment:
 #   COMPOSE_FILE      compose file production runs     (docker-compose.yml)
 #   POSTGRES_SERVICE  compose service of the database  (postgres)
