@@ -388,8 +388,8 @@ integrations `reauth_required` or `permission_denied`; did the last backup
 succeed. Recovery steps are in [deployment.md](deployment.md) (see "Common
 mistakes and quick recovery").
 
-**Documentation gap:** the restore and secret-rotation scripts and
-`n2-replay-runbook.md` refer to `docker-compose.prod.yml`. That file is not in the repository. The scripts
+**Documentation gap:** the restore and secret-rotation scripts refer to
+`docker-compose.prod.yml`. That file is not in the repository. The scripts
 fall back to `docker-compose.yml` when it is missing, so the production compose
 file has not been audited. It must be checked on the host.
 

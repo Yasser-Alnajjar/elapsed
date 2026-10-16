@@ -40,7 +40,7 @@ development; the `testing` branch is the dedicated workspace for the test suite.
 
 - `implementation-plans/ROADMAP_Product.md` is the single live product
   roadmap. Start there, then read only the documents the task needs; its
-  "Documentation lifecycle" section has the document map and the rules.
+  "Working rules" section has the document map and the rules.
 - Do not read every Markdown file or historical plan by default, and do not
   create a new document when an existing one can be updated.
 - Task-specific plans are temporary: when the work is done, migrate what is

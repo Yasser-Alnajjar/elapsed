@@ -11,6 +11,8 @@
 
 
 > **Reading note (Rev 14, 2026-10-11).** This ledger cites "plan NN §x" (for example "plan 09 §6.10") and the files `implementation-plans/0N-*.md`, `n9-legal-review.md` and `n9-legal-decision-sheet.md`. Those documents were consolidated into `implementation-plans/ROADMAP_Product.md` (Design Records) and deleted; each citation maps to the same-numbered section there, and the removed files are in git history (last present at `d0fdc78`). The entries below are records and were not rewritten.
+>
+> **Cleanup note (Rev 21, 2026-10-16).** The roadmap was reduced to remaining work, binding decisions and design rules, and these documents were removed: `docs/n2-replay-runbook.md`, `docs/h4-sla-spot-check.md` and `docs/custom-beta-deployment.md`; `docs/h-phase-close-out.md` was cut to its security record. Citations below to those files, and to roadmap task entries, the Status Board, the Changelog or the appendices, resolve in git history at commit `930c4ff`. The entries below remain records and were not rewritten.
 
 ---
 

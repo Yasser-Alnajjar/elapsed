@@ -1,199 +1,76 @@
-# Production Hygiene close-out (H-1 to H-12)
+# Production Hygiene close-out: security record and accepted limitations
 
-> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12, and (2026-10-05) H-2, since D14 is decided. **Still open, and none of them gates an N-phase:** ~~H-6 (Sentry credentials)~~ (**closed 2026-10-16: Sentry removed from the project**), ~~H-8 (blocked upstream)~~ (**dropped 2026-10-16**), ~~H-9 (Zendesk sandbox walkthrough)~~ (**H-9 closed 2026-10-12 on the owner's confirmation, see the Rev 16 note below**), ~~H-10 (host verification and third-party rotation)~~ (**H-10 closed 2026-10-16**).
+This is the closure record for the Production Hygiene items (H-1 to H-13) that left a security procedure, an accepted limitation or a standing finding behind. Everything that was only history (owner-action lists, release plans, the N1 readiness check, the Sentry and lint procedures, the per-ticket H-4 tables) was removed in the 2026-10-16 documentation cleanup and is in git history at commit `930c4ff`. The decisions and open work live in [`implementation-plans/ROADMAP_Product.md`](../implementation-plans/ROADMAP_Product.md).
 
-> **Rev 7 (2026-10-05).** A local pass closed everything the repository and a local stack can prove (see the roadmap changelog). What is left is in [Remaining owner actions](#remaining-owner-actions-rev-7-2026-10-05): production deployment, secrets and third-party accounts, real sandbox walkthroughs, and owner data entry. No H item changed state in this pass: H-6, H-9, H-10 and H-13 stay open, each on the exact blocker named there.
+## Final state of every H item
 
-> **Rev 16 (2026-10-12, documentation only).** **H-9 / N5.8 and N1.13 are closed on the owner's explicit confirmation, not on independently recorded evidence.** The owner states that the live integration walkthroughs for **Zendesk, Intercom and Linear** (real OAuth round trips) and the live Intercom link capture were already completed, several times, before this date, and were not documented at the time. This repository holds no run record for them: dates, provider pairs walked, minutes to first monitored case, hesitations, errors, imported counts, the captured URL shape and account details are **not recorded**, and none are inferred here. Nothing was run or repeated for this closure, no account or credential was requested, and no code, configuration or database record was changed. The Rev 7 text below that describes these items as needing the owner is kept as the historical record. See roadmap N5.8, H-9 and N1.13.
-
-**Prepared:** 2026-09-29. Everything below that could be done without production access or your decisions has been done and is listed under "Ready". What is left needs you, and each step says exactly what to run. **Nothing here touches production until you run it.** All production commands are read-only except where marked.
-
-## Status of every H item
-
-| ID | Item | Status | What closes it |
-| --- | --- | --- | --- |
-| H-1 | Provider pair and status per live tenant | **CLOSED 2026-09-30, accepted limitation.** 12 tenants, all Zendesk + Jira, all connected; 11 are `seed-org-*` fixtures, the real 10-customer data was not verified | [H-1 record](#h-1--provider-pairs-per-tenant) |
-| H-2 | D14 pricing decision | **CLOSED 2026-10-05.** D14 is decided (live seat-based model: Starter $49, Team $149, Enterprise Custom) and built as `PLANS`. The task that would have recorded which plan each customer pays on (roadmap N4.7) was removed by the owner on 2026-10-12 | [H-2 record](#h-2--d14-closed) |
-| H-3 | Pricing-page false claims | **Done** (already checked) | — |
-| H-4 | Engine vs Zendesk on live tenants | **CLOSED 2026-09-30, accepted limitation.** Export and comparison run on one tenant (the dev sandbox); all 18 UNEXPLAINED rows explained; not two live tenants | [H-4 record](#h-4--live-tenant-spot-check) |
-| H-5 | Retention / on-call note | **Done** (already checked). Two of its findings are still open, see [Findings from this pass](#findings-from-this-pass) | — |
-| H-6 | ~~Sentry source maps on the host~~ | **Closed 2026-10-16 as obsolete:** Sentry was removed from the project (Decision 7) | [H-6](#h-6--sentry-source-maps) |
-| H-7 | `perf:baseline` re-run and capacity limits | **Done** in the roadmap's terms (measured; dev hardware, stated as such) | [`capacity-limits.md`](capacity-limits.md) |
-| H-8 | ~~Lint step~~ | **Dropped by the owner 2026-10-16** | [H-8](#h-8--lint-step) |
-| H-9 | Live onboarding walkthrough | **CLOSED 2026-10-12 on the owner's confirmation** (Zendesk, Intercom and Linear live walkthroughs already completed; **not independently recorded**: no dates, pairs, timings or counts were kept) | [H-9 record](#h-9--live-onboarding-walkthrough) |
-| H-10 | Launch-Gate security items on production | **CLOSED 2026-10-16** | [H-10 procedure](#h-10--production-security-verification) |
-| H-11 | First Response start actor | **CLOSED 2026-09-29.** Code fixed; production repair applied and verified (7 false commitments deleted, 0 notifications sent, ticket 1 recreated) | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
-| H-12 | Pending pause decision (D30) | **Done** (already checked). Customer notice before deploy | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
-
-Dependencies between H items: H-4 needs H-1 only to choose tenants (the SQL in H-4 can pick them without H-1). H-9 is independent. H-10 is independent. **N1's own entry gate is H-1 and H-4.** Nothing else here blocks N1 (the roadmap says so; this pass found nothing that changes that, see [N1 readiness](#n1-readiness)).
-
-## Remaining owner actions (Rev 7, 2026-10-05)
-
-Nothing below is a code task. Each row says what blocks it and exactly what to do. Commands run on the production host unless marked local; none of them rotate or print a secret.
-
-| Item | Blocker | What you do |
+| ID | Item | Final state |
 | --- | --- | --- |
-| **Release N2–N6** | production deployment | **Superseded 2026-10-10 (owner-verified, not an independently observed SHA):** production already runs N2–N10 (68 migrations applied, none pending; host HEAD `8dc2fe8`, a docs-only commit over `0e48d28`; ledger A-03, A-04, C-11). The premise below ("still at `7cb2b9b`", 7 pending migrations) no longer holds; the original instructions are kept as the historical record. For any further production change use [`production-backup-runbook.md`](production-backup-runbook.md), not `scripts/backup.sh` (it prunes `sla-*.dump` files older than 14 days). **Original (historical):** Back up first: `ENV_FILE=.env DB_NAME=elapsed_db ./scripts/backup.sh`. Then update as in [`deployment.md`](deployment.md) ("Updating"); the `migrate` service applies the pending migrations (if production is still at `7cb2b9b`, the last recorded state, those are 7: `20261001100000` … `20261004100000`). **Evidence that it is safe:** on 2026-10-05 those 7 migrations were applied to a local restore of the 2026-10-02 production backup (1,528 cases, 12 organizations) without error, and the L1 replay across N3–N6 against the pre-N3 code showed **0 differences over 5,440 records** (drift unchanged: 0 status, 9 `breachedAt`). ~~After deploying, re-run the replay on the host~~ (**no post-deploy replay is required, owner Decision 12, 2026-10-16**) and record the deployed commit in the roadmap Status Board. Plan the customer-facing effects first: stale-source alert behaviour (D13), the trial lifecycle and soft limits stay off until `WorkerSettings.entitlementsEnforced` is set. |
-| **N2.10 contract migration** | production deployment + your release decision | Ship it as **its own release**, after a fresh backup, once the release above is verified. It lives in `packages/db/prisma/contract/20261001110000_contract_customer_identity_and_case_source/` (README there). **Evidence (2026-10-05):** applied to the same production-backup restore after all later migrations: preconditions held (0 cases without a source integration, 124 identities = 124 legacy values, 0 cross-source duplicate ids); `rollback.sql` restored the legacy columns with an identical checksum; with `schema.patch` applied the schema matches the contracted database exactly (`prisma migrate diff`: no difference), `pnpm type-check` is clean and the **full suite passes (256 files, 2,755 tests)**. To ship: move the directory into `prisma/migrations/`, `git apply schema.patch`, `pnpm --filter @sla/db generate`, deploy, then re-run the host replay. **Update 2026-10-10:** not ready. Ledger C-09 FAILED: `apps/web/test/integration-disconnect-visibility.test.ts:333` sets `sourceIntegrationId: null` and fails to type-check on the contracted schema (added after the 2026-10-05 evidence above, which therefore no longer holds). Fix that test first; "once the release above is verified" is superseded by the row above. |
-| **H-13** | production host | **Closed 2026-10-10 as resolved or moot; not a confirmed production backfill.** An owner-run read-only query on production `elapsed_db` (read-only transaction; owner-reported, not independently verified) returned `breached_null = 0`, `breached_total = 20`, `skipped_commitment_present = 0`, so there is nothing for the backfill to update. No backfill was run on production, and why the original 9 rows are gone is not established. Counts: 10 commitments considered in the restore rehearsal = 9 updated + 1 skipped by design (`8000cdcb…`); the drift count is 9. **Original instructions (historical):** After a backup: `pnpm --filter @sla/commitments backfill:breached-at` in the worker container against `elapsed_db`. Expect "Backfilled breachedAt for 9 Evaluation row(s)" and 1 skipped (`8000cdcb…`, by design). Then a replay capture should report drift 0 / 0. The repair is already proven on a restore (roadmap H-13). |
-| **N3.6 / N3.7** | N3.7: production measurements (read-only, C-18). N3.6: nothing for the owner to run; two short automated tests on `testing` (W1, W2) | **Rev 11 (2026-10-11, documentation only, owner decisions): the two-hour outage drill is permanently WAIVED (waived, not passed). It is not scheduled and nobody has to supervise or wait for it. N3.6 closes on W1 and W2 (both pass as of 2026-10-11 and are committed on `testing` as `26038d1`; N3.6 is closed, the drill waived): W1 (`@sla/http-retry` per-attempt timeout test) and W2 (the existing `cycle.test.ts` outage test, extended: one hung organization, six healthy at concurrency 3, control phase versus outage phase; ±10% on the healthy organizations' median `organization_finished.durationMs`, 25% of the poll interval applied to healthy organizations only). `lastActivePollDurationMs` and `lastReconciliationDurationMs` are not written or used; `organization_finished` and `lastSyncDurationMs` are the approved measurements. N3.7 keeps its D22 gate (C-18 at least 3 weeks, the W2 result, the owner's decision). Full definitions, residual risks and corrections: roadmap N3.6 "Rev 11 closure". The Rev 10 text that follows is history; its drill, environment and "nothing to run" statements are superseded.** **Reconciled 2026-10-10 (Rev 10, documentation only):** two different activities are described here and must not be mixed. (a) *Read-only production monitoring* (`/admin/monitoring`, ledger C-18, weekly) is allowed on production and feeds the N3.7 decision. (b) *Outage injection* (the two-hour drill) is never run against a real customer's provider or polling; the proposed place is an isolated staging or bench environment, with the final environment, host and target scale awaiting the owner. "Nothing to run until the release is live" below is superseded: production is reported (owner-verified) to run N2–N10, so (a) can run now. The drill also cannot meet its acceptance criteria yet: `WorkerSettings.lastActivePollDurationMs` and `lastReconciliationDurationMs` have no writers in the code (per-organization duration exists only as `organization_finished` log fields), the per-tenant failure-injection harness does not exist, and the N3.7 gate (D22) is untouched. Details: roadmap N3.6. **Original (kept):** N3.6 is open only for the production-scale two-hour outage drill; the unit and real-DB drills pass. The circuit breaker (N3.7) is built only if production per-integration durations or failure streaks show it is needed (D22). Nothing to run until the release is live; read `/admin/monitoring` (duration, failing since, attempts) for a few weeks, then record "not needed, measured at X ms" or open the trigger. Do **not** pause a real customer's polling to simulate an outage: it makes their data stale and holds their breach alerts (D13). |
-| **N5.8 / H-9** | ~~external accounts~~ **closed 2026-10-12** | **Closed on the owner's explicit confirmation, not on independently recorded evidence.** The owner states the live walkthroughs for Zendesk, Intercom and Linear were completed, several times, before this date. No per-run record exists (dates, pairs, minutes to first monitored case, hesitations, errors, counts are not recorded and none are inferred); nothing is asked of the owner and nothing was re-run. _Original row (historical):_ needed a Zendesk sandbox login and an Intercom and a Linear sandbox workspace with an OAuth app each; repeat the [H-9 checklist](#h-9--live-onboarding-walkthrough) per pair (Zendesk + Jira, Zendesk + Linear, Intercom + Jira, Intercom + Linear). The local stack, onboarding tests (`onboarding-flow`, `onboarding-status-matrix`, `onboarding-intercom`) and the stubbed browser walk-through of N1.16 pass and are independently recorded; they are not the live evidence. |
-| **N1.13** | ~~external accounts~~ **closed 2026-10-12** | **Closed on the owner's explicit confirmation, not on independently recorded evidence.** Jira side captured live (2026-10-05, independently recorded): Intercom's Jira integration writes no remote link; the link is the ticket's `jira_issue_key` attribute, correlated by `correlateIntercomJiraKeys` onto the conversations that list the tracker. Intercom → Linear: the owner confirms the live Intercom link capture was already completed; the repository holds no record of its date, the captured shape or the redacted URL, and none is invented. `recognizeIntercomConversationUrl` and its tests are unchanged, so it still accepts only the URL shape this repo builds (no fixture was added). The L2 half is recorded: 0 differences over 7,413 records (2026-10-01 EC2; 2026-10-10 ledger C-06). |
-| ~~**H-6**~~ | — | Closed 2026-10-16: Sentry removed from the project; nothing to supply. |
-| ~~**H-10**~~ | – | **Closed 2026-10-16** ([closure record](#h-10-closure-record)). The code side is done ([H-10 code audit](#h-10-code-audit-mutation-routes-and-tenant-isolation)). |
-| ~~**D27 confirmation**~~ | – | **Closed 2026-10-16:** D27 amended (the restricted state blocks new configuration only; "new cases" withdrawn). |
-
-Not owner actions, deliberately not started: **N6.5** (payment provider; needs the owner's explicit go-ahead; Paymob is the production provider since 2026-10-16, with the go-live prerequisites in roadmap D28), **N7** (Zoho Desk, on a go-ahead), **N8** (on its triggers), ~~H-8~~ (dropped 2026-10-16).
-
-## Ready to commit (nothing committed yet)
-
-| File | What it is |
-| --- | --- |
-| [`docs/capacity-limits.md`](capacity-limits.md) | H-7 measured capacity and stated limits |
-| [`scripts/prod/h1-provider-pairs.sql`](../scripts/prod/h1-provider-pairs.sql) | H-1, read-only, counts only, validated against the dev database |
-| [`scripts/prod/h4-pick-tenants.sql`](../scripts/prod/h4-pick-tenants.sql) | H-4 tenant chooser, read-only, validated |
-| [`packages/db/src/scripts/h4-live-export.ts`](../packages/db/src/scripts/h4-live-export.ts) | H-4 export (read-only DB, GET-only Zendesk, allow-listed fields). **Not run against Zendesk**: see the note under H-4 |
-| [`scripts/h4-compare/compare-live.py`](../scripts/h4-compare/compare-live.py) | H-4 offline comparer; tested on a synthetic fixture (match, open-due mismatch, missing first response, transient breach) |
-| [`scripts/prod/h10-verify.sh`](../scripts/prod/h10-verify.sh) | H-10 host checks, the single verification source; tested 2026-10-16 against a scratch database laid out like the host (see H-10) |
-| [`apps/web/test/tenant-scope-classification.test.ts`](../apps/web/test/tenant-scope-classification.test.ts) | H-10 guard: every Prisma model must declare its tenant path (28 tests pass) |
-| `apps/worker/scripts/perf-baseline-cycle.ts` | `PERF_ORG_ID` now accepts a comma-separated list |
-| this file | the runbook |
-
-## Findings from this pass
-
-1. **H-10, a real gap** (current status and the rotation plan: [H-10](#exposed-credentials-and-the-rotation-plan)). The `.env.prod` that was committed (`1ec4936`, `c3393fa`, `af08635`, all on `origin`) also held `SENTRY_DSN`, `OPS_ALERT_SMTP_USER`, `OPS_ALERT_SMTP_HOST` and **`OPS_ALERT_SMTP_PASSWORD`** with real-length values. The 2026-09-19 rotation log in `docs/deployment.md` lists only `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY` and `SMTP_ENCRYPTION_KEY`. `scripts/rotate-secrets.sh` cannot rotate third-party credentials, so unless you replaced the ops SMTP password at its provider, it is still the leaked one. (Found by reading key names and value lengths only; no value was printed.) `INTEGRATION_TOKEN_ENCRYPTION_KEY` did not exist in the leaked file, so it needs no rotation for that reason.
-2. **H-7, a real limit.** `/dashboard` still loads every event of every case with a commitment (185k events at 5k cases, 370k at 10k; 1.9–2.6 s and 3.5 s). Performance-plan Phase 2 expected 0 events. Details and numbers in `capacity-limits.md`. Not fixed here; proposed follow-up only.
-3. **H-4 side observation.** In the dev data, ticket 54's Resolution commitment stored a *breached* evaluation (11:15:21) and then ended *met* (11:17:13): the ticket was solved at 11:14:47, before its due time, but the worker evaluated before the solve had been ingested. The comparer counts these as "transient breaches". If such an evaluation triggers an alert, the customer sees a breach alert for a met ticket. Whether alerts fire in that window is worth checking; not investigated further here.
-4. **From H-5, still open:** `docker-compose.prod.yml` was deliberately removed and production runs the root `docker-compose.yml` (the H-10 and H-1/H-4 commands here use it; older runbook text may still say `.prod.yml`), and organization delete is impractically slow without an index on `normalized_events.sourceRawEventId`.
-5. **H-10 tenant isolation and mutation audit: done, see [H-10 code audit](#h-10-code-audit-mutation-routes-and-tenant-isolation).** One privilege bug found and fixed; four smaller findings reported.
+| H-1 | Provider pair and status per live tenant | **Closed 2026-09-30, accepted limitation** ([below](#h-1--provider-pairs-per-tenant)) |
+| H-2 | D14 pricing decision | Closed 2026-10-05: live model Starter $49, Team $149, Enterprise Custom (`PLANS`); the obsolete `$299/$699` and the Phase-18 escalation pricing are not adopted |
+| H-3 | Pricing-page false claims | Done |
+| H-4 | Engine vs Zendesk on live tenants | **Closed 2026-09-30, accepted limitation** ([below](#h-4--live-tenant-spot-check)) |
+| H-5 | Retention / on-call note | Done (`data-retention-and-on-call.md`); the organization-deletion rehearsal and host deployment remain open owner items |
+| H-6 | Sentry source maps | Closed 2026-10-16 as obsolete: Sentry was removed (Decision 7) |
+| H-7 | Capacity limits | Done on dev hardware (`capacity-limits.md`); production host not measured |
+| H-8 | Lint step | Permanently dropped by the owner 2026-10-16 (Decision 10) |
+| H-9 | Live onboarding walkthrough | **Closed 2026-10-12 on the owner's confirmation** ([below](#h-9--live-onboarding-walkthrough)) |
+| H-10 | Launch-Gate security items on production | **Closed 2026-10-16** ([below](#h-10--production-security-verification)) |
+| H-11 | First Response start actor | Closed 2026-09-29; code fixed and the production repair applied (7 false commitments deleted, 0 notifications had been sent, ticket 1 recreated) |
+| H-12 | Pending pause decision | Done: D30, imported Zendesk policies never pause on Pending |
+| H-13 | `breachedAt` disagreements | Closed 2026-10-10 as resolved or moot (an owner-run query found 0 breached evaluations with a NULL `breachedAt`); not a confirmed production backfill |
 
 ## H-1 — provider pairs per tenant
 
-> **CLOSED 2026-09-30 by owner decision, with an accepted limitation.**
-> - **Evidence** (`scripts/prod/h1-provider-pairs.sql`, run read-only on the host's application database): 12 tenants; provider pair **12 × Zendesk + Jira**, all connected; 0 with an unhealthy integration; 0 without a connected integration; no tenant with Intercom, Linear or GitHub. Cases: total 1,508, min 45, median 133, max 133.
-> - **Limitation, stated plainly:** 11 of the 12 organizations are `seed-org-*` fixtures written by `seed-test-customers`. That is known test/fixture data, **not production customer evidence**. The other organization is the dev Zendesk sandbox tenant. **The real 10-customer dataset was not queried or verified**, and the case-size figures are fixture artifacts, not live tenant sizes.
-> - **Accepted risk:** the acceptance below ("the 10 live tenants") cannot be truthfully met from this host, so the item is closed on this evidence so N1 is not blocked. "No tenant has both Zendesk and Intercom" is an **assumption** for the real customers; if one is later found with another pair, redo N1.2's classification for it. D15 stays unticked.
->
-> The procedure below is kept for reference. Note that on this host the compose flags are `docker compose exec ...` with the default `.env` and the database is `elapsed_db`, not `$POSTGRES_DB`.
-
-**Acceptance (roadmap):** the provider pair and integration status of each of the 10 live tenants recorded as **counts per pair** in the Status Board, never customer names.
-
-Run on the production host (read-only; prints no names or ids):
-
-```bash
-docker compose -f docker-compose.yml --env-file .env.prod exec -T postgres \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f -' \
-  < scripts/prod/h1-provider-pairs.sql
-```
-
-Paste the three result tables to me. I will put the counts in the Status Board, resolve the data half of D15, and tick H-1. Note the roadmap's own caveat: you deferred H-1 because production database access was not being requested; this is the smallest access that closes it (three SELECTs).
+**Closed 2026-09-30 by owner decision, with an accepted limitation.** Evidence (`scripts/prod/h1-provider-pairs.sql`, run read-only on the host's application database): 12 tenants, all Zendesk + Jira and connected, none with an unhealthy integration, none with Intercom, Linear or GitHub; 1,508 cases (min 45, median 133, max 133). **Limitation:** 11 of the 12 organizations are `seed-org-*` fixtures written by `seed-test-customers`; the other is the dev Zendesk sandbox tenant. The real 10-customer dataset was **not queried or verified**, and the case-size figures are fixture artifacts. "No tenant has both Zendesk and Intercom" is an assumption for the real customers; if one is found with another pair, redo the replay classification for it. D15 stays unverified. On this host the application database is `elapsed_db` (not `$POSTGRES_DB`) and the env file is `.env`.
 
 ## H-4 — live-tenant spot check
 
-> **CLOSED 2026-09-30 by owner decision, with an accepted limitation.**
-> - **Evidence:** the live export (`h4-live-export.ts`, after fixing a wrong calendar column in its query) and `compare-live.py` against Zendesk, on the host's one non-fixture organization (the dev sandbox): 45 tickets; 33 MATCH, 7 SEMANTIC, 13 DATA, 18 initially UNEXPLAINED. **All 18 were then explained; none is an unexplained engine defect:**
->   - 12 Resolution elapsed differences: **H-12 / D30**. Finished commitments still carry the old Pending pause; each shortfall equals the time in `pending_customer` to the second (16, 44, 8, 8, 216, 123, 72, 824, 5, 50, 3184, 45 s), confirmed by query.
->   - 4 First Response target rows (tickets 21, 46, 47, 48): **D5b**, agent-submitted tickets (Zendesk: Next Reply 40 min; Elapsed: First Response 30 min).
->   - Ticket 27: the documented **reverse Next Reply case** (F4 in `h4-sla-spot-check.md`).
->   - Ticket 1: the **H-11** shape, repaired in production. Ticket 45 and the DATA rows: the since-deleted sandbox policy "Phase 4 Native Test" (F3), data not engine. The First Response rows for tickets 54 to 60 were pre-repair state and are gone after the H-11 repair.
-> - **Doubled reply obligation (tickets 21, 27, 48):** an agent reply before the customer's first message on an agent-submitted ticket makes that message open both a First Response (30 min) and a Next Reply (40 min); Zendesk opens one. Deliberate in the code (`findFirstResponseEvent` is called without the D5b start bound for cycle derivation). **Owner decision 2026-09-30: a documented product semantic (D5b × Next Reply gating), not an engine defect.** Revisit if customers report duplicate reply alerts.
-> - **Limitation, accepted (no second tenant or export required):** the acceptance below asks for two live tenants, one on business hours, open commitments included. This run covers **one** tenant (the dev sandbox), 0 open commitments, 24/7 calendar. Not covered: business hours, holidays, DST, open commitments and at-risk state, legs, any live customer tenant. Risk accepted: a difference specific to those areas would first show in N1's replay/diff gate or in production.
->
-> The procedure and the caveat below are historical: the export has since been run against Zendesk (with the calendar-column fix).
+**Closed 2026-09-30 by owner decision, with an accepted limitation.** The live export (`packages/db/src/scripts/h4-live-export.ts`, read-only, GET-only Zendesk) and `scripts/h4-compare/compare-live.py` compared the engine with Zendesk's own SLA view on the host's one non-fixture organization (the dev sandbox): 45 tickets; 33 match, 7 semantic, 13 data, 18 initially unexplained. **All 18 were explained; none is an engine defect:** 12 Resolution elapsed differences were the Pending pause (H-12 / D30); 4 First Response target rows were D5b on agent-submitted tickets; ticket 27 is the documented reverse Next Reply case; ticket 1 was the H-11 shape (repaired); ticket 45 and the data rows were a since-deleted sandbox policy (Elapsed backfills against the current policy, not the one Zendesk applied then).
 
-**Acceptance (roadmap):** engine numbers spot-checked against Zendesk's own SLA view on real tickets for **at least two live tenants**; any unexplained disagreement opens a correctness task **before** N1 starts. **Proposed closing evidence** (mine, to cover what the dev-sandbox run could not): at least two live tenants; at least one on a business-hours calendar; open commitments included; every row classified; **UNEXPLAINED = 0, or each one a filed task**. The 45-ticket dev run alone does not close H-4.
+**Documented semantic (owner, 2026-09-30):** when an agent replied before the customer's first message on an agent-submitted ticket, that message opens both a First Response (D5b) and a Next Reply obligation; Zendesk opens one. It is deliberate in the code (`findFirstResponseEvent` is called without the D5b start bound for cycle derivation) and is not an engine defect. Revisit if customers report duplicate reply alerts.
 
-1. Pick tenants (host only; this prints ids, keep them off the repo):
+**Limitation, accepted:** the run covers **one** tenant with 0 open commitments and a 24/7 calendar. **Not covered:** business hours, holidays, DST, open commitments and at-risk state, legs, and any live customer tenant. A difference specific to those areas would first surface in a replay or in production.
 
-```bash
-docker compose -f docker-compose.yml --env-file .env.prod exec -T postgres \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -' < scripts/prod/h4-pick-tenants.sql
-```
-
-2. For each of two organizations (prefer `uses_business_hours = t` and `open_commitments > 0`). This reads Zendesk with **the tenant's stored OAuth token, GET only**. That is the customer's data on their Zendesk: **confirm you are content to read it before running**.
-
-```bash
-mkdir -p h4-out
-docker compose -f docker-compose.yml --env-file .env.prod run --rm --user root \
-  -v "$PWD/h4-out:/out" worker \
-  pnpm --filter @sla/db exec tsx src/scripts/h4-live-export.ts <ORGANIZATION_ID> /out/tenant-A.json --limit=150 --open-limit=60
-python3 scripts/h4-compare/compare-live.py h4-out/tenant-A.json --label tenant-A --out h4-out/tenant-A.md
-```
-
-3. Send me `tenant-A.md` and `tenant-B.md` (they contain ticket ids and timestamps, no ticket text; strip the ticket column if you prefer, I only need the class counts and the notes). Keep the JSON on the host.
-
-**Caveat, stated plainly:** `h4-live-export.ts` type-checks clean under `tsc` but was **not run against a Zendesk account**: my attempt to run it against the dev sandbox was blocked by the permission classifier (it would have decrypted the dev organization's stored Zendesk credentials), and I did not work around it. The Elapsed-side SQL was validated with `psql` on the dev database, and the comparer against a synthetic fixture, but the Zendesk response shapes (`metric_events`, `slas.policy_metrics`) are parsed tolerantly from the shapes the earlier dev run used. If you want it proven before it touches a live tenant, run step 2 once against the dev sandbox yourself (`<ORGANIZATION_ID>` = `cmul45pok0000nlrybb0hfrt3`) and I will check the output. The dev result should reproduce the known picture (32/32 Resolution on the current policy).
-
-## H-6 — Sentry source maps
-
-> **Closed 2026-10-16 as obsolete.** Sentry was removed from the project by owner decision (Decision 7, option C): no SDK, source-map upload or `SENTRY_*` variable remains. The procedure below is history and must not be run.
-
-**Acceptance:** maps appear in the Sentry project and a test error shows a readable stack. Code side is done. Needs from you: a Sentry auth token (scopes `project:releases`, `org:read`), org slug and project slug. On the host: set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` (and `SENTRY_URL` if self-hosted) in `.env.prod`, rebuild `web` (`docker compose -f docker-compose.yml --env-file .env.prod build web && … up -d web`), then trigger a deliberate error and check the stack in Sentry. Do this **after** you replace the leaked `SENTRY_DSN` (finding 1).
-
-## H-8 — lint step
-
-`typescript-eslint` 8.71.0 (latest) declares `typescript >=4.8.4 <6.1.0`; the repo is on 7.0.2. Still blocked upstream. The roadmap's stated alternative is to pin TypeScript 6.x for lint tooling only. That means two TypeScript versions in the workspace, which I did not do without your say-so. **Dropped permanently by the owner on 2026-10-16 (Decision 10): no lint step will be added.**
+**Side observation, never investigated:** in the dev data, a Resolution commitment stored a *breached* evaluation (11:15:21) and then ended *met* (11:17:13) because the worker evaluated before the solve had been ingested. If such an evaluation triggers an alert, a customer could see a breach alert for a met ticket. Whether alerts can fire in that window is unchecked.
 
 ## H-9 — live onboarding walkthrough
 
-> **Closed 2026-10-12 (Rev 16) on the owner's explicit confirmation, not on independently recorded evidence.** The owner states the live walkthroughs for Zendesk, Intercom and Linear were completed, several times, before this date, and were not documented at the time. No timings, hesitations, errors, counts, dates, pair list or account details were recorded, and none are inferred here. The checklist below is kept as the historical procedure; its "send me those notes" step is no longer pending and nothing was re-run.
-
-**Acceptance (roadmap 6.8):** walk through onboarding with a **fresh organization** against a **real Zendesk sandbox** and record the result. It can run entirely on your machine (no production).
-
-What only you can do: the Zendesk sandbox admin login and the OAuth client. Prepare once:
-- In the Zendesk sandbox (Admin Center → Apps and integrations → APIs → OAuth clients) create a client whose redirect URI is the one the local stack shows in **Settings → Integrations → Configure**.
-- Start the stack: `docker compose --env-file .env.docker up -d` (never plain `up`; see the local-stack note).
-
-Then, with a timer, as a first-time user and without help: sign up with a **new email** and verify it → onboarding → enter the OAuth client id/secret → connect Zendesk (sandbox login) → import runs → policies reviewed → first case visible → Slack/email step skipped or done. Record: wall-clock minutes from sign-up to first monitored case, every step where you hesitated or needed this document, any error, the count of tickets/policies imported. Send me those notes; I will write them up under 6.8/H-9 and tick it only if the flow completed unaided. I can also do the sign-up and timing on localhost with a test account if you would rather only handle the Zendesk step.
+**Closed 2026-10-12 on the owner's explicit confirmation, not on independently recorded evidence.** The owner states the live walkthroughs for Zendesk, Intercom and Linear (real OAuth round trips) and the live Intercom link capture were completed, several times, before that date and were not documented. No dates, pairs, timings, hesitations, errors, counts or account details were recorded, and none are inferred. Nothing was re-run.
 
 ## H-10 — production security verification
 
-**Acceptance (roadmap):** confirm and record: leaked secrets rotated; no development services in production; authorization audit current; tenant isolation covers every model.
-
-**Status: CLOSED 2026-10-16.** Host verification `38 PASS, 0 FAIL, 1 MANUAL` (04:40 UTC); the MANUAL line (encryption keys) and OD-12 are decided below.
+**Closed 2026-10-16.** Acceptance: leaked secrets rotated; no development services in production; authorization audit current; tenant isolation covers every model. Host verification `38 PASS, 0 FAIL, 1 MANUAL` (04:40 UTC); the MANUAL line (the encryption keys) is decided below.
 
 ### The one verification command
 
-`scripts/prod/h10-verify.sh` is the single source of verification (ledger C-15). Run it once, from a workstation, without updating the host checkout (do not `git pull` on the host before the C-16 release):
+`scripts/prod/h10-verify.sh` is the single source of verification (ledger C-15). Run it from a workstation:
 
 ```bash
 ssh -i KEY ubuntu@13.62.74.24 'cd ~/elapsed && bash -s' < scripts/prod/h10-verify.sh | tee h10-$(date -u +%F).txt
 ```
 
-It uses the host's env file (`.env.prod` if present, else `.env`; on the host it is `.env`, A-03), prints one `PASS` / `FAIL` / `MANUAL` line per check and a summary, never prints a value, refuses to run under `bash -x`, opens the database read-only, and gives every docker/psql call a timeout (`H10_TIMEOUT`, 30 s). A check that cannot run (no docker, query error, timeout, unexpected schema) is `FAIL ... not verified`, never `PASS`. Exit status: 0 all PASS, 1 any FAIL, 3 only MANUAL left.
+It uses the host's env file (`.env.prod` if present, else `.env`; on the host it is `.env`), prints one `PASS` / `FAIL` / `MANUAL` line per check and a summary, never prints a value, **refuses to run under `bash -x`** (xtrace prints every variable assignment), opens the database read-only, and gives every docker/psql call a timeout (`H10_TIMEOUT`, 30 s). A check that cannot run is `FAIL ... not verified`, never `PASS`. Exit status: 0 all PASS, 1 any FAIL, 3 only MANUAL left.
 
 | Section | What it proves |
 | --- | --- |
-| 1 | No value from the public `.env.prod` history (`1ec4936`, `c3393fa`, `af08635`) is still in use, compared by name **and under any other name** (this replaces C-15's separate cross-name step, DC-20). `SENTRY_DSN` is out of scope (BL-08, Sentry removed). |
+| 1 | No value from the public `.env.prod` history (`1ec4936`, `c3393fa`, `af08635`) is still in use, compared by name **and under any other name**. |
 | 2 | `NEXTAUTH_SECRET` and the three encryption keys are set and pairwise distinct; `DATABASE_URL` carries `POSTGRES_PASSWORD`. |
-| 3 | In the database named by `DATABASE_URL` (`elapsed_db` on the host; **not** `POSTGRES_DB`, which names an empty database there and made the old check pass vacuously): migrations are applied, the 5 credential columns exist with the types in `schema.prisma`, and 0 values are stored outside their ciphertext format: `integrations.credentials` `accessToken`/`refreshToken` (`enc:v1:`), the custom source's `credentials.secrets` and `custom_provider_drafts.secrets` (`enc:v1:`), `slack_integrations.accessToken` (`enc:v1:`, written encrypted by the Slack callback and `pnpm db:encrypt-tokens`), `integration_configs.clientSecret` and `organization_email_settings.password` (unprefixed AES-GCM). Credentials JSON with any other shape is a FAIL. |
-| 4 | Only `postgres`, `web`, `worker`, `nginx` containers run; only nginx publishes a host port; `web` and `worker` run `NODE_ENV=production`; no listener on 5432/3000/3001/5555/9229/1025/8025; no seed data (`seed-org-*`, `Perf Baseline*` organizations, `*.elapsed-seed.test` users, `perf-*` cases). |
-| 5 | The running `web` and every `worker` container use the env file's `DATABASE_URL` (and `web` its `NEXTAUTH_SECRET`), compared as hashes; `web` `/api/health` reports the database ok and every worker `/health` answers 200 (both query the database); the retired `OPS_ALERT_SMTP_PASSWORD` is in no container; the database accepts `POSTGRES_PASSWORD` over password-authenticated TCP, and a deliberately wrong password is refused there, so the login check cannot pass on trust auth. |
+| 3 | In the database named by `DATABASE_URL` (`elapsed_db` on the host; **not** `POSTGRES_DB`, which names an empty database there): migrations are applied, the credential columns exist, and 0 values are stored outside their ciphertext format (`enc:v1:` for integration tokens, custom secrets, Slack tokens; unprefixed AES-GCM for `integration_configs.clientSecret` and `organization_email_settings.password`). |
+| 4 | Only `postgres`, `web`, `worker`, `nginx` run; only nginx publishes a host port; `web` and `worker` run `NODE_ENV=production`; no dev listeners on 5432/3000/3001/5555/9229/1025/8025; no seed data. |
+| 5 | The running `web` and every `worker` use the env file's `DATABASE_URL` (and `web` its `NEXTAUTH_SECRET`); health endpoints answer; the retired `OPS_ALERT_SMTP_PASSWORD` is in no container; the database accepts `POSTGRES_PASSWORD` and refuses a wrong one. |
 | 6 | One `MANUAL` line: the encryption-key decision. |
-
-The script was tested on 2026-10-16 against a scratch PostgreSQL with all 69 migrations applied, laid out like the host (data in `elapsed_db`, empty `POSTGRES_DB`): plaintext tokens, a plaintext custom secret, a plaintext Slack token, an unknown credentials shape, seed rows and a leaked value planted under another name each produced `FAIL`; a missing column, an unreachable database, a timeout and a write attempt (refused by the read-only session) each produced `FAIL ... not verified` or an error, never `PASS`. **Host run, 2026-10-16 04:01 UTC (owner, streamed from a workstation, host HEAD `cb6ac19`, env `.env`):** sections 1 to 4 ran. Section 1: every leaked secret differs, including under other names (the 2026-10-10 `DEPLOYMENT_SMTP_PASSWORD` reuse is gone); one MANUAL line, the provider-side confirmation for the old `OPS_ALERT_SMTP_PASSWORD`. Section 2: all PASS. Section 3 (database `elapsed_db`, 69 migrations): 0 of 3 integration tokens, 0 of 1 Slack bot token, 0 of 3 OAuth client secrets and 0 of 1 SMTP password stored outside ciphertext; no custom secrets; no unknown credential shapes. Section 4: only postgres, web, worker and nginx run; only nginx publishes ports; web `NODE_ENV=production`; 0 seed rows out of 26 checked (1 organization); **FAIL: worker `NODE_ENV` unset.** The output stopped there: when the script is streamed, `docker compose exec` read the rest of it from the shared stdin, so the host listener check, section 5 and the summary never ran. Fixed the same day (every docker call now gets its own stdin).
-
-**Full host run, 2026-10-16 04:04 UTC (corrected script, same host and env):** `Summary: 25 PASS, 1 FAIL, 2 MANUAL`. Same results as above, plus: no host listener on 5432/3000/3001/5555/9229/1025/8025. The only FAIL is worker `NODE_ENV`; the two MANUAL lines are the ops SMTP provider confirmation (action 4) and the traced-run rotation and key decision (actions 2 and 3).
-
-The worker FAIL was real: `apps/worker/Dockerfile` never set `NODE_ENV` (no worker code reads it, so this changed no behaviour). Fixed in the Dockerfile on 2026-10-16.
-
-**Rotation and recovery, 2026-10-16 (measured on the host):**
-
-- 04:17 UTC run (section 5 added): the database accepted the new `POSTGRES_PASSWORD`, but `DATABASE_URL` in `.env` still carried the old password and `web`/`worker` had not been recreated (running since 2026-10-11, old `NEXTAUTH_SECRET`). **Production was down:** `/api/health` through nginx answered 503, `web` was unhealthy with 24 authentication failures in its log, and the worker containers were not running. This also proves the old database password no longer works.
-- The owner corrected `DATABASE_URL` on the host. `web` and the three `worker` replicas started at 04:38 UTC.
-- **04:40 UTC run: `38 PASS, 0 FAIL, 1 MANUAL`.** Sections 1 to 4 unchanged (no leaked value in use under any name; every stored credential is ciphertext; production services only; no dev listeners; 0 seed rows), now including **worker `NODE_ENV=production`**. Section 5: `web` and all three workers use the env file's `DATABASE_URL`, `web` uses its `NEXTAUTH_SECRET`, `web` `/api/health` reports the database ok, every worker `/health` answers 200, the database accepts `POSTGRES_PASSWORD` and refuses a wrong one, and `OPS_ALERT_SMTP_PASSWORD` is in no container. Afterwards: nginx `/api/health` 200, all containers healthy, 0 authentication failures since the restart, no `.env.bak*` file left on the host.
-- **Deviation recorded, not resolved here:** the worker `NODE_ENV` check passes because the `web` and `worker` images were **rebuilt from the host checkout of `main` (`9947720`) at 04:20 to 04:24 UTC** and `migrate` ran (it applied nothing: the newest migration is still the 2026-10-11 one). It does not change any H-10 result.
 
 ### Exposed credentials and the rotation plan
 
-Two separate exposures:
-
-1. **Public git history (since 2026-09-14; the repository is public).** The values in `1ec4936`, `c3393fa`, `af08635` are public. The 2026-09-19 rotation covered `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY`; section 1 confirms on the host that none of them, nor any other current secret, equals a leaked value. **`OPS_ALERT_SMTP_PASSWORD` is retired:** the duplicate SMTP configuration was consolidated into `DEPLOYMENT_SMTP_HOST/PORT/SECURITY/USER/PASSWORD/FROM` and `OPS_ALERT_EMAIL`; the variable is absent from `.env`, from the Compose environment and from every running container (owner check and section 5), and the leaked value is not reused under any name (section 1; the 2026-10-10 reuse as `DEPLOYMENT_SMTP_PASSWORD` is gone). Provider-side revocation of the old password was not verified and is not required while nothing shows it is still an active credential (D-05). `SENTRY_DSN` is out of scope by owner decision (BL-08). `INTEGRATION_TOKEN_ENCRYPTION_KEY` was never in the leaked file.
-2. **The earlier traced (`bash -x`) run of this script.** xtrace prints every variable assignment, so the then-current values of `POSTGRES_PASSWORD`, `DATABASE_URL`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY` and `INTEGRATION_TOKEN_ENCRYPTION_KEY` are treated as exposed. **Rotated 2026-10-16:** `POSTGRES_PASSWORD`/`DATABASE_URL` (the old password is refused, see the 04:17 run) and `NEXTAUTH_SECRET` (differs from the value `web` ran with from 2026-10-11 until 04:38 UTC). **Not rotated:** the three encryption keys (step 2, option A). Delete the terminal log or transcript that holds the traced output. The script now refuses to run under xtrace.
+1. **Public git history (the repository has been public since 2026-09-14).** The values in `1ec4936`, `c3393fa`, `af08635` are public. The 2026-09-19 rotation covered `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY`; the host check confirms none of them, nor any other current secret, equals a leaked value. **`OPS_ALERT_SMTP_PASSWORD` is retired:** the SMTP configuration was consolidated into `DEPLOYMENT_SMTP_*` and `OPS_ALERT_EMAIL`; the variable is absent from `.env`, the Compose environment and every container, and the leaked value is not reused under any name. Provider-side revocation of the old password was not verified and is not required while nothing shows it is still active. `SENTRY_DSN` is out of scope (Sentry removed). `INTEGRATION_TOKEN_ENCRYPTION_KEY` was never in the leaked file.
+2. **An earlier traced (`bash -x`) run of the script** exposed the then-current `POSTGRES_PASSWORD`, `DATABASE_URL`, `NEXTAUTH_SECRET` and the three encryption keys. **Rotated 2026-10-16:** `POSTGRES_PASSWORD`/`DATABASE_URL` and `NEXTAUTH_SECRET`. **Not rotated:** the three encryption keys. Delete any terminal log or transcript that holds the traced output.
 
 **Do not run `scripts/rotate-secrets.sh` for this.** It rotates all three encryption keys at once, which makes every stored integration token, OAuth client secret, SMTP password and custom-source credential unreadable (every tenant must reconnect), and its default compose file (`docker-compose.prod.yml`) no longer exists.
 
-**Step 1 — database password and session secret. Done 2026-10-16** (see the rotation and recovery record above; kept for future rotations). **Owner runs on the host; one restart.** No data changes; no value is printed (tested on a sample env file 2026-10-16). Signs every user out once. Do not run it under `set -x`.
+**Encryption keys: decided 2026-10-16, option A.** Not rotated; the residual risk is accepted until a re-encryption tool exists (roadmap N8-S7). The app has no re-encryption path: integration tokens and custom secrets use `INTEGRATION_TOKEN_ENCRYPTION_KEY`, OAuth client secrets `INTEGRATION_CONFIG_ENCRYPTION_KEY`, organization SMTP passwords `SMTP_ENCRYPTION_KEY`, and a new key makes old ciphertext unreadable. An attacker needs both a key and the database ciphertext; the exposed database password is rotated and PostgreSQL publishes no host port. Keep backups access-restricted. Alternatives not taken: build a dual-key re-encrypt command first (B), or rotate now and have every organization reconnect (C).
+
+**Rotating the database password and session secret** (done 2026-10-16; kept for future rotations). The owner runs this on the host; it signs every user out once, prints no value, changes no data, and must not run under `set -x`:
 
 ```bash
 cd ~/elapsed && umask 077 && cp .env .env.bak-$(date -u +%F)
@@ -205,85 +82,43 @@ docker compose up -d --no-deps --no-build web worker
 unset NEW_PG NEW_NA APP_ROLE
 ```
 
-`--no-deps --no-build` recreates only `web` and `worker` with the images already deployed: no rebuild, no `migrate` run, so this is not a deploy of `main` (C-16 stays the next deploy). Check A-05 health, then re-run the verification command. If `ALTER ROLE` fails, `.env` is left unchanged. Roll back with `.env.bak-*` plus `ALTER ROLE` to the old password if `web` cannot connect; once healthy, delete `.env.bak-*` (it holds the exposed values).
-
-**Step 2 — the three encryption keys. Decided 2026-10-16: option A** (not rotated; residual risk accepted). The app has no re-encryption path yet: integration tokens and custom secrets use `INTEGRATION_TOKEN_ENCRYPTION_KEY`, OAuth client secrets `INTEGRATION_CONFIG_ENCRYPTION_KEY`, organization SMTP passwords `SMTP_ENCRYPTION_KEY`; a new key makes the old ciphertext unreadable (N8-S7). An attacker needs both a key and the database ciphertext; step 1 removes the exposed database password, and PostgreSQL publishes no host port. Choose one:
-
-- **A (chosen 2026-10-16):** accept the residual risk until a re-encryption tool exists, record the decision and date in the roadmap, and keep backups access-restricted;
-- **B:** build a dual-key re-encrypt command (decrypt with old, encrypt with new, read-only dry run first), then rotate all three keys without tenant impact;
-- **C:** rotate now and have every organization reconnect its integrations and re-enter SMTP and custom credentials.
-
-**Step 3 — record:** add one row per rotation to the rotation log in `docs/deployment.md` (date, reason, scope, method; no values), and the script output to C-15.
+`--no-deps --no-build` recreates only `web` and `worker` with the deployed images: no rebuild, no `migrate` run. **Update `.env` and recreate `web`/`worker` in the same step:** on 2026-10-16 a rotation whose `DATABASE_URL` still carried the old password took production down (`/api/health` 503, `web` unhealthy, workers not running) until the owner corrected it. Check health, then re-run the verification command. If `ALTER ROLE` fails, `.env` is left unchanged; roll back with `.env.bak-*` plus `ALTER ROLE` to the old password, and delete `.env.bak-*` once healthy (it holds the exposed values). Add one row per rotation to the rotation log in `docs/deployment.md` (date, reason, scope, method; no values).
 
 ### H-10 closure record
 
-| # | Action | Who | Evidence that closes it |
-| --- | --- | --- | --- |
-| 1 | ~~Host verification with no FAIL~~ **Done 2026-10-16 04:40 UTC:** `38 PASS, 0 FAIL, 1 MANUAL` (C-15) | – | C-15 re-run |
-| 2 | ~~Step 1 rotation (database password, `NEXTAUTH_SECRET`)~~ **Done 2026-10-16:** verified by section 5 and the refused old password; rotation-log row added | – | C-15 re-run; `deployment.md` rotation log |
-| 3 | ~~Encryption-key decision~~ **Decided 2026-10-16: option A**, keys not rotated | – | roadmap H-10 |
-| 4 | ~~Leaked ops SMTP password at the provider (D-05)~~ **Retired 2026-10-16:** `OPS_ALERT_SMTP_PASSWORD` removed in the SMTP consolidation, absent from `.env`, Compose and all containers, not reused under any name; provider-side revocation not verified, not required | – | sections 1 and 5; D-05 |
-| 5 | ~~Seed-fixture organizations in production (OD-07)~~ **Done for H-10 (2026-10-16):** the host run found 0 seed rows out of 26 checked and 1 organization | – | host run, section 4 |
-| 6 | ~~Re-audit scope for the 28 routes added since the 71-route audit (OD-12)~~ **Decided 2026-10-16:** no re-audit; the 2026-09-29 audit and `tenant-scope-classification.test.ts` stand as the current authorization audit | – | OD-12 |
+| # | Action | State |
+| --- | --- | --- |
+| 1 | Host verification with no FAIL | Done 2026-10-16 04:40 UTC: `38 PASS, 0 FAIL, 1 MANUAL` |
+| 2 | Database password and `NEXTAUTH_SECRET` rotation | Done 2026-10-16, verified by section 5 and the refused old password |
+| 3 | Encryption-key decision | Decided 2026-10-16: option A, keys not rotated |
+| 4 | Leaked ops SMTP password | Retired 2026-10-16 (not reused under any name); provider-side revocation not verified, not required |
+| 5 | Seed-fixture organizations in production | 0 seed rows out of 26 checked; 1 organization (the 10-customer count is unreconciled, OD-07) |
+| 6 | Re-audit of the 28 routes added since the 71-route audit | Decided 2026-10-16 (OD-12): no re-audit; the 2026-09-29 audit and `tenant-scope-classification.test.ts` stand as current |
 
 ## H-10 code audit: mutation routes and tenant isolation
 
-**Done 2026-09-29, no production access used.** Scope: every file under `apps/web/src/app/api` (71 `route.ts`), server actions (none exist: no `"use server"` anywhere), and mutations outside the API layer (none: no `prisma.*.update/delete/create` outside `app/api` in `apps/web/src`; writes go through `@sla/db` / `@sla/commitments` helpers, which I read for the settings paths).
+Done 2026-09-29, no production access. Scope: every `route.ts` under `apps/web/src/app/api` (71 at the time), server actions (none exist) and mutations outside the API layer (none; writes go through `@sla/db` / `@sla/commitments` helpers).
 
-**How each route family gets its organization and authorizes:**
+| Family | Authentication | Organization comes from |
+| --- | --- | --- |
+| `settings/*` mutations; `integrations/*` connect/callback/disconnect/backfill/config POST | session + `requireOwner` | the session, never the body; policy, calendar, customer, invitation and member ids are re-checked with an organization-scoped lookup before any write |
+| `settings/*` and other GETs | session (any member) | the session |
+| `me/*` | session + current-password re-entry, throttled | the session's own user id |
+| `concierge/*` | session | the session, then `authorizeSourceExport` re-checks that the integration belongs to the organization (cross-org gets 404) |
+| OAuth callbacks | session + owner + HMAC-signed state bound to organization, user and a cookie | the signed state |
+| `settings/worker` | session + platform operator | global settings by design |
+| Webhooks (Zendesk, Jira) | shared secret, timestamp freshness | the integration row; secret verified before any work |
+| `password-reset`, `email-verification`, `invitations/accept`, `sign-up` | public; single-use hashed tokens claimed atomically | the token's own row |
 
-| Family | Authentication | Organization comes from | Ids from the request |
-| --- | --- | --- | --- |
-| `settings/*` mutations, `integrations/*` connect/callback/disconnect/backfill/config POST | session + `requireOwner` | the session, never the body | policy, calendar, customer, invitation, member ids are re-checked with an org-scoped `findFirst` (or an `updateMany`/`deleteMany` with `organizationId` in the `where`) before any write |
-| `settings/*` and other GETs | session (any member) | the session | — |
-| `me/*` | session + current-password re-entry, throttled | the session's own user id | — |
-| `concierge/*` | session | session, then `authorizeSourceExport` re-checks the organization and that the integration belongs to it (cross-org gets 404) | body ids only say "which of my rows" |
-| OAuth callbacks | session + owner + HMAC-signed state bound to org, user and a cookie | signed state | — |
-| `settings/worker` | session + platform operator (`PLATFORM_ADMIN_EMAILS`) | global settings by design | — |
-| Webhooks (Zendesk, Jira) | shared secret, timestamp freshness | the integration row | integration id from the URL, secret verified before any work |
-| `password-reset`, `email-verification`, `invitations/accept`, `sign-up` | public; single-use hashed tokens, claimed atomically | the token's own row | — |
-
-`requireOwner` and revocation: `getServerSession` runs the `jwt` callback, which re-checks the user row and `sessionVersion` on every request, so member removal and password changes take effect immediately (5.7 works as documented).
-
-**Tests added** (`apps/web/test/tenant-isolation.test.ts`, real Postgres, 12 new cases, 25 total, all pass; each write case has an own-org control where it matters):
-reads (members, pending invitations, import review, integrations with Slack and OAuth config, case detail with events, links, notifications, policy changes, dashboard failed alerts); revoking another org's invitation; changing or removing another org's member; Slack channel and disconnect; saving an OAuth client config; a policy override creating nothing for another org; consuming reset and verification tokens touching only their own user, and single-use replay (410); demotion and removal invalidating sessions; a plain member denied every owner route. `tenant-scope-classification.test.ts` now also fails if any tenant-scoped model is not seeded by the isolation suite (29 tests). The former list of 13 unnamed models is now all covered, with one exception noted in F-E.
-
-**F-D / F-G follow-up tests:** `packages/email/test/destination.test.ts` (address classification for 40+ IPv4/IPv6 forms, resolution rules, connect-to-resolved-address, operator path untouched, env override); 11 route-level cases in `tenant-isolation.test.ts` (changed host or username refused on save and on both test routes, allowed with the password or for port-only changes, six internal destinations refused on all three routes, plain member denied); `packages/db/test/email-settings.test.ts` (the old "keeps the old password on a new host" test encoded the bug and was replaced); `apps/web/test/csv-formula-injection.test.ts` (20 cases: every trigger character, look-alike exemptions, and the compliance-report and Zendesk exports); `packages/notifications/test/dispatch.test.ts` updated for the new send option.
-
-**Files changed for F-D / F-G:** `packages/email/src/destination.ts` (new), `packages/email/src/client.ts`, `packages/email/src/index.ts`, `packages/db/src/email-settings.ts`, `packages/db/src/index.ts`, `packages/notifications/src/dispatch.ts`, `apps/web/src/lib/email-settings.ts`, `apps/web/src/app/api/settings/email/route.ts`, `.../email/test-connection/route.ts`, `.../email/test-send/route.ts`, `packages/core/src/csv.ts`, `docs/deployment.md` (new env var).
-
-**Findings**
+`getServerSession` re-checks the user row and `sessionVersion` on every request, so member removal and password changes take effect immediately. Tests: `apps/web/test/tenant-isolation.test.ts` (real Postgres), `tenant-scope-classification.test.ts` (fails for any model without a tenant path or without isolation seeding), `packages/email/test/destination.test.ts`, `apps/web/test/csv-formula-injection.test.ts`.
 
 | ID | Severity | Finding | Status |
 | --- | --- | --- | --- |
-| F-A | **High (privilege)** | The role is baked into the JWT at sign-in and never re-read; `updateMemberRole` did not bump `sessionVersion`. An owner demoted to member kept every owner-only power (remove members, disconnect integrations, change SMTP, policies) for up to 30 days. | **Fixed** in `packages/db/src/members.ts` (bumps `sessionVersion`; the member is signed out and back in with the new role). Test fails without the fix (verified). |
-| F-D | Medium | The email test and send routes connected to an owner-supplied host and port with no destination check, and a blank password fell back to the organization's **saved** password whatever host was typed. | **Fixed 2026-09-29.** (1) A blank password now applies only while host and username equal the saved ones (`savedPasswordApplies`, `SmtpPasswordRequiredError` in `packages/db/src/email-settings.ts`); enforced in `saveEmailSettings` and in `resolveTestPassword` for both test routes. (2) `@sla/email` refuses non-public destinations (`destination.ts`): resolves the host, refuses when ANY address is loopback, private, link-local, CGNAT, multicast, reserved or documentation space (IPv4, IPv6, v4-mapped, NAT64, 6to4, Teredo), and connects to the resolved address with the typed name as TLS servername, so DNS can't change between check and connect. Applied to Test Connection, Send Test Email and every alert send (`publicDestinationOnly`), and at save (private only; an unresolvable name may still be saved). `SMTP_ALLOW_PRIVATE_HOSTS=1` is the documented local/intranet escape hatch. Operator-configured SMTP is untouched. |
-| F-G | Low–medium | the CSV writer (now `packages/core/src/csv.ts`, formerly cited here as `lib/csv.ts`) did not neutralize text cells starting with `=`, `+`, `-`, `@` (or tab/CR); case subjects, customer names and tags come from customers' end users. | **Fixed 2026-09-29** at the single choke point every export uses (compliance report CSV and stream, cases export, Zendesk and Jira concierge ZIPs): string cells get a leading `'`. Number cells, plain signed numbers and the app's own overdue durations (`-1h 5m`, shown in the cases export's Remaining/Elapsed column) are exempt, because the rule would otherwise corrupt them. Effect on the concierge analyzer: only formula-leading text (for example a subject starting `-`) gains a `'`. |
-| F-E | Info | `LegSpan` is never read or written by any code (legs are derived in memory). The model is tenant-scoped through `Case` and seeded by the suite, but no code path exists to test. | Noted; candidate for removal in N1's legs work. |
-| F-H | Info | `operator-monitoring-data` reads `NotificationFailure` across all organizations by design (platform-operator only). | Intended; left as is. |
-| F-I | Info | The webhook returns 404 for an unknown integration id and 401 for a wrong secret, so a valid integration id can be distinguished. Ids are unguessable cuids. | Accepted. |
+| F-A | High | The role was baked into the JWT; `updateMemberRole` did not bump `sessionVersion`, so a demoted owner kept owner powers for up to 30 days. | **Fixed** (`packages/db/src/members.ts` bumps `sessionVersion`). |
+| F-D | Medium | The email test/send routes connected to an owner-supplied host with no destination check, and a blank password fell back to the saved password whatever host was typed. | **Fixed:** a blank password applies only while host and username equal the saved ones; `@sla/email` refuses non-public destinations (resolves the host, refuses when ANY address is non-public, connects to the resolved address with the typed name as TLS servername). `SMTP_ALLOW_PRIVATE_HOSTS=1` is the local escape hatch. |
+| F-G | Low–medium | The CSV writer did not neutralize text cells starting with `=`, `+`, `-`, `@` (or tab/CR). | **Fixed** at the single choke point (`packages/core/src/csv.ts`); number cells and the app's own overdue durations are exempt. |
+| F-E | Info | `LegSpan` is never read or written (legs are derived in memory). | Noted; candidate for removal. |
+| F-H | Info | `operator-monitoring-data` reads `NotificationFailure` across all organizations by design. | Intended. |
+| F-I | Info | The webhook returns 404 for an unknown integration id and 401 for a wrong secret, so a valid id can be distinguished (ids are unguessable cuids). | Accepted. |
 
-**Not audited:** business logic of the pipelines (not request-driven), the marketing pages, `apps/concierge`, and rate limiting (in-memory, per instance, N8-S5).
-
-**H-10 is closed (2026-10-16)**: see [H-10 closure record](#h-10-closure-record). The two code-side items in the roadmap wording, "authorization audit current" and "tenant isolation covers every model", are satisfied by this section and the tests, F-D and F-G are fixed. Remaining code-side findings are informational only (F-E, F-H, F-I). Not addressed, on purpose: SMTP port allow-listing (a public host on an odd port is not an internal-network risk) and a certificate pin for organization SMTP.
-
-## H-2 — D14 (closed)
-
-**Closed 2026-10-05.** The question was: which pricing model is current, and which do the 10 customers pay on? The owner decided D14: the **live model** is current. It is Starter **$49**, Team **$149**, Enterprise Custom, seat-based and flat monthly in USD, implemented once as `PLANS` in `packages/db/src/plans.ts` and rendered by the pricing page (roadmap N6.1). The earlier escalation-volume model (Starter $79, Growth $149, Scale $249, by monthly escalations) is **not adopted**, and the obsolete `$299/$699` pilot pricing from the removed validation plan must not be reintroduced.
-
-Nothing is open for H-2. A data-entry task to record which plan each of the 10 customers pays (roadmap N4.7) was removed by the owner on 2026-10-12 and is not replaced.
-
-## Deploy-time steps from H-11 and H-12
-
-Not H items, but they are owed when these changes reach production and were flagged in the roadmap:
-- **H-11: DONE 2026-09-29.** The repair (`repair:first-response-start`: dry run, review, `--apply`, worker cycle) was run on the host database for its one non-fixture organization. Recorded result:
-  - Dry run: 7 of 16 first-response commitments disagreed with the D5b rule (tickets 54 to 60, all `breached`, expected start none).
-  - Backup before the delete: `backups/sla-20260929T213644Z.dump` (3.4 MB). Note for next time: `backup.sh` defaults to `ENV_FILE=.env.prod` and the container's `$POSTGRES_DB`; on this host the app database is `elapsed_db` and the env file is `.env`, so it was run as `ENV_FILE=.env DB_NAME=elapsed_db ./scripts/backup.sh`.
-  - Notifications on those 7 commitments before the delete: **0** (no false-breach alert had been sent).
-  - `--apply` deleted exactly those 7. After the worker cycle: ticket 1's First Response commitment recreated; tickets 54 to 60 still have none (owner's verification).
-  - Method, for reference (unchanged): deleting a commitment cascades its evaluations and notifications, so review the dry-run list and check notifications first.
-- **H-12:** migration `20260929120000` changes elapsed time for open Resolution commitments on imported policies with Pending time; some may breach sooner and a breach is final (D2). **Tell customers before deploying.**
-
-## N1 readiness
-
-**Update 2026-09-30: H-1 and H-4 are closed (each with the accepted limitation recorded above), so N1's entry gate is met and N1 is unblocked.** N1's declared entry gate was **H-1 and H-4** (roadmap phase table and the Production Hygiene preamble). With both closed, N1 needs no further roadmap audit: N1.0 ("H-1 recorded, backup restored into the scratch DB") is then satisfied except the backup restore, which is N1's own first task (`scripts/restore-drill.sh` exists). H-2 (since closed), H-6, H-8, H-9 and H-10 do not gate any N-phase (H-5 gates N5.4 and N8-S6 and is done). What could still surprise N1: an UNEXPLAINED row from H-4 becoming a correctness task, which is what H-4 exists to surface.
+**Not audited:** business logic of the pipelines (not request-driven), the marketing pages, `apps/concierge`, and rate limiting (in-memory, per instance, N8-S5). Not addressed on purpose: SMTP port allow-listing and a certificate pin for organization SMTP.

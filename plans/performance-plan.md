@@ -37,7 +37,7 @@ The goal is to cut rows loaded, evaluations and queries, not only to make the sa
 - Seed into the dev org with `pnpm db:seed:perf-baseline -- --user-email=<dev user>`.
 - Capture all counters for `/dashboard`, `/cases`, `/cases/[id]`, `/at-risk`, one poll cycle and one reconciliation cycle.
 - `EXPLAIN ANALYZE` the slowest queries.
-- Record the numbers under 7.7 in `implementation-plans/ROADMAP_Product.md`.
+- Record the numbers in `docs/capacity-limits.md`.
 
 ## Phase 1 — Web quick wins
 1. **Centralized request context** (`React.cache`). Add one `getRequestContext = cache(async () => { session, userId, organizationId, role })`, built on `getServerSession` + `assertSessionStillValid` (`lib/auth.ts:155`, `lib/session-validity.ts:41`).
@@ -142,4 +142,4 @@ The goal is to cut rows loaded, evaluations and queries, not only to make the sa
   - At-risk evaluates ≤ page size.
   - The poll tick loads events only for changed/open cases.
 - Browser preview: dashboard, case list (paginate, filter, search), case detail and at-risk. No console errors, and snapshot pages show their "as of" time.
-- Update roadmap 7.7 with the before/after numbers.
+- Update `docs/capacity-limits.md` with the before/after numbers.

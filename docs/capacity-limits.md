@@ -53,9 +53,9 @@ Nothing here has been checked against the real tenants' sizes: their case and ev
 
 ## Not done
 
-- `EXPLAIN ANALYZE` on the new snapshot queries beyond what the roadmap's 7.7 notes record. Nothing measured here pointed at a missing index (query counts are constant and case-list/at-risk/case-detail are flat), so none was added.
-- A load test with concurrent HTTP users. The roadmap's H-7 asks for the `perf:baseline` re-run and documented limits; concurrency is listed above as unmeasured rather than guessed.
-- Fixing the dashboard's event load. Proposed follow-up (not added to the roadmap): compute the by-stage leg breakdown for the dashboard from persisted data or bound it to the breached cases only.
+- `EXPLAIN ANALYZE` on the new snapshot queries beyond what is recorded on this page. Nothing measured here pointed at a missing index (query counts are constant and case-list/at-risk/case-detail are flat), so none was added.
+- A load test with concurrent HTTP users. H-7 asked for the `perf:baseline` re-run and documented limits; concurrency is listed above as unmeasured rather than guessed.
+- Fixing the dashboard's event load. Proposed follow-up (listed as an open observation in the roadmap, not scheduled): compute the by-stage leg breakdown for the dashboard from persisted data or bound it to the breached cases only.
 
 ## Reproducing
 
@@ -69,6 +69,6 @@ PERF_METRICS=1 PERF_ORG_ID=<organizationId> pnpm --filter @sla/worker perf:basel
 
 Always set `PERF_ORG_ID` for the worker script: an unscoped run cycles every organization in the database, including any with live integrations.
 
-## Relation to N3.6 (2026-10-10; updated 2026-10-11, documentation only)
+## Relation to N3.6
 
-The figures above are single-organization measurements on a laptop (Apple M4, 16 GB), not measurements of the production host (t3.medium, 2 vCPU, 3.7 GiB, per the owner-reported ledger A-10) and not a multi-tenant outage run. **Rev 11:** the N3.6 two-hour production-scale outage drill is permanently waived by the owner (waived, not passed), so no "production scale" for it needs to be defined; N3.6 closes on short automated tests. These figures are not evidence for the outage criteria. See the roadmap's N3.6 entry ("Rev 11 closure").
+The figures above are single-organization measurements on a laptop (Apple M4, 16 GB), not measurements of the production host (t3.medium, 2 vCPU, 3.7 GiB, per the owner-reported ledger A-10) and not a multi-tenant outage run. The N3.6 two-hour production-scale outage drill is permanently waived by the owner (waived, not passed); N3.6 closed on short automated tests. These figures are not evidence for the outage criteria. See the roadmap, section 8 ("N3.6").

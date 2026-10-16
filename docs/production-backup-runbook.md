@@ -41,7 +41,7 @@ docker compose -f docker-compose.yml --env-file .env exec -T postgres sh -c 'psq
 
 ## 2. Take the backup
 
-Change the `pre-n3` label to describe what the backup is for. The command runs inside `( ... )` on purpose: a bare `umask 077` would stay active in your shell, and a later `git pull`/merge in the same shell would write source files as 0600, which the worker image cannot read (2026-10-10 incident, `docs/custom-beta-deployment.md`).
+Change the `pre-n3` label to describe what the backup is for. The command runs inside `( ... )` on purpose: a bare `umask 077` would stay active in your shell, and a later `git pull`/merge in the same shell would write source files as 0600, which the worker image cannot read (this caused a production file-permission incident on 2026-10-10).
 
 ```bash
 ( umask 077 && mkdir -p backups && chmod 700 backups && STAMP=$(date -u +%Y%m%dT%H%M%SZ) && docker compose -f docker-compose.yml --env-file .env exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d elapsed_db --format=custom --no-owner' < /dev/null > "backups/pre-n3-elapsed_db-$STAMP.dump" && echo "backups/pre-n3-elapsed_db-$STAMP.dump" )
