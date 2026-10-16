@@ -2208,11 +2208,15 @@ dc ps -a --format 'table {{.Service}}\t{{.Status}}'
 
 ```text
 RESULT
-Status:      [ ] DONE   [ ] FAILED   [ ] NOT DONE (gate)
-Run by/date:
-Where:
-Evidence:    PR=   HEAD=   migrate log=   C-12 rerun=
-Deviations:
+Status:      [x] DONE (the migration; see Deviations for two findings that are not caused by it)   [ ] FAILED   [ ] NOT DONE (gate)
+Run by/date: Claude Code on the owner's instruction (release approved 2026-10-16); host steps 2026-10-16 15:19-15:27 UTC
+Where:       host, ~/elapsed, production (agent SSH)
+Evidence:    PR=#63 (verify check passed, merged by the owner, merge 6dba922)   HEAD=6dba92227ae4da70df09a6b93ce79862d5092849 (host fast-forwarded from 9947720)
+             prechecks (read-only): unhealable_cases=0, failed_migrations=0; the host already had N10-F1 applied (flag column absent, 69 migrations), so only N2.10 remained
+             backup: backups/pre-contract-elapsed_db-20261016T152351Z.dump, 703,090 bytes, TABLE DATA 44 = 44 live tables, taken after web and worker were stopped; copied off the host (~/elapsed-validation/replay/); restored into elapsed_db_restore_check and compared: cases 24, raw_events 748, normalized_events 153, customers 5, customer_identities 5, migrations 69, organizations 1, identical to live; check database dropped
+             migrate log= exit 0; applied exactly 20261001110000_contract_customer_identity_and_case_source
+             C-12 rerun (read-only, after start): applied=70, newest=20261001110000_contract_customer_identity_and_case_source, 0 failed or unfinished; customers has 0 of the 3 legacy columns; organizations has no customProviderEnabled; cases.sourceIntegrationId NOT NULL; cases_organizationId_externalId_key gone; counts unchanged (24 / 748 / 153 / 5 / 5 / 1); availability rows as before (6); integrations jira connected, intercom connected; web /api/health ok (database ok) through nginx; /, /sign-in 200; web x1 and worker x3 healthy; Intercom syncs ok after the restart
+Deviations:  (1) After the restart nginx still pointed at the old web container address (502 through nginx while web itself was healthy at its new address); fixed with `nginx -s reload` (config test ok). A web recreate needs that reload. (2) The Jira integration fails every sync with IntegrationConfigUnreadableError ("Integration configuration is unavailable. Please re-enter the configuration."), so the workers report `degraded` (failing=1, 1 of 2 integrations). It is not caused by this release: Jira has had 1,292 failed syncs and 0 ok syncs since 2026-10-14 22:15 UTC, before the host's last .env change (2026-10-16 04:42 UTC) and before the migration. Observation only, not investigated or changed: `.env` defines INTEGRATION_CONFIG_ENCRYPTION_KEY twice with different values. Nothing was changed in `.env` by this run. **Jira issue closed 2026-10-16 as resolved by the owner, on the owner's confirmation that it is fixed; not independently verified (the host was not re-read after the owner's fix).** (3) No post-deploy replay was run (OD-11).
 ```
 
 ### C-17 — N4.7 plan-record counts after your data entry (WITHDRAWN 2026-10-12)
