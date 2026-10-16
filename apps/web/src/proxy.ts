@@ -28,6 +28,9 @@ const PUBLIC_PAGE_PATHS = [
   "/verify-email",
   "/terms",
   "/privacy",
+  // Connect links (N5.3, D26): the tracker admin has no Elapsed account; the
+  // token in the URL is the credential (`/connect/<token>`, `/connect/done`).
+  "/connect",
 ];
 const AUTH_PAGE_PATHS = ["/sign-in", "/sign-up"];
 
@@ -59,6 +62,18 @@ const PUBLIC_API_PATHS = [
   "/api/password-reset",
   "/api/email-verification",
   "/api/health",
+];
+
+/**
+ * The exact sessionless entry points of the Jira/Linear connect-link flow
+ * (N5.3, D26). Each handler authenticates itself (token, signed state and
+ * cookie, availability, one-time consumption). Deliberately not prefixes:
+ * `/api/integrations/connect-links` itself (link creation) stays owner-only,
+ * and so does every other provider callback.
+ */
+const CONNECT_LINK_API_PATTERNS: RegExp[] = [
+  /^\/api\/integrations\/connect-links\/[^/]+\/start$/,
+  /^\/api\/integrations\/(?:jira|linear)\/callback$/,
 ];
 
 function matchesPath(pathname: string, paths: string[]): boolean {
@@ -231,6 +246,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     matchesPath(pathname, PUBLIC_API_PATHS) ||
+    CONNECT_LINK_API_PATTERNS.some((pattern) => pattern.test(pathname)) ||
     matchesPath(pathname, PUBLIC_PAGE_PATHS)
   ) {
     return NextResponse.next();
