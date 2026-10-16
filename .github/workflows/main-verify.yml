@@ -1,0 +1,52 @@
+name: Main PR verification
+
+# Owner Decision 9 (ledger OD-04): a pull request into `main` is verified by
+# type-check and build only. The test suite stays on `testing` (ci.yml) and
+# is not run here, as CLAUDE.md requires.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: main-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Build-time only — nothing connects to these; same placeholders as ci.yml.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+      NEXTAUTH_SECRET: "ci-nextauth-secret"
+      NEXTAUTH_URL: "http://localhost:3000"
+      INTEGRATION_CONFIG_ENCRYPTION_KEY: "ci-integration-config-encryption-key"
+      SMTP_ENCRYPTION_KEY: "ci-smtp-encryption-key"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @sla/db generate
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Build web app
+        run: pnpm web:build
+
+      - name: Build worker app
+        run: pnpm worker:build
