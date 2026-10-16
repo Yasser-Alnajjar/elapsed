@@ -346,6 +346,7 @@ git, a chat, or a shared drive), or when someone with access leaves.
 | Date | Reason | Scope | Method |
 | --- | --- | --- | --- |
 | 2026-09-19 | `.env.prod` was tracked in git from `1ec4936` (2026-09-14) to `23c06cb` (2026-09-17); every value in that history must be treated as leaked (roadmap step 0.4). | `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY` | `scripts/rotate-secrets.sh --apply-to-db .env.prod` |
+| 2026-10-16 | Values printed by a traced (`bash -x`) run of `scripts/prod/h10-verify.sh` (H-10). | `POSTGRES_PASSWORD` (+ `DATABASE_URL`), `NEXTAUTH_SECRET`. Encryption keys not rotated (owner decision, H-10 option A). | Owner on the host: `ALTER ROLE` and `.env` edit; `web`/`worker` recreated 04:38 UTC. Verified by `h10-verify.sh` 04:40 UTC (C-15). |
 
 ```bash
 scripts/backup.sh

@@ -229,7 +229,9 @@ describe.skipIf(!TEST_DATABASE_URL)("Custom REST lifecycle (real Postgres)", () 
     expect(after).toMatchObject({ status: "disconnected", activeConfigVersion: null, credentials: null, slaSupport: null });
     // The Integration row survives (its raw events would cascade), and so does everything stored.
     expect(await business(integrationId)).toEqual(before);
-    expect(await prisma.case.count({ where: { organizationId, sourceIntegrationId: null } })).toBe(0);
+    // Raw SQL so this compiles both before N2.10 (nullable source) and after it (NOT NULL).
+    const [sourceless] = await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "cases" WHERE "organizationId" = ${organizationId} AND "sourceIntegrationId" IS NULL`;
+    expect(Number(sourceless!.n)).toBe(0);
     expect({ cases: await prisma.case.count(), raw: await prisma.rawEvent.count(), events: await prisma.normalizedEvent.count(), commitments: await prisma.commitment.count(), orgs: await prisma.organization.count() }).toEqual(totals);
     // Other integrations and organizations: configuration, drafts and data untouched.
     expect(await business(otherIntegrationId)).toEqual(otherBefore);

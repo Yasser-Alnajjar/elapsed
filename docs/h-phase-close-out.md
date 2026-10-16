@@ -1,6 +1,6 @@
 # Production Hygiene close-out (H-1 to H-12)
 
-> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12, and (2026-10-05) H-2, since D14 is decided. **Still open, and none of them gates an N-phase:** ~~H-6 (Sentry credentials)~~ (**closed 2026-10-16: Sentry removed from the project**), H-8 (blocked upstream), ~~H-9 (Zendesk sandbox walkthrough)~~ (**H-9 closed 2026-10-12 on the owner's confirmation, see the Rev 16 note below**), H-10 (host verification and third-party rotation).
+> **Summary (2026-09-30).** **H-1 and H-4, the two entry conditions for N1, are CLOSED** by owner decision, each with an accepted limitation recorded below (H-1: the host's data is mostly test fixtures, the real customers were not verified; H-4: one tenant, the dev sandbox, not two live tenants). **N1 is unblocked.** Closed or accepted: H-1, H-3, H-4, H-5, H-7, H-11, H-12, and (2026-10-05) H-2, since D14 is decided. **Still open, and none of them gates an N-phase:** ~~H-6 (Sentry credentials)~~ (**closed 2026-10-16: Sentry removed from the project**), H-8 (blocked upstream), ~~H-9 (Zendesk sandbox walkthrough)~~ (**H-9 closed 2026-10-12 on the owner's confirmation, see the Rev 16 note below**), ~~H-10 (host verification and third-party rotation)~~ (**H-10 closed 2026-10-16**).
 
 > **Rev 7 (2026-10-05).** A local pass closed everything the repository and a local stack can prove (see the roadmap changelog). What is left is in [Remaining owner actions](#remaining-owner-actions-rev-7-2026-10-05): production deployment, secrets and third-party accounts, real sandbox walkthroughs, and owner data entry. No H item changed state in this pass: H-6, H-9, H-10 and H-13 stay open, each on the exact blocker named there.
 
@@ -21,7 +21,7 @@
 | H-7 | `perf:baseline` re-run and capacity limits | **Done** in the roadmap's terms (measured; dev hardware, stated as such) | [`capacity-limits.md`](capacity-limits.md) |
 | H-8 | Lint step | **Blocked upstream**; a workaround needs your decision | [H-8](#h-8--lint-step) |
 | H-9 | Live onboarding walkthrough | **CLOSED 2026-10-12 on the owner's confirmation** (Zendesk, Intercom and Linear live walkthroughs already completed; **not independently recorded**: no dates, pairs, timings or counts were kept) | [H-9 record](#h-9--live-onboarding-walkthrough) |
-| H-10 | Launch-Gate security items on production | **BLOCKED (2026-10-16)**: script corrected and tested; needs one host run, the step 1 rotation, two owner decisions and the provider-side SMTP revocation | [H-10 procedure](#h-10--production-security-verification) |
+| H-10 | Launch-Gate security items on production | **CLOSED 2026-10-16** | [H-10 procedure](#h-10--production-security-verification) |
 | H-11 | First Response start actor | **CLOSED 2026-09-29.** Code fixed; production repair applied and verified (7 false commitments deleted, 0 notifications sent, ticket 1 recreated) | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
 | H-12 | Pending pause decision (D30) | **Done** (already checked). Customer notice before deploy | [Deploy-time steps](#deploy-time-steps-from-h-11-and-h-12) |
 
@@ -40,7 +40,7 @@ Nothing below is a code task. Each row says what blocks it and exactly what to d
 | **N5.8 / H-9** | ~~external accounts~~ **closed 2026-10-12** | **Closed on the owner's explicit confirmation, not on independently recorded evidence.** The owner states the live walkthroughs for Zendesk, Intercom and Linear were completed, several times, before this date. No per-run record exists (dates, pairs, minutes to first monitored case, hesitations, errors, counts are not recorded and none are inferred); nothing is asked of the owner and nothing was re-run. _Original row (historical):_ needed a Zendesk sandbox login and an Intercom and a Linear sandbox workspace with an OAuth app each; repeat the [H-9 checklist](#h-9--live-onboarding-walkthrough) per pair (Zendesk + Jira, Zendesk + Linear, Intercom + Jira, Intercom + Linear). The local stack, onboarding tests (`onboarding-flow`, `onboarding-status-matrix`, `onboarding-intercom`) and the stubbed browser walk-through of N1.16 pass and are independently recorded; they are not the live evidence. |
 | **N1.13** | ~~external accounts~~ **closed 2026-10-12** | **Closed on the owner's explicit confirmation, not on independently recorded evidence.** Jira side captured live (2026-10-05, independently recorded): Intercom's Jira integration writes no remote link; the link is the ticket's `jira_issue_key` attribute, correlated by `correlateIntercomJiraKeys` onto the conversations that list the tracker. Intercom → Linear: the owner confirms the live Intercom link capture was already completed; the repository holds no record of its date, the captured shape or the redacted URL, and none is invented. `recognizeIntercomConversationUrl` and its tests are unchanged, so it still accepts only the URL shape this repo builds (no fixture was added). The L2 half is recorded: 0 differences over 7,413 records (2026-10-01 EC2; 2026-10-10 ledger C-06). |
 | ~~**H-6**~~ | — | Closed 2026-10-16: Sentry removed from the project; nothing to supply. |
-| **H-10** | secret / access | The six actions in [Remaining actions to close H-10](#remaining-actions-to-close-h-10): one run of `scripts/prod/h10-verify.sh` on the host, the database-password/session-secret rotation, the encryption-key decision, the ops SMTP password at its provider, OD-07, OD-12. I do not rotate secrets. The code side is done ([H-10 code audit](#h-10-code-audit-mutation-routes-and-tenant-isolation)). |
+| ~~**H-10**~~ | – | **Closed 2026-10-16** ([closure record](#h-10-closure-record)). The code side is done ([H-10 code audit](#h-10-code-audit-mutation-routes-and-tenant-isolation)). |
 | **D27 confirmation** | owner decision | One owner confirmation is pending: whether D27's "new cases" means manually created cases only, since provider-ingested cases are never blocked. Unchanged by this pass. |
 
 Not owner actions, deliberately not started: **N6.5** (payment provider; needs an explicit go-ahead and a chosen production provider), **N7** (Zoho Desk, on a go-ahead), **N8** (on its triggers), **H-8** (blocked upstream).
@@ -150,7 +150,7 @@ Then, with a timer, as a first-time user and without help: sign up with a **new 
 
 **Acceptance (roadmap):** confirm and record: leaked secrets rotated; no development services in production; authorization audit current; tenant isolation covers every model.
 
-**Status (2026-10-16): BLOCKED.** The code half is done (next section). The production half needs one host run of the script below and the owner actions listed after it; nothing else.
+**Status: CLOSED 2026-10-16.** Host verification `38 PASS, 0 FAIL, 1 MANUAL` (04:40 UTC); the MANUAL line (encryption keys) and OD-12 are decided below.
 
 ### The one verification command
 
@@ -168,24 +168,32 @@ It uses the host's env file (`.env.prod` if present, else `.env`; on the host it
 | 2 | `NEXTAUTH_SECRET` and the three encryption keys are set and pairwise distinct; `DATABASE_URL` carries `POSTGRES_PASSWORD`. |
 | 3 | In the database named by `DATABASE_URL` (`elapsed_db` on the host; **not** `POSTGRES_DB`, which names an empty database there and made the old check pass vacuously): migrations are applied, the 5 credential columns exist with the types in `schema.prisma`, and 0 values are stored outside their ciphertext format: `integrations.credentials` `accessToken`/`refreshToken` (`enc:v1:`), the custom source's `credentials.secrets` and `custom_provider_drafts.secrets` (`enc:v1:`), `slack_integrations.accessToken` (`enc:v1:`, written encrypted by the Slack callback and `pnpm db:encrypt-tokens`), `integration_configs.clientSecret` and `organization_email_settings.password` (unprefixed AES-GCM). Credentials JSON with any other shape is a FAIL. |
 | 4 | Only `postgres`, `web`, `worker`, `nginx` containers run; only nginx publishes a host port; `web` and `worker` run `NODE_ENV=production`; no listener on 5432/3000/3001/5555/9229/1025/8025; no seed data (`seed-org-*`, `Perf Baseline*` organizations, `*.elapsed-seed.test` users, `perf-*` cases). |
-| 5 | One `MANUAL` line for the credentials exposed by the traced run (below). |
+| 5 | The running `web` and every `worker` container use the env file's `DATABASE_URL` (and `web` its `NEXTAUTH_SECRET`), compared as hashes; `web` `/api/health` reports the database ok and every worker `/health` answers 200 (both query the database); the retired `OPS_ALERT_SMTP_PASSWORD` is in no container; the database accepts `POSTGRES_PASSWORD` over password-authenticated TCP, and a deliberately wrong password is refused there, so the login check cannot pass on trust auth. |
+| 6 | One `MANUAL` line: the encryption-key decision. |
 
 The script was tested on 2026-10-16 against a scratch PostgreSQL with all 69 migrations applied, laid out like the host (data in `elapsed_db`, empty `POSTGRES_DB`): plaintext tokens, a plaintext custom secret, a plaintext Slack token, an unknown credentials shape, seed rows and a leaked value planted under another name each produced `FAIL`; a missing column, an unreachable database, a timeout and a write attempt (refused by the read-only session) each produced `FAIL ... not verified` or an error, never `PASS`. **Host run, 2026-10-16 04:01 UTC (owner, streamed from a workstation, host HEAD `cb6ac19`, env `.env`):** sections 1 to 4 ran. Section 1: every leaked secret differs, including under other names (the 2026-10-10 `DEPLOYMENT_SMTP_PASSWORD` reuse is gone); one MANUAL line, the provider-side confirmation for the old `OPS_ALERT_SMTP_PASSWORD`. Section 2: all PASS. Section 3 (database `elapsed_db`, 69 migrations): 0 of 3 integration tokens, 0 of 1 Slack bot token, 0 of 3 OAuth client secrets and 0 of 1 SMTP password stored outside ciphertext; no custom secrets; no unknown credential shapes. Section 4: only postgres, web, worker and nginx run; only nginx publishes ports; web `NODE_ENV=production`; 0 seed rows out of 26 checked (1 organization); **FAIL: worker `NODE_ENV` unset.** The output stopped there: when the script is streamed, `docker compose exec` read the rest of it from the shared stdin, so the host listener check, section 5 and the summary never ran. Fixed the same day (every docker call now gets its own stdin).
 
 **Full host run, 2026-10-16 04:04 UTC (corrected script, same host and env):** `Summary: 25 PASS, 1 FAIL, 2 MANUAL`. Same results as above, plus: no host listener on 5432/3000/3001/5555/9229/1025/8025. The only FAIL is worker `NODE_ENV`; the two MANUAL lines are the ops SMTP provider confirmation (action 4) and the traced-run rotation and key decision (actions 2 and 3).
 
-The worker FAIL is real: `apps/worker/Dockerfile` never set `NODE_ENV` (no worker code reads it, so this changed no behaviour). Fixed in the Dockerfile on 2026-10-16. It takes effect only when the worker image is rebuilt, so it ships with the C-16 release (no other deploy of `main` before it).
+The worker FAIL was real: `apps/worker/Dockerfile` never set `NODE_ENV` (no worker code reads it, so this changed no behaviour). Fixed in the Dockerfile on 2026-10-16.
+
+**Rotation and recovery, 2026-10-16 (measured on the host):**
+
+- 04:17 UTC run (section 5 added): the database accepted the new `POSTGRES_PASSWORD`, but `DATABASE_URL` in `.env` still carried the old password and `web`/`worker` had not been recreated (running since 2026-10-11, old `NEXTAUTH_SECRET`). **Production was down:** `/api/health` through nginx answered 503, `web` was unhealthy with 24 authentication failures in its log, and the worker containers were not running. This also proves the old database password no longer works.
+- The owner corrected `DATABASE_URL` on the host. `web` and the three `worker` replicas started at 04:38 UTC.
+- **04:40 UTC run: `38 PASS, 0 FAIL, 1 MANUAL`.** Sections 1 to 4 unchanged (no leaked value in use under any name; every stored credential is ciphertext; production services only; no dev listeners; 0 seed rows), now including **worker `NODE_ENV=production`**. Section 5: `web` and all three workers use the env file's `DATABASE_URL`, `web` uses its `NEXTAUTH_SECRET`, `web` `/api/health` reports the database ok, every worker `/health` answers 200, the database accepts `POSTGRES_PASSWORD` and refuses a wrong one, and `OPS_ALERT_SMTP_PASSWORD` is in no container. Afterwards: nginx `/api/health` 200, all containers healthy, 0 authentication failures since the restart, no `.env.bak*` file left on the host.
+- **Deviation recorded, not resolved here:** the worker `NODE_ENV` check passes because the `web` and `worker` images were **rebuilt from the host checkout of `main` (`9947720`) at 04:20 to 04:24 UTC** and `migrate` ran (it applied nothing: the newest migration is still the 2026-10-11 one). It does not change any H-10 result.
 
 ### Exposed credentials and the rotation plan
 
 Two separate exposures:
 
-1. **Public git history (since 2026-09-14; the repository is public).** The values in `1ec4936`, `c3393fa`, `af08635` are public. The 2026-09-19 rotation covered `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY`; section 1 re-checks that on the host. The leaked `OPS_ALERT_SMTP_PASSWORD` was found still in use as `DEPLOYMENT_SMTP_PASSWORD` on 2026-10-10 (C-15); **only the mail provider can revoke it** (D-05). `SENTRY_DSN` is out of scope by owner decision (BL-08). `INTEGRATION_TOKEN_ENCRYPTION_KEY` was never in the leaked file.
-2. **The earlier traced (`bash -x`) run of this script.** xtrace prints every variable assignment, so the current values of `POSTGRES_PASSWORD`, `DATABASE_URL`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY` and `INTEGRATION_TOKEN_ENCRYPTION_KEY` (and any leaked values compared) are treated as exposed. Delete the terminal log or transcript that holds that output. The script now refuses to run under xtrace.
+1. **Public git history (since 2026-09-14; the repository is public).** The values in `1ec4936`, `c3393fa`, `af08635` are public. The 2026-09-19 rotation covered `POSTGRES_PASSWORD`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY`; section 1 confirms on the host that none of them, nor any other current secret, equals a leaked value. **`OPS_ALERT_SMTP_PASSWORD` is retired:** the duplicate SMTP configuration was consolidated into `DEPLOYMENT_SMTP_HOST/PORT/SECURITY/USER/PASSWORD/FROM` and `OPS_ALERT_EMAIL`; the variable is absent from `.env`, from the Compose environment and from every running container (owner check and section 5), and the leaked value is not reused under any name (section 1; the 2026-10-10 reuse as `DEPLOYMENT_SMTP_PASSWORD` is gone). Provider-side revocation of the old password was not verified and is not required while nothing shows it is still an active credential (D-05). `SENTRY_DSN` is out of scope by owner decision (BL-08). `INTEGRATION_TOKEN_ENCRYPTION_KEY` was never in the leaked file.
+2. **The earlier traced (`bash -x`) run of this script.** xtrace prints every variable assignment, so the then-current values of `POSTGRES_PASSWORD`, `DATABASE_URL`, `NEXTAUTH_SECRET`, `INTEGRATION_CONFIG_ENCRYPTION_KEY`, `SMTP_ENCRYPTION_KEY` and `INTEGRATION_TOKEN_ENCRYPTION_KEY` are treated as exposed. **Rotated 2026-10-16:** `POSTGRES_PASSWORD`/`DATABASE_URL` (the old password is refused, see the 04:17 run) and `NEXTAUTH_SECRET` (differs from the value `web` ran with from 2026-10-11 until 04:38 UTC). **Not rotated:** the three encryption keys (step 2, option A). Delete the terminal log or transcript that holds the traced output. The script now refuses to run under xtrace.
 
 **Do not run `scripts/rotate-secrets.sh` for this.** It rotates all three encryption keys at once, which makes every stored integration token, OAuth client secret, SMTP password and custom-source credential unreadable (every tenant must reconnect), and its default compose file (`docker-compose.prod.yml`) no longer exists.
 
-**Step 1 — database password and session secret (safe; one restart; owner runs on the host).** No data changes; no value is printed (tested on a sample env file 2026-10-16). Signs every user out once. Do not run it under `set -x`.
+**Step 1 — database password and session secret. Done 2026-10-16** (see the rotation and recovery record above; kept for future rotations). **Owner runs on the host; one restart.** No data changes; no value is printed (tested on a sample env file 2026-10-16). Signs every user out once. Do not run it under `set -x`.
 
 ```bash
 cd ~/elapsed && umask 077 && cp .env .env.bak-$(date -u +%F)
@@ -199,26 +207,24 @@ unset NEW_PG NEW_NA APP_ROLE
 
 `--no-deps --no-build` recreates only `web` and `worker` with the images already deployed: no rebuild, no `migrate` run, so this is not a deploy of `main` (C-16 stays the next deploy). Check A-05 health, then re-run the verification command. If `ALTER ROLE` fails, `.env` is left unchanged. Roll back with `.env.bak-*` plus `ALTER ROLE` to the old password if `web` cannot connect; once healthy, delete `.env.bak-*` (it holds the exposed values).
 
-**Step 2 — the three encryption keys (owner decision; do not rotate blindly).** The app has no re-encryption path yet: integration tokens and custom secrets use `INTEGRATION_TOKEN_ENCRYPTION_KEY`, OAuth client secrets `INTEGRATION_CONFIG_ENCRYPTION_KEY`, organization SMTP passwords `SMTP_ENCRYPTION_KEY`; a new key makes the old ciphertext unreadable (N8-S7). An attacker needs both a key and the database ciphertext; step 1 removes the exposed database password, and PostgreSQL publishes no host port. Choose one:
+**Step 2 — the three encryption keys. Decided 2026-10-16: option A** (not rotated; residual risk accepted). The app has no re-encryption path yet: integration tokens and custom secrets use `INTEGRATION_TOKEN_ENCRYPTION_KEY`, OAuth client secrets `INTEGRATION_CONFIG_ENCRYPTION_KEY`, organization SMTP passwords `SMTP_ENCRYPTION_KEY`; a new key makes the old ciphertext unreadable (N8-S7). An attacker needs both a key and the database ciphertext; step 1 removes the exposed database password, and PostgreSQL publishes no host port. Choose one:
 
-- **A (recommended now):** accept the residual risk until a re-encryption tool exists, record the decision and date in the roadmap, and keep backups access-restricted;
+- **A (chosen 2026-10-16):** accept the residual risk until a re-encryption tool exists, record the decision and date in the roadmap, and keep backups access-restricted;
 - **B:** build a dual-key re-encrypt command (decrypt with old, encrypt with new, read-only dry run first), then rotate all three keys without tenant impact;
 - **C:** rotate now and have every organization reconnect its integrations and re-enter SMTP and custom credentials.
 
-**Step 3 — provider-side (owner only):** change the ops/deployment SMTP password (or revoke the app password) at the mail provider, put the new value in `DEPLOYMENT_SMTP_PASSWORD`, restart as in step 1 (D-05).
+**Step 3 — record:** add one row per rotation to the rotation log in `docs/deployment.md` (date, reason, scope, method; no values), and the script output to C-15.
 
-**Step 4 — record:** add one row per rotation to the rotation log in `docs/deployment.md` (date, reason, scope, method; no values), and the script output to C-15.
-
-### Remaining actions to close H-10
+### H-10 closure record
 
 | # | Action | Who | Evidence that closes it |
 | --- | --- | --- | --- |
-| 1 | Re-run the verification command on the host after the C-16 release; the 2026-10-16 04:04 run had one FAIL (worker `NODE_ENV`, whose fix needs the rebuilt image) | owner | output with `0 FAIL` attached to C-15 |
-| 2 | Step 1 rotation (database password, `NEXTAUTH_SECRET`) after the traced-run exposure | owner, on the host | rotation-log row; section 1/2 still PASS; A-05 healthy |
-| 3 | Encryption-key decision (A, B or C above) | owner decision | decision recorded in roadmap H-10 |
-| 4 | Revoke/replace the leaked ops SMTP password at the provider (D-05) | owner, provider console | provider change date; section 1 shows no reuse |
+| 1 | ~~Host verification with no FAIL~~ **Done 2026-10-16 04:40 UTC:** `38 PASS, 0 FAIL, 1 MANUAL` (C-15) | – | C-15 re-run |
+| 2 | ~~Step 1 rotation (database password, `NEXTAUTH_SECRET`)~~ **Done 2026-10-16:** verified by section 5 and the refused old password; rotation-log row added | – | C-15 re-run; `deployment.md` rotation log |
+| 3 | ~~Encryption-key decision~~ **Decided 2026-10-16: option A**, keys not rotated | – | roadmap H-10 |
+| 4 | ~~Leaked ops SMTP password at the provider (D-05)~~ **Retired 2026-10-16:** `OPS_ALERT_SMTP_PASSWORD` removed in the SMTP consolidation, absent from `.env`, Compose and all containers, not reused under any name; provider-side revocation not verified, not required | – | sections 1 and 5; D-05 |
 | 5 | ~~Seed-fixture organizations in production (OD-07)~~ **Done for H-10 (2026-10-16):** the host run found 0 seed rows out of 26 checked and 1 organization | – | host run, section 4 |
-| 6 | Re-audit scope for the 28 routes added since the 71-route audit (OD-12) | owner decision | decision recorded; re-audit done if required |
+| 6 | ~~Re-audit scope for the 28 routes added since the 71-route audit (OD-12)~~ **Decided 2026-10-16:** no re-audit; the 2026-09-29 audit and `tenant-scope-classification.test.ts` stand as the current authorization audit | – | OD-12 |
 
 ## H-10 code audit: mutation routes and tenant isolation
 
@@ -259,7 +265,7 @@ reads (members, pending invitations, import review, integrations with Slack and 
 
 **Not audited:** business logic of the pipelines (not request-driven), the marketing pages, `apps/concierge`, and rate limiting (in-memory, per instance, N8-S5).
 
-**H-10 is still not tickable, and only the production half remains**: see [Remaining actions to close H-10](#remaining-actions-to-close-h-10). The two code-side items in the roadmap wording, "authorization audit current" and "tenant isolation covers every model", are satisfied by this section and the tests, F-D and F-G are fixed. Remaining code-side findings are informational only (F-E, F-H, F-I). Not addressed, on purpose: SMTP port allow-listing (a public host on an odd port is not an internal-network risk) and a certificate pin for organization SMTP.
+**H-10 is closed (2026-10-16)**: see [H-10 closure record](#h-10-closure-record). The two code-side items in the roadmap wording, "authorization audit current" and "tenant isolation covers every model", are satisfied by this section and the tests, F-D and F-G are fixed. Remaining code-side findings are informational only (F-E, F-H, F-I). Not addressed, on purpose: SMTP port allow-listing (a public host on an odd port is not an internal-network risk) and a certificate pin for organization SMTP.
 
 ## H-2 — D14 (closed)
 

@@ -329,8 +329,19 @@ describe.skipIf(!TEST_DATABASE_URL)("integration disconnect visibility (real Pos
       expect(claimsAfter.claimed).toHaveLength(1);
     });
 
-    it("keeps a case with no recorded source integration visible", async () => {
-      await prisma.case.update({ where: { id: a.caseId }, data: { sourceIntegrationId: null } });
+    // Raw SQL, not the typed client, so this compiles against both schemas: before
+    // N2.10 a pre-N1.15 case may have no source integration and must stay visible;
+    // after N2.10 (`sourceIntegrationId` NOT NULL) such a case cannot exist.
+    it("keeps a case with no recorded source integration visible, or refuses one once N2.10 is applied", async () => {
+      const [column] = await prisma.$queryRaw<{ nullable: boolean }[]>`
+        SELECT is_nullable = 'YES' AS nullable FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'cases' AND column_name = 'sourceIntegrationId'`;
+      const clearSource = () => prisma.$executeRaw`UPDATE "cases" SET "sourceIntegrationId" = NULL WHERE "id" = ${a.caseId}`;
+      if (!column!.nullable) {
+        await expect(clearSource()).rejects.toThrow();
+        return;
+      }
+      await clearSource();
       await disconnect(a.zendeskId);
       const list = await lib.getCaseListData(prisma, a.organizationId, {}, NOW);
       expect(list.cases.map((c) => c.caseId)).toEqual([a.caseId]);

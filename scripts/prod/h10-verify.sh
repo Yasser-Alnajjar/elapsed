@@ -19,7 +19,7 @@
 #
 # A check that could not run (no docker, query error, timeout, unexpected
 # schema) is a FAIL ("not verified"), never a PASS. MANUAL is only used for
-# what a script cannot observe: provider-side revocation and owner decisions.
+# what a script cannot observe: owner decisions.
 set -u
 
 # xtrace would print every secret this script reads (it happened once; see
@@ -83,7 +83,7 @@ else
     cur=$(val "$ENV_FILE" "$k")
     if [ -n "$cur" ] && printf '%s\n' "$leaked" | grep -qx "$(sha "$cur") $k"; then bad "$k still equals a value from the public git history; rotate it"
     elif [ -z "$cur" ] && [ "$k" = OPS_ALERT_SMTP_PASSWORD ]; then
-      manual "OPS_ALERT_SMTP_PASSWORD is no longer configured, but its old value is public: confirm the password was changed (or the app password revoked) at the mail provider, and give the date"
+      pass "OPS_ALERT_SMTP_PASSWORD is retired (SMTP consolidated into DEPLOYMENT_SMTP_*) and not in $ENV_FILE; running containers: section 5"
     elif [ -z "$cur" ]; then manual "$k is not set now; confirm its old value was revoked where it was issued"
     else pass "$k differs from every value in the git history"
     fi
@@ -273,8 +273,61 @@ else
   bad "not verified: ss is not available, host listeners not checked"
 fi
 
-echo "== 5. Owner actions a script cannot observe"
-manual "Credentials printed by the earlier traced (bash -x) run are exposed: POSTGRES_PASSWORD, DATABASE_URL, NEXTAUTH_SECRET and the three encryption keys. Confirm POSTGRES_PASSWORD/DATABASE_URL and NEXTAUTH_SECRET were rotated after that run (procedure: docs/h-phase-close-out.md, H-10 rotation plan), and record the owner decision on the encryption keys."
+echo "== 5. Running services use the env file's credentials and still work (hashes compared, nothing printed)"
+if [ "$db_ok" = 0 ]; then
+  bad "not verified: $db_why"
+else
+  want_db=$(sha "$(val "$ENV_FILE" DATABASE_URL)")
+  want_na=$(sha "$(val "$ENV_FILE" NEXTAUTH_SECRET)")
+  ops_hits=""
+  for svc in web worker; do
+    names=$(with_timeout docker ps --filter "label=com.docker.compose.service=$svc" --format '{{.Names}}' </dev/null 2>/dev/null)
+    if [ -z "$names" ]; then bad "not verified: no running $svc container"; continue; fi
+    for n in $names; do
+      if ! env_out=$(with_timeout docker exec "$n" printenv </dev/null 2>/dev/null); then bad "not verified: cannot read the $n environment"; continue; fi
+      got=$(printf '%s\n' "$env_out" | sed -n 's/^DATABASE_URL=//p' | tail -1)
+      if [ -n "$got" ] && [ "$(sha "$got")" = "$want_db" ]; then pass "$n DATABASE_URL matches $ENV_FILE"
+      else bad "$n DATABASE_URL differs from $ENV_FILE (container not recreated since the change?)"
+      fi
+      if [ "$svc" = web ]; then
+        got=$(printf '%s\n' "$env_out" | sed -n 's/^NEXTAUTH_SECRET=//p' | tail -1)
+        if [ -n "$got" ] && [ "$(sha "$got")" = "$want_na" ]; then pass "$n NEXTAUTH_SECRET matches $ENV_FILE"
+        else bad "$n NEXTAUTH_SECRET differs from $ENV_FILE (container not recreated since the change?)"
+        fi
+        # /api/health runs SELECT 1 through the app's own DATABASE_URL.
+        if with_timeout docker exec "$n" wget -qO- http://127.0.0.1:3000/api/health </dev/null 2>/dev/null | grep -q '"database":"ok"'; then pass "$n /api/health: database ok"
+        else bad "$n /api/health does not report database ok"
+        fi
+      else
+        # The worker's /health reads the database and answers 503 when it cannot.
+        if with_timeout docker exec "$n" sh -c 'wget -qO- "http://127.0.0.1:${WORKER_HEALTH_PORT:-8081}/health"' </dev/null >/dev/null 2>&1; then pass "$n /health: 200 (database reachable)"
+        else bad "$n /health is not 200"
+        fi
+      fi
+      printf '%s\n' "$env_out" | grep -q '^OPS_ALERT_SMTP_PASSWORD=' && ops_hits="$ops_hits $n"
+      info "$n started $(with_timeout docker inspect --format '{{.State.StartedAt}}' "$n" </dev/null 2>/dev/null | cut -c1-16)Z"
+    done
+  done
+  unset env_out got want_db want_na
+  if [ -n "$ops_hits" ]; then bad "retired OPS_ALERT_SMTP_PASSWORD still set in:$ops_hits"
+  else pass "retired OPS_ALERT_SMTP_PASSWORD is in no web or worker container"
+  fi
+  # The database accepts POSTGRES_PASSWORD over password-authenticated TCP. The image trusts
+  # loopback, so connect to the container's own network address, and prove a wrong password
+  # is refused there (otherwise a PASS would mean nothing). The password goes over stdin, not argv.
+  pg_login() {
+    printf '%s' "$1" | with_timeout "${dc[@]}" exec -T "$PG_SERVICE" sh -c \
+      'PGPASSWORD=$(cat) exec psql -X -q -tA -h "$(hostname -i | cut -d" " -f1)" -U "$1" -d "$2" -c "select 1"' \
+      sh "$app_role" "$app_db" 2>/dev/null | grep -qx 1
+  }
+  if pg_login "h10-deliberately-wrong-$(date +%s)"; then bad "not verified: the database accepted a wrong password over TCP (trust auth), so the login check proves nothing"
+  elif pg_login "$(val "$ENV_FILE" POSTGRES_PASSWORD)"; then pass "database accepts POSTGRES_PASSWORD for $app_role over password-authenticated TCP (a wrong password is refused)"
+  else bad "database refuses POSTGRES_PASSWORD for $app_role (ALTER ROLE not applied, or the env file is stale)"
+  fi
+fi
+
+echo "== 6. Owner decisions"
+info "Encryption keys: not rotated by owner decision (H-10, 2026-10-16, option A; docs/h-phase-close-out.md)"
 
 echo
 printf 'Summary: %d PASS, %d FAIL, %d MANUAL\n' "$n_pass" "$n_fail" "$n_manual"
