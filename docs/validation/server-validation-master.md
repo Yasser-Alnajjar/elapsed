@@ -281,7 +281,7 @@ These are not re-run. Each relies on the evidence cited in its source; a later r
 | D1–D33                                            | Decisions recorded; D27 has the open point OD-02                                                                                                                                                                                     |
 | Multi-worker leases (Appendix D invariant 11)     | Real-DB suites `work-loop.db`, `fenced-prisma.db`, `organization-work-state.db`; in production since `7cb2b9b` (contains `b354b07`). The `apps/worker/scripts/bench` soak results were never recorded, but no document requires them |
 
-Gated or not started, so **no validation is owed now**: N6.5 (needs a go-ahead and OD-03), N7 (Zoho Desk, go-ahead), N8-S1–S8 (triggers; C-15 collects the trigger measurements), N9.12-F1 (implementation work, not validation), N10-F1 (the contract migration is not written; after N10 is deployed, OD-05), the Launch Gate (superseded, kept unticked by rule), the pre-build outreach metrics (historical, removed in Rev 12).
+Gated or not started, so **no validation is owed now**: N6.5 (needs a go-ahead and OD-03), N7 (Zoho Desk, go-ahead), N8-S1–S8 (triggers; C-15 collects the trigger measurements), N9.12-F1 (implementation work, not validation; its verification record is still open, with what the record does and does not support, in the roadmap's gates table, 2026-10-16), N10-F1 (the contract migration is not written; after N10 is deployed, OD-05), the Launch Gate (superseded, kept unticked by rule), the pre-build outreach metrics (historical, removed in Rev 12).
 
 ---
 

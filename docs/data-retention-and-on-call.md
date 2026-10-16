@@ -177,9 +177,10 @@ Preconditions:
    database whose name contains "test", using the same commands with that
    database's `--database`. Record the duration and the report.
 4. The compose file and env file the host really uses. The repo documents
-   `docker compose -f docker-compose.yml --env-file .env.prod`; other docs
-   mention a `docker-compose.prod.yml` that is not in the repo (see "On-call
-   note").
+   `docker compose -f docker-compose.yml --env-file .env.prod`.
+   `docker-compose.prod.yml` no longer exists (see "On-call note"); never pass
+   it. The host's env file is `.env`
+   ([production-backup-runbook.md](production-backup-runbook.md)).
 5. `--database` must match the database in that env file's `DATABASE_URL`.
    For production this has been `elapsed_db`, not the compose default
    `POSTGRES_DB`. The script refuses any mismatch.
@@ -388,10 +389,18 @@ integrations `reauth_required` or `permission_denied`; did the last backup
 succeed. Recovery steps are in [deployment.md](deployment.md) (see "Common
 mistakes and quick recovery").
 
-**Documentation gap:** the restore and secret-rotation scripts refer to
-`docker-compose.prod.yml`. That file is not in the repository. The scripts
-fall back to `docker-compose.yml` when it is missing, so the production compose
-file has not been audited. It must be checked on the host.
+**Compose file name (corrected 2026-10-16):** `docker-compose.prod.yml` was
+removed from the repository on 2026-09-24 (commit `0097410c`); the production
+file is the root `docker-compose.yml`, which is also what the host uses
+according to the owner-recorded
+[production-backup-runbook.md](production-backup-runbook.md) (this was not
+re-observed on the host). Some scripts and source comments still name the old
+file: `scripts/restore.sh` and `scripts/restore-drill.sh` fall back to
+`docker-compose.yml` when it is missing, but `scripts/rotate-secrets.sh`
+defaults to the removed name, so pass `COMPOSE_FILE=docker-compose.yml`
+explicitly (and do not run it for the encryption keys, see
+[h-phase-close-out.md](h-phase-close-out.md)). The remaining references are
+listed in the roadmap's "Documentation drift" row.
 
 **Decision:** who is contacted, through which channel, and the response
 target. Whether `OPS_ALERT_*` is configured in production is **not verified**.
