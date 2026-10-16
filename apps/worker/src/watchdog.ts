@@ -1,6 +1,5 @@
 import { getOrCreateWorkerSettings, getWorkStateSummary, type PrismaClient } from "@sla/db";
 import { sendOpsAlert, type OpsAlertConfig } from "./ops-alert";
-import { captureMessage } from "./sentry";
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
 
@@ -60,7 +59,6 @@ export async function checkForStalledCycles(
         `${kind} is ${Math.round(lagMs / 1000)}s overdue for at least one organization — more than ` +
         `${STALL_MULTIPLIER - 1}x its configured ${Math.round(intervalMs / 1000)}-second interval ` +
         `(${summary.organizations} organizations, ${summary.leased} leased, ${summary.expiredLeases} with an expired lease).`;
-      captureMessage(`SLA worker stalled: ${kind}`, { kind, lagMs, intervalMs, level: "error" });
       console.error(JSON.stringify({ event: "cycle_stalled", kind, lagMs, intervalMs, ...summary }));
       await sendOpsAlert(opsAlertConfig, { subject: `SLA worker stalled: ${kind}`, message });
     } else if (!stalled && alreadyAlerted) {

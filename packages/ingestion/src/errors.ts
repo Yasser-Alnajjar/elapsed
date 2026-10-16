@@ -1,7 +1,7 @@
 /**
  * Error classes every provider adapter shares, so the worker catches three
  * base types instead of one class per provider. Provider packages keep their
- * own class names (Sentry grouping and log event names depend on them) and
+ * own class names (log event names and error reports depend on them) and
  * extend or carry the brand of these.
  */
 

@@ -4,7 +4,7 @@ export {
   CREDENTIALS_UNREADABLE_MESSAGE,
   REDACTED,
   clearRegisteredSecrets,
-  redactSentryEvent,
+  errorReportFields,
   redactString,
   redactValue,
   registerSecretValues,

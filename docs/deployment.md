@@ -57,7 +57,6 @@ hand.
 | `SMTP_ENCRYPTION_KEY` | web, worker | Encrypts each org's saved SMTP password at rest. Generate with `openssl rand -base64 32`, keep distinct from the other encryption keys so rotating one doesn't invalidate the others. |
 | `INTEGRATION_TOKEN_ENCRYPTION_KEY` | web, worker | Encrypts each connected integration's OAuth access/refresh tokens at rest. Generate with `openssl rand -base64 32`, keep distinct from the other encryption keys. Rotating it makes every connected integration's tokens unreadable — each organization must reconnect — and every Custom REST credential unreadable at once: owners must enter those again (no rotation tool exists yet, roadmap N8-S7). Existing plaintext rows from before this key was introduced are migrated with `pnpm db:encrypt-tokens`. |
 | `WORKER_ACTIVE_POLL_MS`, `WORKER_RECONCILIATION_MS` | web, worker | Optional; bootstrap defaults are 300000 (5 min) and 1800000 (30 min — also the maximum for reconciliation; a larger saved or env value is capped at 30 min), used only to seed the database on a fresh install. Once a platform operator changes either interval from the Monitoring settings page, the saved database value is authoritative and these env vars are no longer read. |
-| `SENTRY_DSN` | web, worker | Optional. Enables error tracking in both apps when set; omit it and the SDK stays disabled with no other effect. See [Health checks and observability](#health-checks-and-observability). |
 | `SMTP_ALLOW_PRIVATE_HOSTS` | web, worker | Optional. Set to `1` to let an **organization's** own SMTP settings (Settings → Notifications) point at a private, loopback or link-local address, for example a Mailpit container in local development or an intranet relay. Unset (the default) refuses those destinations on save, on Test Connection / Send Test Email and on every alert send. Deployment-wide SMTP and ops-alert SMTP are operator-configured and are not affected. |
 | `WORKER_HEALTH_PORT` | worker | Optional, defaults to `8081`. The port `GET /health` listens on inside the worker container. |
 | `WORKER_LOCK_RETRY_MS`, `WORKER_LOCK_PING_MS` | worker | Optional, default `15000` and `30000`. How often a worker retries the advisory lock that elects the stalled-work watchdog, and how often the holder checks its lock connection is still alive. Organization work itself is divided by per-organization leases, not by this lock; see [Running multiple workers](#running-multiple-workers). |
@@ -314,7 +313,7 @@ To go live in search: serve the app on its domain, set `NEXTAUTH_URL` to that or
   delivery (`X-Hub-Signature`, HMAC-SHA256 of the body). Nothing secret is
   in the URL. Webhooks set up before this step use a URL ending in
   `?secret=…`, which still works but ends up wherever request URLs are
-  logged. The app strips it from Sentry events. Your reverse proxy's
+  logged. The app's own structured logs redact it. Your reverse proxy's
   access log is yours to handle: either have those customers move the
   secret into the Secret field (the Jira settings card explains how), or
   don't log query strings for `/api/webhooks/jira/*`. In Caddy, the
@@ -367,7 +366,7 @@ restoring one also needs that old `.env.prod`.
 The script can't rotate third-party credentials. Revoke and replace these with
 their provider, then edit `.env.prod`: `DEPLOYMENT_SMTP_PASSWORD` (for Gmail,
 delete the app password in your Google account and create a new one),
-`OPS_ALERT_SLACK_WEBHOOK_URL`, and `SENTRY_DSN`.
+and `OPS_ALERT_SLACK_WEBHOOK_URL`.
 
 ## Running multiple workers
 
@@ -484,24 +483,13 @@ irreversible), so at most the provider call in flight at that moment completes.
   external monitor should poll it directly. Every worker answers for itself
   (there is no standby): `503 {"status":"starting"}` until its work loop is
   running and `503 {"status":"stalled"}` if that loop stops making progress.
-- **Error tracking**: set `SENTRY_DSN` to enable
-  [Sentry](https://sentry.io) (or any Sentry-protocol-compatible service)
-  in both apps — unhandled exceptions in either app, every per-integration
-  `Integration.lastSyncError` (excluding routine reauth-required errors,
-  which the settings UI already surfaces), and each worker cycle's own
-  uncaught failure. Leaving it unset disables the SDK outright with no
-  other effect.
-- **Sentry source maps** (web only): to get readable stack traces, set
-  `SENTRY_AUTH_TOKEN` (scopes `project:releases` and `org:read`),
-  `SENTRY_ORG` and `SENTRY_PROJECT` in `.env.prod` — and `SENTRY_URL` for
-  self-hosted Sentry — then rebuild the image
-  (`docker compose --env-file .env.prod build web`). `next build` uploads the
-  maps, matched to the running code by debug ID, and deletes them from the
-  build output. If any of the three is blank nothing is uploaded and the
-  build is unchanged. The values are build args of the builder stage only, so
-  the token is not in the final image (it does appear in the build cache's
-  metadata on the build host — treat that host accordingly). The worker's
-  stack traces are not source-mapped.
+- **Errors**: there is no external error tracker (Sentry was removed on
+  2026-10-16). The worker writes each unexpected error, including every
+  per-integration `Integration.lastSyncError` worth investigating (routine
+  reauth-required errors excluded, as the settings UI already surfaces them)
+  and uncaught failures, as one redacted `error_reported` JSON line on stderr.
+  The web app's server errors go to Next.js's own server log. Read both with
+  `docker compose logs`.
 - **Stalled-cycle alerting**: the worker elected as watchdog checks the
   per-organization schedule every two minutes and, if any organization's
   active poll or reconciliation is more than two intervals overdue (the

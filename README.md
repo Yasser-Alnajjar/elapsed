@@ -138,7 +138,7 @@ container.
 ## Deploying
 
 Self-hosting with Docker Compose (environment variables, migrations,
-backups and restore, health checks, Sentry, and alerts for a stalled worker)
+backups and restore, health checks, error logs, and alerts for a stalled worker)
 is covered in [docs/deployment.md](docs/deployment.md).
 
 ## Documentation

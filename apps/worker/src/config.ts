@@ -1,6 +1,5 @@
 import os from "node:os";
 import { randomBytes } from "node:crypto";
-import * as Sentry from "@sentry/node";
 /**
  * The worker runs unattended, so a missing provider config is not fatal: it
  * skips that provider and keeps polling the other one rather than crash-looping
@@ -115,7 +114,3 @@ export function loadWorkerConfig(): WorkerConfig {
     databasePoolMax: resolveDatabasePoolMax(organizationConcurrency),
   };
 }
-
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-});

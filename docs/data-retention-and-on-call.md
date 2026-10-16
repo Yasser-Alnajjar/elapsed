@@ -241,8 +241,11 @@ owner's hold.
 
 ## RawEvent retention (D34)
 
-**Final owner decision, 2026-10-10.** It replaces a 365-day policy
-recorded earlier that day, which was never built.
+**Final owner decision, 2026-10-10**, recorded as decision D34 in
+`implementation-plans/ROADMAP_Product.md` (Rev 19). It replaces a 365-day
+policy recorded earlier that day, which was never built. The Privacy
+wording that describes it is a separate decision, O-1 (validation ledger
+§2.4), and still waits for the qualified legal reviewer.
 
 - `RawEvent` rows, including every provider's raw snapshots and Custom REST
   snapshots (latest and superseded), **do not expire by age**. They are kept
@@ -365,7 +368,7 @@ There is one owner and no rota. Alerting that exists in code:
 - **Stalled worker cycle** (verified, `apps/worker/src/watchdog.ts`,
   `ops-alert.ts`). One elected worker checks every 2 minutes. If any
   organization's active-set poll or reconciliation is more than two intervals
-  overdue (i.e. last run more than 3x its interval ago; minimum 60 s), it sends a Sentry message and, if configured, a Slack webhook
+  overdue (i.e. last run more than 3x its interval ago; minimum 60 s), it writes a `cycle_stalled` log line and, if configured, sends a Slack webhook
   (`OPS_ALERT_SLACK_WEBHOOK_URL`) and/or an email (`OPS_ALERT_EMAIL`, sent
   through `DEPLOYMENT_SMTP_*`). It also sends one recovery notice. If none of
   those are configured, nothing is sent.
@@ -374,8 +377,9 @@ There is one owner and no rota. Alerting that exists in code:
   `restart: unless-stopped` in `docker-compose.yml` (verified). The restart
   policy restarts a process that exits; it does not restart one that is only
   marked unhealthy. Nothing outside the host reports either case.
-- **Errors**: Sentry, only if `SENTRY_DSN` is set. Whether it is set in
-  production is **not verified**.
+- **Errors**: structured JSON log lines only (worker: `error_reported`;
+  web: Next.js's server log). Sentry was removed from the project on
+  2026-10-16; there is no external error tracker.
 - **Read-only checks**: the operator monitoring page (users listed in
   `PLATFORM_ADMIN_EMAILS`) and the structured JSON logs.
 

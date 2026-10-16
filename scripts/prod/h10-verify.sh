@@ -57,7 +57,7 @@ else
     else pass "$k differs from every leaked value"
     fi
   done
-  manual "Third-party credentials cannot be proven rotated from here. The leaked file held SENTRY_DSN and OPS_ALERT_SMTP_PASSWORD (+ user/host): revoke/replace them at their providers and record the date in docs/deployment.md's rotation log. The 2026-09-19 log entry lists only POSTGRES_PASSWORD, NEXTAUTH_SECRET, INTEGRATION_CONFIG_ENCRYPTION_KEY, SMTP_ENCRYPTION_KEY."
+  manual "Third-party credentials cannot be proven rotated from here. The leaked file also held SENTRY_DSN (Sentry was removed from the code on 2026-10-16; nothing reads it) and OPS_ALERT_SMTP_PASSWORD (+ user/host; nothing reads them; see roadmap H-10 for its status). A matching value above is reported as found, not fixed. The 2026-09-19 log entry lists only POSTGRES_PASSWORD, NEXTAUTH_SECRET, INTEGRATION_CONFIG_ENCRYPTION_KEY, SMTP_ENCRYPTION_KEY."
 fi
 
 echo "== 2. Encryption / session secrets set and distinct"

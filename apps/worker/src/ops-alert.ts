@@ -61,9 +61,8 @@ export interface OpsAlert {
 
 /**
  * Sends to every configured channel independently and best-effort: a
- * delivery failure here is logged (and would already have been captured to
- * Sentry by the caller, since the underlying condition is itself
- * alert-worthy) but never thrown — an ops alert about a stalled worker must
+ * delivery failure here is logged (the caller has already written the
+ * condition itself to the log as `cycle_stalled`) but never thrown — an ops alert about a stalled worker must
  * not itself crash the worker's watchdog loop.
  */
 export async function sendOpsAlert(config: OpsAlertConfig | null, alert: OpsAlert): Promise<void> {

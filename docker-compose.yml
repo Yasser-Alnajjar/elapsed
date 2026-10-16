@@ -43,13 +43,6 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      # Optional source-map upload at build time (roadmap 7.6); all blank
-      # means no upload. See docs/deployment.md.
-      args:
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
-        SENTRY_ORG: ${SENTRY_ORG:-}
-        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
-        SENTRY_URL: ${SENTRY_URL:-}
     restart: unless-stopped
     container_name: web
     depends_on:
@@ -71,7 +64,6 @@ services:
       SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:?SMTP_ENCRYPTION_KEY is required}
       INTEGRATION_TOKEN_ENCRYPTION_KEY: ${INTEGRATION_TOKEN_ENCRYPTION_KEY:?INTEGRATION_TOKEN_ENCRYPTION_KEY is required}
       TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-1}
-      SENTRY_DSN: ${SENTRY_DSN:-}
       # Deployment-owned SMTP for invitations, password resets and email
       # verification (roadmap D8) — optional at the container level, but
       # those flows fail explicitly at send time if left unset. Also used by
@@ -142,7 +134,6 @@ services:
       # Per-worker Prisma pool. Unset = 2 x ORGANIZATION_CONCURRENCY + 4 (10 at
       # the default 3); see "Connection budget" in docs/deployment.md.
       DATABASE_POOL_MAX: ${WORKER_DATABASE_POOL_MAX:-}
-      SENTRY_DSN: ${SENTRY_DSN:-}
       OPS_ALERT_SLACK_WEBHOOK_URL: ${OPS_ALERT_SLACK_WEBHOOK_URL:-}
       # The email channel's recipient — sent through the shared
       # DEPLOYMENT_SMTP_* config above (the web service's block), not its

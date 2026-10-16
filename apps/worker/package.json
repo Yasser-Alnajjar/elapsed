@@ -15,7 +15,6 @@
     "seed:test-customers:validate": "dotenv -e ../../.env -- tsx scripts/seed-test-customers/cli.ts validate"
   },
   "dependencies": {
-    "@sentry/node": "^10.74.0",
     "@sla/commitments": "workspace:*",
     "@sla/custom-ticket": "workspace:*",
     "@sla/db": "workspace:*",

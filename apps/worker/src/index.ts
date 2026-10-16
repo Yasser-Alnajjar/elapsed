@@ -11,15 +11,11 @@ import { loadWorkerConfig } from "./config";
 import { startHealthServer, type WorkerHealthServer } from "./health-server";
 import { startWorkerLeadership, type WorkerLeadership } from "./leader-lock";
 import { createOrganizationProcessor } from "./organization-processor";
-import { captureException, flushSentry, initSentry } from "./sentry";
+import { captureException } from "./error-report";
 import { createSettingsReader } from "./settings-reader";
 import { startStalledCycleWatchdog } from "./watchdog";
 import { startWorkLoop, type WorkLoop } from "./work-loop";
 import { createDbWorkStore } from "./work-store";
-
-// First, before anything else can throw — every capture call below is a
-// no-op until this runs, so it must run before `main()`'s own await points.
-initSentry();
 
 const logger = createLogger();
 const config = loadWorkerConfig();
@@ -158,7 +154,6 @@ async function shutdown(signal: string, exitCode = 0, graceMs = config.shutdownG
     }
     if (leadership) await leadership.stop();
     if (healthServer) await healthServer.close();
-    await flushSentry();
     await prisma.$disconnect();
   } catch (error) {
     logger.error("worker_shutdown_error", { error: error instanceof Error ? error.message : String(error) });

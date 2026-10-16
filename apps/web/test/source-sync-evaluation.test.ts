@@ -54,7 +54,7 @@ vi.mock("@/lib/zendesk-env", () => ({
 vi.mock("@/lib/jira-env", () => ({
   getJiraOAuthConfig: vi.fn(async () => ({})),
 }));
-vi.mock("../../worker/src/sentry", () => ({ captureException: vi.fn() }));
+vi.mock("../../worker/src/error-report", () => ({ captureException: vi.fn() }));
 
 vi.mock("@sla/zendesk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@sla/zendesk")>();

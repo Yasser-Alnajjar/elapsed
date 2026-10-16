@@ -5,12 +5,12 @@ import { deliverMonthlyReport, deliverTrialExpiryNotice } from "@sla/notificatio
 import { emptyCycleResult, processOrganization, runCycle, type OrganizationRunContext } from "../src/cycle";
 import { createLogger } from "@sla/logger";
 import { LeaseLostError, type LeaseGuard } from "../src/lease";
-import { captureException } from "../src/sentry";
+import { captureException } from "../src/error-report";
 import type { WorkerConfig } from "../src/config";
 
 // Everything downstream of ingestion is out of scope here — stubbed so the
 // cycle's per-integration status handling is what's under test.
-vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
+vi.mock("../src/error-report", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
   buildCaseRefResolver: vi.fn().mockResolvedValue(null),
   loadPolicyContext: vi.fn().mockResolvedValue({ policyVersionRows: [], customersWithCalendarOverride: [], currentCalendarVersionById: new Map() }),
@@ -179,7 +179,7 @@ afterEach(() => {
 });
 
 describe("runCycle — provider permission loss (roadmap step 32)", () => {
-  it("HTTP 403 → permission_denied, one Sentry event, no token refresh or retry", async () => {
+  it("HTTP 403 → permission_denied, one error report, no token refresh or retry", async () => {
     const { row, prisma } = fakeDb("connected");
     const fetchMock = stubFetch(() => jsonResponse(403, { errors: [{ message: "Forbidden" }] }));
 
@@ -199,7 +199,7 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     ]);
   });
 
-  it("HTTP 401 → existing reauth behavior: reauth_required, credentials flagged, no Sentry event", async () => {
+  it("HTTP 401 → existing reauth behavior: reauth_required, credentials flagged, no error report", async () => {
     const { row, prisma } = fakeDb("connected");
     const fetchMock = stubFetch(() => jsonResponse(401, { errors: [{ message: "Authentication required" }] }));
 
@@ -214,7 +214,7 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     expect(captureExceptionMock).not.toHaveBeenCalled();
   });
 
-  it("HTTP 500 → existing generic error behavior: status unchanged, raw error recorded, Sentry event", async () => {
+  it("HTTP 500 → existing generic error behavior: status unchanged, raw error recorded, error report", async () => {
     vi.useFakeTimers();
     try {
       const { row, prisma } = fakeDb("connected");
@@ -263,7 +263,7 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     }
   });
 
-  it("full lifecycle: connected → permission_denied (Sentry once across repeated 403s) → connected", async () => {
+  it("full lifecycle: connected → permission_denied (reported once across repeated 403s) → connected", async () => {
     const { row, prisma } = fakeDb("connected");
 
     stubFetch(() => jsonResponse(403, {}));
@@ -271,7 +271,7 @@ describe("runCycle — provider permission loss (roadmap step 32)", () => {
     expect(row.status).toBe("permission_denied");
     expect(captureExceptionMock).toHaveBeenCalledTimes(1);
 
-    // Still denied on the next two cycles — no new Sentry event for either.
+    // Still denied on the next two cycles — no new error report for either.
     stubFetch(() => jsonResponse(403, {}));
     await runCycle(prisma, config, "active_set_poll");
     stubFetch(() => jsonResponse(403, {}));
@@ -602,7 +602,7 @@ describe("processOrganization — lease handling (multi-worker)", () => {
     await expect(processOrganization(prisma, config, organization(row), context)).rejects.toThrow(LeaseLostError);
     expect(context.result.failures).toEqual([]); // not an "ingest:linear" failure
     expect(row.lastSyncError).toBeNull();
-    expect(captureExceptionMock).not.toHaveBeenCalled(); // and not a Sentry-worthy ingest error
+    expect(captureExceptionMock).not.toHaveBeenCalled(); // and not a reportable ingest error
   });
 
   it("a lease that cannot be confirmed in the database stops the run before the projection phase", async () => {

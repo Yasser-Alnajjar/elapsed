@@ -142,7 +142,7 @@ Nothing on the limited-Beta path is currently actionable by engineering without 
 **4. Decisions or approvals required from the owner**
 
 - **Image rebuild: approval OUTSTANDING.** Needed only for the `.dockerignore` change to apply. Not given, not done.
-- **O-1 reference:** whether "D34" should exist as a roadmap decision (see "O-1 reference" below). Unresolved.
+- **O-1 reference:** resolved 2026-10-15: the owner chose to record the RawEvent retention rule as roadmap decision D34 (see "O-1 reference" below).
 - **Which organization(s) are the first pilot, and when.** Adding an organization to the Custom REST allowlist is not gated by the legal review or by any roadmap item (N9.14-F1 was removed on 2026-10-12); it is the owner's choice. No organization added.
 - SSH exposure (TCP 22 open to the world, restriction plan written, not applied): separate from the Beta, still owner-decided.
 - Non-gating owner decisions listed in section 2.4 of the validation master (OD-02 to OD-13; OD-09 N9.0-F1/F2 review and OD-10 override-confirmation expiry are the closest to Custom REST).
@@ -159,6 +159,8 @@ Nothing on the limited-Beta path is currently actionable by engineering without 
 - Raising the live-case ceiling above 1,000 (needs the real-host rerun).
 
 ### O-1 reference
+
+**Resolved 2026-10-15 (roadmap Rev 19):** the owner chose alternative 2 in substance: the roadmap now has decision **D34** recording the RawEvent retention rule (no age-based expiry; kept for the organization's lifetime; deleted only with the organization; disconnect deletes nothing; backups on their own schedule). O-1 stays the separate Privacy-wording decision, cross-referenced from D34, and its wording still waits for the qualified reviewer. The analysis below is kept as history.
 
 The O-1 decision of record is in the closure ledger and `server-validation-master.md` section 2.4 (introduced in commit `abc7a33`, 2026-10-10): **Option A, align the Privacy retention/deletion wording to the implemented behavior, no purge; the wording W-1 awaits the qualified reviewer.** The label "D34: no age-based expiry" first appears in commit `9ba7866` and nowhere earlier: in this file (line removed) and in a status line of `server-validation-master.md`. It is not in `implementation-plans/ROADMAP_Product.md` (the highest decision there is D33) or in any other permitted record, so there is no original D34 reference to recover. The two statements are compatible in substance (the code has no retention expiry: `docs/data-retention-and-on-call.md` says "No expiry"), but they are different things: D34 has no decision text anywhere. The decision sheet (`n9-legal-decision-sheet.md`, removed in Rev 14 and last present at `d0fdc78`) held the primary O-1 sign-off: Option A, approved by the owner on 2026-10-10 in the session instruction. Its introduction called O-1 "decided by D34" but it contained no D34 decision text, so the label question below is still open. The O-1 to O-3 record and the gate status are now in the roadmap's N9 legal-review gate. Alternatives, none chosen:
 

@@ -1,6 +1,6 @@
 /**
  * Redaction of credentials and sensitive URLs from anything that leaves the
- * process as text: application logs, Sentry events, sync errors (plan 09, 8.4
+ * process as text: application logs, reported errors, sync errors (plan 09, 8.4
  * and N9.3). It is output-only: values that carry no secret are returned
  * unchanged, so what other code logs today does not change.
  *
@@ -135,33 +135,20 @@ function walk(value: unknown, depth: number, seen: WeakSet<object>): unknown {
   }
 }
 
-/** Error classes whose context must never reach an error tracker: only the generic message survives. */
+/** Error classes whose context must never reach a log line: only the generic message survives. */
 const OPAQUE_ERROR_TYPES = new Set(["IntegrationCredentialsUnreadableError", "CustomCredentialsUnreadableError"]);
 export const CREDENTIALS_UNREADABLE_MESSAGE = "Credentials unavailable; enter them again";
 
-interface SentryLikeEvent {
-  exception?: { values?: { type?: string; value?: string; [key: string]: unknown }[] };
-  message?: unknown;
-  extra?: unknown;
-  [key: string]: unknown;
-}
-
 /**
- * `beforeSend` core for any Sentry runtime: redacts the whole event, and for a
- * credentials-unreadable error keeps only that error with a generic message
- * (no cause chain, no `extra`), so neither the ciphertext, the key nor the
- * original crypto error can leave the process.
+ * The fields of one reported error, for a structured log line: the whole
+ * record is redacted, and a credentials-unreadable error keeps only its name
+ * and a generic message (no context, no stack, no cause chain), so neither the
+ * ciphertext, the key nor the original crypto error can leave the process.
  */
-export function redactSentryEvent<E extends object>(event: E): E {
-  const input = event as unknown as SentryLikeEvent;
-  const values = input.exception?.values;
-  if (values?.some((entry) => entry.type !== undefined && OPAQUE_ERROR_TYPES.has(entry.type))) {
-    const kept = values
-      .filter((entry) => entry.type !== undefined && OPAQUE_ERROR_TYPES.has(entry.type))
-      .map((entry) => ({ type: entry.type, value: CREDENTIALS_UNREADABLE_MESSAGE }));
-    input.exception = { values: kept };
-    delete input.extra;
-    input.message = CREDENTIALS_UNREADABLE_MESSAGE;
-  }
-  return redactValue(input) as unknown as E;
+export function errorReportFields(error: unknown, context: Record<string, unknown> = {}): Record<string, unknown> {
+  const name = error instanceof Error ? error.name : typeof error;
+  if (OPAQUE_ERROR_TYPES.has(name)) return { error: { name, message: CREDENTIALS_UNREADABLE_MESSAGE } };
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  return redactValue({ ...context, error: { name, message, stack } }) as Record<string, unknown>;
 }

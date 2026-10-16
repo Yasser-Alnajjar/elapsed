@@ -63,7 +63,7 @@ export function RouteStatus({
   );
 }
 
-/** Shows Next's error digest so a user can quote it and it can be matched to the server log / Sentry event. */
+/** Shows Next's error digest so a user can quote it and it can be matched to the server log. */
 export function ErrorReference({ digest }: { digest?: string }) {
   if (!digest) return null;
   return (

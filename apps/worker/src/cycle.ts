@@ -45,7 +45,7 @@ import { forEachWithConcurrency, normalizeConcurrency } from "./concurrency";
 import type { WorkerConfig } from "./config";
 import { LeaseLostError, type LeaseGuard } from "./lease";
 import { ISSUE_LINK_PROVIDERS, PROVIDERS } from "./providers";
-import { captureException } from "./sentry";
+import { captureException } from "./error-report";
 import { classifyRun, dataChanged, pruneSyncHistory, recordSyncRun } from "./sync-runs";
 
 export type CycleKind = "active_set_poll" | "reconciliation_sweep";
@@ -408,8 +408,8 @@ export async function processOrganization(
           });
         }
         // Reauth is an expected, already-surfaced state (the settings page's
-        // ReauthBanner) — not a bug — so it's excluded here to keep Sentry
-        // for actual failures worth investigating, not routine reauth churn.
+        // ReauthBanner) — not a bug — so it's excluded here to keep error
+        // reports for actual failures worth investigating, not routine reauth churn.
         // Permission loss is reported once, on the transition into
         // `permission_denied`: the operator should hear about it, but not
         // again on every cycle until the customer fixes it. A skipped,

@@ -15,7 +15,7 @@ import { runEvaluationPipeline } from "@sla/commitments";
 import { runCycle } from "../src/cycle";
 import type { WorkerConfig } from "../src/config";
 
-vi.mock("../src/sentry", () => ({ captureException: vi.fn() }));
+vi.mock("../src/error-report", () => ({ captureException: vi.fn() }));
 vi.mock("@sla/commitments", () => ({
   buildCaseRefResolver: vi.fn().mockResolvedValue(null),
   ensureDefaultCalendarVersion: vi.fn().mockResolvedValue({ id: "cal" }),

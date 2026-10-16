@@ -38,7 +38,7 @@ describe("shared provider errors", () => {
     expect(permissionDenied[1]).toBeInstanceOf(JiraApiError);
   });
 
-  it("keeps each error's own name for logs and Sentry grouping", () => {
+  it("keeps each error's own name for logs and error reports", () => {
     expect(permissionDenied.map((error) => error.name)).toEqual([
       "ZendeskPermissionDeniedError",
       "JiraPermissionDeniedError",

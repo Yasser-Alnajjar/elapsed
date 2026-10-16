@@ -10,7 +10,7 @@ import { formatUtcTimestamp } from "@/lib/admin-format";
 
 /**
  * The admin area's error boundary. Shows when it happened and the reference id
- * to quote (it matches the server log and Sentry), never the error's own text:
+ * to quote (it matches the server log), never the error's own text:
  * that can carry internals and does not help the operator decide anything.
  */
 export default function AdminError({

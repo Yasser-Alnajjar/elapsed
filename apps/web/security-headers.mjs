@@ -24,7 +24,7 @@ export function buildSecurityHeaders({ isDev }) {
     "img-src 'self' data: blob:",
     // next/font self-hosts Inter/Fraunces under /_next/static, so no Google Fonts origin is needed.
     "font-src 'self' data:",
-    // Dev: the HMR websocket. Sentry is server-side only here, so no ingest origin is needed.
+    // Dev: the HMR websocket.
     `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
